@@ -26,6 +26,8 @@ the component stays a proposal.
 | `aegis-athena` | P16 evolution loop | M05 | The seven-stage candidate lifecycle with only Invalidate terminal, the four-objective Pareto promotion gate, the nine structural maturity gates, and the SHA-256 hash-chained checkpoint ledger over the D02 trait. The versioned trigger P16 hands to P02, and the M14 audit record consumed rather than redefined. Library only. |
 | `aegis-minerva` | P09 agent-chain middle link | M06 | The bounded Alps expert table and its 20 W envelope, the `AgentHER` trajectory buffer whose relabeller flips only failed steps, the constraint screen that can refuse and cannot accept, the versioned request P09 submits to P14, and the two payloads P09 builds from other crates' types rather than redefining. Library only. |
 | `aegis-vesta` | P10 sandbox-controller validation slice | M06 | The bounded microVM and capsule tables of export-037, decision D06's Rust-native runtime with the rejected runtime unrepresentable on the wire, the capsule request P09 sends and the candidate evaluation P16 receives, each carrying the D58 VMM identity, and the recorded boot-time literal carried as an `Unmeasured` value. Library only. |
+| `aegis-ludus` | P11 gaming-integration validation slice | M08 | The 64-argument launch bound of export-033 and the three-way authentication outcome that replaces its boolean, which calls a line carrying no token authenticated because it carried some argument, the platform-register selection and amount bounds of a microtransaction receipt, the versioned receipt P11 hands to P02 with its signing carried as one variant that says it is unsigned, and the three recorded credential probes. Library only. |
+| `aegis-hephaestus` | P14 geometry validation slice | M08 | The iteration and meshing bounds of export-029 held against caller-supplied counts rather than against constants, the solver admission that names three solvers and starts none, the M06 verification request consumed from `aegis-minerva` rather than redefined, and the versioned geometry viewport P14 hands to P15 carrying the same element bound as the planner. Library only. |
 
 Every crate above is a member of the workspace root `Cargo.toml`. The member
 list is written out rather than globbed, so the remaining reserved directories
@@ -34,8 +36,9 @@ invariant rather than the count: a crate directory that has a manifest is a
 member, and nothing else is. M17 settled open decision D22, which asked whether
 the P03 and P15 Rust candidates join the list at all -- REQ-WS-01 had recorded
 their absence from the *proposed* workspace as a defect. M05 added the two
-crates REQ-P16-07 and REQ-P13-08 name, and M06 the two REQ-P09-01 and
-REQ-P10-01 name.
+crates REQ-P16-07 and REQ-P13-08 name, M06 the two REQ-P09-01 and
+REQ-P10-01 name, and M08 the two the P11 and P14 candidate rows name, of which
+REQ-P14-07 states one explicitly.
 
 `aegis-fabrica-defs` owns the declarative inputs in `build/`, not the P01 or P02
 component daemon. M18 widened it from a parser to the P01/P02 input contracts:
@@ -76,6 +79,45 @@ probe and reads no counter; the P16 subsystem is an evolution daemon that runs
 candidates and deploys updates, and this crate runs nothing and deploys nothing.
 Their `manifest_present` flags in `planning/candidates.json` stay false for the
 same reason the P03 and P15 flags do.
+
+`aegis-ludus` and `aegis-hephaestus` carry their components' names and sit at
+their components' proposed paths, and **P11 and P14 remain proposals all the
+same**. The P11 subsystem is a gaming and platform daemon, and this crate links
+no platform SDK, opens no socket, exports no buffer and binds no key; the P14
+subsystem is a CAD and multi-physics daemon, and this crate loads no kernel,
+parses no `STEP` file, generates no mesh element and starts no solver. Their
+`manifest_present` flags in `planning/candidates.json` stay false for the same
+reason the P03 and P15 flags do.
+
+Deliberately outside `aegis-ludus`: every platform, every transport and the
+whole credential story. Nothing in it links or names a proprietary platform SDK,
+opens a chat-platform socket, connects to a compositor or a media server,
+exports a buffer, opens a `TPM2`, binds a key, reads a platform register or
+takes a quote. Decision D12 and ADR-0002 exclude the SDK, and two sweeps hold
+that: `tests/no_steamworks.rs` over twelve SDK spellings and
+`tests/stubbed_effects.rs` over twenty effect identifiers, both regression gates
+over an enumeration rather than proofs over every such identifier, and both with
+the record's own names and the recorded probe commands deliberately excluded and
+asserted present. ADR-0002 also excludes the SDK from the image; this crate
+cannot check that, because the repository builds no image and that gate is
+blocked. `src/probe.rs` records what the reference profile actually has -- a
+`TPM 2.0` and no `FIDO2` authenticator -- so `src/register.rs` records the two
+credentials apart, one deferred and one a procurement dependency. The P11 to P04
+rich-presence edge is untyped because open decision D48 may remove it.
+
+Deliberately outside `aegis-hephaestus`: every kernel, every solver and every
+file. Nothing in it links a `CAD` kernel, opens or parses a `STEP` file,
+generates a mesh element, starts a solver process, writes a cgroup file or
+reaches a symbolic solver; a `STEP` source is a validated name and is never
+opened, which is why the scaffold's `exists()` call is on the twenty-two-identifier
+list `tests/stubbed_effects.rs` sweeps for. The consequence is stated in the
+types rather than only in prose: the evaluation outcome has no `is_watertight`,
+the verification intake has one outcome and it is not "verified", and the
+viewport carries no proof field. `src/register.rs` records the five unpinned
+kernel and solver rows the sources name and nobody has versioned. The P09
+verification request is decoded through `aegis_minerva::CadVerificationRequest`
+rather than redefined, so a consumer's reading of it cannot drift from the
+producer's, and decision D27 stays unresolved.
 
 The consumer contracts live in `aegis-justitia/src/contracts/` and the hardened
 unit is a contract file in `aegis-justitia/contracts/`, reviewed by library code

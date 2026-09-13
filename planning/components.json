@@ -658,11 +658,12 @@
         "scaffold/crates/aegis-ludus/src/main.rs"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent",
-        "real hardware or emulator evidence for each listed hardware requirement"
+        "a P11 component daemon; crates/aegis-ludus holds the launch-argument bounds, the three authentication outcomes, the receipt fields and the payload P11 hands to P02, and links no platform SDK and opens no socket",
+        "a platform SDK: decision D12 and ADR-0002 exclude it from the image and from the crate, so this blocker is closed by exclusion rather than by work",
+        "a rich-presence path: open decision D48 may remove the edge entirely and the sources name no library, so the P11 to P04 contract is deliberately untyped at M08",
+        "a FIDO2 authenticator: the reference profile has none, which is a procurement dependency rather than something a stub can cover",
+        "a TPM2 key binding for transaction signing: the chip is present and unbound, which is milestone M20; every receipt this crate produces says on the wire that it is unsigned",
+        "a zero-copy video path: no compositor, no buffer export and no accelerator, which is the hardware-backed milestone M25"
       ],
       "cheapest_first_slice": {
         "description": "A Rust unit-test suite for the launch-command-line token validator in aegis-ludus (the `init_steamworks` argument-parsing logic in aegis-ludus-main.rs): extract the arg-count bound check and `+connect_auth_token=` scan into a pure function, then unit test it with `cargo test` inside the existing `crates/aegis-ludus` wo",
@@ -672,7 +673,8 @@
         "verification": "Positive: a command line with a valid `+connect_auth_token=...` token and <= MAX_LAUNCH_ARGS (64) args returns Ok with is_authenticated=true. Negative: a command line exceeding 64 args returns Err (command-line-too-long path). Boundary: exa"
       },
       "decisions": [
-        "D12 / ADR-0002: no Steamworks in the image"
+        "D12 / ADR-0002: no Steamworks in the image, applied at M08",
+        "D48: whether the rich-presence integration survives ADR-0002's reasoning is recorded at M08 and stays unresolved, so the P11 to P04 edge is untyped"
       ]
     },
     {
@@ -815,10 +817,11 @@
         "scaffold/crates/aegis-hephaestus/src/main.rs"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent"
+        "a P14 component daemon; crates/aegis-hephaestus holds the geometry and meshing bounds, the solver admission and the payload P14 hands to P15, and links no kernel, parses no STEP file and starts no solver",
+        "a CAD kernel and a mesher: neither is selected or pinned, and the crate's register records five unpinned rows rather than inventing a version",
+        "a symbolic solver for the REQ-P14-04 hard gate: none is admitted, so the verification intake has no outcome meaning verified and open decision D27 stays unsettled",
+        "cgroup isolation for solver execution: the slice name is a recorded string and no cgroup is written and no process is placed",
+        "a licence decision for GPL-licensed solver bindings"
       ],
       "cheapest_first_slice": {
         "description": "A pure-Rust unit-test slice of the aegis-hephaestus crate's bounded-loop and validation logic, with zero external solver/toolchain dependencies: (1) a `GeometrySpec`/`MeshConfig` state-machine module exercising the `MAX_GEOMETRY_ITERATIONS` bound in `evaluate_nurbs_brep` and the `MAX_MESH_ELEMENTS` bound in `generate_m",
@@ -826,7 +829,11 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "Positive: evaluate_nurbs_brep(existing STEP path) returns Ok(true) and generate_mesh returns Ok(element_count) at element_count <= MAX_MESH_ELEMENTS; verify_code_cad_constraints(non-empty param string) returns Ok(true). Negative: evaluate_n"
-      }
+      },
+      "decisions": [
+        "D27: the P09/P14 verification direction is consumed from aegis-minerva at M08 and stays unresolved",
+        "D37: the P14 to P15 edge is drawn by the graph of record alone, so its schema rests on one source"
+      ]
     },
     {
       "id": "P15",

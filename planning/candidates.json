@@ -438,13 +438,13 @@
         }
       ],
       "missing": [
-        "crates/aegis-ludus/Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
-        "removal of the Steamworks path before activation (D12 and ADR-0002 exclude it)",
-        "a named rich-presence library (open decision D48)",
-        "TPM2 evidence for transaction signing"
+        "a P11 component daemon (aegis-ludus holds the launch bounds, the authentication outcomes, the receipt fields and the payload, and links no platform SDK)",
+        "a platform SDK, a presence socket, a compositor buffer export and a TPM2 key binding, all absent by design at M08 (D12 and ADR-0002 exclude the SDK outright)",
+        "a named rich-presence library, which open decision D48 may remove the need for entirely; the P11 to P04 edge is deliberately untyped at M08",
+        "a FIDO2 authenticator: the probe recorded in crates/aegis-ludus/src/probe.rs found none among the 17 devices connected to the reference profile, so this is a procurement dependency and nothing here stubs it",
+        "TPM2 evidence for transaction signing: the chip is present and no key is bound to it, which is milestone M20; every receipt this crate produces says on the wire that it is unsigned"
       ],
-      "note": "Member 7 of the export-006 members array."
+      "note": "Member 7 of the export-006 members array. The crate exists from M08 as a written-out member of the workspace root Cargo.toml, with a Cargo.lock entry and positive, negative and boundary tests; D12 is recorded and applied there and D48 is recorded as unresolved. manifest_present stays false because verify_candidates() in tools/verify_preparation.py reads that flag as a component-activation claim rather than as a filesystem fact, and P11 is still a proposal."
     },
     {
       "candidate_id": "C12",
@@ -544,13 +544,13 @@
         }
       ],
       "missing": [
-        "crates/aegis-hephaestus/Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
-        "CAD and solver dependency pins (absent from the export-006 dependency table)",
-        "licence decision for GPL-licensed solver bindings",
-        "positive, negative and boundary tests"
+        "a P14 component daemon (aegis-hephaestus holds the geometry and meshing bounds, the solver admission and the payload, and links no kernel and starts no solver)",
+        "a CAD kernel, a mesher, a symbolic solver and a cgroup slice, all absent by design at M08",
+        "CAD and solver dependency pins, absent from the export-006 dependency table and recorded as five unpinned rows in the crate's own register",
+        "a licence decision for GPL-licensed solver bindings, still outstanding",
+        "real evidence for the symbolic-solver hard gate REQ-P14-04 names: the intake outcome has no variant meaning verified, and open decision D27 is not settled by consuming the producer's request"
       ],
-      "note": "Member 9 of the export-006 members array; REQ-P14-07 states the membership explicitly."
+      "note": "Member 9 of the export-006 members array; REQ-P14-07 states the membership explicitly. The crate exists from M08 as a written-out member of the workspace root Cargo.toml, with a Cargo.lock entry and positive, negative and boundary tests; the M06 verification request is consumed from aegis-minerva rather than redefined. manifest_present stays false because verify_candidates() in tools/verify_preparation.py reads that flag as a component-activation claim rather than as a filesystem fact, and P14 is still a proposal."
     },
     {
       "candidate_id": "C15",
