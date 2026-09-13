@@ -7,6 +7,7 @@ import json
 import os
 import re
 import string
+import sys
 import subprocess
 import tomllib
 from pathlib import Path, PurePosixPath
@@ -237,6 +238,26 @@ def verify_milestone(row, by_id):
             raise ValueError(f"Milestone {row['id']} is ranked before its blocker {blocker}")
 
 
+def verify_ranking(milestones):
+    """The committed order must match the ranking controller, or record why not."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import rank_roadmap
+
+    profile = ROOT / "planning/hardware-profile.json"
+    absent = set()
+    if profile.is_file():
+        capabilities = read_json(profile)["capabilities"]
+        absent = {name for name, row in capabilities.items() if not row["present"]}
+    _, order, diffs, _ = rank_roadmap.drift(milestones, absent)
+    if diffs:
+        first = diffs[0]
+        raise ValueError(
+            f"Roadmap order drifts from the ranking controller at rank {first[0]}: "
+            f"committed {first[1]}, computed {first[2]}; record rank_override.reason or re-rank"
+        )
+    return order
+
+
 def verify_roadmap():
     rows = read_json(ROOT / "planning/roadmap.json")["milestones"]
     ids = [row["id"] for row in rows]
@@ -423,6 +444,7 @@ def main():
     register = verify_candidates(rows)
     milestones = verify_roadmap()
     profile = verify_hardware_profile(milestones)
+    verify_ranking(milestones)
     if args.sources:
         verify_sources()
     if args.readiness:
