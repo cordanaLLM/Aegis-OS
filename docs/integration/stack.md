@@ -13,16 +13,16 @@ Exact local observations and blockers live in the private readiness matrix.
 
 Requirements flow from Aegis to the builders and shared packages. Validated
 artifacts, diagnostics, and compatibility evidence return to Aegis. New needs
-and reproducible failures go back to the owning repository. Each direction
-needs a schema, correlation ID, exact revision, bounded retries, and a recorded
-result before it counts as connected.
+and reproducible failures go back to the owning repository. Each direction needs
+a schema, correlation ID, exact revision, bounded retries, and a recorded result
+before it counts as connected.
 
 The proposed build subsystem (P01 aegis-fabrica, see `planning/components.json`)
-keeps its product requirements in Aegis while reusable builder logic is
-provided through Imago and Nucleus. Shared package reuse must respect language
+keeps its product requirements in Aegis while reusable builder logic is provided
+through Imago and Nucleus. Shared package reuse must respect language
 boundaries: a Go library is not a direct dependency of a Rust daemon. Use a
-compatible library or an explicit protocol/FFI adapter with contract tests.
-GPU templates are candidates only for components that require those backends.
+compatible library or an explicit protocol/FFI adapter with contract tests. GPU
+templates are candidates only for components that require those backends.
 
 Activation order: the ranked, blocking-state roadmap in `docs/roadmap/README.md`
 and `planning/roadmap.json` is authoritative (`make readiness` lists the ready
@@ -36,6 +36,7 @@ not stall work that can already be verified.
    and real tests (M02), then the other hardware-free slices.
 3. Author the Aegis-side product input and kernel requirement schemas (M18),
    then pin the Imago/Nucleus schemas and test one request/result pair (M09).
-4. Build one minimal image and retain artifact, signature and boot evidence (M11).
+4. Build one minimal image and retain artifact, signature and boot evidence
+   (M11).
 5. Enable release signing and remote delivery only after publication settings
    and consumers exist (M13).

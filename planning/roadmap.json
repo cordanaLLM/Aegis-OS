@@ -306,7 +306,7 @@
     },
     {
       "id": "M03",
-      "title": "P01/P02 partition and transfer definitions validated offline with the host systemd",
+      "title": "P01/P02 definitions validated offline with host systemd",
       "rank": 4,
       "state": "blocked",
       "blocked_by": [
@@ -490,7 +490,7 @@
     },
     {
       "id": "M05",
-      "title": "Evolution loop logic: P13 Tellus SCI engine and P16 Athena lifecycle, Pareto gate and ledger",
+      "title": "Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle",
       "rank": 7,
       "state": "blocked",
       "blocked_by": [
@@ -565,7 +565,7 @@
     },
     {
       "id": "M06",
-      "title": "Agent execution chain logic: P09 Minerva router/replay/solver and P10 Vesta bounded controllers",
+      "title": "Agent execution chain logic: P09 Minerva and P10 Vesta",
       "rank": 8,
       "state": "blocked",
       "blocked_by": [
@@ -706,7 +706,7 @@
     },
     {
       "id": "M07",
-      "title": "Real-time control-plane logic: P04 compositor registry/IPC, P07 Lictor classifier/broker, P08 Calliope plugin lifecycle",
+      "title": "Real-time control plane: P04, P07 and P08 logic",
       "rank": 10,
       "state": "blocked",
       "blocked_by": [
@@ -860,7 +860,7 @@
     },
     {
       "id": "M19",
-      "title": "eBPF objects compiled and loaded through the verifier on the host kernel (local fixture)",
+      "title": "eBPF objects loaded through the verifier on the host kernel",
       "rank": 12,
       "state": "blocked",
       "blocked_by": [
@@ -919,7 +919,7 @@
     },
     {
       "id": "M04",
-      "title": "UI accessibility harness: P12 Concordia tokens with Node/pnpm/Playwright admission",
+      "title": "UI accessibility harness: P12 Concordia tokens",
       "rank": 13,
       "state": "blocked",
       "blocked_by": [
@@ -1027,7 +1027,7 @@
     },
     {
       "id": "M09",
-      "title": "Cross-repository contract pin (stack.md step 2): one local Imago/Nucleus request/result pair",
+      "title": "Cross-repository contract pin: one local request/result pair",
       "rank": 15,
       "state": "blocked",
       "blocked_by": [
@@ -1092,7 +1092,7 @@
     },
     {
       "id": "M11",
-      "title": "Minimal image build with artifact, signature and boot evidence (stack.md step 4)",
+      "title": "Minimal image build with artifact, signature and boot evidence",
       "rank": 16,
       "state": "blocked",
       "blocked_by": [
@@ -1224,7 +1224,7 @@
     },
     {
       "id": "M21",
-      "title": "Workstation hardware slices: RAPL energy counters and KVM/Firecracker sandboxing",
+      "title": "Workstation hardware slices: RAPL counters and KVM sandboxing",
       "rank": 18,
       "state": "blocked",
       "blocked_by": [

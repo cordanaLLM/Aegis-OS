@@ -1,3 +1,4 @@
+---
 # Release train: keeps CHANGELOG.md and VERSION current inside an automatically
 # maintained release pull request. It publishes nothing. Tagging and GitHub
 # releases stay skipped until planning/roadmap.json records milestone M13
@@ -9,7 +10,8 @@
 # requests, which makes release-please fail after it has already pushed its
 # branch. Enable the organization setting "Allow GitHub Actions to create and
 # approve pull requests" first, then:
-#   gh api --method PATCH repos/cordanaLLM/Aegis-OS/actions/variables/RELEASE_TRAIN_ENABLED -f name=RELEASE_TRAIN_ENABLED -f value=true
+# gh api --method PATCH repos/cordanaLLM/Aegis-OS/actions/variables/RELEASE_TRAIN_ENABLED -f
+#   name=RELEASE_TRAIN_ENABLED -f value=true
 name: Release please
 
 on:
@@ -44,7 +46,7 @@ jobs:
       - name: Resolve the M13 release gate from planning/roadmap.json
         id: gate
         run: |
-          state="$(python3 -c 'import json; print(next((m["state"] for m in json.load(open("planning/roadmap.json"))["milestones"] if m["id"] == "M13"), "missing"))')"
+          state="$(python3 tools/roadmap_state.py M13)"
           if [ "$state" = "done" ]; then skip=false; else skip=true; fi
           printf 'roadmap M13 state=%s -> skip-github-release=%s\n' "$state" "$skip"
           printf 'skip-github-release=%s\n' "$skip" >> "$GITHUB_OUTPUT"
@@ -64,6 +66,8 @@ jobs:
     steps:
       - name: Explain why no release pull request is maintained
         run: |
-          printf '%s\n' 'Release train disabled: repository variable RELEASE_TRAIN_ENABLED is not "true".' \
-            'Enable "Allow GitHub Actions to create and approve pull requests" for the organization,' \
-            'then set the variable to true. Releases additionally stay blocked until roadmap M13 is done.'
+          printf '%s\n' \
+            'Release train disabled: RELEASE_TRAIN_ENABLED is not "true".' \
+            'Enable Actions pull request creation for the organization,' \
+            'then set the variable to true.' \
+            'Releases stay blocked until roadmap M13 is done.'

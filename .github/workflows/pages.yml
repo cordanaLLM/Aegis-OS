@@ -1,3 +1,4 @@
+---
 # Documentation portal: builds the tracked planning and governance prose with
 # MkDocs and publishes it to GitHub Pages. It is documentation only. It builds
 # no image, kernel, or release artefact, and a green run is not evidence for

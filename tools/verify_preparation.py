@@ -42,13 +42,18 @@ def verify_components():
 def verify_privacy():
     result = subprocess.run(
         ["git", "ls-files", "-z", "--", ".workingdir", ".workingdir2"],
-        cwd=ROOT, capture_output=True, check=True, timeout=10,
+        cwd=ROOT,
+        capture_output=True,
+        check=True,
+        timeout=10,
     )
     if result.stdout:
         raise ValueError("Private working data is tracked or staged")
     subprocess.run(
         ["git", "check-ignore", "-q", "--no-index", ".workingdir/privacy-probe"],
-        cwd=ROOT, check=True, timeout=10,
+        cwd=ROOT,
+        check=True,
+        timeout=10,
     )
 
 
@@ -62,7 +67,9 @@ def verify_licensing():
     reuse = tomllib.loads((ROOT / "REUSE.toml").read_text())
     declared = {row.get("SPDX-License-Identifier") for row in reuse.get("annotations", [])}
     if reuse.get("version") != 1 or declared != LICENSE_IDS:
-        raise ValueError("REUSE.toml must declare version 1 with exactly the split-licence identifiers")
+        raise ValueError(
+            "REUSE.toml must declare version 1 with exactly the split-licence identifiers"
+        )
     if not (ROOT / "LICENSING.md").is_file():
         raise ValueError("LICENSING.md explains the split licence and must exist")
 
@@ -154,11 +161,21 @@ def main():
         verify_sources()
     if args.readiness:
         for row in rows:
-            print(f"{row['id']} {row['name']}: {row['status']}; " + "; ".join(row["activation_blockers"]))
+            print(
+                f"{row['id']} {row['name']}: {row['status']}; "
+                + "; ".join(row["activation_blockers"])
+            )
         for row in milestones:
             marker = "READY" if row["state"] == "ready" else row["state"]
-            print(f"{row['id']} [{marker}] rank {row['rank']} cost {row['cost']}: {row['title']}; blocked by " + (", ".join(row["blocked_by"]) or "nothing"))
-    print("PASS: planning structure, privacy, licence texts and roadmap states; native build/boot/release unverified")
+            blockers = ", ".join(row["blocked_by"]) or "nothing"
+            print(
+                f"{row['id']} [{marker}] rank {row['rank']} cost {row['cost']}: "
+                f"{row['title']}; blocked by {blockers}"
+            )
+    print(
+        "PASS: planning structure, privacy, licence texts and roadmap states; "
+        "native build/boot/release unverified"
+    )
 
 
 if __name__ == "__main__":

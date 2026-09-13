@@ -1,0 +1,30 @@
+---
+# YAML style for repository-owned files.
+#
+# Exceptions, each for a structural reason:
+#   truthy check-keys: GitHub Actions requires the literal key `on:`, which the
+#     default check reports as a truthy value.
+#   line-length 100: pinned action digests (`uses: owner/repo@<40 hex> # vX.Y`)
+#     and single-token values cannot be wrapped.
+#   ignored paths: .config/archetypes/** is digest-pinned by .standards.lock and
+#     must stay byte-identical; Praetor generates and rewrites the remaining
+#     ignored files, so their style is an upstream concern.
+extends: default
+
+rules:
+  truthy:
+    check-keys: false
+  line-length:
+    max: 100
+  comments:
+    min-spaces-from-content: 1
+
+ignore: |
+  .config/archetypes/
+  .config/lefthook/
+  .standards.yaml
+  .standards.lock
+  .config/labels.yaml
+  .workingdir/
+  .workingdir2/
+  site/
