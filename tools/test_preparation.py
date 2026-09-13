@@ -323,7 +323,9 @@ class PreparationTests(unittest.TestCase):
         self.write_components()
         self.git_init()
         self.write_licensing({})
-        self.write_roadmap([self.milestone("M00", 0, "ready")])
+        rows = [self.milestone("M00", 0, "ready")]
+        self.write_roadmap(rows)
+        self.write_roadmap_document(rows)
         self.write_register()
         self.write_profile()
         out = io.StringIO()
@@ -372,6 +374,68 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(len(check.verify_roadmap()), 3)
         self.write_roadmap([self.milestone("M00", 0, "ready")])
         self.assertEqual(len(check.verify_roadmap()), 1)
+
+    def write_roadmap_document(self, rows, table=None, sections=None):
+        """Render both rank-and-state surfaces, optionally overriding either."""
+        table = rows if table is None else table
+        sections = rows if sections is None else sections
+        head = (
+            "# Roadmap\n\n| Rank | ID | Title | State | Cost |\n| --- | --- | --- | --- | --- |\n"
+        )
+        body = "".join(
+            f"| {row['rank']} | {row['id']} | {row['title']} | {row['state']} | small |\n"
+            for row in table
+        )
+        text = head + body
+        for row in sections:
+            text += (
+                f"\n### {row['id']} - {row['title']}\n\n"
+                f"Rank {row['rank']}. State: {row['state']}. Cost: small.\n"
+            )
+        (self.root / "docs/roadmap").mkdir(parents=True, exist_ok=True)
+        (self.root / "docs/roadmap/README.md").write_text(text)
+
+    def test_roadmap_document_matching_both_surfaces_passes(self):
+        rows = [
+            self.milestone("M00", 0, "done", evidence=["a2c9626"]),
+            self.milestone("M01", 1, "ready", ["M00"]),
+        ]
+        self.write_roadmap_document(rows)
+        check.verify_roadmap_document(rows)
+
+    def test_roadmap_document_rejects_a_stale_surface(self):
+        rows = [
+            self.milestone("M00", 0, "done", evidence=["a2c9626"]),
+            self.milestone("M01", 1, "ready", ["M00"]),
+        ]
+        stale = [dict(rows[0], state="ready"), rows[1]]
+        # Either surface alone is enough to fail: they drift independently.
+        for table, sections in ((stale, rows), (rows, stale)):
+            self.write_roadmap_document(rows, table=table, sections=sections)
+            with self.assertRaises(ValueError):
+                check.verify_roadmap_document(rows)
+        # A rank that disagrees fails for the same reason a state does.
+        moved = [dict(rows[0], rank=7), rows[1]]
+        self.write_roadmap_document(rows, table=moved, sections=moved)
+        with self.assertRaises(ValueError):
+            check.verify_roadmap_document(rows)
+
+    def test_roadmap_document_rejects_a_missing_or_extra_milestone(self):
+        rows = [
+            self.milestone("M00", 0, "done", evidence=["a2c9626"]),
+            self.milestone("M01", 1, "ready", ["M00"]),
+        ]
+        # One short on either surface, and one too many: the count is the boundary.
+        self.write_roadmap_document(rows, table=rows[:1])
+        with self.assertRaises(ValueError):
+            check.verify_roadmap_document(rows)
+        self.write_roadmap_document(rows, sections=rows[:1])
+        with self.assertRaises(ValueError):
+            check.verify_roadmap_document(rows)
+        extra = rows + [self.milestone("M02", 2, "blocked", ["M01"])]
+        self.write_roadmap_document(rows, table=extra, sections=extra)
+        with self.assertRaises(ValueError):
+            check.verify_roadmap_document(rows)
 
     def test_roadmap_rejects_inconsistent_states(self):
         bad = [
