@@ -728,7 +728,7 @@
         "crates/aegis-compositor, aegis-lictor and aegis-calliope have manifests, lock entries and positive/negative/boundary tests; no wlroots, GPU, PipeWire, cgroups or BPF attach; the Rust toolchain from M02 is reused",
         "The Zenoh crate version, if needed, is selected and locked at activation after checking current upstream; the export-006 pin is not inherited",
         "The surface registry (256) and IPC client (64) bounds, EWMA tier thresholds, plugin slots (32) and DMA-BUF buffers (64) are tested at their edges",
-        "The wlroots-in-C mandate versus the Rust scaffold is recorded (D08), and the frame-pacing constant is pinned",
+        "P04 is implemented as a pure Rust compositor (D08, ADR-0001); no C wlroots toolchain is admitted, and the frame-pacing constant is pinned",
         "BPF C compilation is not part of this milestone (moved to M19)"
       ],
       "cheapest_exit": "Unit-test the pure state machines only.",
@@ -816,7 +816,7 @@
       "exit_criteria": [
         "aegis-ludus and aegis-hephaestus have manifests, lock entries and positive/negative/boundary tests; the Rust toolchain from M02 is reused",
         "Assertions are refactored to Result per HISS-07",
-        "The Steamworks proprietary-SDK licensing decision (D12) is recorded before any SDK is vendored",
+        "P11 Ludus integrates no Steamworks SDK (D12, ADR-0002); a negative test proves the image and the crate build without it",
         "Interface contracts are typed for P09 to P14 (VERIFY_CODE_CAD, direction per the M01 register), P14 to P15 (geometry viewport descriptor), P11 to P02 (transaction receipt, TPM2 signing stubbed) and P11 to P04 (rich presence), each with a negative test for a malformed payload"
       ],
       "cheapest_exit": "Extract the bounds and validation logic. No Steam, CAD kernel or solver runtime.",
@@ -936,7 +936,7 @@
         "P12"
       ],
       "exit_criteria": [
-        "Toolchain admission: Node, pnpm, Playwright browsers and Svelte are selected through the template matrix with pinned versions (D10) before any UI gate runs; package manifests and lockfiles are committed for ui/concordia-tokens",
+        "Toolchain admission: Node, pnpm, Playwright browsers and Svelte are selected through the template matrix with pinned versions (D10: latest stable versions at activation, fast adoption through Renovate, sveltesentio adopted once mature) before any UI gate runs; package manifests and lockfiles are committed for ui/concordia-tokens",
         "The Playwright and axe-core suite runs headless in a container with zero violations on the default state; it fails when the focus outline is removed; the focus width and contrast boundary follows D16",
         "D17 (Bootstrap fork versus no monolithic CSS) is recorded; no `|| true` in the accessibility gate"
       ],
@@ -1049,7 +1049,8 @@
         "The M18 schemas are proposed to cordanaLLM/imago and cordanaLLM/nucleus; acceptance is recorded only when each producer consumes the payload, not a fixed symbol list",
         "One request/result pair is executed locally against pinned local imago and nucleus checkouts, with a positive result, a negative result (rejected payload with a correlated error) and a boundary result (empty requirement list rejected explicitly)",
         "Canonical producer identities are confirmed, or the unresolved GitHub identities (cordanaLLM/imago and cordanaLLM/nucleus did not resolve at revision time) and the non-canonical identities in builder workflows are recorded as the blocker",
-        "Simulated output is not accepted as a result; no hosted dispatch is claimed"
+        "Simulated output is not accepted as a result; no hosted dispatch is claimed",
+        "Until the producer repositories exist, the producer-side schemas, fixtures and results stay tracked in Aegis as dogfooding input for creating them; nothing is published to cordanaLLM/imago or cordanaLLM/nucleus from here"
       ],
       "cheapest_exit": "Run the pair against the pinned local checkouts without any hosted dispatch.",
       "epics": [
@@ -1112,7 +1113,7 @@
         "P02"
       ],
       "exit_criteria": [
-        "BLOCKED until: Imago accepts the M09 manifest and returns an image/UKI with digest and signature; Nucleus supplies the pinned kernel artifact; D07 is closed",
+        "BLOCKED until: Imago accepts the M09 manifest and returns an image/UKI with digest and signature. The kernel is the pinned distribution linux-rt package from the M18 manifest unless a Nucleus artifact is already available (D07)",
         "Toolchain admission: QEMU, OVMF, swtpm and the signing tools (cosign or sbsign) are selected through the template matrix with pinned versions before any boot or signing gate",
         "Unblocking evidence: retained image output digest, signature verification log, and a QEMU/OVMF/swtpm boot log on a KVM-capable host with real PCR 0/4/7/11 readback and dm-verity/LUKS2 unlock records",
         "Scope: the minimal image carries no UI and no kernel-attached eBPF programs (D20); the accessibility gate attaches when the UI enters an image, and eBPF objects enter through M10 and M12",

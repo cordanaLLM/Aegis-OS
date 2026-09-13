@@ -18,7 +18,7 @@ Each requirement cites a source id and the first 12 hex characters of its sha256
 | REQ-P01-06 | The imported CI workflow synthesizes the UKI by running mkosi against build/mkosi.conf; the workflow is inactive proposal data. | export-041 e05ddc9466fc |
 | REQ-P01-07 | The proposed Cargo workspace declares the aya crate at version 0.12 under its eBPF and kernel-bypass dependencies; imported versions are proposal data, not active pins. | export-006 6e694e01e136 |
 | REQ-P01-08 | The developer toolchain contract pins a minimum mkosi version for image synthesis. | export-007 84f43472c536 |
-| REQ-P01-09 | The mkosi content list pins the Arch linux-rt package as the boot kernel, which conflicts with the shared-stack rule that Nucleus produces the kernel artifact; the boot kernel identity is an open decision. | export-049 4d9043f4af30 |
+| REQ-P01-09 | The mkosi content list pins the Arch linux-rt package as the boot kernel, which conflicts with the shared-stack rule that Nucleus produces the kernel artifact; the boot kernel identity is an open decision. Resolved by D07: distribution linux-rt by default, Nucleus artifact overrides. | export-049 4d9043f4af30 |
 | REQ-P01-10 | The ESP partition definition bounds the partition size between 512M and 1G, giving a concrete boundary case for repart validation. | export-053 d85a1f6ceb0e |
 
 ### P02 aegis-janus-vallum
@@ -51,7 +51,7 @@ Each requirement cites a source id and the first 12 hex characters of its sha256
 
 | ID | Requirement | Source |
 | --- | --- | --- |
-| REQ-P04-01 | Mercurius rejects libweston and Smithay for the fast runtime loop and mandates a C-based wlroots implementation to control the event loop. | export-013 7f4c22813332 |
+| REQ-P04-01 | Mercurius rejects libweston and Smithay for the fast runtime loop and mandates a C-based wlroots implementation to control the event loop. Superseded by ADR-0001 (pure Rust compositor). | export-013 7f4c22813332 |
 | REQ-P04-02 | Tier 2 of the agent mesh is Eclipse Zenoh pub/sub with shared-memory backends targeting 5-35us latency and 50+ Gbps throughput. | export-013 7f4c22813332 |
 | REQ-P04-03 | Tier 2 must use immutable-read controls to prevent retroactivity so a newly attached agent cannot back-act on upstream sensorimotor state. | export-013 7f4c22813332 |
 | REQ-P04-04 | The compositor scaffold bounds the surface registry at 256 concurrently registered Wayland surfaces, labelled as a NASA JPL P10 compliance bound. | export-027 f19640d7a7da |
@@ -142,7 +142,7 @@ Each requirement cites a source id and the first 12 hex characters of its sha256
 
 | ID | Requirement | Source |
 | --- | --- | --- |
-| REQ-P11-01 | bindgen wraps C++ Steamworks headers to isolate the Ludus runtime from the unstable C++ ABI and prevent hardcoded binary dependencies from breaking portability across Linux distributions. | export-019 b0aa6e54ed57 |
+| REQ-P11-01 | bindgen wraps C++ Steamworks headers to isolate the Ludus runtime from the unstable C++ ABI and prevent hardcoded binary dependencies from breaking portability across Linux distributions. Superseded by ADR-0002 (no Steamworks in the image). | export-019 b0aa6e54ed57 |
 | REQ-P11-02 | Launch-command-line tokens from GetLaunchCommandLine must be validated to mitigate command injection before entering the adaptation loop. | export-019 b0aa6e54ed57 |
 | REQ-P11-03 | Video frames must remain in GPU memory (zero-copy DMA-BUF) during transition from compositor to encoder for Remote Play streaming. | export-019 b0aa6e54ed57 |
 | REQ-P11-04 | Payment data and session keys must be sealed to specific TPM2 Platform Configuration Registers (PCRs). | export-019 b0aa6e54ed57 |
