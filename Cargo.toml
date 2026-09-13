@@ -9,7 +9,9 @@ members = [
     "crates/aegis-hestia",
     "crates/aegis-janus-lifecycle",
     "crates/aegis-justitia",
+    "crates/aegis-minerva",
     "crates/aegis-tellus",
+    "crates/aegis-vesta",
     "crates/aegis-vulcan",
 ]
 

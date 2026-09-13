@@ -372,13 +372,12 @@
         }
       ],
       "missing": [
-        "crates/aegis-minerva/Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
+        "a P09 component daemon (aegis-minerva holds the tables, the bounds and the payloads and runs no inference)",
+        "an accelerator, a solver and a transport, all absent by design at M06",
         "blueprint-level requirement source: the bundle holds no P09 report",
-        "action-proposal schema typed against P06 (D03, M14)",
-        "positive, negative and boundary tests"
+        "real hardware or emulator evidence for the 20 W envelope and the 1.5 ms routing cap, both recorded as unmeasured"
       ],
-      "note": "Coverage gap: one source only. The 62-source bundle spans export-001 to export-063 with export-008 absent."
+      "note": "Coverage gap: one source only. The 62-source bundle spans export-001 to export-063 with export-008 absent. The crate exists from M06 as a written-out member of the workspace root Cargo.toml, with a Cargo.lock entry and positive, negative and boundary tests; manifest_present stays false because verify_candidates() reads it as a component-activation claim rather than as a filesystem fact, and P09 is still a proposal."
     },
     {
       "candidate_id": "C10",
@@ -405,13 +404,14 @@
         }
       ],
       "missing": [
-        "crates/aegis-vesta/Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
-        "Wasm runtime selected through the template matrix (D06)",
-        "contract tests for the direct and transitive P06 gating paths (D04)",
-        "thread-per-core runtime decision (open decision D46)"
+        "a P10 component daemon (aegis-vesta holds the tables, the bounds and the payloads and starts no monitor)",
+        "a virtual machine monitor, a guest and a WebAssembly runtime, all absent by design at M06",
+        "a pinned Rust-native runtime: D06 selects the language boundary at M06 and pins no version",
+        "a behavioural admission gate for the two P06 gating paths (D04): the M06 capsule request carries both readings and reports them apart, and nothing admits or refuses a sandbox execution on that field, which is the contract test DSP-04 assigns to M06",
+        "thread-per-core runtime decision (open decision D46)",
+        "real hardware or emulator evidence: the boot-time and footprint figures stay unmeasured and AF_VSOCK and Venus pricing stay deferred to M21"
       ],
-      "note": "Member 6 of the export-006 members array."
+      "note": "Member 6 of the export-006 members array. The crate exists from M06 as a written-out member of the workspace root Cargo.toml, with a Cargo.lock entry and positive, negative and boundary tests; D06 is recorded and applied there and both D04 readings are carried by the capsule request. manifest_present stays false because verify_candidates() reads it as a component-activation claim rather than as a filesystem fact, and P10 is still a proposal."
     },
     {
       "candidate_id": "C11",

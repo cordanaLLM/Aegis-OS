@@ -454,6 +454,95 @@ class PreparationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             check.verify_library_aborts()
 
+    def cited_file(self, body="contract"):
+        """A tracked file a citation can name, and the prefix it should carry."""
+        (self.root / "docs").mkdir(exist_ok=True)
+        target = self.root / "docs/stack.md"
+        target.write_text(body)
+        digest = hashlib.sha256(target.read_bytes()).hexdigest()
+        return target, digest[: check.CITATION_PREFIX_LEN]
+
+    def test_a_crate_citation_naming_the_current_file_passes(self):
+        _, prefix = self.cited_file()
+        self.write_crate(
+            "aegis-probe",
+            'pub const S: &str = "public:docs/stack.md";\npub const P: &str = "%s";\n' % prefix,
+        )
+        self.assertEqual(check.verify_crate_citations(), 1)
+
+    def test_a_crate_citation_naming_a_superseded_revision_fails(self):
+        target, prefix = self.cited_file()
+        self.write_crate(
+            "aegis-probe",
+            'pub const S: &str = "public:docs/stack.md";\npub const P: &str = "%s";\n' % prefix,
+        )
+        check.verify_crate_citations()
+        target.write_text("contract, revised")
+        with self.assertRaises(ValueError):
+            check.verify_crate_citations()
+
+    def test_a_crate_citation_naming_a_missing_file_fails(self):
+        target, prefix = self.cited_file()
+        self.write_crate(
+            "aegis-probe",
+            'pub const S: &str = "public:docs/stack.md";\npub const P: &str = "%s";\n' % prefix,
+        )
+        target.unlink()
+        with self.assertRaises(ValueError):
+            check.verify_crate_citations()
+
+    def test_a_citation_with_no_digest_beside_it_fails(self):
+        # Silence is not a pass: an unsourced public: citation is what this sweep exists
+        # to refuse, so a prefix of the wrong length is a failure and not an exemption.
+        _, prefix = self.cited_file()
+        for literal in (prefix[:-1], prefix + "0", ""):
+            self.write_crate(
+                "aegis-probe",
+                'pub const S: &str = "public:docs/stack.md";\npub const P: &str = "%s";\n'
+                % literal,
+            )
+            with self.assertRaises(ValueError):
+                check.verify_crate_citations()
+
+    def test_the_digest_window_is_closed_at_both_ends(self):
+        # Boundary: the quoted prefix is found while it ends on the window's last
+        # character and is missed one character later. The padding is computed from
+        # CITATION_WINDOW rather than written out, so the two cases stay adjacent if
+        # the window is ever retuned.
+        _, prefix = self.cited_file()
+        head = 'pub const S: &str = "public:docs/stack.md"'
+        tail = ';\npub const P: &str = "%s";\n' % prefix
+        quoted = len('"%s"' % prefix)
+        fits = check.CITATION_WINDOW - quoted - (len(tail) - len('%s";\n' % prefix))
+        for pad, raises in ((fits, False), (fits + 1, True)):
+            self.write_crate("aegis-probe", head + " " * pad + tail)
+            if raises:
+                with self.assertRaises(ValueError):
+                    check.verify_crate_citations()
+            else:
+                self.assertEqual(check.verify_crate_citations(), 1)
+
+    def test_a_roadmap_document_citation_is_swept_in_its_backtick_form(self):
+        _, prefix = self.cited_file()
+        self.write_crate("aegis-probe", "pub fn keep() {}\n")
+        document = self.root / "docs/roadmap/inventory.md"
+        document.parent.mkdir(parents=True, exist_ok=True)
+        document.write_text("| public:docs/stack.md `%s`: the rule |\n" % prefix)
+        self.assertEqual(check.verify_crate_citations(), 1)
+        document.write_text("| public:docs/stack.md `dbc7e10aecaa`: the rule |\n")
+        with self.assertRaises(ValueError):
+            check.verify_crate_citations()
+
+    def test_prose_that_is_not_a_citation_is_not_swept(self):
+        # docs/roadmap/README.md contains the word "public:" followed by a sentence.
+        # A path is what makes a citation, so the sweep must walk past that.
+        self.cited_file()
+        self.write_crate("aegis-probe", "pub fn keep() {}\n")
+        document = self.root / "docs/roadmap/README.md"
+        document.parent.mkdir(parents=True, exist_ok=True)
+        document.write_text("public: a caller that assembled a requirement would fail\n")
+        self.assertEqual(check.verify_crate_citations(), 0)
+
     def test_roadmap_document_matching_both_surfaces_passes(self):
         rows = [
             self.milestone("M00", 0, "done", evidence=["a2c9626"]),

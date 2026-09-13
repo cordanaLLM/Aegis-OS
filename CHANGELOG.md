@@ -123,6 +123,83 @@ version and is never released.
   now, because the resolver version changes feature unification across the
   whole workspace and the other two are inherited by every crate.
 
+### Added (agent execution chain logic, milestone M06)
+
+- `crates/aegis-minerva` and `crates/aegis-vesta` join the workspace as the P09
+  and P10 validation slices. The imported scaffolds route a prompt to one of two
+  hard-coded experts and create sandbox rows with a hard-coded boot time; what
+  is extracted here is the part that can be checked without an accelerator, a
+  solver, a monitor or a `WebAssembly` engine -- the tables, the bounds, the
+  registers and the payloads -- with every `&'static str` refusal turned into a
+  typed one (HISS-07). Both are libraries on the Rust toolchain admitted at M02,
+  and no new third-party crate is resolved.
+- The bounds are the acceptance: 32 experts and a 33rd refused, 128 trajectory
+  steps and a 129th refused, 64 microVMs and a 65th refused, 128 capsules and a
+  129th refused, and terminating an identifier the sandbox table does not hold
+  returns `false` rather than an error nobody reads. Relabelling flips only
+  negative rewards, which is exact because the reward is fixed-point rather than
+  the scaffold's `f32`: a step at exactly zero keeps its reward and its goal.
+- Decision D06 is recorded and applied: a Rust-native `WebAssembly` runtime, no
+  Go dependency and no protocol adapter, cited by export identifier and digest
+  prefix and closing dispute DSP-25. The rejected options stay representable in
+  the register and unspellable on the wire -- the admitted-runtime enum has one
+  variant, so a payload naming the Go runtime does not decode.
+- The M14 action proposal is consumed rather than redefined. `aegis-minerva`
+  builds `aegis_justitia::ActionProposal` from a draft, reading P06's own edge
+  and direction constants, and an unsealed draft is refused with P06's own
+  refusal. The P09 to P10 capsule request is typed in the consumer's crate on
+  the same principle, and it carries a VMM identity field because decision D58
+  requires every measurement to record which monitor produced it.
+- The boot-time literal is marked unmeasured by its type rather than by a
+  comment: `Unmeasured<u32>` renders "112 (unmeasured)", every sandbox row
+  carries the literal as one, and a test fails to compile if any of the three
+  recorded figures becomes a bare integer. Venus and `AF_VSOCK` pricing stay
+  deferred hardware-backed requirements, recorded with the milestone that would
+  settle them.
+- Decision D27 is typed and left open. Both readings of the P09/P14
+  verification edge stay representable; the request is a submission, so it
+  carries the graph of record's reading and refuses the other, and the register
+  says what closing the decision would take.
+- P09 and P10 stay proposals in `planning/components.json`, for the reason M03,
+  M15 and M17 gave for theirs: neither crate is the component daemon it is
+  named after.
+- Decision D04 stays open and the register says so. Both P06 gating readings
+  round-trip through the capsule request and are reported apart, and nothing in
+  either crate admits or refuses a sandbox execution on that field, so the
+  behavioural admission gate DSP-04 assigns to M06 is recorded as outstanding in
+  the P10 candidate row and in the P10 inventory row rather than dropped.
+
+### Added (public citation sweep)
+
+- `make verify-all` now checks a `public:` citation written outside
+  `planning/candidates.json`. The register's citations name a tracked file and
+  its full sha256 and have been rehashed since M01; the same convention written
+  by hand in a crate source or a roadmap document carries a 12-character prefix
+  and was read by nothing, so a prefix naming a superseded revision of
+  `docs/integration/stack.md` survived review in `crates/aegis-vesta` behind a
+  test that compared the constant with a copy of itself. The sweep reads every
+  workspace member's `src/` and the two roadmap documents, hashes the file each
+  citation names and compares the prefix. It is a check over the citations
+  written in that shape, not a proof that every claim is sourced.
+
+### Fixed (superseded citation digests)
+
+- The D06 citation in `crates/aegis-vesta` and the DSP-10 and DSP-25 rows of
+  `docs/roadmap/inventory.md` named `docs/integration/stack.md` by a digest
+  prefix superseded when that file was last changed. All three now carry the
+  prefix the tracked file hashes to, which is the value
+  `planning/candidates.json` already recorded, and the new sweep fails if any of
+  them drifts again.
+
+### Fixed (D58 rationale)
+
+- The D58 rationale said `command -v firecracker` exits 1 while the milestone
+  text and `planning/hardware-profile.json` both record Firecracker as present.
+  Re-probed on the reference profile: `command -v firecracker` prints
+  `/usr/bin/firecracker` and exits 0, `firecracker --version` prints
+  `Firecracker v1.17.0`, and the package is `firecracker 1.17.0-1.1` rather than
+  the recorded `extra/firecracker 1.17.0-1`. The decision itself is unchanged.
+
 ### Added (library abort sweep)
 
 - `make verify-all` now refuses an abort in any activated crate's library code.

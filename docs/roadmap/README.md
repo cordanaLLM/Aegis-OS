@@ -141,8 +141,8 @@ score.
 | 7 | M26 | Aegis-built kernel with the pinned configuration | done | medium | no | no | full | M18 | M23 |
 | 8 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | done | trivial | no | no | not-hardware | M02 | M25 |
 | 9 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | done | small | no | no | not-hardware | M14 | M19, M21 |
-| 10 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | ready | small | no | no | not-hardware | M14 | M08, M22 |
-| 11 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | blocked | small | no | no | not-hardware | M06 | M25 |
+| 10 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | done | small | no | no | not-hardware | M14 | M08, M22 |
+| 11 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | ready | small | no | no | not-hardware | M06 | M25 |
 | 12 | M07 | Real-time control plane: P04, P07 and P08 logic | ready | medium | no | no | not-hardware | M02 | M19, M23 |
 | 13 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | full | M05, M07 | M10 |
 | 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | full | M07, M26 | M10 |
@@ -151,7 +151,7 @@ score.
 | 17 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
 | 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
 | 19 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | blocked | medium | yes | no | full | M08, M17 | M12 |
-| 20 | M22 | P10 microVM sandbox measurements on KVM | blocked | medium | yes | no | full | M06 | - |
+| 20 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
 | 21 | M09 | Cross-repository contract pin: one local request/result pair | ready | small | no | yes | partial | M18 | M11, M10 |
 | 22 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | medium | yes | yes | partial | M09, M24 | M13, M20, M12 |
 | 23 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | blocked | medium | yes | yes | partial | M09, M19, M23 | M12 |
@@ -819,7 +819,7 @@ Epics:
 
 ### M06 - Agent execution chain logic: P09 Minerva and P10 Vesta
 
-Rank 10. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 10. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M14. Unblocks: M08, M22.
 
@@ -833,9 +833,13 @@ Exit criteria:
 - The P06 action proposal contract from M14 is consumed; the P09 to P10 capsule
   request and the P09/P14 verification direction are typed with negative tests
 - The P10 capsule request type carries a VMM identity field, because the
-  reference profile can supply either Firecracker 1.17.0 (packaged, absent) or
-  QEMU 11.1.1 microvm (installed), and D58 requires every measurement to record
-  which VMM produced it.
+  reference profile can supply either Firecracker 1.17.0 or QEMU 11.1.1
+  microvm, and D58 requires every measurement to record which VMM produced it.
+  Both are present on the reference profile -- `firecracker --version` prints
+  Firecracker v1.17.0 (package firecracker 1.17.0-1.1) and
+  `qemu-system-x86_64 --version` prints QEMU emulator version 11.1.1 -- which is
+  what planning/hardware-profile.json already records, so the criterion is the
+  field and not the installation.
 
 Cheapest exit: Compile only the in-memory logic layers of the P09 and P10
 candidates with cargo test.
@@ -863,7 +867,7 @@ Epics:
 
 ### M08 - Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus
 
-Rank 11. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 11. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M06. Unblocks: M25.
 
@@ -1263,7 +1267,7 @@ Epics:
 
 ### M22 - P10 microVM sandbox measurements on KVM
 
-Rank 20. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 20. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M06. Unblocks: nothing.
 
@@ -2233,14 +2237,17 @@ Open decisions:
   until Nucleus exists' into category-3 work available now, and it feeds D55
   (kernel version floor) with a measured value instead of an estimate.
 - **D58** Is Firecracker or QEMU microvm the sandbox VMM for P10 and the new
-  M22? Recommended: Pin Firecracker 1.17.0 (extra/firecracker 1.17.0-1) for the
+  M22? Recommended: Pin Firecracker 1.17.0 (firecracker 1.17.0-1.1) for the
   headline boot-time and footprint numbers, with QEMU 11.1.1 microvm as a
   recorded fallback. Every measurement must record which VMM produced it, and
-  the two sets are never presented as interchangeable. Why: `command -v
-  firecracker` exits 1 but the package exists; QEMU 11.1.1 is already installed
-  and /usr/share/edk2/x64/MICROVM.4m.fd is already on disk, so a comparable
-  measurement is available today at zero install cost. The numbers are not
-  equivalent, and M21's original criterion says measured boot time and footprint
+  the two sets are never presented as interchangeable. Why: both monitors are
+  installed on the reference profile, re-probed on 2026-09-13 -- `command -v
+  firecracker` prints /usr/bin/firecracker and exits 0, `firecracker --version`
+  prints Firecracker v1.17.0 from package firecracker 1.17.0-1.1, QEMU 11.1.1 is
+  installed and /usr/share/edk2/x64/MICROVM.4m.fd is on disk -- so both
+  measurements are available today at zero install cost, which is what
+  planning/hardware-profile.json records. The numbers are not equivalent, and
+  M21's original criterion says measured boot time and footprint
   replace the scaffold literals — so which VMM produced a literal is
   load-bearing. A second fact forces the decision rather than deferring it:
   Firecracker has no PCI passthrough, so a MicroVmInstance with is_gpu_enabled
