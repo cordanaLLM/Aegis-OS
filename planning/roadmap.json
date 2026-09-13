@@ -1022,9 +1022,75 @@
       }
     },
     {
+      "id": "M24",
+      "title": "Local boot harness over an externally supplied artifact",
+      "rank": 13,
+      "state": "blocked",
+      "blocked_by": [
+        "M15"
+      ],
+      "unblocks": [
+        "M11"
+      ],
+      "cost": "large",
+      "needs_hardware": true,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P01",
+        "P02"
+      ],
+      "exit_criteria": [
+        "Toolchain admission before any boot: QEMU 11.1.1, the edk2 OVMF images present on the reference profile (OVMF_CODE.4m.fd, OVMF_VARS.4m.fd, OVMF_CODE.secboot.4m.fd) and swtpm 0.10.2 are selected through the template matrix with pinned versions",
+        "The harness is parameterised over an externally supplied bootable artifact: a pinned upstream distribution image or an Imago return. Aegis constructs no image here; image construction stays with cordanaLLM/imago per docs/integration/stack.md",
+        "A swtpm instance is attached to the guest and PCR 0, 4, 7 and 11 are read back from inside the booted guest and retained; the reading records that host Secure Boot is disabled, so PCR 7 documents the firmware state rather than attesting a trusted chain",
+        "Positive: the supplied artifact boots headless under QEMU with KVM and the harness captures the console log, the PCR values and the exit status",
+        "Negative: an artifact whose digest does not match the pinned value is refused before boot, and a guest that fails to reach the login prompt within the recorded timeout fails the harness",
+        "Boundary: the harness is exercised at its timeout, one second under and one second over, and reports the two outcomes differently",
+        "A pass here is development evidence on the reference profile. It closes no image, boot, hardware or release gate, and it is not evidence for M11",
+        "ukify 261, sbsigntools 0.9.5, erofs-utils 1.9.4 and virt-firmware 26.9 are installed on the reference profile for the guest-side key store and unified kernel image signing",
+        "The guest key store is generated from the shipped OVMF variables with virt-fw-vars and the unified kernel image is signed with sbsigntools, so no host firmware setting is changed; the host's own Secure Boot state is recorded but is not this milestone's subject"
+      ],
+      "cheapest_exit": "Boot a pinned upstream image headless under QEMU with OVMF and swtpm, and retain the console log and PCR readback. No image is constructed.",
+      "epics": [
+        {
+          "id": "E24-1",
+          "title": "Imago result consumed and verified",
+          "requirement_ids": [
+            "REQ-P01-01",
+            "REQ-P01-06",
+            "REQ-P01-08"
+          ],
+          "acceptance": "Positive: digest and signature verify locally. Negative: a tampered image digest or bad signature is rejected. Boundary: a producer version exactly at the floor is accepted, and one below is rejected."
+        },
+        {
+          "id": "E24-2",
+          "title": "Real boot evidence replaces the simulated script",
+          "requirement_ids": [
+            "REQ-BOOT-01",
+            "REQ-BOOT-02",
+            "REQ-P01-05",
+            "REQ-P02-02",
+            "REQ-P02-01"
+          ],
+          "acceptance": "Positive: PCR values are read back from swtpm, and the verity root hash matches. Negative: a modified root image fails verity and does not boot to the established state. Boundary: a PCR policy that omits PCR 11 fails to unseal /var. The imported script is not used."
+        }
+      ],
+      "evidence": [],
+      "split_from": "M11",
+      "reference_profile": {
+        "support": "full",
+        "requires": [
+          "kvm",
+          "tpm2"
+        ],
+        "rationale": "QEMU, OVMF with Secure Boot support, swtpm, sbsigntools and virt-firmware are installed, and an enrolled guest variable store was generated here, so the harness needs no change to the host firmware"
+      }
+    },
+    {
       "id": "M04",
       "title": "UI accessibility harness: P12 Concordia tokens",
-      "rank": 13,
+      "rank": 14,
       "state": "ready",
       "blocked_by": [
         "M02"
@@ -1088,7 +1154,7 @@
     {
       "id": "M16",
       "title": "P05 Forum shell state and lifecycle with stubbed IPC",
-      "rank": 14,
+      "rank": 15,
       "state": "blocked",
       "blocked_by": [
         "M04",
@@ -1145,7 +1211,7 @@
     {
       "id": "M21",
       "title": "Workstation hardware slices: RAPL counters and KVM sandboxing",
-      "rank": 15,
+      "rank": 16,
       "state": "blocked",
       "blocked_by": [
         "M05"
@@ -1213,7 +1279,7 @@
     {
       "id": "M25",
       "title": "GPU DMA-BUF sharing and VFIO passthrough slices",
-      "rank": 16,
+      "rank": 17,
       "state": "blocked",
       "blocked_by": [
         "M08",
@@ -1277,7 +1343,7 @@
     {
       "id": "M22",
       "title": "P10 microVM sandbox measurements on KVM",
-      "rank": 17,
+      "rank": 18,
       "state": "blocked",
       "blocked_by": [
         "M06"
@@ -1336,7 +1402,7 @@
     {
       "id": "M23",
       "title": "P07 and P08 latency fixtures on a realtime kernel guest",
-      "rank": 18,
+      "rank": 19,
       "state": "blocked",
       "blocked_by": [
         "M07"
@@ -1390,72 +1456,7 @@
       "reference_profile": {
         "support": "partial",
         "requires": [],
-        "rationale": "the reference host is not realtime; the kernel comes from the distribution package and runs in a guest"
-      }
-    },
-    {
-      "id": "M24",
-      "title": "Local boot harness over an externally supplied artifact",
-      "rank": 19,
-      "state": "blocked",
-      "blocked_by": [
-        "M15"
-      ],
-      "unblocks": [
-        "M11"
-      ],
-      "cost": "large",
-      "needs_hardware": true,
-      "needs_external_contract": false,
-      "owner_repo": "cordanaLLM/Aegis-OS",
-      "subsystems": [
-        "P01",
-        "P02"
-      ],
-      "exit_criteria": [
-        "Toolchain admission before any boot: QEMU 11.1.1, the edk2 OVMF images present on the reference profile (OVMF_CODE.4m.fd, OVMF_VARS.4m.fd, OVMF_CODE.secboot.4m.fd) and swtpm 0.10.2 are selected through the template matrix with pinned versions",
-        "The harness is parameterised over an externally supplied bootable artifact: a pinned upstream distribution image or an Imago return. Aegis constructs no image here; image construction stays with cordanaLLM/imago per docs/integration/stack.md",
-        "A swtpm instance is attached to the guest and PCR 0, 4, 7 and 11 are read back from inside the booted guest and retained; the reading records that host Secure Boot is disabled, so PCR 7 documents the firmware state rather than attesting a trusted chain",
-        "Positive: the supplied artifact boots headless under QEMU with KVM and the harness captures the console log, the PCR values and the exit status",
-        "Negative: an artifact whose digest does not match the pinned value is refused before boot, and a guest that fails to reach the login prompt within the recorded timeout fails the harness",
-        "Boundary: the harness is exercised at its timeout, one second under and one second over, and reports the two outcomes differently",
-        "A pass here is development evidence on the reference profile. It closes no image, boot, hardware or release gate, and it is not evidence for M11",
-        "ukify 261, sbsigntools 0.9.5, erofs-utils 1.9.4 and virt-firmware 26.9 are installed on the reference profile for the guest-side key store and unified kernel image signing"
-      ],
-      "cheapest_exit": "Boot a pinned upstream image headless under QEMU with OVMF and swtpm, and retain the console log and PCR readback. No image is constructed.",
-      "epics": [
-        {
-          "id": "E24-1",
-          "title": "Imago result consumed and verified",
-          "requirement_ids": [
-            "REQ-P01-01",
-            "REQ-P01-06",
-            "REQ-P01-08"
-          ],
-          "acceptance": "Positive: digest and signature verify locally. Negative: a tampered image digest or bad signature is rejected. Boundary: a producer version exactly at the floor is accepted, and one below is rejected."
-        },
-        {
-          "id": "E24-2",
-          "title": "Real boot evidence replaces the simulated script",
-          "requirement_ids": [
-            "REQ-BOOT-01",
-            "REQ-BOOT-02",
-            "REQ-P01-05",
-            "REQ-P02-02",
-            "REQ-P02-01"
-          ],
-          "acceptance": "Positive: PCR values are read back from swtpm, and the verity root hash matches. Negative: a modified root image fails verity and does not boot to the established state. Boundary: a PCR policy that omits PCR 11 fails to unseal /var. The imported script is not used."
-        }
-      ],
-      "evidence": [],
-      "split_from": "M11",
-      "reference_profile": {
-        "support": "partial",
-        "requires": [
-          "kvm",
-          "tpm2"
-        ],
-        "rationale": "QEMU, OVMF and swtpm are present; host Secure Boot stays disabled, so signature verification is demonstrated with a guest-side key store"
+        "rationale": "the realtime kernel is a distribution package run in a guest, not a host change; it stays partial only until the package is confirmed to set CONFIG_PREEMPT_RT, which is unmeasured"
       }
     },
     {
@@ -1709,7 +1710,8 @@
         "The emulated and the physical TPM2 are recorded as two distinct measurements and never conflated: a swtpm quote proves the code path, not a hardware root of trust.",
         "One criterion states that a pass on the reference profile is development evidence only: it does not qualify hardware, does not close the hardware or release gate, and attestation rooted in a firmware-verified boot chain is not claimed.",
         "The quote covers PCR 0, 4, 7 and 11, while the unseal policy binds PCR 0, 4 and 11 only: on the reference profile Secure Boot is disabled, so a PCR 7 policy would attest to that state rather than to a trusted chain (D63)",
-        "tpm2-tools 5.8 is installed on the reference profile; /dev/tpm0 and /dev/tpmrm0 are group tss, so the PCR read runs privileged unless the developer account joins that group"
+        "tpm2-tools 5.8 is installed on the reference profile; /dev/tpm0 and /dev/tpmrm0 are group tss, so the PCR read runs privileged unless the developer account joins that group",
+        "PCR 7 is measured inside a guest booted against an enrolled variable store, so the value attests a key set rather than recording that Secure Boot was off"
       ],
       "cheapest_exit": "Use the M11 VM with swtpm. No physical TPM is required for this milestone.",
       "epics": [
@@ -1735,9 +1737,12 @@
       ],
       "evidence": [],
       "reference_profile": {
-        "support": "partial",
-        "requires": [],
-        "rationale": "Down three places, 20 -> 23, as the category-4 block reorders below the newly-local work; its blocked_by is unchanged. I considered and rejected re-blockering it from M11 onto the new M24 harness. The swtpm quote half would genuinely run on the M24 fixture, but M20's own BLOCKED-until clause names an M11 image and the /var unseal half needs the real image, so moving the blocker would change the mi"
+        "support": "full",
+        "requires": [
+          "tpm2",
+          "kvm"
+        ],
+        "rationale": "swtpm and tpm2-tools are installed and a guest can boot with enrolled Secure Boot keys, so PCR 7 carries a meaningful value inside the guest"
       }
     },
     {

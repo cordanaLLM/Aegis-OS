@@ -13,6 +13,16 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Fixed (reference profile)
+
+- Corrected the reference-profile support for the boot harness and the
+  attestation slice: neither is gated on changing the host firmware. A guest
+  variable store with platform key, KEK and db enrolled and Secure Boot enabled
+  was generated here from the shipped OVMF variables with virt-fw-vars, so guest
+  signature verification and a meaningful PCR 7 are available without a
+  firmware-setup visit. The ranking controller moved the boot harness six places
+  up on that correction alone.
+
 ### Added (ranking controller)
 
 - The roadmap order is now computed by tools/rank_roadmap.py from unblocking

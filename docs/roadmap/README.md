@@ -148,17 +148,17 @@ score.
 | 10 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | blocked | small | no | no | not-hardware | M06 | M25 |
 | 11 | M07 | Real-time control plane: P04, P07 and P08 logic | blocked | medium | no | no | not-hardware | M02 | M19, M23 |
 | 12 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | full | M05, M07 | M10 |
-| 13 | M04 | UI accessibility harness: P12 Concordia tokens | blocked | medium | no | no | not-hardware | M02 | M16 |
-| 14 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
-| 15 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | blocked | small | yes | no | full (privileged read) | M05 | - |
-| 16 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | blocked | medium | yes | no | full | M08, M17 | M12 |
-| 17 | M22 | P10 microVM sandbox measurements on KVM | blocked | medium | yes | no | full | M06 | - |
-| 18 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | partial | M07 | M10 |
-| 19 | M24 | Local boot harness over an externally supplied artifact | blocked | large | yes | no | partial | M15 | M11 |
+| 13 | M24 | Local boot harness over an externally supplied artifact | blocked | large | yes | no | full | M15 | M11 |
+| 14 | M04 | UI accessibility harness: P12 Concordia tokens | blocked | medium | no | no | not-hardware | M02 | M16 |
+| 15 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
+| 16 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | blocked | small | yes | no | full (privileged read) | M05 | - |
+| 17 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | blocked | medium | yes | no | full | M08, M17 | M12 |
+| 18 | M22 | P10 microVM sandbox measurements on KVM | blocked | medium | yes | no | full | M06 | - |
+| 19 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | partial | M07 | M10 |
 | 20 | M09 | Cross-repository contract pin: one local request/result pair | blocked | small | no | yes | partial | M18 | M11, M10 |
 | 21 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | medium | yes | yes | partial | M09, M24 | M13, M20, M12 |
 | 22 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | blocked | medium | yes | yes | partial | M09, M19, M23 | M12 |
-| 23 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | partial | M11, M14 | - |
+| 23 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
 | 24 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | partial | M25, M10, M11 | - |
 | 25 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
 
@@ -850,7 +850,7 @@ Epics:
 
 ### M21 - Workstation hardware slices: RAPL counters and KVM sandboxing
 
-Rank 15. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 16. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full
 (privileged read). Blocked by: M05. Unblocks: nothing.
 
@@ -914,8 +914,8 @@ Epics:
 
 ### M24 - Local boot harness over an externally supplied artifact
 
-Rank 19. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: yes. Needs external contract: no. Reference profile: partial.
+Rank 13. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M15. Unblocks: M11.
 
 Split from M11 after the reference profile was recorded, so a locally verifiable
@@ -964,7 +964,7 @@ Epics:
 
 ### M04 - UI accessibility harness: P12 Concordia tokens
 
-Rank 13. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 14. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M16.
 
@@ -1011,7 +1011,7 @@ Epics:
 
 ### M16 - P05 Forum shell state and lifecycle with stubbed IPC
 
-Rank 14. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 15. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M04, M14. Unblocks: nothing.
 
@@ -1041,7 +1041,7 @@ Epics:
 
 ### M25 - GPU DMA-BUF sharing and VFIO passthrough slices
 
-Rank 16. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 17. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M08, M17. Unblocks: M12.
 
@@ -1090,7 +1090,7 @@ Epics:
 
 ### M22 - P10 microVM sandbox measurements on KVM
 
-Rank 17. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 18. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M06. Unblocks: nothing.
 
@@ -1139,7 +1139,7 @@ Epics:
 
 ### M23 - P07 and P08 latency fixtures on a realtime kernel guest
 
-Rank 18. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 19. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: partial.
 Blocked by: M07. Unblocks: M10.
 
@@ -1343,7 +1343,7 @@ Epics:
 ### M20 - TPM2 attestation slice on swtpm: audit-record signing and /var unseal
 
 Rank 23. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
+Needs hardware: yes. Needs external contract: yes. Reference profile: full.
 Blocked by: M11, M14. Unblocks: nothing.
 
 Exit criteria:
