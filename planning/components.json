@@ -45,7 +45,12 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "positive: `systemd-analyze repart --definitions=mkosi.repart/` and `systemd-analyze sysupdate --definitions=mkosi.extra/usr/lib/sysupdate.d/` both exit 0 on the current export-053/054/055/063 configs (export-041 already runs this exact pair"
-      }
+      },
+      "decisions": [
+        "D15: parser crate under crates/",
+        "D18: pinned distribution snapshot",
+        "D07: linux-rt default, Nucleus artifact overrides"
+      ]
     },
     {
       "id": "P02",
@@ -102,7 +107,11 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "Positive: `systemd-repart --dry-run --definitions=<dir> --image=<scratch.img>` (or `mkosi summary`/`systemd-repart --json=short`) succeeds and produces the expected partition table for a well-formed config set; Rust state machine has a unit"
-      }
+      },
+      "decisions": [
+        "D15: A/B lifecycle crate under crates/",
+        "D13: reversible consolidation with dm-verity"
+      ]
     },
     {
       "id": "P03",
@@ -226,7 +235,10 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "cargo test --workspace (or scoped -p aegis-compositor) run locally; asserts on Result::Err for the two boundary-overflow cases and Result::Ok/state mutation for the positive case. No wlroots, no mkosi, no QEMU, no TPM2 involved \u2014 this is ex"
-      }
+      },
+      "decisions": [
+        "D08 / ADR-0001: pure Rust compositor"
+      ]
     },
     {
       "id": "P05",
@@ -283,7 +295,11 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "Positive: axe-core scan against WCAG 2.1A/AA/2.2AA tags returns zero violations (export-023 'expect(accessibilityScanResults.violations).toEqual([])'). Negative: temporarily strip the ':focus-visible' outline CSS rule from the component and"
-      }
+      },
+      "decisions": [
+        "D05: consumes Concordia tokens",
+        "D10: latest stable UI toolchain, sveltesentio once mature"
+      ]
     },
     {
       "id": "P06",
@@ -342,7 +358,12 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "Positive: TierC action -> Allow; two distinct non-maker reviewers on an Annex III request -> Ok(true). Negative: maker==primary_reviewer -> Err(\"Maker cannot act as checker...\"); single or duplicate reviewer on Annex III -> Err. Boundary: d"
-      }
+      },
+      "decisions": [
+        "D01: first component promoted end-to-end",
+        "D02: SHA-256 ledger behind a trait",
+        "D03: intercepts actions proposed by P09"
+      ]
     },
     {
       "id": "P07",
@@ -523,7 +544,10 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "cargo test on a dev workstation/container: positive \u2014 register_expert() succeeds under MAX_SLM_EXPERTS and route_intent() returns the lowest-cost active expert for a matching domain within max_power_watts<=20.0; negative \u2014 register_expert()"
-      }
+      },
+      "decisions": [
+        "D03: proposes actions to P06"
+      ]
     },
     {
       "id": "P10",
@@ -577,7 +601,11 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "`cargo test -p aegis-vesta --workspace` (per Makefile's `test` target) with explicit positive cases (successful spawn/register within bounds), negative cases (spawn/register beyond MAX_MICROVMS/MAX_WASM_CAPSULES returns the documented Err v"
-      }
+      },
+      "decisions": [
+        "D04: direct and transitive P06 gating contract-tested",
+        "D06: Rust-native WebAssembly runtime"
+      ]
     },
     {
       "id": "P11",
@@ -631,7 +659,10 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "Positive: a command line with a valid `+connect_auth_token=...` token and <= MAX_LAUNCH_ARGS (64) args returns Ok with is_authenticated=true. Negative: a command line exceeding 64 args returns Err (command-line-too-long path). Boundary: exa"
-      }
+      },
+      "decisions": [
+        "D12 / ADR-0002: no Steamworks in the image"
+      ]
     },
     {
       "id": "P12",
@@ -676,7 +707,12 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "Positive: axe-core scan with tags ['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa'] returns violations == [] on the component in its default state (per export-023's existing assertion pattern). Negative: temporarily strip the outline/`--"
-      }
+      },
+      "decisions": [
+        "D05: token producer",
+        "D16: 3px token, 2px floor",
+        "D17: tokens without a monolithic CSS library"
+      ]
     },
     {
       "id": "P13",
@@ -839,7 +875,10 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "Positive: initialize() on a fresh PgliteVectorStore sets is_initialized=true and allocated_buffer_mb==PGLITE_OPFS_BUFFER_MB (256); query_vector_embeddings() after initialize() with limit=5 returns Ok(5). Negative: calling query_vector_embed"
-      }
+      },
+      "decisions": [
+        "D09: Rust crate plus Svelte package with a typed boundary"
+      ]
     },
     {
       "id": "P16",
@@ -892,7 +931,10 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "cargo test --workspace on the aegis-athena crate with `cargo clippy --workspace --all-targets -- -D warnings` (per Makefile `lint` target and DEVELOPER_GUIDE Pre-Flight Check) run positive/negative/boundary cases: positive = a candidate at "
-      }
+      },
+      "decisions": [
+        "D02: SHA-256 ledger behind a trait"
+      ]
     }
   ],
   "candidate_source_root": ".workingdir/prepared (private, gitignored; paths are relative to it)",
