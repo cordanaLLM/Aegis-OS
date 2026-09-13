@@ -45,6 +45,25 @@ These are reviewed declarative inputs, not a built image. No image, artefact,
 signature or boot evidence is produced or claimed here. `mkosi summary` resolves
 configuration and prints it; no gate in this repository runs `mkosi build`.
 
+## Reviewed and gated (M26)
+
+| Path | What it declares |
+| :--- | :--- |
+| `kernel/source.pin.json` | the pinned Linux source: version, tarball digest, signature keys, the named base configuration, the fragment order and the expected kernel release |
+| `kernel/10-base-support.config` | the Kconfig and guest-boot prerequisites the requirement rows depend on; it states no product requirement |
+| `kernel/50-aegis-requirement.config` | the product requirement as a Kconfig fragment, byte-identical to what `KernelRequirement::config_fragment` renders from `kernel-requirement.json` |
+
+Decision D70 puts kernel construction here while Nucleus is a scaffold, for the
+same reason D56 keeps image-definition validation here while Imago is a
+scaffold. `make verify-kernel` verifies the pinned source's digest and
+signature, applies the two fragments to `x86_64_defconfig`, builds, boots the
+result in a guest and makes the guest report its own `/proc/config.gz`. It is
+**not** part of `make verify-all`: the reasoning is on the `verify-kernel`
+target in the `Makefile`, and what CI does re-run is the crate and Python tests
+that keep the fragment tied to the schema. Nothing it produces is a release
+artifact and nothing is written into this repository. The commands, the guest's
+own output and the scope limits are in `docs/build/kernel.md`.
+
 ## Still reserved
 
 Current candidates are indexed under `.workingdir/prepared/scaffold/build/`

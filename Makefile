@@ -1,8 +1,8 @@
 SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
-.PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-sources verify-reuse \
-	readiness test build boot release
+.PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-kernel verify-sources \
+	verify-reuse readiness test build boot release
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
 # too: a repository whose instructions say "run make verify-all" must not have a
@@ -58,6 +58,49 @@ verify-systemd:
 # so this gate validates a definition and constructs no image (D56).
 verify-mkosi:
 	python3 tools/verify_mkosi_definitions.py
+
+# The kernel build gate (M26, D70): the pinned linux source is verified, the
+# tracked fragments are applied to x86_64_defconfig, the result is compiled and
+# booted in a guest, and the guest reports its own configuration back.
+#
+# It is deliberately NOT part of verify-all, and the omission is the decision
+# rather than an oversight:
+#
+#   * verify-all is the per-turn gate. This one downloads 160 MB, extracts 1.4 GB
+#     and compiles a kernel; on the reference profile's 32 threads that is
+#     about a minute and a half of wall clock and several gigabytes of scratch,
+#     which is the wrong cost for a gate that runs before every conclusion;
+#   * the CI runner has no kernel toolchain, no /dev/kvm and no emulator, so
+#     wiring it into verify-all would put a step into CI that can only skip.
+#     A gate that always skips is not a gate;
+#   * nothing this target produces is an input to anything verify-all checks.
+#     The binding that does need checking everywhere -- that the tracked
+#     fragment is what the M18 schema renders -- is a crate test
+#     (crates/aegis-fabrica-defs/tests/kernel_fragment.rs) and a Python test
+#     (tools/test_kernel_build.py), and both already run inside verify-all.
+#
+# So: verify-all proves the fragment still states the requirement; this target
+# proves a kernel built from it satisfies the requirement. Run it by hand when
+# the fragment, the pin or the payload changes. It never suppresses a failure.
+#
+# A host that cannot run it has two outcomes, and they are not the same claim:
+#
+#   * a tool that is missing, or below the floor the pinned source declares,
+#     prints 'SKIP: <reason>; the kernel build gate did not run.' and exits 0,
+#     which is the convention verify-systemd and verify-mkosi already use. An
+#     exit 0 from this target is therefore evidence only when the case lines
+#     are above it; with no toolchain it means nothing was verified, not that
+#     a kernel was built. Observed with pahole off PATH: one SKIP line, exit 0;
+#   * a host that has the toolchain but cannot obtain the pinned source -- no
+#     network and no cached tarball -- prints 'FAIL: the gate could not run:'
+#     and exits 1, so make fails. An unverifiable source is a refusal, not a
+#     skip: the supply-chain check is the point of the target.
+#
+# The build tree is AEGIS_KERNEL_BUILD_DIR, default
+# ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-kernel. Nothing is written into the
+# repository, nothing is installed, and the output is never a release artifact.
+verify-kernel:
+	python3 tools/verify_kernel_build.py
 
 verify-sources:
 	python3 tools/verify_preparation.py --sources

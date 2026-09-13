@@ -28,6 +28,54 @@ version and is never released.
   planting a single stale state in the table or in one preamble fails the gate
   and names the milestone and both readings.
 
+### Added (Aegis-built kernel with the pinned configuration, milestone M26)
+
+- The M18 kernel requirement stops being a description of a build and becomes
+  one. Decision D70 puts kernel construction here while Nucleus is a scaffold,
+  for the same reason D56 keeps image-definition validation here while Imago is
+  a scaffold, and `make verify-kernel` now pins `linux-7.2.5` by digest and
+  signature, applies a tracked configuration fragment to `x86_64_defconfig`,
+  builds, boots the result in a guest and makes the guest report its own
+  configuration back. Nothing it produces is a release artifact: nothing is
+  packaged, signed, installed or written to a device, and construction returns
+  to Nucleus once Nucleus returns real artifacts against the M09 contract.
+- The requirement fragment is generated, not written.
+  `build/kernel/50-aegis-requirement.config` is byte-identical to what
+  `KernelRequirement::config_fragment` renders from
+  `build/kernel-requirement.json`, and a crate test fails on a one-byte
+  difference, so the schema is the source of the requirement rather than a
+  description of a hand-written file. A second fragment carries the Kconfig and
+  guest-boot prerequisites and is forbidden from assigning any symbol the
+  payload demands, so a hand-written file cannot satisfy a schema row while the
+  generated one says nothing. No full `.config` is tracked.
+- The read-back happens inside the guest and cannot be satisfied by the host.
+  `CONFIG_IKCONFIG_PROC` puts `/proc/config.gz` in the running kernel; the
+  guest prints it on a serial line of its own so no kernel message can splice
+  itself into the dump, and the gate requires the captured text to be the
+  produced `.config` byte for byte, the reported release to be the one this
+  build produced, and that release not to be the host's.
+- The gate refuses silent non-conformance rather than assuming it away. A
+  fragment contradicting a required option, and one setting a module where the
+  schema demands built-in, are both refused by name. The second case recorded a
+  finding worth keeping: every symbol the payload demands built-in is a `bool`
+  in the pinned source, so kconfig neither honours `=m` nor complains about it
+  and resolves the symbol to `n` instead. Asking for a module therefore yields
+  a kernel without the feature, and only reading the produced configuration
+  back says so.
+- `make verify-all` does **not** run this gate, deliberately. A full run
+  downloads 160 MB, extracts 1.4 GB and compiles a kernel, and the CI runner
+  has no kernel toolchain, no `/dev/kvm` and no emulator, so wiring it in would
+  add a step that can only skip. CI never compiles a kernel and never boots
+  one; what it does re-run is the binding that matters everywhere, the crate
+  and Python tests that keep the fragment, the pin and the recorded toolchain
+  from drifting apart.
+- `docs/roadmap/toolchain-admission.md` gains the kernel source pin, the base
+  configuration and the sixteen build and guest tools, each with the floor the
+  pinned source itself declares and the version read back from the tool on the
+  reference profile. `clang` is recorded as installed and deliberately not
+  admitted. The observations, the guest's own output and the scope limits are
+  in `docs/build/kernel.md`.
+
 ### Added (product input and kernel requirement schemas, milestone M18)
 
 - The Aegis side of the builder boundary now has schemas instead of prose.

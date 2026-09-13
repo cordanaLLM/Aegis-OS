@@ -1,0 +1,36 @@
+{
+  "schema": "aegis.m26.kernel-source-pin.v1",
+  "note": "D70 interim: Aegis builds this kernel while Nucleus is a scaffold. The result is development evidence and never a release artifact.",
+  "version": "7.2.5",
+  "series": "v7.x",
+  "tarball": "linux-7.2.5.tar.xz",
+  "tarball-url": "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.5.tar.xz",
+  "tarball-sha256": "55ddf0df8325d9dad96fcff7bd93977d22e3f50af06527572af59b77c7632b78",
+  "signature-url": "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.5.tar.sign",
+  "checksums-url": "https://cdn.kernel.org/pub/linux/kernel/v7.x/sha256sums.asc",
+  "signing-keys": {
+    "tarball": {
+      "fingerprint": "647F28654894E3BD457199BE38DBBDC86092693E",
+      "identity": "Greg Kroah-Hartman <gregkh@kernel.org>",
+      "signs": "the uncompressed linux-7.2.5.tar, so verification decompresses the pinned tarball into gpg"
+    },
+    "checksums": {
+      "fingerprint": "B8868C80BA62A1FFFAF5FDA9632D3A06589DA6B1",
+      "identity": "Kernel.org checksum autosigner <autosigner@kernel.org>",
+      "signs": "sha256sums.asc, which carries the digest of the compressed tarball"
+    }
+  },
+  "base-configuration": "x86_64_defconfig",
+  "base-configuration-target": "defconfig",
+  "architecture": "x86-64",
+  "fragments": [
+    "build/kernel/10-base-support.config",
+    "build/kernel/50-aegis-requirement.config"
+  ],
+  "expected-kernel-release": "7.2.5-aegis-m26",
+  "build-targets": [
+    "bzImage",
+    "modules"
+  ],
+  "build-artifact": "arch/x86/boot/bzImage"
+}
