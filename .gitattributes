@@ -1,0 +1,5 @@
+# Praetor bootstrap source bundle: generated, refreshed by the Praetor dogfood session.
+.devcontainer/*.b64 -diff linguist-generated
+# Licence texts are pinned by digest in tools/verify_preparation.py; keep LF on every platform.
+LICENSE text eol=lf
+LICENSES/* text eol=lf

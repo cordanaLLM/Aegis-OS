@@ -1,7 +1,7 @@
 SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
-.PHONY: verify-all verify-sources readiness test build boot release
+.PHONY: verify-all verify-sources verify-reuse readiness test build boot release
 
 verify-all:
 	python3 -B -m unittest discover -s tools -p 'test_*.py'
@@ -12,6 +12,9 @@ verify-all:
 
 verify-sources:
 	python3 tools/verify_preparation.py --sources
+
+verify-reuse:
+	reuse lint
 
 readiness:
 	python3 tools/verify_preparation.py --readiness

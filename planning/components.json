@@ -7,177 +7,895 @@
       "id": "P01",
       "name": "aegis-fabrica",
       "proposed_domain": "OS Build System & UKI Synthesis",
+      "layer": "Base OS & Image Synthesis",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "TPM2 chip (or swtpm emulator for CI)",
+        "UEFI Secure Boot firmware (PK/KEK/db/MOK hierarchy)",
+        "x86-64 CPU with KVM virtualization support for headless QEMU/OVMF boot testing",
+        "erofs/btrfs/dm-verity-capable Linux kernel/storage stack for the root-a (erofs+verity) and var (btrfs) partitions"
+      ],
+      "receives_from": [],
+      "sends_to": [
+        {
+          "to": "P02",
+          "relation": "PRODUCES_UKI_IMAGE"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P01] Project Fabrica - OS Build System & UKI Synthesis.md"
+      ],
       "activation_blockers": [
         "Imago/Nucleus request and artifact contracts",
         "pinned image/kernel inputs",
-        "real artifact and boot evidence"
-      ]
+        "real artifact and boot evidence",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "Validate the P01 declarative inputs offline with systemd's own tooling, no image build, no hardware: (1) `mkosi --config=mkosi.conf summary` / `mkosi genkey`-free dry validation of export-049's [Distribution]/[Output]/[Content]/[Validation] stanzas; (2) `systemd-analyze repart --definitions=mkosi.repart/` against expor",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "positive: `systemd-analyze repart --definitions=mkosi.repart/` and `systemd-analyze sysupdate --definitions=mkosi.extra/usr/lib/sysupdate.d/` both exit 0 on the current export-053/054/055/063 configs (export-041 already runs this exact pair"
+      }
     },
     {
       "id": "P02",
       "name": "aegis-janus-vallum",
       "proposed_domain": "Partition Geometry & TPM2 Storage Security",
+      "layer": "Storage & Crypto Infrastructure",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "TPM2 security chip",
+        "UEFI Secure Boot chain",
+        "Hardware watchdog timer",
+        "NVRAM variable support for A/B slot priority swap"
+      ],
+      "receives_from": [
+        {
+          "from": "P01",
+          "relation": "PRODUCES_UKI_IMAGE"
+        },
+        {
+          "from": "P11",
+          "relation": "ATTEST_GAME_TRANSACTION"
+        },
+        {
+          "from": "P16",
+          "relation": "TRIGGER_SYSUPDATE_ROLLBACK"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P06",
+          "relation": "PROVIDES_TPM2_ATTESTATION"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P02] Project Janus & Vallum - Partition Geometry & Storage Security.md"
+      ],
       "activation_blockers": [
         "Imago/Nucleus request and artifact contracts",
         "pinned image/kernel inputs",
-        "real artifact and boot evidence"
-      ]
+        "real artifact and boot evidence",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "Author and validate the four systemd-repart drop-in configs (00-esp.conf, 10-root-a.conf/10-root-b.conf, 11-root-verity-a/b.conf, 20-var.conf) plus the 10-root.conf sysupdate transfer definition as static, syntactically-correct declarative files, and run them through systemd-repart's own dry-run/validation mode against",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "Positive: `systemd-repart --dry-run --definitions=<dir> --image=<scratch.img>` (or `mkosi summary`/`systemd-repart --json=short`) succeeds and produces the expected partition table for a well-formed config set; Rust state machine has a unit"
+      }
     },
     {
       "id": "P03",
       "name": "aegis-vulcan",
       "proposed_domain": "User-Space PCIe Drivers & Direct DMA",
+      "layer": "Hardware Bypass & Kernel Bypass",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "IOMMU (Intel VT-d / AMD-Vi) enabling VFIO group isolation and IOMMU domain attachment",
+        "NVMe PCIe SSD controller as DMA source",
+        "GPU (NVIDIA/AMD) with P2P DMA / CUDA GPUDirect support as DMA target",
+        "PCIe Base Address Register (BAR) mapping, page-aligned; Resizable BAR / SmartAccess Memory referenced for distinguishing overlapping offsets across hardware revisions/SKUs",
+        "TPM2"
+      ],
+      "receives_from": [],
+      "sends_to": [
+        {
+          "to": "P09",
+          "relation": "GPUDIRECT_WEIGHT_STREAMING"
+        },
+        {
+          "to": "P15",
+          "relation": "ZERO_COPY_MEDIA_INGEST"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P03] Project Vulcan - User-Space PCIe Drivers & Direct DMA.md",
+        "scaffold/crates/aegis-vulcan/src/main.rs"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent",
+        "not listed in the proposed Cargo workspace members",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "Extract the pure validation/arithmetic logic already present in export-038's UserSpacePcieDriver (BAR-alignment check, block-count bounds check 1..=8192, and the lock-less ring-buffer index update `ring_tail = (ring_tail + 1) % NVME_RING_SIZE`) into a standard, testable Rust crate/module (add `crates/aegis-vulcan` to t",
+        "cost": "trivial",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "Positive: a config with `bar0_phys_addr` a multiple of 4096 and `block_count` in [1,8192] maps successfully and returns `block_count * 512` bytes transferred with `ring_tail` incremented by exactly 1 (mod NVME_RING_SIZE). Negative: `bar0_ph"
+      }
     },
     {
       "id": "P04",
       "name": "aegis-compositor",
       "proposed_domain": "Wayland Compositor & Tri-Tier Agent Mesh",
+      "layer": "Windowing & Inter-Agent Control Plane",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "GPU (NVIDIA or AMD) for the wlroots rendering backend",
+        "cgroups v2 system.slice + Seccomp BPF isolation for the compositor process",
+        "systemd sandboxing directives requiring a populated /run and /var tree and capability set at runtime",
+        "TPM2 chip"
+      ],
+      "receives_from": [
+        {
+          "from": "P07",
+          "relation": "PRIORITIZE_COMPOSITOR_THREAD"
+        },
+        {
+          "from": "P08",
+          "relation": "SHARE_DMA_BUF_STREAM"
+        },
+        {
+          "from": "P11",
+          "relation": "DISPATCH_RICH_PRESENCE"
+        },
+        {
+          "from": "P15",
+          "relation": "REGISTER_PIP_OVERLAY"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P05",
+          "relation": "SYNC_DESKTOP_SHELL"
+        },
+        {
+          "to": "P07",
+          "relation": "FOCUS_SWITCH_NOTIFY"
+        },
+        {
+          "to": "P10",
+          "relation": "DISPATCH_MCP_SIDECARS"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P04] Project Mercurius - Wayland Compositor Infrastructure & Agent Mesh.md",
+        "scaffold/build/mkosi.extra/usr/lib/systemd/system/aegis-compositor.service",
+        "scaffold/crates/aegis-compositor/src/main.rs"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "Build a Rust crate under crates/aegis-compositor (the existing scaffold at .workingdir source export-027 is a demonstration `main.rs`, not a compiled crate in-repo) that implements only the WaylandSurface registry, SurfaceLayer enum, and Tier-1 af_unix mesh as a unit-testable state machine, decoupled from wlroots/GPU r",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "cargo test --workspace (or scoped -p aegis-compositor) run locally; asserts on Result::Err for the two boundary-overflow cases and Result::Ok/state mutation for the positive case. No wlroots, no mkosi, no QEMU, no TPM2 involved \u2014 this is ex"
+      }
     },
     {
       "id": "P05",
       "name": "aegis-forum-shell",
       "proposed_domain": "Non-Blocking UI Shell & Process Isolation",
+      "layer": "Desktop Shell & UI UX",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "cgroups v2 kernel support for the app.slice hierarchy enforcing the 20-watt facility energy/memory budget per process",
+        "Linux namespace/seccomp support for Bubblewrap sandboxing"
+      ],
+      "receives_from": [
+        {
+          "from": "P04",
+          "relation": "SYNC_DESKTOP_SHELL"
+        },
+        {
+          "from": "P06",
+          "relation": "DISPATCH_DECISION_REQUEST"
+        },
+        {
+          "from": "P13",
+          "relation": "EMIT_CARBON_TELEMETRY"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P12",
+          "relation": "CONSUMES_DESIGN_TOKENS"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P05] Project Forum - Non-Blocking Desktop Shell & Process Isolation.md",
+        "scaffold/ui/forum-shell/src/App.svelte"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "UI package manifest, lockfile, and axe-core test setup absent",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "Build the existing ui/forum-shell Svelte 5 status-bar component (export-043) with a local Vite dev server and run the existing Playwright + @axe-core/playwright accessibility spec (export-023, wired via 'make a11y' -> 'cd ui/forum-shell && npm run test:a11y' in export-009) against it, with all IPC/D-Bus inputs (composi",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "Positive: axe-core scan against WCAG 2.1A/AA/2.2AA tags returns zero violations (export-023 'expect(accessibilityScanResults.violations).toEqual([])'). Negative: temporarily strip the ':focus-visible' outline CSS rule from the component and"
+      }
     },
     {
       "id": "P06",
       "name": "aegis-justitia",
       "proposed_domain": "EU AI Act Compliance & Action Interceptor",
+      "layer": "Governance & Regulatory Gate",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "TPM2 security chip (hardware or swtpm emulator for dev/QEMU)",
+        "Linux kernel with eBPF LSM support (lsm/bprm_check_security attach point) for action_gate.bpf.c"
+      ],
+      "receives_from": [
+        {
+          "from": "P02",
+          "relation": "PROVIDES_TPM2_ATTESTATION"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P05",
+          "relation": "DISPATCH_DECISION_REQUEST"
+        },
+        {
+          "to": "P09",
+          "relation": "ACTION_GATE_INTERCEPT"
+        },
+        {
+          "to": "P16",
+          "relation": "AUDIT_RECONSTRUCTIVE_CANDIDATE"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P06] Project Justitia - Regulatory Compliance, Action Interception & Governance.md",
+        "proposals/justitia_interceptor_test.rs.txt",
+        "scaffold/crates/aegis-justitia/src/main.rs"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent",
+        "kernel ABI pin and eBPF verifier evidence absent",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "A Rust crate-level state machine test suite for the ActionInterceptorEngine risk-tier evaluator (Tier A/B/C classification, maker-checker separation, Annex III dual-reviewer rule, timeout fail-closed logic, global killswitch block) plus a `clang -target bpf` compile-and-verify pass of action_gate.bpf.c against the kern",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "Positive: TierC action -> Allow; two distinct non-maker reviewers on an Annex III request -> Ok(true). Negative: maker==primary_reviewer -> Err(\"Maker cannot act as checker...\"); single or duplicate reviewer on Annex III -> Err. Boundary: d"
+      }
     },
     {
       "id": "P07",
       "name": "aegis-lictor",
       "proposed_domain": "Resource Broker Daemon & eBPF Schedulers",
+      "layer": "Kernel Resource Arbitration",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "PREEMPT_RT-capable kernel (CONFIG_PREEMPT_RT, CONFIG_HZ_1000) for deterministic T0/T1 response",
+        "x86-64-v3/v4 CPU compilation target",
+        "isolcpus-pinnable physical cores for Wayland/Compositor threads",
+        "GPU with Linux 7.2+ DRM scheduler (DRM_SCHED_PRIORITY_HIGH/NORMAL/LOW) for GPU multi-tenancy arbitration",
+        "cgroups v2 controller for resource+risk brokerage"
+      ],
+      "receives_from": [
+        {
+          "from": "P04",
+          "relation": "FOCUS_SWITCH_NOTIFY"
+        },
+        {
+          "from": "P13",
+          "relation": "SPATIOTEMPORAL_TASK_SHIFT"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P04",
+          "relation": "PRIORITIZE_COMPOSITOR_THREAD"
+        },
+        {
+          "to": "P08",
+          "relation": "ENFORCE_REALTIME_RTPRIO"
+        },
+        {
+          "to": "P09",
+          "relation": "DYNAMIC_VRAM_SWAP"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P07] Project Lictor - Resource Broker Daemon, Performance Kernel Tuning & GPU Scheduling.md",
+        "scaffold/crates/aegis-lictor/src/main.rs"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent",
+        "kernel ABI pin and eBPF verifier evidence absent",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "Build the scx_cake.bpf.c struct_ops skeleton (select_cpu/enqueue/dispatch/running/stopping tier-classification logic) with clang -target bpf as declared in the repo Makefile's `bpf` target, verified purely by the in-tree BPF verifier (no GPU, no real kernel boot, no external contract) via `bpftool prog load` or libbpf ",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "Positive: EWMA converges to TIER_CRITICAL for a sequence of <100us bursts and to TIER_BULK for >=8ms bursts, matching BURST_CRITICAL_NS/BURST_INTERACTIVE_NS/BURST_FRAME_NS constants in scx_cake.bpf.c; register_process + on_window_focus_chan"
+      }
     },
     {
       "id": "P08",
       "name": "aegis-calliope",
       "proposed_domain": "Real-Time Multimedia Pipeline & PipeWire RTL",
+      "layer": "Audio & Video Media Subsystem",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "Real-time-capable CPU scheduling class support (RLIMIT_RTPRIO=95, CPUSchedulingPolicy=rr at priority 80 in the systemd unit)",
+        "GPU with NVENC (or equivalent hardware video encode) implied by 'Production: GPU/NVENC' in the Field Transport Lifecycle diagram and by DMA-BUF zero-copy sharing to Looking Glass/OBS Studio",
+        "Memory locking capability (RLIMIT_MEMLOCK = infinity) so real-time audio buffers stay resident and avoid swap latency"
+      ],
+      "receives_from": [
+        {
+          "from": "P07",
+          "relation": "ENFORCE_REALTIME_RTPRIO"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P04",
+          "relation": "SHARE_DMA_BUF_STREAM"
+        },
+        {
+          "to": "P11",
+          "relation": "REMOTE_PLAY_CAPTURE"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P08] Project Calliope - Real-Time Multimedia Pipeline, PipeWire RTL & Sandboxed Plugins.md",
+        "scaffold/crates/aegis-calliope/src/main.rs"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "Build only the `crates/aegis-calliope` Rust crate (already a workspace member per Cargo.toml) as a library-first state machine with no live PipeWire/DMA-BUF I/O: model `PipeWirePipelineManager` (RTPRIO/quantum config), `PluginSandboxSlot` bounded-array plugin table (MAX_PLUGIN_SLOTS=32), and the plugin lifecycle (Recog",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "cargo test --package aegis-calliope (workstation/container, no special hardware): positive -- load_sandboxed_plugin succeeds up to MAX_PLUGIN_SLOTS and returns increasing slot_id; state machine transitions Recognition->Quarantine->Activatio"
+      }
     },
     {
       "id": "P09",
       "name": "aegis-minerva",
       "proposed_domain": "20W Biomimetic AI Framework & Ephemeral Tiny Experts",
+      "layer": "Cognitive AI Execution Engine",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "GPU with PCIe P2PDMA / CUDA GPUDirect support",
+        "NVMe PCIe SSD",
+        "Sufficient VRAM/host-pinned DRAM to hold swapped SLM expert weights",
+        "Power-metering capability to enforce/observe the 20.0W BIOMIMETIC_WATT_CAP constant"
+      ],
+      "receives_from": [
+        {
+          "from": "P03",
+          "relation": "GPUDIRECT_WEIGHT_STREAMING"
+        },
+        {
+          "from": "P06",
+          "relation": "ACTION_GATE_INTERCEPT"
+        },
+        {
+          "from": "P07",
+          "relation": "DYNAMIC_VRAM_SWAP"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P10",
+          "relation": "EXECUTE_WASMED_CAPSULE"
+        },
+        {
+          "to": "P14",
+          "relation": "VERIFY_CODE_CAD"
+        }
+      ],
+      "candidate_sources": [
+        "scaffold/crates/aegis-minerva/src/main.rs"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent",
+        "no individual blueprint report; evidence limited to architecture documents and trade-off guide",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "Build and unit-test the AlpsRouter, AgentHerEngine, and NeuroSymbolicSolver structs from the export-034 source candidate as a standalone `crates/aegis-minerva` library crate (no GPU, no D-Bus, no Z3 FFI, no real inference) \u2014 i.e. compile only the pure in-memory data-structure/logic layer (fixed-size expert table, fixed",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "cargo test on a dev workstation/container: positive \u2014 register_expert() succeeds under MAX_SLM_EXPERTS and route_intent() returns the lowest-cost active expert for a matching domain within max_power_watts<=20.0; negative \u2014 register_expert()"
+      }
     },
     {
       "id": "P10",
       "name": "aegis-vesta",
       "proposed_domain": "MicroVM Isolation & Thread-Per-Core Runtimes",
+      "layer": "High-Density Sandboxing & Async I/O",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "KVM virtualization extensions on the host CPU for Firecracker microVMs",
+        "GPU/NPU accelerator when is_gpu_enabled is set on a MicroVmInstance",
+        "AF_VSOCK-capable kernel/hypervisor transport for inter-VM and P09<->P10 / P10<->P16 communication"
+      ],
+      "receives_from": [
+        {
+          "from": "P04",
+          "relation": "DISPATCH_MCP_SIDECARS"
+        },
+        {
+          "from": "P09",
+          "relation": "EXECUTE_WASMED_CAPSULE"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P16",
+          "relation": "SANDBOX_CANDIDATE_EVALUATION"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P10] Project Vesta - MicroVM Isolation, Wasm Component Sandboxing & Thread-Per-Core Runtimes.md",
+        "scaffold/crates/aegis-vesta/src/main.rs"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "A Rust crate-level unit-test suite for the existing aegis-vesta domain types and controllers already sketched in export-037 (MicroVmController, WasmCapsuleManager, IoUringThreadCore) run under `cargo test -p aegis-vesta` in a plain container with no Firecracker binary, no KVM device, and no external contract: (1) Micro",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "`cargo test -p aegis-vesta --workspace` (per Makefile's `test` target) with explicit positive cases (successful spawn/register within bounds), negative cases (spawn/register beyond MAX_MICROVMS/MAX_WASM_CAPSULES returns the documented Err v"
+      }
     },
     {
       "id": "P11",
       "name": "aegis-ludus",
       "proposed_domain": "Native Gaming Integration & Steamworks FFI",
+      "layer": "Gaming & Platform Subsystem",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "TPM2 security chip: PCR-sealed credentials and hash-linked, TPM2-signed microtransaction receipts",
+        "FIDO2-capable authenticator",
+        "GPU with DMA-BUF / zero-copy export support (SPA_DATA_DmaBuf)"
+      ],
+      "receives_from": [
+        {
+          "from": "P08",
+          "relation": "REMOTE_PLAY_CAPTURE"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P02",
+          "relation": "ATTEST_GAME_TRANSACTION"
+        },
+        {
+          "to": "P04",
+          "relation": "DISPATCH_RICH_PRESENCE"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P11] Project Ludus - Native Gaming Integration, Steamworks SDK & Discord Rich Presence.md",
+        "scaffold/crates/aegis-ludus/src/main.rs"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "A Rust unit-test suite for the launch-command-line token validator in aegis-ludus (the `init_steamworks` argument-parsing logic in aegis-ludus-main.rs): extract the arg-count bound check and `+connect_auth_token=` scan into a pure function, then unit test it with `cargo test` inside the existing `crates/aegis-ludus` wo",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "Positive: a command line with a valid `+connect_auth_token=...` token and <= MAX_LAUNCH_ARGS (64) args returns Ok with is_authenticated=true. Negative: a command line exceeding 64 args returns Err (command-line-too-long path). Boundary: exa"
+      }
     },
     {
       "id": "P12",
       "name": "aegis-concordia",
       "proposed_domain": "Accessible Sovereign Design System & EN 301 549",
+      "layer": "Accessibility & UI Standards",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": false,
+      "hardware_requirements": [],
+      "receives_from": [
+        {
+          "from": "P05",
+          "relation": "CONSUMES_DESIGN_TOKENS"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P15",
+          "relation": "ENFORCE_A11Y_STANDARDS"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P12] Project Concordia - Accessible Sovereign Design System & EN 301 549 Conformance.md",
+        "scaffold/ui/concordia-tokens/concordia-tokens.css"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "UI package manifest, lockfile, and axe-core test setup absent"
+      ],
+      "cheapest_first_slice": {
+        "description": "In ui/concordia-tokens/ (per DEVELOPER_GUIDE.md's subsystem map), commit the concordia-tokens.css design-token file (export-042 content, already drafted) plus a minimal Svelte 5 component that consumes --concordia-focus-ring-* / --concordia-color-* tokens and toggles a `.concordia-sr-only` state; wire the existing a11y",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "Positive: axe-core scan with tags ['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa'] returns violations == [] on the component in its default state (per export-023's existing assertion pattern). Negative: temporarily strip the outline/`--"
+      }
     },
     {
       "id": "P13",
       "name": "aegis-tellus",
       "proposed_domain": "Carbon-Aware Compute Scheduling & eBPF Telemetry",
+      "layer": "Energy & Sustainability Subsystem",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "Intel RAPL (Running Average Power Limit) MSR/sysfs counters for real (non-simulated) pkg/DRAM energy accumulation",
+        "ACPI power interfaces as a fallback/alternative to RAPL",
+        "cgroups v2 kernel support for per-slice attribution (system.slice/app.slice/agent.slice/build.slice)"
+      ],
+      "receives_from": [
+        {
+          "from": "P16",
+          "relation": "EVALUATE_CANDIDATE_CARBON_SCI"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P05",
+          "relation": "EMIT_CARBON_TELEMETRY"
+        },
+        {
+          "to": "P07",
+          "relation": "SPATIOTEMPORAL_TASK_SHIFT"
+        }
+      ],
+      "candidate_sources": [
+        "scaffold/crates/aegis-tellus/src/main.rs"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent",
+        "kernel ABI pin and eBPF verifier evidence absent",
+        "no individual blueprint report; evidence limited to architecture documents and trade-off guide",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "A Rust unit-test suite for the SCI-rate calculation and spatiotemporal-deferral decision logic already sketched in crates/aegis-tellus/src/main.rs (TellusCarbonEngine::calculate_sci_rate and should_defer_spatiotemporal_tasks), extracted into a lib target with no eBPF, no D-Bus, no hardware RAPL access, and no external ",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "Positive: calculate_sci_rate(0.0025, 1.0) with default grid intensity 220.0 and embodied carbon 0.05 yields the documented ISO/IEC 21031:2024 SCI formula result (E*I+M)/R, asserted against a hand-computed value. Negative: functional_units <"
+      }
     },
     {
       "id": "P14",
       "name": "aegis-hephaestus",
       "proposed_domain": "Open B-Rep CAD Kernels & Multi-Physics Solvers",
+      "layer": "Engineering & Physics Engine",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": false,
+      "hardware_requirements": [],
+      "receives_from": [
+        {
+          "from": "P09",
+          "relation": "VERIFY_CODE_CAD"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P15",
+          "relation": "RENDER_GEOMETRY_MICROFRONTEND"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P14] Project Hephaestus - Open B-Rep CAD Kernels & Multi-Physics Solvers.md",
+        "scaffold/crates/aegis-hephaestus/src/main.rs"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent"
+      ],
+      "cheapest_first_slice": {
+        "description": "A pure-Rust unit-test slice of the aegis-hephaestus crate's bounded-loop and validation logic, with zero external solver/toolchain dependencies: (1) a `GeometrySpec`/`MeshConfig` state-machine module exercising the `MAX_GEOMETRY_ITERATIONS` bound in `evaluate_nurbs_brep` and the `MAX_MESH_ELEMENTS` bound in `generate_m",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "Positive: evaluate_nurbs_brep(existing STEP path) returns Ok(true) and generate_mesh returns Ok(element_count) at element_count <= MAX_MESH_ELEMENTS; verify_code_cad_constraints(non-empty param string) returns Ok(true). Negative: evaluate_n"
+      }
     },
     {
       "id": "P15",
       "name": "aegis-hestia",
       "proposed_domain": "Sovereign Productivity App Engine & Local PGlite",
+      "layer": "Native Local Productivity Apps",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "NVMe SSD with PCIe BAR / memory-mapped DMA path (P03 Vulcan dependency for zero-copy media/storage ingest into PGlite)",
+        "GPU with VA-API or NVDEC hardware decode support for the zero-copy video pipeline",
+        "Wayland compositor with wlr-layer-shell protocol support for pinned PiP overlay surfaces",
+        "GPU scheduler exposing drm_sched priority tiers so Lictor can guarantee 0ms preemption / VRAM residency for Hestia's High-Priority tier vs throttling Low-Priority background AI/RAG",
+        "Btrfs-capable block storage for the @pglite subvolume snapshot/rollback mechanism"
+      ],
+      "receives_from": [
+        {
+          "from": "P03",
+          "relation": "ZERO_COPY_MEDIA_INGEST"
+        },
+        {
+          "from": "P12",
+          "relation": "ENFORCE_A11Y_STANDARDS"
+        },
+        {
+          "from": "P14",
+          "relation": "RENDER_GEOMETRY_MICROFRONTEND"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P04",
+          "relation": "REGISTER_PIP_OVERLAY"
+        }
+      ],
+      "candidate_sources": [
+        "blueprints/[Report P15] Project Hestia - Sovereign Productivity & Native App Engine.md",
+        "scaffold/crates/aegis-hestia/src/main.rs",
+        "scaffold/ui/hestia-app/src/App.svelte"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent",
+        "not listed in the proposed Cargo workspace members",
+        "UI package manifest, lockfile, and axe-core test setup absent",
+        "real hardware or emulator evidence for each listed hardware requirement"
+      ],
+      "cheapest_first_slice": {
+        "description": "A pure-Rust unit-test crate exercising the PgliteVectorStore state machine already sketched in crates/aegis-hestia/src/main.rs (export-030): `new()`, `initialize()` (sets is_initialized, records storage_path/allocated_buffer_mb), and `query_vector_embeddings(vector, limit)` with its two P10-mandated assertions (must be",
+        "cost": "trivial",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "Positive: initialize() on a fresh PgliteVectorStore sets is_initialized=true and allocated_buffer_mb==PGLITE_OPFS_BUFFER_MB (256); query_vector_embeddings() after initialize() with limit=5 returns Ok(5). Negative: calling query_vector_embed"
+      }
     },
     {
       "id": "P16",
       "name": "aegis-athena",
       "proposed_domain": "Continuous Evolutionary Adoption & 20W A/B Testing",
+      "layer": "Self-Adapting Optimization Engine",
       "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": false,
+      "hardware_requirements": [],
+      "receives_from": [
+        {
+          "from": "P06",
+          "relation": "AUDIT_RECONSTRUCTIVE_CANDIDATE"
+        },
+        {
+          "from": "P10",
+          "relation": "SANDBOX_CANDIDATE_EVALUATION"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P02",
+          "relation": "TRIGGER_SYSUPDATE_ROLLBACK"
+        },
+        {
+          "to": "P13",
+          "relation": "EVALUATE_CANDIDATE_CARBON_SCI"
+        }
+      ],
+      "candidate_sources": [
+        "scaffold/crates/aegis-athena/src/main.rs"
+      ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
-        "pinned shared integration contract"
-      ]
+        "pinned shared integration contract",
+        "per-crate Cargo manifest and workspace lock absent",
+        "no individual blueprint report; evidence limited to architecture documents and trade-off guide"
+      ],
+      "cheapest_first_slice": {
+        "description": "A Rust crate `aegis-athena` (already declared in the shared Cargo workspace as `crates/aegis-athena`) implementing the CandidateStage state machine (Propose->Challenge->Decompose->Prove->Check->Publish->Invalidate) and the Pareto-gate predicate from the export-025 candidate source (latency_ms<1.5, memory_mb<64.0, sci_c",
+        "cost": "small",
+        "needs_hardware": false,
+        "needs_external_contract": false,
+        "verification": "cargo test --workspace on the aegis-athena crate with `cargo clippy --workspace --all-targets -- -D warnings` (per Makefile `lint` target and DEVELOPER_GUIDE Pre-Flight Check) run positive/negative/boundary cases: positive = a candidate at "
+      }
     }
-  ]
+  ],
+  "candidate_source_root": ".workingdir/prepared (private, gitignored; paths are relative to it)",
+  "graph_source_sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+  "source_ids_note": "export-NNN identifiers refer to the private source bundle (sha256 8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6); see docs/roadmap/requirements.md"
 }

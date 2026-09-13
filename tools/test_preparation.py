@@ -114,6 +114,37 @@ class PreparationTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("blocked", result.stderr)
 
+    def milestone(self, mid, rank, state, blocked_by=(), **extra):
+        row = {"id": mid, "rank": rank, "state": state, "blocked_by": list(blocked_by), "cost": "small",
+               "exit_criteria": ["evidence"], "epics": [{"id": f"E{mid}-1"}]}
+        row.update(extra)
+        return row
+
+    def write_roadmap(self, rows):
+        (self.root / "planning/roadmap.json").write_text(json.dumps({"milestones": rows}))
+
+    def test_roadmap_blocking_states_pass(self):
+        self.write_roadmap([self.milestone("M00", 0, "done", evidence=["a2c9626"]),
+                            self.milestone("M01", 1, "ready", ["M00"]),
+                            self.milestone("M02", 2, "blocked", ["M01"])])
+        self.assertEqual(len(check.verify_roadmap()), 3)
+        self.write_roadmap([self.milestone("M00", 0, "ready")])
+        self.assertEqual(len(check.verify_roadmap()), 1)
+
+    def test_roadmap_rejects_inconsistent_states(self):
+        bad = [
+            [self.milestone("M00", 0, "done")],
+            [self.milestone("M00", 0, "ready"), self.milestone("M01", 1, "ready", ["M00"])],
+            [self.milestone("M00", 0, "ready", ["M01"]), self.milestone("M01", 1, "ready", ["M00"])],
+            [self.milestone("M00", 0, "ready", ["M09"])],
+            [self.milestone("M00", 0, "ready"), self.milestone("M01", 2, "blocked", ["M00"])],
+            [self.milestone("M00", 1, "ready"), self.milestone("M01", 0, "blocked", ["M00"])],
+        ]
+        for rows in bad:
+            self.write_roadmap(rows)
+            with self.assertRaises(ValueError):
+                check.verify_roadmap()
+
     def test_source_integrity_and_inventory_drift(self):
         source = self.root / ".workingdir/notebookllmprep"
         source.mkdir(parents=True)

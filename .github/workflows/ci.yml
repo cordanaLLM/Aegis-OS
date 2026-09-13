@@ -1,0 +1,69 @@
+# Preparation gate: governance, planning structure, licence texts and REUSE only.
+# It builds nothing from the OS concept and never enables image, boot or release.
+name: Preparation gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preparation-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LEFTHOOK_VERSION: "2.1.12"
+  LEFTHOOK_SHA256: "22ff1ad48d1a0f4dca8d6b7e920056c6a9015f9204e5b693858ed9c2db759a16"
+  REUSE_VERSION: "6.2.0"
+
+jobs:
+  verify:
+    name: Preparation gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Build pinned praetorctl from the devcontainer source bundle
+        run: |
+          docker build --target praetor_build -f .devcontainer/Dockerfile.praetor -t praetor-build .devcontainer
+          cid="$(docker create praetor-build)"
+          mkdir -p "$RUNNER_TEMP/bin"
+          docker cp "$cid:/out/praetorctl" "$RUNNER_TEMP/bin/praetorctl"
+          docker rm "$cid"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Install pinned lefthook
+        run: |
+          url="https://github.com/evilmartians/lefthook/releases/download/v${LEFTHOOK_VERSION}/lefthook_${LEFTHOOK_VERSION}_Linux_x86_64"
+          curl -fsSL --max-time 120 -o "$RUNNER_TEMP/bin/lefthook" "$url"
+          echo "${LEFTHOOK_SHA256}  $RUNNER_TEMP/bin/lefthook" | sha256sum -c -
+          chmod 0755 "$RUNNER_TEMP/bin/lefthook"
+          lefthook install
+
+      - name: Preparation gate
+        run: make verify-all
+
+      - name: REUSE compliance
+        run: pipx run "reuse==${REUSE_VERSION}" lint
+
+      - name: DCO sign-off on pull request commits
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          for sha in $(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA"); do
+            if ! git log -1 --format=%B "$sha" | grep -q '^Signed-off-by: '; then
+              echo "::error::commit $sha lacks a Signed-off-by trailer"
+              missing=1
+            fi
+          done
+          exit "$missing"

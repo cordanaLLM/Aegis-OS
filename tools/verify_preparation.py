@@ -15,6 +15,8 @@ LICENSE_TEXTS = {
     "LICENSES/CC-BY-SA-4.0.txt": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5",
 }
 LICENSE_IDS = {"EUPL-1.2", "CC-BY-SA-4.0"}
+ROADMAP_STATES = {"done", "ready", "blocked"}
+ROADMAP_COSTS = {"trivial", "small", "medium", "large"}
 
 
 def read_json(path):
@@ -63,6 +65,53 @@ def verify_licensing():
         raise ValueError("REUSE.toml must declare version 1 with exactly the split-licence identifiers")
     if not (ROOT / "LICENSING.md").is_file():
         raise ValueError("LICENSING.md explains the split licence and must exist")
+
+
+def verify_milestone(row, by_id):
+    if row["state"] not in ROADMAP_STATES or row["cost"] not in ROADMAP_COSTS:
+        raise ValueError(f"Milestone {row['id']} has an invalid state or cost")
+    if not row["exit_criteria"] or not row["epics"]:
+        raise ValueError(f"Milestone {row['id']} needs exit criteria and epics")
+    unknown = set(row["blocked_by"]) - by_id.keys()
+    if unknown or row["id"] in row["blocked_by"]:
+        raise ValueError(f"Milestone {row['id']} blocks on unknown milestones {sorted(unknown)}")
+    if row["state"] == "done" and not row.get("evidence"):
+        raise ValueError(f"Milestone {row['id']} is done without recorded evidence")
+    blockers_done = all(by_id[b]["state"] == "done" for b in row["blocked_by"])
+    expected = "ready" if blockers_done else "blocked"
+    if row["state"] != "done" and row["state"] != expected:
+        raise ValueError(f"Milestone {row['id']} must be {expected} given its blockers")
+    for blocker in row["blocked_by"]:
+        if by_id[blocker]["rank"] >= row["rank"]:
+            raise ValueError(f"Milestone {row['id']} is ranked before its blocker {blocker}")
+
+
+def verify_roadmap():
+    rows = read_json(ROOT / "planning/roadmap.json")["milestones"]
+    ids = [row["id"] for row in rows]
+    if not 1 <= len(rows) <= 64 or len(set(ids)) != len(ids):
+        raise ValueError("Roadmap must list 1..64 uniquely identified milestones")
+    if sorted(row["rank"] for row in rows) != list(range(len(rows))):
+        raise ValueError("Milestone ranks must be 0..N-1 without gaps")
+    by_id = {row["id"]: row for row in rows}
+    for row in rows:
+        verify_milestone(row, by_id)
+    indegree = {row["id"]: len(row["blocked_by"]) for row in rows}
+    ready = [key for key, degree in indegree.items() if degree == 0]
+    visited = 0
+    for _ in range(len(rows)):
+        if not ready:
+            break
+        current = ready.pop()
+        visited += 1
+        for row in rows:
+            if current in row["blocked_by"]:
+                indegree[row["id"]] -= 1
+                if indegree[row["id"]] == 0:
+                    ready.append(row["id"])
+    if visited != len(rows):
+        raise ValueError("Milestone dependencies contain a cycle")
+    return rows
 
 
 def verify_sources():

@@ -32,7 +32,8 @@ The verbatim EUPL v1.2 English text is in [`LICENSE`](LICENSE) and
 Text provenance: the enclosed text is the canonical English text published by
 the [SPDX License List](https://spdx.org/licenses/EUPL-1.2), which links the
 [European Commission source](https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12).
-`make verify-all` fails if the enclosed text differs from the pinned digest.
+`make verify-all` fails if the enclosed text differs from the pinned digest;
+`make verify-reuse` runs the REUSE 3.3 linter when the `reuse` tool is installed.
 
 Kernel-loaded eBPF programs must additionally declare the licence string the
 kernel requires to load GPL-only helpers. The EUPL v1.2 Appendix lists GPL v2
