@@ -268,7 +268,7 @@
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
-        "rationale": "Unmoved and still the sole ready milestone: blocked_by M01 which is done. It is category 2 rather than category 1 because the distro rustc 1.98.1 moves with system updates and cannot satisfy the template-matrix pinned-admission clause; rustup must be installed and a rust-toolchain.toml committed first (D61). The hard blocker-ordering constraint keeps it at rank 2 regardless of category, since it b"
+        "rationale": "Unmoved and still the sole ready milestone: blocked_by M01 which is done. It is category 2 rather than category 1 because the distro rustc 1.98.1 moves with system updates and cannot satisfy the template-matrix pinned-admission clause; rustup must be installed and a rust-toolchain.toml committed first (D61). The hard blocker-ordering constraint keeps it at rank 2 regardless of category, since it blocks every other milestone except the two ahead of it, M00 and M01."
       }
     },
     {
@@ -529,7 +529,7 @@
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
-        "rationale": "Unmoved at rank 5 but materially cheaper and materially better evidenced. The schema can now be authored against a measured reference payload instead of an invented one, and — this is the part the profile uniquely enables — the NEGATIVE case is genuinely falsifiable here: a manifest requiring CONFIG_PREEMPT_RT must be rejected against this host, because `zgrep` returns '# CONFIG_PREEMPT_RT is not "
+        "rationale": "Unmoved at rank 5 but materially cheaper and materially better evidenced. The schema can now be authored against a measured reference payload instead of an invented one, and — this is the part the profile uniquely enables — the NEGATIVE case is genuinely falsifiable here: a manifest requiring CONFIG_PREEMPT_RT must be rejected against this host, because `zgrep` returns '# CONFIG_PREEMPT_RT is not set' for the running kernel, and the profile records the same absence as its realtime_kernel capability."
       }
     },
     {
@@ -592,7 +592,7 @@
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
-        "rationale": "Rank unchanged at 6, but its unblocks target changes from M11 to the new M24 boot-evidence harness. That is a real improvement: the A/B state machine is now compared against a REAL observed transition on the reference profile at M24 (rank 14) instead of waiting for an Imago artifact at old rank 16. M15's transitive unblock count rises from 4 to 5 and its score from (1+4)/2 to (1+5)/2 = 3.0, which "
+        "rationale": "Rank unchanged at 6, but its unblocks target changes from M11 to the new M24 boot-evidence harness. That is a real improvement: the A/B state machine is now compared against a REAL observed transition on the reference profile at M24 (rank 14) instead of waiting for an Imago artifact at old rank 16. M15's transitive unblock count rises from 4 to 5 and its score from (1+4)/2 to (1+5)/2 = 3.0, which is still short of M18's 4.5 in the same tier, so the gain lands as better evidence rather than as a new position: M15 stays at rank 6, behind M18."
       }
     },
     {
@@ -679,7 +679,7 @@
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
-        "rationale": "Moves up two places, 9 -> 7. Its only consumer used to be M12, the most deeply blocked milestone in the graph (needs Imago, Nucleus AND hardware this machine lacks). With the M12 split, M17 now feeds M25, which is locally executable on the reference profile. Its descendants stay 2 and its cost stays trivial, so score is unchanged at 3.0 — the movement is the availability change: its output stops b"
+        "rationale": "Moves up two places, 9 -> 7. Its only consumer used to be M12, the most deeply blocked milestone in the graph (needs Imago, Nucleus AND hardware this machine lacks). With the M12 split, M17 now feeds M25, which is locally executable on the reference profile. Its descendants stay 2 and its cost stays trivial, so score is unchanged at 3.0 — the movement is the availability change: its output stops being blocked behind a milestone that cannot run on this profile and starts feeding one that can."
       }
     },
     {
@@ -1037,7 +1037,7 @@
       "reference_profile": {
         "support": "full",
         "requires": [],
-        "rationale": "the build toolchain is complete on the reference profile (gcc, clang, make, bc, flex, bison, pahole 1.31 for BTF, cpio, zstd) with 32 threads and ample disk; no hardware capability is needed to compile and boot a kernel in a guest"
+        "rationale": "the build toolchain is complete on the reference profile (gcc, clang, make, bc, flex, bison, pahole 1.31 for BTF, cpio, zstd) with 32 threads and ample disk; no hardware capability is needed to compile and boot a kernel in a guest."
       },
       "exit_criteria": [
         "D70 applies: Aegis builds the kernel here while Nucleus is a scaffold, exactly as D56 keeps image-definition validation here while Imago is a scaffold. The build moves to Nucleus when Nucleus returns real artifacts, and this milestone's output is never a release artifact",
@@ -1151,7 +1151,7 @@
       "reference_profile": {
         "support": "full",
         "requires": [],
-        "rationale": "Rank unchanged at 12 — it was already correctly placed and its blockers M05/M07 hold it there — but its RISK changes completely and that is worth recording. Before the profile, 'the objects load through the verifier on the host kernel' was an assumption. Now all three loads are confirmed executable: action_gate can attach to lsm/bprm_check_security because bpf is in the ACTIVE LSM list (CONFIG_BPF"
+        "rationale": "Rank unchanged at 12 — it was already correctly placed and its blockers M05/M07 hold it there — but its RISK changes completely and that is worth recording. Before the profile, 'the objects load through the verifier on the host kernel' was an assumption. Now all three loads are confirmed executable: action_gate can attach to lsm/bprm_check_security because bpf is in the ACTIVE LSM list (CONFIG_BPF_LSM=y, with bpf read back from /sys/kernel/security/lsm), scx_cake can load as struct_ops because CONFIG_SCHED_CLASS_EXT=y and a sched_ext scheduler was already running at probe time, and kepler_power can be built CO-RE against /sys/kernel/btf/vmlinux. The rank reads 13 today, one place below what this note records, because M26 was later inserted at rank 7; M05 and M07 still hold M19 there, not the profile."
       }
     },
     {
@@ -1212,7 +1212,7 @@
       "reference_profile": {
         "support": "full",
         "requires": [],
-        "rationale": "the fixture runs in a guest on a kernel this repository builds (M26) while Nucleus is a scaffold; no host change and no absent capability is involved"
+        "rationale": "the fixture runs in a guest on a kernel this repository builds (M26) while Nucleus is a scaffold; no host change and no absent capability is involved."
       }
     },
     {
@@ -1278,7 +1278,7 @@
           "kvm",
           "tpm2"
         ],
-        "rationale": "QEMU, OVMF with Secure Boot support, swtpm, sbsigntools and virt-firmware are installed, and an enrolled guest variable store was generated here, so the harness needs no change to the host firmware"
+        "rationale": "QEMU, OVMF with Secure Boot support, swtpm, sbsigntools and virt-firmware are installed, and an enrolled guest variable store was generated here, so the harness needs no change to the host firmware."
       }
     },
     {
@@ -1342,7 +1342,7 @@
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
-        "rationale": "Down two places, 13 -> 15, score 0.500. It is category 2 (Node, pnpm, Playwright and Svelte must be installed at pinned versions and committed as lockfiles), so it sorts below the category-1 block that now includes M19 and M21. The profile does not make it cheaper so much as it makes one register row urgent: the machine runs Node v26.8.2, which is NEITHER of the M01 drift register's 'Node 20 vs 22"
+        "rationale": "Down two places, 13 -> 15, score 0.500. It is category 2 (Node, pnpm, Playwright and Svelte must be installed at pinned versions and committed as lockfiles), so it sorts below the category-1 block that now includes M19 and M21. The profile does not make it cheaper so much as it makes one register row urgent: the machine runs Node v26.8.2, which is NEITHER of the M01 drift register's 'Node 20 vs 22' options, so the row closes with an exact pin read back from the profile and a major tracked forward by Renovate, not with an inherited floor (D65)."
       }
     },
     {
@@ -1467,7 +1467,7 @@
       "reference_profile": {
         "support": "full (privileged read)",
         "requires": [],
-        "rationale": "Moves up five places, 18 -> 13, and is SPLIT. It was ranked 18 on the assumption that its needs_hardware flag meant procurement-blocked; the hardware is entirely present and measured, and it has no external contract anywhere in its ancestry. M21 is now reduced to the energy half, whose only blocker is M05 (P13/P16 logic) — dropping M06 from blocked_by, since M06 is P09/P10 and belonged to the micr"
+        "rationale": "Moves up five places, 18 -> 13, and is SPLIT. It was ranked 18 on the assumption that its needs_hardware flag meant procurement-blocked; the hardware is entirely present and measured, and it has no external contract anywhere in its ancestry. M21 is now reduced to the energy half, whose only blocker is M05 (P13/P16 logic) — dropping M06 from blocked_by, since M06 is P09/P10 and belonged to the microVM half, which is now M22. The register has moved M21 again since: it sits at rank 18 today, tied at 0.50 value per cost with M04, M16 and M25 and separated from them only by the identifier tiebreak in the controller."
       }
     },
     {
@@ -1531,7 +1531,7 @@
           "resizable_bar",
           "gpu_dma_buf_and_peer_memory"
         ],
-        "rationale": "DMA-BUF across vendor drivers and VFIO binding of a single-occupant IOMMU group are both available; amdgpu is the drm_sched provider, i915 is not"
+        "rationale": "DMA-BUF across vendor drivers and VFIO binding of a single-occupant IOMMU group are both available; amdgpu is the drm_sched provider, i915 is not."
       }
     },
     {
@@ -1590,7 +1590,7 @@
         "requires": [
           "kvm"
         ],
-        "rationale": "KVM with nested virtualisation and vhost-vsock are present; the VMM is pinned at activation"
+        "rationale": "KVM with nested virtualisation and vhost-vsock are present; the VMM is pinned at activation."
       }
     },
     {
@@ -1662,7 +1662,7 @@
       "reference_profile": {
         "support": "partial",
         "requires": [],
-        "rationale": "Down five places, 15 -> 20, and this is a category demotion, not a devaluation. Its score of 3.000 is the highest of anything ranked below 12, and it has the largest descendant set outside the early block. But the stated order puts anything needing an unverified cross-repository contract behind every local milestone, and the profile has just made five more milestones locally executable (M19, M21, "
+        "rationale": "Down five places, 15 -> 20, and this is a category demotion, not a devaluation. Its score of 3.000 is the highest of anything ranked below 12, and it has the largest descendant set outside the early block. But the stated order puts anything needing an unverified cross-repository contract behind every local milestone, and the profile has just made five more milestones locally executable (M19, M21, M22 and M25 among them), so the local block M09 waits behind grew rather than shrank; `tools/rank_roadmap.py --explain` prints the current tier membership, which M23 and M24 have since joined."
       }
     },
     {
@@ -1745,7 +1745,7 @@
       "reference_profile": {
         "support": "partial",
         "requires": [],
-        "rationale": "Down five places, 16 -> 21, and SPLIT, with its cost dropping large -> medium. The split is the substantive change: the boot-evidence apparatus moves to M24 where it can be built and proven on the reference profile today, and M11 keeps only what genuinely requires Imago — receiving a real artifact, verifying its digest and signature, and running the already-proven harness against it. blocked_by ch"
+        "rationale": "Down five places, 16 -> 21, and SPLIT, with its cost dropping large -> medium. The split is the substantive change: the boot-evidence apparatus moves to M24 where it can be built and proven on the reference profile today, and M11 keeps only what genuinely requires Imago — receiving a real artifact, verifying its digest and signature, and running the already-proven harness against it. blocked_by changes to M09 and M24: the contract that has to deliver a real artifact, and the harness M11 now reuses unchanged."
       }
     },
     {
@@ -1812,7 +1812,7 @@
       "reference_profile": {
         "support": "partial",
         "requires": [],
-        "rationale": "Down five places, 17 -> 22, on the same category demotion as M09 — its blocker is an external contract, not hardware. Its blocked_by gains M23, because M23 builds and proves the direct-kernel-boot harness that M10's own cheapest_exit describes; reusing it is strictly cheaper than rebuilding it under external-contract pressure. Ordering holds: M23 at 19 and M19 at 12 both rank below 22. The profile"
+        "rationale": "Down five places, 17 -> 22, on the same category demotion as M09 — its blocker is an external contract, not hardware. Its blocked_by gains M23, because M23 builds and proves the direct-kernel-boot harness that M10's own cheapest_exit describes; reusing it is strictly cheaper than rebuilding it under external-contract pressure. Ordering holds: M23 at 19 and M19 at 12 both rank below 22. The profile leaves both of those blockers locally executable — M19 and M23 both carry support full in the local tier, at ranks 13 and 14 today against M10's 23 — so the only genuinely external input left here is the Nucleus kernel M09 has to obtain."
       }
     },
     {
@@ -1876,7 +1876,7 @@
           "tpm2",
           "kvm"
         ],
-        "rationale": "swtpm and tpm2-tools are installed and a guest can boot with enrolled Secure Boot keys, so PCR 7 carries a meaningful value inside the guest"
+        "rationale": "swtpm and tpm2-tools are installed and a guest can boot with enrolled Secure Boot keys, so PCR 7 carries a meaningful value inside the guest."
       }
     },
     {
@@ -1951,7 +1951,7 @@
       "reference_profile": {
         "support": "partial",
         "requires": [],
-        "rationale": "Down three places, 21 -> 24, and SPLIT — but the movement understates the change. The two paths that ARE evidenceable on this machine left for M25 at rank 17, and what remains is only the P2PDMA path plus in-image re-verification. blocked_by becomes [M25, M10, M11]; M08 and M17 are now transitive through M25 and are dropped under the direct-blockers-only rule. M12 keeps its large cost and its last"
+        "rationale": "Down three places, 21 -> 24, and SPLIT — but the movement understates the change. The two paths that ARE evidenceable on this machine left for M25 at rank 17, and what remains is only the P2PDMA path plus in-image re-verification. blocked_by becomes [M25, M10, M11]; M08 and M17 are now transitive through M25 and are dropped under the direct-blockers-only rule. M12 keeps its large cost and its last place among the contract-blocked milestones, because the path it still owns cannot be evidenced here at any cost in effort: `ls -d /sys/bus/pci/devices/*/p2pdma` matches nothing on this profile, so there is no p2pmem provider to test against."
       }
     },
     {
@@ -2008,7 +2008,7 @@
       "reference_profile": {
         "support": "partial",
         "requires": [],
-        "rationale": "Down six places, 19 -> 25, to last. It is the sole category-5 milestone and the stated order puts release behind everything. This is also the strictest reading of the rule the maintainer set: a local pass on one developer machine is never release evidence, so the reference profile cannot move this milestone at all — it can only make the milestones ahead of it finish sooner. Its cheapest_exit (reco"
+        "rationale": "Down six places, 19 -> 25, to last. It is the sole category-5 milestone and the stated order puts release behind everything. This is also the strictest reading of the rule the maintainer set: a local pass on one developer machine is never release evidence, so the reference profile cannot move this milestone at all — it can only make the milestones ahead of it finish sooner. Its cheapest_exit (recording the hosted ruleset and label readback for the existing origin before any artifact exists) is the only part that can start now, and it draws on the remote, not on this machine."
       }
     }
   ],
