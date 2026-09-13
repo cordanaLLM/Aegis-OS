@@ -6,9 +6,12 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 # crates
 
 Rust crates for the daemons proposed for P03, P04, P06, P07, P08, P09, P10,
-P11, P13, P14, P15 and P16. A crate is activated only with its own `Cargo.toml`,
-a workspace lock, its interface contract, and positive, negative and boundary
-tests.
+P11, P13, P14, P15 and P16. A crate joins the workspace only with its own
+`Cargo.toml`, a workspace lock entry, its interface contract, and positive,
+negative and boundary tests. Joining the workspace is not the same as
+activating the component: `planning/components.json` records which components
+have left `proposal`, and several crates below carry a component's name while
+the component stays a proposal.
 
 ## Activated
 
@@ -19,14 +22,17 @@ tests.
 | `aegis-janus-lifecycle` | P02 A/B candidate lifecycle | M15 | The A/B lifecycle D15 records: one candidate from declaration through the signature check, delta acquisition, slot swap and boot watchdog to bless or rollback, plus the D13 reopening. Pure state machine with an injected clock, stubbed systemd effects and a machine-readable transition trace. Library only. |
 | `aegis-vulcan` | P03 direct-DMA validation slice | M17 | The validation arithmetic and the bounds of export-038: page-aligned BAR windows, the `1..=8192` block count, the lock-less submission-ring index and a bounded VFIO device table, plus the versioned descriptors P03 hands to P09 and to P15, each carrying the DMA-BUF export path M25 binds. Library only. |
 | `aegis-hestia` | P15 store and overlay validation slice | M17 | The Rust half of decision D09: the vector-store initialisation gate and `1..=100` query bound, the picture-in-picture overlay controller, the versioned registration P15 hands to P04, and `HestiaView`, the typed boundary payload the Svelte package would read. Library only. |
+| `aegis-tellus` | P13 carbon slice | M05 | The ISO/IEC 21031:2024 SCI rate `((E * I) + M) / R`, the 300 gCO2eq/kWh spatiotemporal defer threshold compared strictly, the sixteen-slice cgroup table, the `Delta V` bidding contract, and the zone-list wattage seam M21 substitutes a measured RAPL delta into. Versioned payloads for the P16 and P07 edges. Library only. |
+| `aegis-athena` | P16 evolution loop | M05 | The seven-stage candidate lifecycle with only Invalidate terminal, the four-objective Pareto promotion gate, the nine structural maturity gates, and the SHA-256 hash-chained checkpoint ledger over the D02 trait. The versioned trigger P16 hands to P02, and the M14 audit record consumed rather than redefined. Library only. |
 
-All five are members of the workspace root `Cargo.toml`. The member list is
-written out rather than globbed, so the remaining reserved directories stay
-inactive until they meet the same bar. M17 extended the list to five and
-thereby settled open decision D22, which asked whether the P03 and P15 Rust
-candidates join it at all: REQ-WS-01 had recorded their absence from the
-*proposed* workspace as a defect, and a workspace-wide `cargo` invocation now
-reaches both.
+Every crate above is a member of the workspace root `Cargo.toml`. The member
+list is written out rather than globbed, so the remaining reserved directories
+stay inactive until they meet the same bar, and the crate tests check the
+invariant rather than the count: a crate directory that has a manifest is a
+member, and nothing else is. M17 settled open decision D22, which asked whether
+the P03 and P15 Rust candidates join the list at all -- REQ-WS-01 had recorded
+their absence from the *proposed* workspace as a defect -- and M05 added the two
+crates REQ-P16-07 and REQ-P13-08 name.
 
 `aegis-fabrica-defs` owns the declarative inputs in `build/`, not the P01 or P02
 component daemon. M18 widened it from a parser to the P01/P02 input contracts:
@@ -59,6 +65,14 @@ each row's note names the tracked workspace manifest and lock that do exist.
 Activation covers the crate gate only: `cargo fmt`, `cargo build --locked`,
 `cargo test` and `cargo clippy -D warnings` on the pinned toolchain. No native
 pass is claimed by this directory.
+
+`aegis-tellus` and `aegis-athena` carry their components' names and sit at their
+components' proposed paths, and **P13 and P16 remain proposals all the same**.
+The P13 subsystem is a Kepler eBPF telemetry daemon and this crate compiles no
+probe and reads no counter; the P16 subsystem is an evolution daemon that runs
+candidates and deploys updates, and this crate runs nothing and deploys nothing.
+Their `manifest_present` flags in `planning/candidates.json` stay false for the
+same reason the P03 and P15 flags do.
 
 The consumer contracts live in `aegis-justitia/src/contracts/` and the hardened
 unit is a contract file in `aegis-justitia/contracts/`, reviewed by library code
@@ -99,6 +113,41 @@ than an interface: `HestiaView` is a `Copy` snapshot carrying no method, handle
 or file descriptor, so neither half can reach into the other.
 `src/register.rs` records the P15 claims this repository cannot check, including
 the one REQ-P15-06 itself marks as an unverified proposal figure.
+
+Deliberately outside `aegis-tellus`: every measurement. Nothing in it reads a
+RAPL counter, opens `/sys/class/powercap`, compiles or loads an eBPF program,
+walks a cgroup, connects to D-Bus, spawns a thread or sleeps. Every wattage it
+reports is a recorded constant labelled `Simulated` or `Modelled`, and nothing
+it produces carries `Measured`; `tests/stubbed_effects.rs` sweeps the crate's
+own sources for twenty-four recorded identifiers on two lists -- one that is a
+finding anywhere, one that is a finding only outside a string literal, because
+the register records the very paths M21 will read -- and fails if one appears
+where it would mean the effect exists. That is a regression gate over an
+enumeration, not a proof over every such identifier, so a second check is held
+beside it: no line of code under `src/` names `std::` at all. Neither sees the
+standard macro prelude, which writes to a file descriptor without naming
+`std::`, so `print_stdout`, `print_stderr` and `dbg_macro` are denied in
+`[workspace.lints.clippy]` and clippy is what refuses those. `src/power.rs` is
+where the substitution happens: the arithmetic receives a draw and an interval
+and never learns where the number came from. A zone the reference profile
+exposes takes the weakest of its figure's ingredients, so `package-0`, which
+folds the modelled DRAM figure into a simulated core constant, is `Simulated`;
+a zone it exposes no counter for is `Modelled` by D60 whatever figure stands in,
+so `dram` and `psys` are both `Modelled` even though `psys` carries the
+`package-0` number. Every zone's label is pinned in both directions.
+
+Deliberately outside `aegis-athena`: every effect. Nothing in it opens a file,
+runs `systemd-sysupdate`, connects to D-Bus, starts a microVM, opens an
+`AF_VSOCK` socket, writes a partition or reboots; `tests/stubbed_effects.rs`
+sweeps for twenty recorded identifiers on the same two-list terms, including the
+`OpenOptions` call and the `SystemTime::now()` the imported scaffold actually
+makes, and holds the same second check that no line of code under `src/` names
+`std::`; the prelude's I/O macros escape both and are denied by the same three
+workspace lints. The checkpoint ledger is in memory and unsigned: a chain
+detects an edit, it does not establish who wrote it, and TPM2 sealing is M20.
+The M14 audit record is decoded through `aegis_justitia::SignedAuditRecord`
+rather than redefined, so a consumer's reading of it cannot drift from the
+producer's.
 
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2

@@ -3,6 +3,17 @@
 version = 4
 
 [[package]]
+name = "aegis-athena"
+version = "0.1.0"
+dependencies = [
+ "aegis-justitia",
+ "aegis-tellus",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "aegis-fabrica-defs"
 version = "0.1.0"
 dependencies = [
@@ -38,6 +49,15 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "aegis-tellus"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
  "thiserror",
 ]
 
