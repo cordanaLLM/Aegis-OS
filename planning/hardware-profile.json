@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "role": "reference development machine",
+  "recorded_on": "2026-09-13",
+  "evidence_class": "Development evidence only. A check that passes on this profile does not qualify hardware, does not close a blocked gate, and is not release evidence. Hardware qualification needs more than one machine and the acceptance recorded in the milestone.",
+  "cpu": {
+    "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+    "cores": 16,
+    "threads": 32,
+    "isa_levels": [
+      "x86-64-v2",
+      "x86-64-v3",
+      "x86-64-v4"
+    ],
+    "evidence_command": "lscpu; /lib/ld-linux-x86-64.so.2 --help | grep supported"
+  },
+  "memory_bytes": 64910954496,
+  "kernel": {
+    "release": "7.2.4-1-cachyos",
+    "preemption": "PREEMPT_DYNAMIC",
+    "realtime": false,
+    "config": {
+      "CONFIG_PREEMPT_RT": "not set",
+      "CONFIG_PREEMPT_DYNAMIC": "y",
+      "CONFIG_SCHED_CLASS_EXT": "y",
+      "CONFIG_BPF_LSM": "y",
+      "CONFIG_DEBUG_INFO_BTF": "y",
+      "CONFIG_PCI_P2PDMA": "y",
+      "CONFIG_VFIO": "m",
+      "CONFIG_VFIO_PCI": "m",
+      "CONFIG_EROFS_FS": "m",
+      "CONFIG_DM_VERITY": "m",
+      "CONFIG_BTRFS_FS": "y",
+      "CONFIG_TCG_TPM": "y",
+      "CONFIG_KVM_AMD": "m",
+      "CONFIG_KVM_INTEL": "m"
+    },
+    "evidence_command": "uname -r; zgrep -E '^CONFIG_(PREEMPT|SCHED_CLASS_EXT|BPF_LSM)' /proc/config.gz"
+  },
+  "firmware": {
+    "efi": true,
+    "secure_boot_enabled": false,
+    "tpm2_firmware_support": true,
+    "evidence_command": "bootctl status"
+  },
+  "capabilities": {
+    "kvm": {
+      "present": true,
+      "evidence_command": "ls -l /dev/kvm"
+    },
+    "tpm2": {
+      "present": true,
+      "evidence_command": "cat /sys/class/tpm/tpm0/tpm_version_major",
+      "note": "discrete TPM 2.0; swtpm also installed for virtual machines"
+    },
+    "iommu": {
+      "present": true,
+      "evidence_command": "ls /sys/class/iommu/",
+      "note": "AMD-Vi (ivhd0); VFIO is available as a module"
+    },
+    "rapl_energy_counters": {
+      "present": true,
+      "evidence_command": "cat /sys/class/powercap/intel-rapl:0/energy_uj",
+      "note": "package counters exist; /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 and root-readable only, so P13 telemetry needs a privileged daemon or a root test"
+    },
+    "sched_ext": {
+      "present": true,
+      "evidence_command": "ls /sys/kernel/sched_ext",
+      "note": "the host kernel runs a sched_ext scheduler at probe time; scx_cake, the scheduler P07 proposes, is installed as a distribution package alongside scx_rusty, scx_bpfland and scx_lavd"
+    },
+    "bpf_lsm": {
+      "present": true,
+      "evidence_command": "cat /sys/kernel/security/lsm",
+      "note": "bpf appears in the active LSM list"
+    },
+    "btf": {
+      "present": true,
+      "evidence_command": "ls /sys/kernel/btf/vmlinux",
+      "note": "CO-RE eBPF programs can be compiled against the host kernel"
+    },
+    "pci_p2pdma": {
+      "present": true,
+      "evidence_command": "zgrep CONFIG_PCI_P2PDMA /proc/config.gz",
+      "note": "kernel support is compiled in; device-level support still needs proving per device"
+    },
+    "erofs_dm_verity": {
+      "present": true,
+      "evidence_command": "zgrep -E 'CONFIG_(EROFS_FS|DM_VERITY)' /proc/config.gz",
+      "note": "both available as modules"
+    },
+    "realtime_kernel": {
+      "present": false,
+      "evidence_command": "zgrep CONFIG_PREEMPT_RT /proc/config.gz",
+      "note": "not set; a PREEMPT_RT kernel must come from a virtual machine or from Nucleus"
+    },
+    "secure_boot_enrolment": {
+      "present": false,
+      "evidence_command": "bootctl status | grep -i 'secure boot'",
+      "note": "disabled on the host; OVMF with Secure Boot support is installed at /usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd, so enrolment is demonstrated inside QEMU"
+    }
+  },
+  "gpus": [
+    {
+      "vendor": "Intel",
+      "model": "Arc A380 (DG2)",
+      "pci_id": "8086:56a5"
+    },
+    {
+      "vendor": "NVIDIA",
+      "model": "GeForce RTX 4090 (AD102)",
+      "pci_id": "10de:2684",
+      "driver": "615.71.09",
+      "memory_mib": 24564
+    },
+    {
+      "vendor": "AMD",
+      "model": "Granite Ridge integrated graphics",
+      "pci_id": "1002:13c0"
+    }
+  ],
+  "storage": {
+    "nvme_controllers": 3,
+    "evidence_command": "ls /sys/class/nvme/"
+  },
+  "toolchain": {
+    "qemu-system-x86_64": {
+      "present": true,
+      "version": "QEMU emulator version 11.1.1"
+    },
+    "swtpm": {
+      "present": true,
+      "version": "TPM emulator version 0.10.2, Copyright (c) 2014-2022 IBM Corp. and others"
+    },
+    "systemd-repart": {
+      "present": true,
+      "version": "systemd 261 (261.3-1-arch)"
+    },
+    "bootctl": {
+      "present": true,
+      "version": "systemd 261 (261.3-1-arch)"
+    },
+    "clang": {
+      "present": true,
+      "version": "clang version 22.1.8"
+    },
+    "bpftool": {
+      "present": true,
+      "version": "bpftool v7.8.0"
+    },
+    "rustc": {
+      "present": true,
+      "version": "rustc 1.98.1 (48a229cea 2026-09-01) (Arch Linux rust 1:1.98.1-1.1)"
+    },
+    "cargo": {
+      "present": true,
+      "version": "cargo 1.98.1 (797e8a9bc 2026-08-05) (Arch Linux rust 1:1.98.1-1.1)"
+    },
+    "node": {
+      "present": true,
+      "version": "v26.8.2"
+    },
+    "pnpm": {
+      "present": true,
+      "version": "10.29.3"
+    },
+    "cosign": {
+      "present": true,
+      "version": "{"
+    },
+    "mkosi": {
+      "present": false,
+      "version": null
+    },
+    "firecracker": {
+      "present": false,
+      "version": null
+    },
+    "sbsign": {
+      "present": false,
+      "version": null
+    },
+    "tpm2_pcrread": {
+      "present": false,
+      "version": null
+    },
+    "scx_schedulers": {
+      "present": true,
+      "version": "distribution scx package (scx_cake, scx_rusty, scx_bpfland, scx_lavd)"
+    },
+    "ovmf_secboot_firmware": {
+      "present": true,
+      "version": "/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd"
+    }
+  }
+}

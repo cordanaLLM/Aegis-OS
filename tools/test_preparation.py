@@ -132,6 +132,23 @@ class PreparationTests(unittest.TestCase):
         }
         (self.root / "planning/candidates.json").write_text(json.dumps(data))
 
+    def write_profile(self, **overrides):
+        data = {
+            "schema_version": 1,
+            "evidence_class": "Development evidence only. It closes no gate.",
+            "cpu": {"model": "reference cpu"},
+            "capabilities": {
+                name: {
+                    "present": name not in ("realtime_kernel", "secure_boot_enrolment"),
+                    "evidence_command": "ls /dev/null",
+                }
+                for name in check.PROFILE_CAPABILITIES
+            },
+        }
+        data.update(overrides)
+        (self.root / "planning/hardware-profile.json").write_text(json.dumps(data))
+        return data
+
     def test_privacy_guard_rejects_tracked_working_data(self):
         self.git_init()
         check.verify_privacy()
@@ -152,6 +169,7 @@ class PreparationTests(unittest.TestCase):
         self.write_licensing({})
         self.write_roadmap([self.milestone("M00", 0, "ready")])
         self.write_register()
+        self.write_profile()
         out = io.StringIO()
         argv = ["verify_preparation.py", "--readiness"]
         with patch.object(sys, "argv", argv), patch.object(check, "LICENSE_TEXTS", {}):
@@ -431,3 +449,78 @@ class RoadmapStateTests(unittest.TestCase):
         with patch.object(state, "MAX_BYTES", 1):
             with self.assertRaises(ValueError):
                 state.milestone_state("M00", self.path)
+
+
+class HardwareProfileTests(unittest.TestCase):
+    """Positive, negative and boundary coverage for the reference profile record."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.patch = patch.object(check, "ROOT", self.root)
+        self.patch.start()
+        self.addCleanup(self.patch.stop)
+        (self.root / "planning").mkdir()
+
+    def write(self, **overrides):
+        data = {
+            "schema_version": 1,
+            "evidence_class": "Development evidence only. It closes no gate.",
+            "cpu": {"model": "reference cpu"},
+            "capabilities": {
+                name: {"present": name != "realtime_kernel", "evidence_command": "ls /dev/null"}
+                for name in check.PROFILE_CAPABILITIES
+            },
+        }
+        data.update(overrides)
+        (self.root / "planning/hardware-profile.json").write_text(json.dumps(data))
+        return data
+
+    def milestone(self, support, requires):
+        return [{"id": "M20", "reference_profile": {"support": support, "requires": requires}}]
+
+    def test_complete_profile_and_supported_claim_pass(self):
+        self.write()
+        self.assertTrue(check.verify_hardware_profile(self.milestone("full", ["kvm", "tpm2"])))
+
+    def test_evidence_class_and_schema_are_required(self):
+        self.write(schema_version=2)
+        with self.assertRaises(ValueError):
+            check.verify_hardware_profile([])
+        self.write(evidence_class="Qualifies the hardware for release.")
+        with self.assertRaises(ValueError):
+            check.verify_hardware_profile([])
+
+    def test_capability_set_and_shape_are_exact(self):
+        data = self.write()
+        caps = dict(data["capabilities"])
+        caps.pop("kvm")
+        self.write(capabilities=caps)
+        with self.assertRaises(ValueError):
+            check.verify_hardware_profile([])
+        caps = dict(data["capabilities"])
+        caps["kvm"] = {"present": "yes", "evidence_command": "ls"}
+        self.write(capabilities=caps)
+        with self.assertRaises(ValueError):
+            check.verify_hardware_profile([])
+        caps["kvm"] = {"present": True}
+        self.write(capabilities=caps)
+        with self.assertRaises(ValueError):
+            check.verify_hardware_profile([])
+
+    def test_machine_identifiers_are_rejected(self):
+        self.write(hostname="workstation")
+        with self.assertRaises(ValueError):
+            check.verify_hardware_profile([])
+
+    def test_milestone_claims_are_bounded_by_the_profile(self):
+        self.write()
+        with self.assertRaises(ValueError):
+            check.verify_hardware_profile(self.milestone("full", ["realtime_kernel"]))
+        with self.assertRaises(ValueError):
+            check.verify_hardware_profile(self.milestone("full", ["time_travel"]))
+        self.assertTrue(
+            check.verify_hardware_profile(self.milestone("partial", ["realtime_kernel"]))
+        )
+        self.assertTrue(check.verify_hardware_profile([{"id": "M02"}]))
