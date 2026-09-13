@@ -1342,13 +1342,13 @@
       "epics": [
         {
           "id": "E24-1",
-          "title": "Imago result consumed and verified",
+          "title": "Externally supplied artifact verified before boot",
           "requirement_ids": [
             "REQ-P01-01",
             "REQ-P01-06",
             "REQ-P01-08"
           ],
-          "acceptance": "Positive: digest and signature verify locally. Negative: a tampered image digest or bad signature is rejected. Boundary: a producer version exactly at the floor is accepted, and one below is rejected."
+          "acceptance": "Positive: the supplied artifact's digest and signature verify locally before any boot, whether it is a pinned upstream distribution image or an Imago return. Negative: a tampered digest or a bad signature is refused before boot, not during it. Boundary: a producer version exactly at the floor is accepted and one below is refused. Under decision D72 this milestone owns the harness and the boot evidence; consuming and verifying an actual Imago result is M11's."
         },
         {
           "id": "E24-2",
@@ -1516,7 +1516,7 @@
       "exit_criteria": [
         "Hardware: a host with readable RAPL counters and KVM; the host model and kernel are recorded",
         "Toolchain admission: Firecracker (and the jailer, if used) is selected through the template matrix with a pinned version before any microVM run",
-        "Unblocking evidence: measured RAPL energy deltas replace the simulated wattage in the M05 engine; a measured microVM boot time and memory footprint replace the scaffold literals; one AF_VSOCK candidate evaluation round-trips",
+        "Unblocking evidence: measured RAPL energy deltas replace the simulated wattage in the M05 engine, and one AF_VSOCK candidate evaluation round-trips, proving the sandbox path works. The measured microVM boot time and memory footprint are M22's under decision D71: this milestone proves the path, M22 measures it and records which VMM produced each figure.",
         "Scope: these are host-fixture measurements; re-measurement inside an Aegis image is a later acceptance and is not claimed",
         "Measured RAPL energy deltas from the sysfs energy counter replace the simulated wattage constant in the M05 engine: at least two reads of /sys/class/powercap/intel-rapl:0/energy_uj separated by a recorded interval, with the host model (AMD Ryzen 9 9950X3D) and kernel (7.2.4-1-cachyos) recorded beside them.",
         "The reader handles counter rollover explicitly, with a boundary test against the measured max_energy_range_uj of 65532610987 uJ; a wrap must produce a correct positive delta and not a negative or absurd one.",
@@ -1658,22 +1658,22 @@
       "epics": [
         {
           "id": "E22-1",
-          "title": "RAPL-backed carbon telemetry",
+          "title": "Measured microVM boot time and footprint, each naming its VMM",
           "requirement_ids": [
-            "REQ-P13-02",
-            "REQ-P13-01"
+            "REQ-P10-01",
+            "REQ-P10-04",
+            "REQ-P10-05"
           ],
-          "acceptance": "Positive: SCI is computed from measured energy. Negative: unreadable counters fail closed with an error, not a default value. Boundary: counter wraparound between two samples yields a correct positive delta."
+          "acceptance": "Positive: a measured boot time and memory footprint replace the scaffold literals that M06 carried as unmeasured, and each figure records which VMM produced it. Negative: a figure carrying no VMM identity is refused rather than recorded, and Firecracker and QEMU microvm numbers are never presented as interchangeable (D58). Boundary: the sandbox VMM's device passthrough limits are read from the pinned release rather than assumed, and Firecracker's absence of PCI passthrough sends that work to the QEMU harness rather than being worked around."
         },
         {
           "id": "E22-2",
-          "title": "Firecracker and AF_VSOCK sandboxing",
+          "title": "AF_VSOCK transport measured on the admitted VMM",
           "requirement_ids": [
-            "REQ-P10-01",
             "REQ-P10-03",
             "REQ-P16-04"
           ],
-          "acceptance": "Positive: a microVM boots and the candidate evaluation round-trips over AF_VSOCK. Negative: a microVM request above the memory limit is refused. Boundary: the 64th microVM on real KVM is accepted and the 65th refused."
+          "acceptance": "Positive: one candidate evaluation round-trips over the measured transport with /dev/vhost-vsock and CONFIG_VHOST_VSOCK=m recorded as the mechanism, and the figure names its VMM. Negative: the transport is not assumed from the round-trip M21 proved -- a measurement taken on a different VMM than the one recorded is refused. Boundary: a pass here is development evidence on the reference profile and closes no hardware gate."
         }
       ],
       "evidence": [],
@@ -1806,15 +1806,12 @@
         },
         {
           "id": "E11-2",
-          "title": "Real boot evidence replaces the simulated script",
+          "title": "The Imago artifact runs through the unchanged M24 harness",
           "requirement_ids": [
-            "REQ-BOOT-01",
-            "REQ-BOOT-02",
             "REQ-P01-05",
-            "REQ-P02-02",
-            "REQ-P02-01"
+            "REQ-P01-01"
           ],
-          "acceptance": "Positive: PCR values are read back from swtpm, and the verity root hash matches. Negative: a modified root image fails verity and does not boot to the established state. Boundary: a PCR policy that omits PCR 11 fails to unseal /var. The imported script is not used."
+          "acceptance": "Positive: the Imago artifact is fed to the M24 harness with no change to the harness, and the harness reports the same evidence shape it reported for a pinned upstream image. Negative: no second boot apparatus is built here -- a change to the harness fails this milestone rather than being absorbed into it. Boundary: under decision D72 the real boot evidence is M24's epic and the A/B transfer is E11-4's; what this milestone adds is the artifact and the proof that the harness needed nothing new to accept it."
         },
         {
           "id": "E11-3",

@@ -1162,11 +1162,14 @@ swtpm, and retain the console log and PCR readback. No image is constructed.
 
 Epics:
 
-- **E24-1 Imago result consumed and verified**. Requirements: REQ-P01-01,
-  REQ-P01-06, REQ-P01-08. Acceptance: Positive: digest and signature verify
-  locally. Negative: a tampered image digest or bad signature is rejected.
-  Boundary: a producer version exactly at the floor is accepted, and one below
-  is rejected.
+- **E24-1 Externally supplied artifact verified before boot**. Requirements:
+  REQ-P01-01, REQ-P01-06, REQ-P01-08. Acceptance: Positive: the supplied
+  artifact's digest and signature verify locally before any boot, whether it
+  is a pinned upstream distribution image or an Imago return. Negative: a
+  tampered digest or a bad signature is refused before boot, not during it.
+  Boundary: a producer version exactly at the floor is accepted and one below
+  is refused. Under decision D72 this milestone owns the harness and the boot
+  evidence; consuming and verifying an actual Imago result is M11's.
 - **E24-2 Real boot evidence replaces the simulated script**. Requirements:
   REQ-BOOT-01, REQ-BOOT-02, REQ-P01-05, REQ-P02-02, REQ-P02-01. Acceptance:
   Positive: PCR values are read back from swtpm, and the verity root hash
@@ -1339,15 +1342,24 @@ record measured boot time, footprint and one AF_VSOCK round trip.
 
 Epics:
 
-- **E22-1 RAPL-backed carbon telemetry**. Requirements: REQ-P13-02, REQ-P13-01.
-  Acceptance: Positive: SCI is computed from measured energy. Negative:
-  unreadable counters fail closed with an error, not a default value. Boundary:
-  counter wraparound between two samples yields a correct positive delta.
-- **E22-2 Firecracker and AF_VSOCK sandboxing**. Requirements: REQ-P10-01,
-  REQ-P10-03, REQ-P16-04. Acceptance: Positive: a microVM boots and the
-  candidate evaluation round-trips over AF_VSOCK. Negative: a microVM request
-  above the memory limit is refused. Boundary: the 64th microVM on real KVM is
-  accepted and the 65th refused.
+- **E22-1 Measured microVM boot time and footprint, each naming its VMM**.
+  Requirements: REQ-P10-01, REQ-P10-04, REQ-P10-05. Acceptance: Positive: a
+  measured boot time and memory footprint replace the scaffold literals that
+  M06 carried as unmeasured, and each figure records which VMM produced it.
+  Negative: a figure carrying no VMM identity is refused rather than recorded,
+  and Firecracker and QEMU microvm numbers are never presented as
+  interchangeable (D58). Boundary: the sandbox VMM's device passthrough limits
+  are read from the pinned release rather than assumed, and Firecracker's
+  absence of PCI passthrough sends that work to the QEMU harness rather than
+  being worked around.
+- **E22-2 AF_VSOCK transport measured on the admitted VMM**. Requirements:
+  REQ-P10-03, REQ-P16-04. Acceptance: Positive: one candidate evaluation
+  round-trips over the measured transport with /dev/vhost-vsock and
+  CONFIG_VHOST_VSOCK=m recorded as the mechanism, and the figure names its
+  VMM. Negative: the transport is not assumed from the round-trip M21 proved
+  -- a measurement taken on a different VMM than the one recorded is refused.
+  Boundary: a pass here is development evidence on the reference profile and
+  closes no hardware gate.
 
 ### M26 - Aegis-built kernel with the pinned configuration
 
@@ -1997,12 +2009,15 @@ Epics:
   locally. Negative: a tampered image digest or bad signature is rejected.
   Boundary: a producer version exactly at the floor is accepted, and one below
   is rejected.
-- **E11-2 Real boot evidence replaces the simulated script**. Requirements:
-  REQ-BOOT-01, REQ-BOOT-02, REQ-P01-05, REQ-P02-02, REQ-P02-01. Acceptance:
-  Positive: PCR values are read back from swtpm, and the verity root hash
-  matches. Negative: a modified root image fails verity and does not boot to the
-  established state. Boundary: a PCR policy that omits PCR 11 fails to unseal
-  /var. The imported script is not used.
+- **E11-2 The Imago artifact runs through the unchanged M24 harness**.
+  Requirements: REQ-P01-05, REQ-P01-01. Acceptance: Positive: the Imago
+  artifact is fed to the M24 harness with no change to the harness, and the
+  harness reports the same evidence shape it reported for a pinned upstream
+  image. Negative: no second boot apparatus is built here -- a change to the
+  harness fails this milestone rather than being absorbed into it. Boundary:
+  under decision D72 the real boot evidence is M24's epic and the A/B transfer
+  is E11-4's; what this milestone adds is the artifact and the proof that the
+  harness needed nothing new to accept it.
 - **E11-3 Analyzer gate without suppression in the image path**. Requirements:
   REQ-CI-01. Acceptance: Positive: the M03 gate passes on the image inputs.
   Negative: an ignored-key diagnostic fails the image acceptance. Boundary: no
@@ -2775,6 +2790,16 @@ Open decisions:
   Separately and not in question: E22-1 duplicates E21-1's RAPL telemetry epic
   while M22's own criteria never mention RAPL, so that copy is simply wrong
   and belongs to M21.
+  **Decision (2026-09-13):** Split by what each milestone does. M21 proves the
+  sandbox path -- a microVM boots, one AF_VSOCK candidate evaluation
+  round-trips, an over-limit request is refused -- and keeps E21-2. M22
+  measures it: E22-1 is the boot time and memory footprint with each figure
+  naming its VMM per D58, and E22-2 is the AF_VSOCK transport measured on the
+  admitted VMM. M22's copy of the RAPL epic is gone; that work was only ever
+  M21's. M21's unblocking-evidence criterion now defers the measured boot time
+  and footprint to M22 rather than claiming them too, so the two milestones no
+  longer overlap on the figures either.
+
 - **D72** Which milestone owns the Imago-result and boot-evidence epics, M11
   or M24? Options: M24, which builds the harness over an externally supplied
   artifact and states that artifact may be a pinned distribution image or an
@@ -2784,6 +2809,15 @@ Open decisions:
   E11-1/E24-1 and E11-2/E24-2 are byte-identical pairs, so the two milestones
   claim the same acceptance while their criteria describe a deliberate
   division of labour. Found by the same sweep as D71.
+  **Decision (2026-09-13):** Split by where the work happens. M24 owns the
+  harness and the real boot evidence: E24-1 becomes verification of whatever
+  artifact is supplied, upstream image or Imago return, and E24-2 keeps the
+  boot evidence. M11 owns the Imago result: E11-1 is unchanged, and E11-2
+  becomes the claim its own criterion already made -- that the harness is
+  reused unchanged and no second boot apparatus is built. The A/B transfer
+  stays E11-4's, which already held it. This keeps M24 deliverable now on a
+  pinned upstream image rather than waiting on Imago.
+
 - export-001 f32a74743af5ab85c0682a5384cf01b71b0e9e2878d8f8ce09a6d592211e4ea5
 - export-002 7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91
 - export-003 13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c
