@@ -56,7 +56,10 @@
         "commit 4d0d798 (canonical remote declared)",
         "commit 42a23c8 (component inventory enrichment and governance-only CI gate)",
         "git ls-remote --heads origin: refs/heads/main 42a23c8",
-        "private preparation verification log: PASS, preparation/governance only"
+        "private preparation verification log: PASS, preparation/governance only",
+        "34cdaee (roadmap)",
+        "hosted ruleset praetor-main-protection active with required check Preparation gate",
+        "Preparation gate CI green on main"
       ]
     },
     {

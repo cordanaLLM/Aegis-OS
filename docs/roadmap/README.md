@@ -16,7 +16,8 @@ Current verified state at revision time:
 
 - LICENSE, LICENSES/, LICENSING.md and REUSE.toml are committed (a2c9626).
 - The component inventory enrichment and a governance-only CI gate are committed (42a23c8).
-- `origin` resolves to https://github.com/cordanaLLM/Aegis-OS.git with main at 42a23c8, read back with `git ls-remote`. Hosted ruleset readback is not verified.
+- `origin` resolves to https://github.com/cordanaLLM/Aegis-OS.git, read back with `git ls-remote`. The hosted ruleset `praetor-main-protection` is active on `main` and reads back as deletion and non-fast-forward protection, linear history, pull requests, and the required `Preparation gate` status check.
+- Every milestone and epic is mirrored as a GitHub milestone and a `roadmap` issue; `planning/roadmap.json` stays the source of truth.
 - No Cargo.toml is tracked, and the crates/*/ directories contain no crate files.
 - planning/components.json lists all sixteen components as `proposal`, with activation blockers and cheapest first slices.
 - The private readiness matrix records the Imago/Nucleus edges as declared but unverified, and the configured producer origins as not resolving.
