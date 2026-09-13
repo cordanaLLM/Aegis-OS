@@ -12,6 +12,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aegis-hestia"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "aegis-janus-lifecycle"
 version = "0.1.0"
 dependencies = [
@@ -29,6 +38,15 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "aegis-vulcan"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
  "thiserror",
 ]
 

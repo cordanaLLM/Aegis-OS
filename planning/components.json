@@ -150,12 +150,10 @@
         "scaffold/crates/aegis-vulcan/src/main.rs"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent",
-        "not listed in the proposed Cargo workspace members",
-        "real hardware or emulator evidence for each listed hardware requirement"
+        "a P03 component daemon; crates/aegis-vulcan holds the validation arithmetic, the bounds and the two consumer descriptors, and is not the direct-DMA driver",
+        "real BAR mapping, VFIO container, IOMMU domain and NVMe or GPU peer-to-peer transfer, all absent by design at M17",
+        "a transport for the P09 and P15 descriptors, stubbed until M12 and bound to a real DMA-BUF export path at M25",
+        "real hardware or emulator evidence for each listed hardware requirement; the reference profile records the peer-to-peer requirement as missing"
       ],
       "cheapest_first_slice": {
         "description": "Extract the pure validation/arithmetic logic already present in export-038's UserSpacePcieDriver (BAR-alignment check, block-count bounds check 1..=8192, and the lock-less ring-buffer index update `ring_tail = (ring_tail + 1) % NVME_RING_SIZE`) into a standard, testable Rust crate/module (add `crates/aegis-vulcan` to t",
@@ -163,7 +161,10 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "Positive: a config with `bar0_phys_addr` a multiple of 4096 and `block_count` in [1,8192] maps successfully and returns `block_count * 512` bytes transferred with `ring_tail` incremented by exactly 1 (mod NVME_RING_SIZE). Negative: `bar0_ph"
-      }
+      },
+      "decisions": [
+        "D22: joins the workspace member list, settled by acting on it at M17"
+      ]
     },
     {
       "id": "P04",
@@ -870,12 +871,11 @@
         "scaffold/ui/hestia-app/src/App.svelte"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent",
-        "not listed in the proposed Cargo workspace members",
-        "UI package manifest, lockfile, and axe-core test setup absent",
+        "a P15 component daemon; crates/aegis-hestia models the store state machine, the overlay controller and the D09 boundary, and is neither the store nor the shell",
+        "a real PGlite instance, its WebAssembly runtime and the Btrfs @pglite subvolume, all absent by design at M17",
+        "UI package manifest, lockfile, and axe-core test setup absent; D09 makes P15 two halves and only the Rust half exists",
+        "UI toolchain pin (D10)",
+        "a transport for the P04 overlay registration, stubbed until M12",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],
       "cheapest_first_slice": {
@@ -886,7 +886,8 @@
         "verification": "Positive: initialize() on a fresh PgliteVectorStore sets is_initialized=true and allocated_buffer_mb==PGLITE_OPFS_BUFFER_MB (256); query_vector_embeddings() after initialize() with limit=5 returns Ok(5). Negative: calling query_vector_embed"
       },
       "decisions": [
-        "D09: Rust crate plus Svelte package with a typed boundary"
+        "D09: Rust crate plus Svelte package with a typed boundary; the Rust half and the boundary payload are delivered at M17",
+        "D22: joins the workspace member list, settled by acting on it at M17"
       ]
     },
     {

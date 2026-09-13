@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "aegis-vulcan"
+description = "Aegis OS P03 validation slice: BAR alignment, NVMe block-count bounds and the lock-less ring index, plus the typed P03 to P09 weight-streaming and P03 to P15 media-ingest descriptors. No VFIO, no DMA, no transport."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

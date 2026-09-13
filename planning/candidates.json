@@ -127,7 +127,8 @@
       "component": "P03",
       "language": "rust",
       "proposed_paths": [
-        "crates/aegis-vulcan/src/main.rs"
+        "crates/aegis-vulcan/src/ validation slice and P03 consumer descriptors (M17)",
+        "crates/aegis-vulcan/tests/"
       ],
       "in_proposed_workspace": false,
       "manifest_present": false,
@@ -147,13 +148,12 @@
         }
       ],
       "missing": [
-        "crates/aegis-vulcan/Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
-        "workspace membership decision (open decision D22)",
-        "boundary tests for BAR alignment, block-count bounds and ring-buffer index",
-        "IOMMU, VFIO, NVMe and GPU peer-to-peer evidence"
+        "a P03 component daemon (aegis-vulcan validates the arithmetic and the bounds and is not the driver)",
+        "real BAR mapping, VFIO container, IOMMU domain and NVMe or GPU peer-to-peer transfer, all absent by design at M17",
+        "a transport for either consumer descriptor, stubbed until M12",
+        "IOMMU, VFIO, NVMe and GPU peer-to-peer evidence; the reference profile records the peer-to-peer requirement as missing"
       ],
-      "note": "Boundary row: absent from the ten export-006 members and from the export-007 directory map (REQ-WS-01)."
+      "note": "Boundary row at M01: absent from the ten export-006 members and from the export-007 directory map (REQ-WS-01). Settled at M17 by acting on open decision D22: crates/aegis-vulcan is a written-out member of the workspace root Cargo.toml and Cargo.lock carries the crate, so a workspace-wide cargo invocation now reaches it. manifest_present stays false because verify_candidates() reads that flag as a component-activation claim rather than as a filesystem fact, and P03 is not activated: the crate holds the validation arithmetic and the two consumer descriptors, not the direct-DMA driver the subsystem is."
     },
     {
       "candidate_id": "C04",
@@ -557,7 +557,8 @@
       "component": "P15",
       "language": "rust",
       "proposed_paths": [
-        "crates/aegis-hestia/src/main.rs"
+        "crates/aegis-hestia/src/ storage and vector logic, the D09 boundary payload and the P04 registration (M17)",
+        "crates/aegis-hestia/tests/"
       ],
       "in_proposed_workspace": false,
       "manifest_present": false,
@@ -577,13 +578,12 @@
         }
       ],
       "missing": [
-        "crates/aegis-hestia/Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
-        "workspace membership decision (open decision D22)",
-        "typed boundary to the Svelte package (D09, applied in M17)",
-        "boundary test for the vector-store initialisation and the 1..=100 query limit"
+        "a P15 component daemon (aegis-hestia models the store and the overlay and is neither)",
+        "a real PGlite instance, its WebAssembly runtime and the Btrfs @pglite subvolume, all absent by design at M17",
+        "a Wayland connection and a wlr-layer-shell binding; the transport stays stubbed until M12",
+        "real hardware or emulator evidence for each listed hardware requirement"
       ],
-      "note": "Boundary row: absent from export-006; export-007 maps P15 to ui/hestia-app only. Rust half of D09."
+      "note": "Boundary row at M01: absent from export-006; export-007 maps P15 to ui/hestia-app only. Rust half of D09, delivered at M17 together with the typed boundary the decision asks for (HestiaView). Settled at M17 by acting on open decision D22: crates/aegis-hestia is a written-out member of the workspace root Cargo.toml and Cargo.lock carries the crate. manifest_present stays false because verify_candidates() reads that flag as a component-activation claim rather than as a filesystem fact, and P15 is not activated: D09 makes it two halves and the Svelte half has no package manifest, lockfile or accessibility test."
     },
     {
       "candidate_id": "C16",
@@ -613,10 +613,9 @@
         "ui/hestia-app/package.json",
         "JavaScript lockfile",
         "accessibility test",
-        "typed boundary to the Rust crate (D09)",
         "UI toolchain pin (D10)"
       ],
-      "note": "UI half of D09. Not applicable to export-006: that workspace declares no UI package."
+      "note": "UI half of D09. Not applicable to export-006: that workspace declares no UI package. The Rust side of the typed boundary exists from M17 (aegis_hestia::HestiaView, a versioned snapshot payload); nothing on this side consumes it yet, and this half is what keeps P15 a proposal."
     },
     {
       "candidate_id": "C17",
