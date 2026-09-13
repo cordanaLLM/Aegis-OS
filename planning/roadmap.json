@@ -1260,25 +1260,24 @@
       "epics": [
         {
           "id": "E23-1",
-          "title": "Compositor registry and Tier-1 socket bounds",
+          "title": "Realtime guest kernel provenance and configuration read-back",
           "requirement_ids": [
-            "REQ-P04-04",
-            "REQ-P04-05",
-            "REQ-P04-07",
-            "REQ-P04-08"
+            "REQ-P07-01",
+            "REQ-P07-02",
+            "REQ-P08-08"
           ],
-          "acceptance": "Positive: 256 surfaces and 64 clients are accepted. Negative: the 257th surface is rejected and the 65th client is not admitted. Boundary: a pacing-constant test pins the chosen value."
+          "acceptance": "Positive: the guest boots the kernel this repository builds in M26 and reports CONFIG_PREEMPT_RT from inside itself, with the release string identifying that build and no other. Negative: the same probe on the reference host reports the option not set, so the two readings cannot be confused. Boundary: the reference host is never modified -- any distribution realtime package is downloaded only, with no installation and no bootloader entry (D57), and the guest kernel is an interim source that returns to Nucleus once Nucleus builds against the M18 schema (D70)."
         },
         {
           "id": "E23-2",
-          "title": "wlroots and mesh design decision",
+          "title": "Latency fixture for the P07 and P08 tier thresholds",
           "requirement_ids": [
-            "REQ-P04-01",
-            "REQ-P04-02",
-            "REQ-P04-03",
-            "REQ-P04-06"
+            "REQ-P07-01",
+            "REQ-P07-06",
+            "REQ-P08-02",
+            "REQ-P08-08"
           ],
-          "acceptance": "The decision is recorded. The Zenoh version is selected at activation after checking current upstream, with a mocked transport test: a publish round-trips, a subscriber cannot write back, and an empty key expression is rejected."
+          "acceptance": "Positive: the fixture produces measured figures for the tier thresholds on the realtime guest, replacing the Declared values M07 recorded as unmeasured. Negative: the same fixture run on the non-realtime host is recorded as not satisfying the determinism claim, rather than as a lower number. Boundary: a run at a threshold and one step beyond it are reported differently. Every figure names the kernel that produced it, and a pass is development evidence that closes no hardware gate."
         }
       ],
       "evidence": [],

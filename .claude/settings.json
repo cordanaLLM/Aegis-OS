@@ -7,11 +7,67 @@
           {
             "type": "command",
             "command": "python3",
-            "args": ["${CLAUDE_PROJECT_DIR}/.config/agent/hooks/block_evasion.py"],
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.config/agent/hooks/block_evasion.py"
+            ],
             "timeout": 10
           }
         ]
       }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(make verify-all)",
+      "Bash(make readiness)",
+      "Bash(make verify-rust)",
+      "Bash(make verify-systemd)",
+      "Bash(make verify-mkosi)",
+      "Bash(make verify-kernel)",
+      "Bash(make verify-reuse)",
+      "Bash(make verify-bpf)",
+      "Bash(make verify-sources)",
+      "Bash(cargo test *)",
+      "Bash(cargo build *)",
+      "Bash(cargo clippy *)",
+      "Bash(cargo fmt *)",
+      "Bash(cargo doc *)",
+      "Bash(cargo metadata *)",
+      "Bash(cargo tree *)",
+      "Bash(rustup show *)",
+      "Bash(rustup which *)",
+      "Bash(yamllint *)",
+      "Bash(flake8 *)",
+      "Bash(black --check *)",
+      "Bash(reuse lint)",
+      "Bash(shellcheck *)",
+      "Bash(pre-commit run *)",
+      "Bash(praetorctl audit)",
+      "Bash(praetorctl compile-context --verify)",
+      "Bash(praetorctl state list)",
+      "Bash(praetorctl state status)",
+      "Bash(pkg-config --modversion *)",
+      "Bash(pacman -Qi *)",
+      "Bash(pacman -Qs *)",
+      "Bash(systemctl is-active *)",
+      "Bash(systemctl list-units *)",
+      "Bash(systemctl status *)",
+      "Bash(bpftool version)",
+      "Bash(bpftool prog show *)",
+      "Bash(bpftool struct_ops show *)",
+      "Bash(kubectl get *)",
+      "Bash(kubectl describe *)",
+      "Bash(git worktree list)",
+      "Bash(gh pr checks *)",
+      "Bash(python3 /tmp/claude-1000/*)",
+      "Bash(npx --yes markdownlint-cli2@0.23.2)",
+      "Bash(npx --yes markdownlint-cli2@0.23.2 *)",
+      "Bash(python3 tools/rank_roadmap.py)",
+      "Bash(python3 tools/rank_roadmap.py *)",
+      "Bash(python3 tools/verify_preparation.py)",
+      "Bash(python3 tools/verify_preparation.py *)",
+      "Bash(python3 tools/roadmap_state.py *)",
+      "Bash(python3 -B -m unittest discover -s tools *)"
     ]
   }
 }
