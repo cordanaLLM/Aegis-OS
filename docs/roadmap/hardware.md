@@ -59,17 +59,22 @@ documentation work that runs on any developer machine.
 
 ## Toolchain gaps
 
-| Tool | Needed by | How it is obtained | Pinning |
-| :--- | :--- | :--- | :--- |
-| mkosi | M18, M11 (Imago-owned build, Aegis-side validation only) | pacman -S mkosi. Verified available: 'pacman -Ss ^mkosi$' -> extra/mkosi 27-1. Currently absent: 'command -v m | ANSWER TO Q7. D14 already decided this: mkosi is admitted in Aegis ONLY if M18 needs local validation, otherwi |
-| firecracker (and jailer) | M21, P10 | pacman -S firecracker. Verified available: extra/firecracker 1.17.0-1 and cachyos-extra-znver4/firecracker 1.1 | Pin 1.17.0 in the template matrix before any microVM run, as M21's exit criteria require. Already-installed al |
-| sbsigntools (sbsign, sbverify) | M11, M13 | pacman -S sbsigntools. Verified available: extra/sbsigntools 0.9.5-4. Currently absent: 'command -v sbsign' ex | Pin 0.9.5 alongside QEMU/OVMF/swtpm in the M11 admission step. Note the division of labour: cosign v2.6.3 is a |
-| tpm2-tools | M20, P11, P01 | pacman -S tpm2-tools. Verified available: extra/tpm2-tools 5.8-1. Currently absent: 'command -v tpm2_pcrread t | M20 requires 'tpm2-tools (or the chosen TSS library) selected through the template matrix with a pinned versio |
-| systemd-ukify (ukify, and the packaged systemd-measure) | M11 | pacman -S systemd-ukify. Verified available: core/systemd-ukify 261.3-1. Currently absent: no /usr/bin/ukify, | Must be pinned to exactly the running systemd version (261.3-1) because ukify and the systemd PE/section layou |
-| erofs-utils (mkfs.erofs, dump.erofs, fsck.erofs) | M11, P01, P15 | pacman -S erofs-utils. Verified available: cachyos-extra-znver4/erofs-utils 1.9.4-1.1. Currently absent: 'comm | Pin 1.9.4 if Aegis ever builds the erofs+verity root-a locally; the kernel side is already present (CONFIG_ERO |
-| rustup (pinned Rust toolchain manager) | M02, M14, M03, M18, M15, M05, M06, M17, M07, M08 | pacman -S rustup, then a committed rust-toolchain.toml. Currently absent: 'command -v rustup' exits 1; only th | This is the most widely-needed gap: every Rust milestone from M02 onward carries the clause 'the stable Rust t |
-| OVMF Secure Boot variable-store enrolment tooling (virt-firmware ovmf-vars-generator, or sbctl) | M11, M20 | Install a VARS enrolment tool. Verified gap: 'ls /usr/share/edk2/x64/' lists OVMF_CODE.4m.fd, OVMF_CODE.secboo | The secboot firmware code is present but useless without an enrolled variable store. This is the specific item |
-| Pinned records for already-installed gate tools (clang, bpftool, libbpf, QEMU, swtpm, Node, pnpm, Playwright, cosign, systemd) | M19, M10, M11, M04, M13, M03 | No installation needed. Measured versions: clang 22.1.8, bpftool v7.8.0 with libbpf v1.8, qemu-system-x86_64 1 | Present is not admitted. Every one of these appears in a milestone's 'selected through the template matrix wit |
+The tools the roadmap needs are installed on the reference profile as of
+2026-09-13: mkosi 27, Firecracker 1.17.0 with its jailer, sbsigntools 0.9.5,
+tpm2-tools 5.8, erofs-utils 1.9.4, ukify 261 and virt-firmware 26.9, beside the
+QEMU 11.1.1, swtpm 0.10.2, clang, bpftool, Rust 1.98.1, Node, pnpm and cosign
+that were already present. Each is still admitted through the template matrix
+with a pinned version before the gate that uses it runs; installation is not
+admission.
+
+Three remain deliberately absent:
+
+- `rustup` conflicts with the distribution Rust package. Which one provides the
+  pinned toolchain is decision D61.
+- `sbctl` is an alternative to virt-firmware for the OVMF variable store, which
+  is already installed.
+- `nvidia-fs` would not make GPUDirect Storage demonstrable, because that path
+  is gated to datacentre cards.
 
 ## Component requirements against the profile
 

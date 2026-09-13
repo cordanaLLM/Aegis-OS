@@ -1105,7 +1105,8 @@
         "Positive: the supplied artifact boots headless under QEMU with KVM and the harness captures the console log, the PCR values and the exit status",
         "Negative: an artifact whose digest does not match the pinned value is refused before boot, and a guest that fails to reach the login prompt within the recorded timeout fails the harness",
         "Boundary: the harness is exercised at its timeout, one second under and one second over, and reports the two outcomes differently",
-        "A pass here is development evidence on the reference profile. It closes no image, boot, hardware or release gate, and it is not evidence for M11"
+        "A pass here is development evidence on the reference profile. It closes no image, boot, hardware or release gate, and it is not evidence for M11",
+        "ukify 261, sbsigntools 0.9.5, erofs-utils 1.9.4 and virt-firmware 26.9 are installed on the reference profile for the guest-side key store and unified kernel image signing"
       ],
       "cheapest_exit": "Boot a pinned upstream image headless under QEMU with OVMF and swtpm, and retain the console log and PCR readback. No image is constructed.",
       "epics": [
@@ -1289,7 +1290,7 @@
         "Toolchain admission: QEMU 11.1.1 and the vfio-pci and vfio_iommu_type1 modules are selected through the template matrix with pinned versions before any passthrough run",
         "DMA-BUF export and import is demonstrated end-to-end with measured transfer values replacing the scaffold literals, across at least two of the three vendor drivers, using the unprivileged path: /dev/udmabuf and PRIME export and import through the render nodes",
         "The privileged DMA-BUF heap path (/dev/dma_heap/system, root-only on the reference profile) is recorded separately and never gates an unprivileged run",
-        "drm_sched is recorded as measured, not assumed: amdgpu is the drm_sched provider on the reference profile, i915 is not, and the Intel card serves drm_sched only if it is rebound to the xe driver, which is recorded as a decision before it is relied upon",
+        "drm_sched is recorded as measured, not assumed: amdgpu is the drm_sched provider on the reference profile, i915 is not, and the Intel card serves drm_sched once rebound from i915 to xe, which the installed kernel supports (CONFIG_DRM_XE=m with a PCI alias for this device); the rebind is recorded as a decision before it is relied upon",
         "VFIO BAR mapping is demonstrated by binding a GPU that is the sole occupant of its IOMMU group and that has no connected display output at bind time, both verified and recorded",
         "Resizable BAR state is recorded as measured (BAR1 current size on the discrete card) rather than assumed",
         "A pass here is development evidence on the reference profile and closes no hardware gate"
@@ -1350,7 +1351,8 @@
         "One AF_VSOCK candidate evaluation round-trips over the measured transport, with /dev/vhost-vsock and the CONFIG_VHOST_VSOCK=m module recorded as the mechanism.",
         "Verify against the pinned release before relying on it: the sandbox VMM's device passthrough limits are read from the pinned release documentation rather than assumed",
         "One criterion states that a pass on the reference profile is development evidence only: it does not qualify hardware, does not close the hardware gate, and is not release evidence.",
-        "A pass here is development evidence on the reference profile and closes no hardware gate"
+        "A pass here is development evidence on the reference profile and closes no hardware gate",
+        "Firecracker 1.17.0 and its jailer are installed on the reference profile; the pinned version is recorded at activation"
       ],
       "cheapest_exit": "Run the candidate evaluation sandbox on the admitted VMM and record measured boot time, footprint and one AF_VSOCK round trip.",
       "epics": [
@@ -1694,7 +1696,8 @@
         "The PCR binding is chosen honestly and justified in the evidence: PCR 11 (the UKI) and PCR 0/4 are the defensible local subset, because on the reference profile Secure Boot is disabled and no guest keys are enrolled, so a PCR 7 policy would attest to an unsigned configuration rather than a trusted boot policy.",
         "The emulated and the physical TPM2 are recorded as two distinct measurements and never conflated: a swtpm quote proves the code path, not a hardware root of trust.",
         "One criterion states that a pass on the reference profile is development evidence only: it does not qualify hardware, does not close the hardware or release gate, and attestation rooted in a firmware-verified boot chain is not claimed.",
-        "The quote covers PCR 0, 4, 7 and 11, while the unseal policy binds PCR 0, 4 and 11 only: on the reference profile Secure Boot is disabled, so a PCR 7 policy would attest to that state rather than to a trusted chain (D63)"
+        "The quote covers PCR 0, 4, 7 and 11, while the unseal policy binds PCR 0, 4 and 11 only: on the reference profile Secure Boot is disabled, so a PCR 7 policy would attest to that state rather than to a trusted chain (D63)",
+        "tpm2-tools 5.8 is installed on the reference profile; /dev/tpm0 and /dev/tpmrm0 are group tss, so the PCR read runs privileged unless the developer account joins that group"
       ],
       "cheapest_exit": "Use the M11 VM with swtpm. No physical TPM is required for this milestone.",
       "epics": [

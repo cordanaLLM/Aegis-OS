@@ -29,6 +29,14 @@ version and is never released.
 
 ### Changed (reference profile)
 
+- The image, sandbox, signing and TPM tools the roadmap needs are installed on
+  the reference profile (mkosi 27, Firecracker 1.17.0, sbsigntools 0.9.5,
+  tpm2-tools 5.8, erofs-utils 1.9.4, ukify 261, virt-firmware 26.9) and recorded
+  with their versions; installation is not admission, so each is still pinned
+  through the template matrix before its gate runs. The Intel card is recorded
+  as rebindable from i915 to xe for drm_sched, which the installed kernel
+  supports, and the TPM devices are recorded as group tss so reads run
+  privileged.
 - The roadmap is re-ranked against the reference profile and grows from 22 to 26
   milestones. Four milestones split so a locally verifiable slice no longer
   waits behind one that is not: a boot harness over an externally supplied
