@@ -25,6 +25,31 @@ fn read(name: &str) -> String {
         .unwrap_or_default()
 }
 
+/// Returns every directory under `crates/` that carries a manifest, sorted.
+///
+/// The member list is checked against this rather than against a literal
+/// count. A count has to be edited every time a milestone activates a crate,
+/// and hard-coding it in several crates at once is what made three of them
+/// fail when milestone M05 added two members. What actually needs holding is
+/// the invariant behind the count: every crate directory that has a manifest
+/// is a workspace member, and nothing else is.
+fn crate_directories_with_a_manifest() -> Vec<String> {
+    let Some(root) = workspace_root() else {
+        return Vec::new();
+    };
+    let Ok(entries) = std::fs::read_dir(root.join("crates")) else {
+        return Vec::new();
+    };
+    let mut found: Vec<String> = entries
+        .flatten()
+        .take(64)
+        .filter(|entry| entry.path().join("Cargo.toml").is_file())
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .collect();
+    found.sort_unstable();
+    found
+}
+
 // --- Positive -------------------------------------------------------------
 
 /// Positive: the workspace names this crate as a member (REQ-WS-01, D09).
@@ -105,27 +130,34 @@ fn the_crate_declares_no_binary_target() {
 
 // --- Boundary -------------------------------------------------------------
 
-/// Boundary: the workspace lists exactly the five activated crates.
+/// Boundary: the workspace lists exactly the crate directories that have a
+/// manifest, no more and no fewer.
 ///
-/// Not four and not six: a sixth member would be an activation this milestone
-/// did not review, and a fourth would mean one of M17's two crates fell out.
+/// Not a hard-coded count: the number changes every time a milestone activates
+/// a crate. What must not change is that a directory with a manifest is a
+/// member and nothing else is, so a new crate cannot be built by the workspace
+/// without being named, and a named member cannot vanish from the tree.
 #[test]
-fn the_workspace_lists_exactly_five_members() {
+fn the_workspace_lists_every_crate_with_a_manifest() {
     let manifest = read("Cargo.toml");
-    let members: Vec<&str> = manifest
+    let members: Vec<String> = manifest
         .lines()
-        .filter(|line| line.trim_start().starts_with("\"crates/"))
+        .map(str::trim)
+        .filter(|line| line.starts_with("\"crates/"))
+        .map(|line| line.trim_matches(|c| c == '"' || c == ',').to_owned())
         .collect();
-    assert_eq!(members.len(), 5, "members found: {members:?}");
-    for name in [
-        "aegis-fabrica-defs",
-        "aegis-hestia",
-        "aegis-janus-lifecycle",
-        "aegis-justitia",
-        "aegis-hestia",
-    ] {
+    let directories = crate_directories_with_a_manifest();
+    assert!(!directories.is_empty(), "crates/ must hold manifests");
+    assert_eq!(
+        members.len(),
+        directories.len(),
+        "members {members:?} against directories {directories:?}"
+    );
+    for name in &directories {
         assert!(
-            members.iter().any(|line| line.contains(name)),
+            members
+                .iter()
+                .any(|member| member == &format!("crates/{name}")),
             "the member list must name {name}"
         );
     }

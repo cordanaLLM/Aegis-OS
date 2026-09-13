@@ -517,7 +517,7 @@
         "telemetry payload schema for the P16 consumer",
         "positive, negative and boundary tests"
       ],
-      "note": "Member 8 of the export-006 members array; coverage gap, one blueprint-free source plus one eBPF probe."
+      "note": "Member 8 of the export-006 members array; coverage gap, one blueprint-free source plus one eBPF probe. Milestone M05 makes crates/aegis-tellus a written-out member of the workspace root Cargo.toml and Cargo.lock carries the crate. manifest_present stays false because verify_candidates() reads that flag as a component-activation claim rather than as a filesystem fact, and P13 is not activated: the crate holds the SCI rate arithmetic, the defer threshold, the slice bound and the zone-list wattage seam, not the Kepler eBPF telemetry daemon the component is."
     },
     {
       "candidate_id": "C14",
@@ -642,7 +642,7 @@
         "hash-algorithm trait so that D02 supersedes the ledger named in export-007",
         "signed audit-record schema (M14)"
       ],
-      "note": "Member 10 of the export-006 members array; REQ-P16-07 states the membership explicitly."
+      "note": "Member 10 of the export-006 members array; REQ-P16-07 states the membership explicitly, and milestone M05 acts on it: crates/aegis-athena is a written-out member of the workspace root Cargo.toml and Cargo.lock carries the crate. manifest_present stays false because verify_candidates() reads that flag as a component-activation claim rather than as a filesystem fact, and P16 is not activated: the crate holds the lifecycle, the Pareto gate and the hash chain, and executes no candidate and deploys no update."
     }
   ],
   "contradictions": [

@@ -32,7 +32,7 @@ three UI candidates, and the two declarative-definition candidates (P01, P02)
 whose Rust crates are authorised but unnamed. P15 appears twice because decision
 D09 gives it both a Rust crate and a UI package.
 
-Two facts hold for every row without exception, and both were checked against
+These notes hold for every row without exception, and each was checked against
 the tracked tree rather than inferred:
 
 1. **Recorded on 2026-09-13 at milestone M01, and superseded in part by M02.**
@@ -49,11 +49,12 @@ the tracked tree rather than inferred:
    `crates/aegis-justitia/src/contracts/`, and the hardened unit is a reviewed
    contract file under `crates/aegis-justitia/contracts/`. No transport is
    implemented, so the eBPF and TPM2 gaps in the same row are untouched.
-3. **Every other component still records no manifest and no lockfile.** A
-   `git ls-files` query for manifest and lockfile names returns only the
-   workspace root files and the P06 crate; no other reserved directory tracks
-   anything but its README. `verify_candidates()` fails closed if a row claims
-   otherwise while its component is still a proposal.
+3. **Which components track a manifest and a lockfile is read from the tree,
+   not restated here.** The answer is whatever `git ls-files` reports for
+   `Cargo.toml`, `Cargo.lock`, `package.json` and JavaScript lockfile names at
+   the time of reading, and it grows every time a milestone activates a crate.
+   `verify_candidates()` fails closed if a row claims a manifest or a lockfile
+   while its component is still a proposal.
 
 "In proposed workspace" refers to membership of the ten-member Cargo workspace
 declared by the imported proposal manifest (`export-006`, `6e694e01e136`). It is
@@ -73,11 +74,11 @@ not a repository fact: that workspace is proposal data and is not committed.
 | P10 aegis-vesta | rust | `crates/aegis-vesta/src/main.rs` | yes | export-018 5dbc6d071bbb; export-037 ce490c88081f | crates/aegis-vesta/Cargo.toml; workspace Cargo.toml and Cargo.lock; Wasm runtime selected through the template matrix (D06); both P06 gating paths are recorded and round-trip-tested at M14 (`aegis_justitia::contracts::graph::SandboxAdmissionPath`; D04 stays unresolved) and the behavioural contract tests remain M06 work; thread-per-core runtime decision (open decision D46) |
 | P11 aegis-ludus | rust | `crates/aegis-ludus/src/main.rs` | yes | export-019 b0aa6e54ed57; export-033 531cbdf98eb5 | crates/aegis-ludus/Cargo.toml; workspace Cargo.toml and Cargo.lock; removal of the Steamworks path before activation (D12 and ADR-0002 exclude it); a named rich-presence library (open decision D48); TPM2 evidence for transaction signing |
 | P12 aegis-concordia | css design tokens | `ui/concordia-tokens/concordia-tokens.css` | not applicable | export-020 1748f49bb7f8; export-042 411fb8c2d731; export-023 a0d06b6b8e6c | ui/concordia-tokens/package.json; JavaScript lockfile; accessibility test package (export-023 is quarantined proposal data); focus-ring width applied per D16 (3px token, 2px boundary minimum); confirmation that no monolithic CSS library is introduced (D17) |
-| P13 aegis-tellus | rust | `crates/aegis-tellus/src/main.rs`; `bpf/kepler_power.bpf.c` | yes | export-036 25813d240733; export-048 293357bac7d3 | crates/aegis-tellus/Cargo.toml; workspace Cargo.toml and Cargo.lock; blueprint-level requirement source: the bundle holds no P13 report; telemetry payload schema for the P16 consumer; positive, negative and boundary tests |
+| P13 aegis-tellus | rust | `crates/aegis-tellus/src/` SCI arithmetic, defer threshold, slice table and the zone-list wattage seam (M05); `crates/aegis-tellus/tests/`; `bpf/kepler_power.bpf.c` | yes | export-036 25813d240733; export-048 293357bac7d3 | a P13 component daemon (the crate holds the rate engine half of REQ-P13-08's mapping and is not the Kepler telemetry probe); the kepler_power eBPF probe, uncompiled and unloaded (M19, M10); a measured RAPL delta, which needs a privileged reader because energy_uj is mode 0400 (M21); a D-Bus transport for either outbound edge (M16); blueprint-level requirement source: the bundle holds no P13 report |
 | P14 aegis-hephaestus | rust | `crates/aegis-hephaestus/src/main.rs` | yes | export-021 6a3cda152e6c; export-029 427996186520 | crates/aegis-hephaestus/Cargo.toml; workspace Cargo.toml and Cargo.lock; CAD and solver dependency pins (absent from the export-006 dependency table); licence decision for GPL-licensed solver bindings; positive, negative and boundary tests |
 | P15 aegis-hestia | rust | `crates/aegis-hestia/src/` storage and vector logic, the D09 boundary payload and the P04 registration (M17); `crates/aegis-hestia/tests/` | no (joined the repository workspace at M17, settling D22) | export-022 46cea660df63; export-030 689d175667d6 | a P15 component daemon (the crate models the store and the overlay and is neither); a real PGlite instance, its WebAssembly runtime and the Btrfs @pglite subvolume; a Wayland connection and a wlr-layer-shell binding, stubbed until M12; real hardware or emulator evidence |
 | P15 aegis-hestia | svelte | `ui/hestia-app/src/App.svelte` | not applicable | export-045 359466152a37; export-022 46cea660df63 | ui/hestia-app/package.json; JavaScript lockfile; accessibility test; UI toolchain pin (D10). The Rust side of the D09 boundary exists from M17 (`aegis_hestia::HestiaView`); nothing on this side consumes it yet |
-| P16 aegis-athena | rust | `crates/aegis-athena/src/main.rs` | yes | export-025 6b23723ddb76 | crates/aegis-athena/Cargo.toml; workspace Cargo.toml and Cargo.lock; blueprint-level requirement source: the bundle holds no P16 report; hash-algorithm trait so that D02 supersedes the ledger named in export-007; signed audit-record schema (M14) |
+| P16 aegis-athena | rust | `crates/aegis-athena/src/` seven-stage lifecycle, Pareto gate, SHA-256 checkpoint ledger and the P02 promotion trigger (M05); `crates/aegis-athena/tests/` | yes | export-025 6b23723ddb76 | a P16 component daemon (the crate holds the lifecycle, the gate and the chain and executes no candidate); the P10 Vesta microVM that would run one (M06, M22); a systemd-sysupdate client and a transport for the promotion trigger; a durable, signed ledger sink (M20); blueprint-level requirement source: the bundle holds no P16 report |
 
 Boundary rows, stated explicitly because they are the ones a workspace-wide
 build would silently skip:

@@ -140,7 +140,7 @@ score.
 | 6 | M15 | P02 A/B candidate lifecycle state machine | done | small | no | no | not-hardware | M03 | M24 |
 | 7 | M26 | Aegis-built kernel with the pinned configuration | done | medium | no | no | full | M18 | M23 |
 | 8 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | done | trivial | no | no | not-hardware | M02 | M25 |
-| 9 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | ready | small | no | no | not-hardware | M14 | M19, M21 |
+| 9 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | done | small | no | no | not-hardware | M14 | M19, M21 |
 | 10 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | ready | small | no | no | not-hardware | M14 | M08, M22 |
 | 11 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | blocked | small | no | no | not-hardware | M06 | M25 |
 | 12 | M07 | Real-time control plane: P04, P07 and P08 logic | ready | medium | no | no | not-hardware | M02 | M19, M23 |
@@ -149,7 +149,7 @@ score.
 | 15 | M24 | Local boot harness over an externally supplied artifact | ready | large | yes | no | full | M15 | M11 |
 | 16 | M04 | UI accessibility harness: P12 Concordia tokens | ready | medium | no | no | not-hardware | M02 | M16 |
 | 17 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
-| 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | blocked | small | yes | no | full (privileged read) | M05 | - |
+| 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
 | 19 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | blocked | medium | yes | no | full | M08, M17 | M12 |
 | 20 | M22 | P10 microVM sandbox measurements on KVM | blocked | medium | yes | no | full | M06 | - |
 | 21 | M09 | Cross-repository contract pin: one local request/result pair | ready | small | no | yes | partial | M18 | M11, M10 |
@@ -770,7 +770,7 @@ Epics:
 
 ### M05 - Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle
 
-Rank 9. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 9. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M14. Unblocks: M19, M21.
 
@@ -1023,7 +1023,7 @@ Epics:
 
 ### M21 - Workstation hardware slices: RAPL counters and KVM sandboxing
 
-Rank 18. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 18. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full
 (privileged read). Blocked by: M05. Unblocks: nothing.
 

@@ -763,11 +763,10 @@
         "scaffold/crates/aegis-tellus/src/main.rs"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent",
-        "kernel ABI pin and eBPF verifier evidence absent",
+        "a P13 component daemon; crates/aegis-tellus holds the ISO/IEC 21031:2024 SCI rate arithmetic, the spatiotemporal defer threshold, the bounded cgroup slice table and the zone-list wattage seam, and is neither the Kepler telemetry probe nor the daemon that carries it (M05)",
+        "the kepler_power eBPF probe is not compiled, loaded, verified or attached; kernel ABI pin and verifier evidence absent (M19, M10)",
+        "no RAPL or ACPI counter is read: /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 on the reference profile, so a measured delta needs a privileged reader (M21)",
+        "no D-Bus transport for EMIT_CARBON_TELEMETRY (M16) or SPATIOTEMPORAL_TASK_SHIFT; the payloads are typed at M05 and carried by nothing",
         "no individual blueprint report; evidence limited to architecture documents and trade-off guide",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],
@@ -777,7 +776,11 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "Positive: calculate_sci_rate(0.0025, 1.0) with default grid intensity 220.0 and embodied carbon 0.05 yields the documented ISO/IEC 21031:2024 SCI formula result (E*I+M)/R, asserted against a hand-computed value. Negative: functional_units <"
-      }
+      },
+      "decisions": [
+        "D60: P13 measures the package and core zones only; the reference profile has no dram and no psys zone, DRAM energy is modelled and labelled as modelled, and a request for an absent zone fails explicitly rather than returning zero. Applied at M05 as a zone list on the wattage seam"
+      ],
+      "milestone": "M05"
     },
     {
       "id": "P14",
@@ -929,10 +932,10 @@
         "scaffold/crates/aegis-athena/src/main.rs"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent",
+        "a P16 component daemon; crates/aegis-athena holds the seven-stage candidate lifecycle, the Pareto promotion gate and the SHA-256 hash-chained checkpoint ledger, and is neither the evolution daemon nor anything that executes a candidate (M05)",
+        "no candidate is ever run: the P10 Vesta Firecracker microVM and AF_VSOCK transport REQ-P16-04 names are absent (M06, M22)",
+        "no systemd-sysupdate client and no D-Bus transport for TRIGGER_SYSUPDATE_ROLLBACK; the promotion trigger is typed at M05 and carried by nothing, and StubSysupdate records calls rather than making them",
+        "the checkpoint ledger is in memory and unsigned; no durable sink and no TPM2 sealing (M20)",
         "no individual blueprint report; evidence limited to architecture documents and trade-off guide"
       ],
       "cheapest_first_slice": {
@@ -943,8 +946,9 @@
         "verification": "cargo test --workspace on the aegis-athena crate with `cargo clippy --workspace --all-targets -- -D warnings` (per Makefile `lint` target and DEVELOPER_GUIDE Pre-Flight Check) run positive/negative/boundary cases: positive = a candidate at "
       },
       "decisions": [
-        "D02: SHA-256 ledger behind a trait"
-      ]
+        "D02: SHA-256 ledger behind a trait; MD5 excluded, BLAKE3 only through a later recorded decision. Applied at M05 by making the checkpoint ledger generic over aegis_justitia::LedgerHasher rather than declaring a second hashing boundary"
+      ],
+      "milestone": "M05"
     }
   ],
   "candidate_source_root": ".workingdir/prepared (private, gitignored; paths are relative to it)",

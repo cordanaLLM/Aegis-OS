@@ -13,6 +13,116 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (P13 Tellus SCI and P16 Athena lifecycle, milestone M05)
+
+- The evolution loop stops being two scaffolds that print what they would do.
+  `crates/aegis-tellus` holds the ISO/IEC 21031:2024 SCI rate arithmetic
+  `((E * I) + M) / R`, the spatiotemporal defer threshold and the bounded
+  cgroup slice table; `crates/aegis-athena` holds the seven-stage candidate
+  lifecycle, the Pareto promotion gate and a checkpoint ledger that can
+  actually be re-walked. Both are libraries, both reuse the toolchain milestone
+  M02 admitted, and neither resolves a new third-party crate.
+- The imported P16 ledger was not one. It formatted a JSON line and appended it
+  to a file, with no chain and no digest, while calling itself a BLAKE3
+  hash-chained audit trail; the only reference implementation that hashed
+  anything used SHA-256. Decision D02 settled that, and applying it here meant
+  reusing `aegis_justitia::LedgerHasher` -- the trait M02 created -- rather than
+  declaring a second hashing boundary. The workspace now has one hash
+  implementation, a checkpoint domain tag distinct from the audit one so a P06
+  record cannot be replayed as a P16 checkpoint, and no `blake3`, `md5`, `md-5`
+  or `blake2` entry in the lock.
+- The two `assert!` calls the P16 scaffold guarded its inputs with are
+  refusals now (HISS-07): an empty candidate identifier does not become a
+  value, and a non-positive latency is `AthenaError::Latency`. The scaffold's
+  per-record `String` formatting and its `SystemTime::now()` are gone too --
+  every timestamp arrives as a parameter, which is what lets a chain be rebuilt
+  byte for byte.
+- The SCI fallback cannot produce a NaN, and that is held by a test rather than
+  asserted. Every input reaches the arithmetic through a validating constructor
+  with a recorded bound, a functional-unit count that is not finite and at
+  least 1e-6 is replaced by 1.0, and `SciCalculation::as_rate` refuses anything
+  outside the resulting range. Widening a bound past the point where the
+  division overflows fails the test that drives it at the extremes.
+- The wattage input sits behind a seam, so milestone M21 can substitute a
+  measured RAPL delta without touching any arithmetic. The seam takes a **zone
+  list**, because the reference profile does not have the domains a naive
+  reader would assume: `ls -d /sys/class/powercap/*` yields only `intel-rapl`,
+  `intel-rapl:0` (`package-0`) and `intel-rapl:0:0` (`core`), with no `dram`
+  and no `psys`, and `energy_uj` is mode 0400 under the CVE-2020-8694
+  mitigation. A source refuses a zone it does not carry instead of answering
+  zero, because a silent zero reads downstream as "that domain drew no power"
+  rather than "that domain does not exist" (D60). Every sample carries its
+  provenance, and nothing this milestone produces is labelled measured.
+- Three edges are typed, across four payload schemas, and one record is
+  consumed. The P16-to-P13 SCI query and its response live with the arithmetic
+  that bounds the answer; the P13-to-P07
+  task-shift directive carries the intensity and the threshold it was decided
+  at, so a directive whose verdict does not follow from its own numbers is
+  refused rather than obeyed; the P16-to-P02 promotion trigger refuses an
+  action that does not follow from the stage it reports. The M14 audit record
+  is **not** redefined: `AuditIntake` decodes through
+  `aegis_justitia::SignedAuditRecord`, so every rule M14 wrote applies
+  unchanged and the one rule this side adds is which recorded decision admits a
+  promotion.
+  The one P13 edge left untyped, `EMIT_CARBON_TELEMETRY` to P05 Forum, is in
+  the vocabulary without a schema on purpose -- its payload is milestone M16
+  work, and `EdgeId::typed_at_m05` is where that is written down rather than
+  assumed.
+- An empty candidate list is a refusal, not an answer. An empty rate list and
+  "no candidate exceeded its bound" are the same bytes to a consumer that does
+  not look closely, and P16 promotes on that answer.
+- Three crates stopped asserting how many workspace members there are. The
+  literal had to be edited in `aegis-justitia`, `aegis-vulcan` and
+  `aegis-hestia` at once when this milestone added two, which is duplicated
+  mutable state of exactly the kind the repository already has a gate against.
+  The invariant behind the count -- a crate directory with a manifest is a
+  member, and nothing else is -- is derived from the tree instead.
+- Neither component is activated, on the same judgement M03, M15 and M17 made.
+  `aegis-tellus` is the rate-engine half of REQ-P13-08's mapping and compiles,
+  loads and attaches no eBPF probe, reads no counter and opens no bus;
+  `aegis-athena` runs no candidate, invokes no `systemd-sysupdate` and writes no
+  file. `planning/components.json` records each crate against the component's
+  activation blockers rather than as the component.
+- Every recorded provenance label is now pinned, and the sentence around it is
+  the one the tests hold. Two rules decide a label, because one does not cover
+  all four arms of `SimulatedWattage::recorded`: a zone the reference profile
+  exposes takes the weakest of its figure's ingredients rather than the
+  strongest, so `package-0` -- whose constant folds the modelled DRAM figure
+  into a simulated core constant -- is `Simulated`; a zone the profile exposes
+  no counter for is `Modelled` by D60's definition of that variant whatever
+  figure stands in, so `dram` and `psys` are both `Modelled` even though `psys`
+  carries the same `package-0` constant. The earlier wording claimed the DRAM
+  figure was labelled modelled *wherever it appears*, which was an absolute no
+  test could falsify and which the package constant contradicted. All four arms
+  of `SimulatedWattage::recorded` are now asserted, so flipping any one of them
+  in either direction fails.
+- The effect sweeps gained a second check, and the workspace gained three
+  lints. The two named lists in each crate's `tests/stubbed_effects.rs` are a
+  gate over an enumeration and nothing more: a planted
+  `std::net::UdpSocket::bind` and a planted `std::env::var` read both walked
+  past them. Beside the lists each crate now holds the property that no line of
+  code under `src/` names `std::` at all -- every `use` is `core::`, `crate::`,
+  `serde::` or a workspace crate -- and both planted lines fail that. It is a
+  check over the text of `src/` and not a proof that no effect is reachable:
+  the standard macro prelude writes to a file descriptor without naming
+  `std::`, so `println!`, `eprintln!`, `print!`, `eprint!` and `dbg!` walk past
+  both sweeps. `print_stdout`, `print_stderr` and `dbg_macro` are denied in
+  `[workspace.lints.clippy]` for that reason, which no source file in the
+  workspace had to change for. A planted `println!` and a planted `eprintln!`
+  pass both sweeps and fail clippy.
+- The contract payload bound is pinned to its recorded figure, and the two
+  crates are checked against each other. Every refusal is written relative to
+  `MAX_CONTRACT_PAYLOAD_BYTES`, which is correct and which also meant the
+  constant could move without failing anything; it is the one recorded literal
+  in this milestone that no test held. Both crates now assert the figure and
+  assert that they agree, and a payload of exactly the bound is exercised as
+  inside it rather than only bound-plus-one as outside.
+- `aegis-justitia` keeps asserting the workspace's package metadata. Deriving
+  the member count from the tree had dropped the root manifest's `resolver`,
+  `license` and `repository` assertions as collateral; they are their own test
+  now, because the resolver version changes feature unification across the
+  whole workspace and the other two are inherited by every crate.
+
 ### Added (library abort sweep)
 
 - `make verify-all` now refuses an abort in any activated crate's library code.
