@@ -114,8 +114,10 @@ language/interface needs and pin contracts before activating a consumer.
 - Inspect `.workingdir/STATE.md` and `OPEN.md` on entry; track discrete work with
   `praetorctl state task`, and finish with `praetorctl state sync .`.
 - Use Lefthook for verification/checkpoints. Commit reviewed public preparation
-  changes locally with sign-off. This repository has no remote; remote creation
-  and publication remain outside the current task.
+  changes with sign-off. The canonical remote is `origin` at
+  `https://github.com/cordanaLLM/Aegis-OS`; `main` is protected by the generated
+  ruleset, so changes land through pull requests from checkpoint or topic
+  branches. Publishing images or releases remains a separate blocked gate.
 - Stage implementation only after its component manifest, dependency lock,
   interface contract, and real positive/negative/boundary checks exist. The
   development environment must select those requirements through the template

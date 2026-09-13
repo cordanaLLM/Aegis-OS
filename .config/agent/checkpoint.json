@@ -4,7 +4,7 @@
   "commit_after_minutes": 30,
   "commit_after_files": 20,
   "on_stop": true,
-  "publish": false,
+  "publish": true,
   "remote": "origin",
   "base": "main",
   "repository": "cordanaLLM/Aegis-OS",
@@ -19,5 +19,5 @@
     "test/",
     "ci/"
   ],
-  "require_pr": false
+  "require_pr": true
 }
