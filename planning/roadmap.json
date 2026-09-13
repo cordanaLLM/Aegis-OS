@@ -272,9 +272,88 @@
       }
     },
     {
+      "id": "M14",
+      "title": "P06 consumer interface contracts and hardened unit contract",
+      "rank": 3,
+      "state": "done",
+      "blocked_by": [
+        "M02"
+      ],
+      "unblocks": [
+        "M05",
+        "M06",
+        "M16",
+        "M20"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P06",
+        "P05",
+        "P09",
+        "P16"
+      ],
+      "exit_criteria": [
+        "D03's direction half (the P06/P09 action gate is propose/intercept) is closed and D04 (P06 to P10 syscall intercept) is recorded; D03's transport half stays open and is carried as dispute DSP-03 against open decision D26, which this milestone does not touch",
+        "Versioned schemas exist for the DecisionRequest (P06 to P05), the action proposal (P09 and P06, direction per D03) and the signed audit record (P06 to P16); each schema has contract tests with positive, negative and boundary payloads",
+        "The justitia-interceptor unit stays a declarative contract (IPAddressDeny=any) and is not installed or executed",
+        "Uses the Rust toolchain admitted in M02; no new toolchain; `make verify-all` passes"
+      ],
+      "cheapest_exit": "Write the three schemas as typed Rust structs with serde round-trip tests. No transport is implemented.",
+      "epics": [
+        {
+          "id": "E14-1",
+          "title": "Action-gate direction decision and action proposal contract",
+          "requirement_ids": [
+            "REQ-P09-03",
+            "REQ-P09-05",
+            "REQ-GRAPH-04",
+            "REQ-GRAPH-02"
+          ],
+          "acceptance": "Positive: a signed, well-formed proposal round-trips. Negative: an unsigned or malformed proposal is rejected. Boundary: a proposal at the maximum field lengths is accepted, and one byte over is rejected."
+        },
+        {
+          "id": "E14-2",
+          "title": "DecisionRequest and audit record contracts",
+          "requirement_ids": [
+            "REQ-GOV-03",
+            "REQ-P06-08",
+            "REQ-P06-10",
+            "REQ-P16-03"
+          ],
+          "acceptance": "Positive: both schemas round-trip. Negative: an unknown schema version is rejected. Boundary: an audit record whose previous hash is the all-zero genesis value is accepted only as the first record. The PLD effective date is tracked as an external deadline."
+        },
+        {
+          "id": "E14-3",
+          "title": "Hardened unit contract",
+          "requirement_ids": [
+            "REQ-P06-02"
+          ],
+          "acceptance": "Positive: the unit file declares IPAddressDeny=any. Negative: a review check fails if the directive is removed. Boundary: the unit is not installed or started in this milestone."
+        }
+      ],
+      "evidence": [
+        "crates/aegis-justitia/src/contracts/: the three consumer schemas as typed Rust structs with an explicit contract version each -- ActionProposal (P09 Minerva to P06, aegis.p09-p06.action-proposal.v1), DecisionRequest (P06 to P05 Forum, aegis.p06-p05.decision-request.v1) and SignedAuditRecord (P06 to P16 Athena, aegis.p06-p16.audit-record.v1); every field is a validated bounded type, unknown fields are denied, and every field of a decoded payload lands in a fixed inline buffer -- all three schema types are Copy, so a decoded value owns no heap. Decoding is not unconditionally allocation-free and the crate no longer claims that it is: no contract path allocates for an escape-free payload, but JSON permits the solidus in a target path to be written as an escape sequence and serde_json unescapes any such string into a heap scratch buffer, so an admissible payload that decodes to the same value does allocate. The scratch and the decoder's own error value are transient and bounded by MAX_CONTRACT_PAYLOAD_BYTES, because a longer payload is refused before it is parsed; falsified and bounded by tests/allocation_bounds.rs, which asserts the borrowed-versus-copied split over all three decoders rather than avoiding the case",
+        "Round-trip, refusal and boundary contract tests in tests/contract_action_proposal.rs, tests/contract_decision_request.rs, tests/contract_audit_record.rs and tests/contract_encoding.rs: serialise then deserialise is identity against a golden payload text per schema, every refusal carries a correlated ContractError, and the boundary payloads sit exactly on the declared bounds (identifier 64/65 bytes, target 256/257, approval window 1 and 86400 seconds against 0 and 86401, payload 4096/4097 bytes, signature 512/513 bytes, genesis link at sequence 1 only); a malformed schema value -- out of the identifier charset, one byte past MAX_IDENTITY_LEN, or not a string at all -- is refused with its correlation intact rather than anonymously, and only input that is not JSON at all refuses uncorrelated; verified by cargo test --locked --all-features, 158 tests, exit 0",
+        "D03's direction half closed in code, its transport half explicitly not: contracts::graph::GateDirection admits only MinervaProposesJustitiaIntercepts and ActionProposal::DIRECTION carries it, so a payload asserting the opposite direction does not decode, while the graph edge identifier ACTION_GATE_INTERCEPT is kept unchanged. The code record is split to match the roadmap record: D03_ACTION_GATE_DIRECTION is DecisionState::Closed, D03_ACTION_GATE_TRANSPORT is DecisionState::Unresolved and names DSP-03/D26, and D03_ACTION_GATE is the pair rather than one settled decision, so no tracked file reports D03 as closed as a whole; verified by tests/contract_graph_decisions.rs",
+        "D04 recorded as unresolved in code: contracts::graph::D04_SANDBOX_GATE is DecisionState::Unresolved and SandboxAdmissionPath keeps both readings representable, with a decision-register sweep over the direct P06 to P10 path (SYSCALL_INTERCEPT, supported by export-002 only and absent from the graph of record) and the transitive path through P09 (ACTION_GATE_INTERCEPT then EXECUTE_WASMED_CAPSULE, both in the graph). Scope limit: that sweep reads a static table of hops and citations, it is not a behavioural contract test -- no payload crosses either path and no sandbox execution is admitted or refused -- and the behavioural contract for both paths stays M06 work; verified by tests/contract_graph_decisions.rs",
+        "crates/aegis-justitia/contracts/justitia-interceptor.service is a declarative contract file whose header states it is a contract and not an installed unit; contracts::unit::review refuses the text when IPAddressDeny=any, another required hardening directive or the CONTRACT-ONLY marker is removed, and is_installed_path shows the file is not at a path systemd loads units from; verified by tests/contract_unit.rs. Nothing installs, enables or starts it, the ExecStart binary is not built, and the crate still declares no [[bin]]",
+        "serde 1.0.229 and serde_json 1.0.151 became non-optional dependencies of the crate at the versions Cargo.lock already pinned (both the current crates.io releases checked on 2026-09-13), so the default build gate covers the consumer schemas rather than only the all-features run; no new dependency and no toolchain change, Rust 1.98.1 from rust-toolchain.toml; verified by cargo fmt --check, cargo build --locked, cargo clippy --locked --all-targets --all-features -- -D warnings and RUSTDOCFLAGS=-D warnings cargo doc --locked --no-deps, all exit 0",
+        "make verify-all at this revision: the Python preparation tests, tools/verify_preparation.py, the ranking controller, praetorctl compile-context --verify, praetorctl audit and the workspace crate gate all pass, reporting preparation/governance scope only",
+        "Scope limit: schemas only. No transport is implemented anywhere -- no D-Bus, no Unix socket, no eBPF program and no TPM2 signing -- and no transport is decided either, which is the weaker of the two statements: DSP-03 still records three transports for the P06/P09 edge and stays open against decision D26; a signature field is a field encoding and this crate neither produces nor verifies a signature. The unit is a contract file, not an installed unit. This is development evidence from one workstation and closes no blocked gate: M16, M19, M10 and M20 remain blocked and this milestone claims none of their evidence"
+      ],
+      "reference_profile": {
+        "support": "not-hardware",
+        "requires": [],
+        "rationale": "Unmoved. Highest score in the whole graph at (1+11)/2 = 6.0; the profile changes nothing about it because it is pure schema work."
+      }
+    },
+    {
       "id": "M03",
       "title": "P01/P02 definitions validated offline with host systemd",
-      "rank": 3,
+      "rank": 4,
       "state": "ready",
       "blocked_by": [
         "M02"
@@ -349,77 +428,7 @@
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
-        "rationale": "Unmoved at rank 4, score (1+9)/2 = 5.0. The profile confirms rather than changes it: both gates run today on the precise systemd version the negative and boundary cases were observed on, so the 'Unknown key ... ignoring' and exit-1 expectations are reproducible rather than remembered. mkosi's absence is irrelevant here \u2014 M03's own criteria say mkosi is not used in this milestone."
-      }
-    },
-    {
-      "id": "M14",
-      "title": "P06 consumer interface contracts and hardened unit contract",
-      "rank": 4,
-      "state": "ready",
-      "blocked_by": [
-        "M02"
-      ],
-      "unblocks": [
-        "M05",
-        "M06",
-        "M16",
-        "M20"
-      ],
-      "cost": "small",
-      "needs_hardware": false,
-      "needs_external_contract": false,
-      "owner_repo": "cordanaLLM/Aegis-OS",
-      "subsystems": [
-        "P06",
-        "P05",
-        "P09",
-        "P16"
-      ],
-      "exit_criteria": [
-        "D03 (direction and transport of the P06/P09 action gate) is closed and D04 (P06 to P10 syscall intercept) is recorded",
-        "Versioned schemas exist for the DecisionRequest (P06 to P05), the action proposal (P09 and P06, direction per D03) and the signed audit record (P06 to P16); each schema has contract tests with positive, negative and boundary payloads",
-        "The justitia-interceptor unit stays a declarative contract (IPAddressDeny=any) and is not installed or executed",
-        "Uses the Rust toolchain admitted in M02; no new toolchain; `make verify-all` passes"
-      ],
-      "cheapest_exit": "Write the three schemas as typed Rust structs with serde round-trip tests. No transport is implemented.",
-      "epics": [
-        {
-          "id": "E14-1",
-          "title": "Action-gate direction decision and action proposal contract",
-          "requirement_ids": [
-            "REQ-P09-03",
-            "REQ-P09-05",
-            "REQ-GRAPH-04",
-            "REQ-GRAPH-02"
-          ],
-          "acceptance": "Positive: a signed, well-formed proposal round-trips. Negative: an unsigned or malformed proposal is rejected. Boundary: a proposal at the maximum field lengths is accepted, and one byte over is rejected."
-        },
-        {
-          "id": "E14-2",
-          "title": "DecisionRequest and audit record contracts",
-          "requirement_ids": [
-            "REQ-GOV-03",
-            "REQ-P06-08",
-            "REQ-P06-10",
-            "REQ-P16-03"
-          ],
-          "acceptance": "Positive: both schemas round-trip. Negative: an unknown schema version is rejected. Boundary: an audit record whose previous hash is the all-zero genesis value is accepted only as the first record. The PLD effective date is tracked as an external deadline."
-        },
-        {
-          "id": "E14-3",
-          "title": "Hardened unit contract",
-          "requirement_ids": [
-            "REQ-P06-02"
-          ],
-          "acceptance": "Positive: the unit file declares IPAddressDeny=any. Negative: a review check fails if the directive is removed. Boundary: the unit is not installed or started in this milestone."
-        }
-      ],
-      "evidence": [],
-      "reference_profile": {
-        "support": "not-hardware",
-        "requires": [],
-        "rationale": "Unmoved. Highest score in the whole graph at (1+11)/2 = 6.0; the profile changes nothing about it because it is pure schema work."
+        "rationale": "Unmoved at rank 4, score (1+9)/2 = 5.0. The profile confirms rather than changes it: both gates run today on the precise systemd version the negative and boundary cases were observed on, so the 'Unknown key ... ignoring' and exit-1 expectations are reproducible rather than remembered. mkosi's absence is irrelevant here — M03's own criteria say mkosi is not used in this milestone."
       }
     },
     {
@@ -450,7 +459,7 @@
         "No producer repository is contacted; the schemas are Aegis-owned files with positive, negative and boundary tests",
         "The kernel requirement schema is validated positively against planning/hardware-profile.json as a real reference payload, with each asserted feature traceable to its probe command (zgrep /proc/config.gz, /sys/kernel/security/lsm, /sys/kernel/btf/vmlinux, /sys/class/powercap, /sys/kernel/iommu_groups).",
         "Negative case bound to a measured absence: a requirement payload demanding CONFIG_PREEMPT_RT is rejected against the reference profile, whose running kernel reports '# CONFIG_PREEMPT_RT is not set' with CONFIG_PREEMPT_DYNAMIC=y.",
-        "Boundary case: a requirement payload demanding only CONFIG_HZ_1000 is accepted, since the reference profile sets CONFIG_HZ_1000=y while still failing the PREEMPT_RT requirement \u2014 proving the schema discriminates per feature and not per kernel flavour.",
+        "Boundary case: a requirement payload demanding only CONFIG_HZ_1000 is accepted, since the reference profile sets CONFIG_HZ_1000=y while still failing the PREEMPT_RT requirement — proving the schema discriminates per feature and not per kernel flavour.",
         "D56 is recorded: mkosi is not installed and M18 takes D14's 'validate through the Imago result' branch, or mkosi is pinned at extra/mkosi 27-1 which supersedes the register's inherited 'mkosi v24+' row with an exact pin.",
         "mkosi 27 is installed on the reference profile and validates the image definitions locally while Imago remains a scaffold (D56); the validation is Aegis-side and constructs no product image, and it moves to consuming an Imago result once Imago returns real artifacts",
         "The kernel requirement schema expresses the realtime and scheduler options P07 and P08 need (preemption model, timer frequency, sched_ext, BPF LSM, BTF), because Nucleus builds the kernel and a distribution package is only an interim fixture source (D70)"
@@ -494,7 +503,7 @@
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
-        "rationale": "Unmoved at rank 5 but materially cheaper and materially better evidenced. The schema can now be authored against a measured reference payload instead of an invented one, and \u2014 this is the part the profile uniquely enables \u2014 the NEGATIVE case is genuinely falsifiable here: a manifest requiring CONFIG_PREEMPT_RT must be rejected against this host, because `zgrep` returns '# CONFIG_PREEMPT_RT is not "
+        "rationale": "Unmoved at rank 5 but materially cheaper and materially better evidenced. The schema can now be authored against a measured reference payload instead of an invented one, and — this is the part the profile uniquely enables — the NEGATIVE case is genuinely falsifiable here: a manifest requiring CONFIG_PREEMPT_RT must be rejected against this host, because `zgrep` returns '# CONFIG_PREEMPT_RT is not "
       }
     },
     {
@@ -619,14 +628,14 @@
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
-        "rationale": "Moves up two places, 9 -> 7. Its only consumer used to be M12, the most deeply blocked milestone in the graph (needs Imago, Nucleus AND hardware this machine lacks). With the M12 split, M17 now feeds M25, which is locally executable on the reference profile. Its descendants stay 2 and its cost stays trivial, so score is unchanged at 3.0 \u2014 the movement is the availability change: its output stops b"
+        "rationale": "Moves up two places, 9 -> 7. Its only consumer used to be M12, the most deeply blocked milestone in the graph (needs Imago, Nucleus AND hardware this machine lacks). With the M12 split, M17 now feeds M25, which is locally executable on the reference profile. Its descendants stay 2 and its cost stays trivial, so score is unchanged at 3.0 — the movement is the availability change: its output stops b"
       }
     },
     {
       "id": "M05",
       "title": "Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle",
       "rank": 8,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M14"
       ],
@@ -648,7 +657,7 @@
         "The Athena 7-stage state machine and Pareto predicate are tested at exact thresholds; the ledger is ported to Rust with the D02 algorithm",
         "Edge contracts are typed with negative tests for malformed payloads: P16 to P13 candidate SCI query, P16 to P02 promotion trigger, and consumption of the M14 audit record",
         "The SCI engine's wattage input is behind a seam with a recorded simulated constant, so that M21 can substitute a measured RAPL delta without touching the arithmetic under test.",
-        "The seam accepts a zone list, because the reference profile exposes only package-0 and core and has no dram or psys zone \u2014 the engine must not assume a DRAM domain exists (D60)."
+        "The seam accepts a zone list, because the reference profile exposes only package-0 and core and has no dram or psys zone — the engine must not assume a DRAM domain exists (D60)."
       ],
       "cheapest_exit": "Extract the arithmetic and state machines into lib targets and mock all I/O.",
       "epics": [
@@ -708,7 +717,7 @@
       "id": "M06",
       "title": "Agent execution chain logic: P09 Minerva and P10 Vesta",
       "rank": 9,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M14"
       ],
@@ -1038,7 +1047,7 @@
         "Negative: removing the ringbuf NULL check or an unroll bound makes the verifier reject the object. Boundary: a struct_ops load with all handlers stubbed succeeds where the host exposes sched_ext",
         "This is a non-qualifying local fixture: a host or stock kernel cannot close the Nucleus-kernel verification in M10",
         "The three pinned tool versions are recorded from the reference profile before the first compile: clang 22.1.8 (`clang -print-targets` listing bpf, bpfeb, bpfel), bpftool v7.8.0 and libbpf v1.8.",
-        "The verifier log is retained for every load, positive and negative, and the negative case is proven by the log rejecting the object \u2014 not by a non-zero exit code alone: removing the ringbuf NULL check or an unroll bound must produce a named verifier rejection in the log.",
+        "The verifier log is retained for every load, positive and negative, and the negative case is proven by the log rejecting the object — not by a non-zero exit code alone: removing the ringbuf NULL check or an unroll bound must produce a named verifier rejection in the log.",
         "The scx_cake struct_ops boundary load explicitly attaches AND detaches on the host kernel, and the pre-existing scheduler is recorded and restored: /sys/kernel/sched_ext/root/ops reads `ghostbrew` before the test, the stubbed scheduler during it, and `ghostbrew` again after, with nr_rejected and switch_all captured at each point. Only one scx scheduler can hold root/ops, so this is a deliberate disruptive step, not a background one (D67).",
         "The host kernel identity and config are recorded as observed facts: 7.2.4-1-cachyos PREEMPT_DYNAMIC, CONFIG_SCHED_CLASS_EXT=y, CONFIG_BPF_LSM=y, CONFIG_DEBUG_INFO_BTF=y, with the probe command beside each.",
         "The provenance of bpf/scx_cake.bpf.c is recorded against extra/scx-scheds 1.1.3-2, which already installs /usr/bin/scx_cake on the reference profile: either an upstream fork with its commit pinned, or an Aegis original (D66).",
@@ -1077,7 +1086,7 @@
       "reference_profile": {
         "support": "full",
         "requires": [],
-        "rationale": "Rank unchanged at 12 \u2014 it was already correctly placed and its blockers M05/M07 hold it there \u2014 but its RISK changes completely and that is worth recording. Before the profile, 'the objects load through the verifier on the host kernel' was an assumption. Now all three loads are confirmed executable: action_gate can attach to lsm/bprm_check_security because bpf is in the ACTIVE LSM list (CONFIG_BPF"
+        "rationale": "Rank unchanged at 12 — it was already correctly placed and its blockers M05/M07 hold it there — but its RISK changes completely and that is worth recording. Before the profile, 'the objects load through the verifier on the host kernel' was an assumption. Now all three loads are confirmed executable: action_gate can attach to lsm/bprm_check_security because bpf is in the ACTIVE LSM list (CONFIG_BPF"
       }
     },
     {
@@ -1354,7 +1363,7 @@
         "Measured RAPL energy deltas from the sysfs energy counter replace the simulated wattage constant in the M05 engine: at least two reads of /sys/class/powercap/intel-rapl:0/energy_uj separated by a recorded interval, with the host model (AMD Ryzen 9 9950X3D) and kernel (7.2.4-1-cachyos) recorded beside them.",
         "The reader handles counter rollover explicitly, with a boundary test against the measured max_energy_range_uj of 65532610987 uJ; a wrap must produce a correct positive delta and not a negative or absurd one.",
         "The zone enumeration is recorded as measured, not assumed: `ls -d /sys/class/powercap/*` on the reference profile yields only intel-rapl, intel-rapl:0 (package-0) and intel-rapl:0:0 (core). A negative test asserts that a request for a dram or psys zone fails explicitly rather than silently returning zero (D60).",
-        "The privileged-read path is recorded: energy_uj is mode 0400 (CVE-2020-8694 mitigation), so the criterion names whether the reader runs as root, holds CAP_DAC_OVERRIDE, or uses a privileged daemon \u2014 and an unprivileged read is a negative test that must fail.",
+        "The privileged-read path is recorded: energy_uj is mode 0400 (CVE-2020-8694 mitigation), so the criterion names whether the reader runs as root, holds CAP_DAC_OVERRIDE, or uses a privileged daemon — and an unprivileged read is a negative test that must fail.",
         "Accuracy is stated honestly in the retained evidence: AMD RAPL is a model-based estimate derived from activity counters, not a measured power rail, so only same-zone deltas are treated as trustworthy and absolute watts carry vendor-defined error.",
         "One criterion states that a pass on the reference profile is development evidence only: it does not qualify hardware, does not close the hardware gate, and is not release evidence; re-measurement inside an Aegis image remains a later acceptance.",
         "The energy counter read is privileged: /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 on the reference profile, so the measurement runs as root and the unprivileged gate records only that the counter exists"
@@ -1393,7 +1402,7 @@
       "reference_profile": {
         "support": "full (privileged read)",
         "requires": [],
-        "rationale": "Moves up five places, 18 -> 13, and is SPLIT. It was ranked 18 on the assumption that its needs_hardware flag meant procurement-blocked; the hardware is entirely present and measured, and it has no external contract anywhere in its ancestry. M21 is now reduced to the energy half, whose only blocker is M05 (P13/P16 logic) \u2014 dropping M06 from blocked_by, since M06 is P09/P10 and belonged to the micr"
+        "rationale": "Moves up five places, 18 -> 13, and is SPLIT. It was ranked 18 on the assumption that its needs_hardware flag meant procurement-blocked; the hardware is entirely present and measured, and it has no external contract anywhere in its ancestry. M21 is now reduced to the energy half, whose only blocker is M05 (P13/P16 logic) — dropping M06 from blocked_by, since M06 is P09/P10 and belonged to the micr"
       }
     },
     {
@@ -1671,7 +1680,7 @@
       "reference_profile": {
         "support": "partial",
         "requires": [],
-        "rationale": "Down five places, 16 -> 21, and SPLIT, with its cost dropping large -> medium. The split is the substantive change: the boot-evidence apparatus moves to M24 where it can be built and proven on the reference profile today, and M11 keeps only what genuinely requires Imago \u2014 receiving a real artifact, verifying its digest and signature, and running the already-proven harness against it. blocked_by ch"
+        "rationale": "Down five places, 16 -> 21, and SPLIT, with its cost dropping large -> medium. The split is the substantive change: the boot-evidence apparatus moves to M24 where it can be built and proven on the reference profile today, and M11 keeps only what genuinely requires Imago — receiving a real artifact, verifying its digest and signature, and running the already-proven harness against it. blocked_by ch"
       }
     },
     {
@@ -1738,7 +1747,7 @@
       "reference_profile": {
         "support": "partial",
         "requires": [],
-        "rationale": "Down five places, 17 -> 22, on the same category demotion as M09 \u2014 its blocker is an external contract, not hardware. Its blocked_by gains M23, because M23 builds and proves the direct-kernel-boot harness that M10's own cheapest_exit describes; reusing it is strictly cheaper than rebuilding it under external-contract pressure. Ordering holds: M23 at 19 and M19 at 12 both rank below 22. The profile"
+        "rationale": "Down five places, 17 -> 22, on the same category demotion as M09 — its blocker is an external contract, not hardware. Its blocked_by gains M23, because M23 builds and proves the direct-kernel-boot harness that M10's own cheapest_exit describes; reusing it is strictly cheaper than rebuilding it under external-contract pressure. Ordering holds: M23 at 19 and M19 at 12 both rank below 22. The profile"
       }
     },
     {
@@ -1834,7 +1843,7 @@
         "Unblocking evidence: per-path logs with measured values (DMA transfer, preemption and VRAM residency) replacing every hardcoded literal in the scaffolds",
         "The P2PDMA precondition is stated as a measured absence with its probe: `ls -d /sys/bus/pci/devices/*/p2pdma` returns no matches on the reference profile, so no p2pmem provider exists and this path cannot be evidenced here at any cost in effort.",
         "The hardware dependency is named concretely rather than as 'a suitable GPU': a CMB-capable enterprise NVMe controller or a datacentre-class GPU, recorded as a procurement item with the reason (GPUDirect Storage and RDMA are not offered on GeForce AD102).",
-        "Per D59, every P03/P09 exit criterion phrased as 'CUDA GPUDirect' is either reframed to DMA-BUF plus host-mediated BAR transfer \u2014 which M25 evidences on this profile \u2014 or explicitly deferred to real datacentre hardware; no criterion is allowed to read as satisfied by the RTX 4090.",
+        "Per D59, every P03/P09 exit criterion phrased as 'CUDA GPUDirect' is either reframed to DMA-BUF plus host-mediated BAR transfer — which M25 evidences on this profile — or explicitly deferred to real datacentre hardware; no criterion is allowed to read as satisfied by the RTX 4090.",
         "The DMA-BUF and VFIO results from M25 are consumed as inputs and explicitly not re-derived; what this milestone adds is re-measurement inside a booted Aegis image plus the P2P path.",
         "One criterion states that any pass obtained on the reference profile is development evidence only and that the P2P scaffold literals stay literals until the named hardware exists."
       ],
@@ -1877,7 +1886,7 @@
       "reference_profile": {
         "support": "partial",
         "requires": [],
-        "rationale": "Down three places, 21 -> 24, and SPLIT \u2014 but the movement understates the change. The two paths that ARE evidenceable on this machine left for M25 at rank 17, and what remains is only the P2PDMA path plus in-image re-verification. blocked_by becomes [M25, M10, M11]; M08 and M17 are now transitive through M25 and are dropped under the direct-blockers-only rule. M12 keeps its large cost and its last"
+        "rationale": "Down three places, 21 -> 24, and SPLIT — but the movement understates the change. The two paths that ARE evidenceable on this machine left for M25 at rank 17, and what remains is only the P2PDMA path plus in-image re-verification. blocked_by becomes [M25, M10, M11]; M08 and M17 are now transitive through M25 and are dropped under the direct-blockers-only rule. M12 keeps its large cost and its last"
       }
     },
     {
@@ -1934,7 +1943,7 @@
       "reference_profile": {
         "support": "partial",
         "requires": [],
-        "rationale": "Down six places, 19 -> 25, to last. It is the sole category-5 milestone and the stated order puts release behind everything. This is also the strictest reading of the rule the maintainer set: a local pass on one developer machine is never release evidence, so the reference profile cannot move this milestone at all \u2014 it can only make the milestones ahead of it finish sooner. Its cheapest_exit (reco"
+        "rationale": "Down six places, 19 -> 25, to last. It is the sole category-5 milestone and the stated order puts release behind everything. This is also the strictest reading of the rule the maintainer set: a local pass on one developer machine is never release evidence, so the reference profile cannot move this milestone at all — it can only make the milestones ahead of it finish sooner. Its cheapest_exit (reco"
       }
     }
   ],

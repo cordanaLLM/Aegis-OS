@@ -118,7 +118,8 @@ First-component justification (rule 3): P06 aegis-justitia is promoted first
 - P06 is not a committed crate: M02 must first create the workspace root,
   because the only workspace listing is the proposal export-006.
 - M02 is trimmed to the decision engine. The consumer contracts and unit
-  contract move to M14, which also closes D03.
+  contract move to M14, which also closes D03's direction half. D03's
+  transport half stays open as DSP-03 against decision D26.
 
 ## Ranked milestones
 
@@ -302,7 +303,7 @@ Evidence:
 
 ### M02 - First component promoted end-to-end: P06 aegis-justitia decision engine
 
-Rank 2. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS. Needs
+Rank 2. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS. Needs
 hardware: no. Needs external contract: no. Reference profile: not-hardware.
 Blocked by: M01. Unblocks: M14, M03, M17, M07, M04.
 
@@ -364,14 +365,39 @@ Epics:
 
 ### M14 - P06 consumer interface contracts and hardened unit contract
 
-Rank 4. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 3. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M05, M06, M16, M20.
 
+Delivered: `crates/aegis-justitia/src/contracts/` holds the three versioned
+schemas as typed Rust structs -- the action proposal from P09 Minerva, the
+decision request to P05 Forum and the signed audit record to P16 Athena -- each
+with an explicit contract-version tag, a stable field encoding and a decoder
+that lands every field in a fixed inline buffer and names the payload every
+refusal refers to, including refusals whose version tag is itself unreadable.
+D03's direction half is closed in the type system and D04 is recorded as
+unresolved with both admission paths kept representable. The hardened unit stays
+a contract file at `crates/aegis-justitia/contracts/justitia-
+interceptor.service`, reviewed by library code and installed nowhere.
+
+Not delivered, and not claimed: any transport. There is no D-Bus connection, no
+socket, no eBPF program and no TPM2 signing; a signature field is a field
+encoding, and nothing in the crate produces or verifies one. Nor is a transport
+decided, which is the weaker and separate statement: D03's transport half stays
+open, DSP-03 still records three transports for the P06/P09 edge, and decision
+D26 carries it. Nor is either Vesta admission path behaviourally contract-tested
+-- the D04 tests sweep a decision register, and M06 owns the admission contract.
+Decoding is not unconditionally allocation-free either: an escape-free payload
+costs no heap, an admissible JSON escape costs a bounded scratch copy inside
+`serde_json`, and `tests/allocation_bounds.rs` asserts the difference. M16, M19,
+M10 and M20 remain blocked.
+
 Exit criteria:
 
-- D03 (direction and transport of the P06/P09 action gate) is closed and D04
-  (P06 to P10 syscall intercept) is recorded
+- D03's direction half (the P06/P09 action gate is propose/intercept) is closed
+  and D04 (P06 to P10 syscall intercept) is recorded; D03's transport half stays
+  open and is carried as dispute DSP-03 against open decision D26, which this
+  milestone does not touch
 - Versioned schemas exist for the DecisionRequest (P06 to P05), the action
   proposal (P09 and P06, direction per D03) and the signed audit record (P06 to
   P16); each schema has contract tests with positive, negative and boundary
@@ -404,7 +430,7 @@ Epics:
 
 ### M03 - P01/P02 definitions validated offline with host systemd
 
-Rank 3. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 4. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M18, M15.
 
@@ -556,7 +582,7 @@ Epics:
 
 ### M17 - Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates
 
-Rank 7. State: blocked. Cost: trivial. Owner repository: cordanaLLM/Aegis-OS.
+Rank 7. State: ready. Cost: trivial. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M25.
 
@@ -598,7 +624,7 @@ Epics:
 
 ### M05 - Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle
 
-Rank 8. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 8. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M14. Unblocks: M19, M21.
 
@@ -647,7 +673,7 @@ Epics:
 
 ### M06 - Agent execution chain logic: P09 Minerva and P10 Vesta
 
-Rank 9. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 9. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M14. Unblocks: M08, M22.
 
@@ -732,7 +758,7 @@ Epics:
 
 ### M07 - Real-time control plane: P04, P07 and P08 logic
 
-Rank 11. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 11. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M19, M23.
 
@@ -965,7 +991,7 @@ Epics:
 
 ### M04 - UI accessibility harness: P12 Concordia tokens
 
-Rank 16. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 16. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M16.
 
@@ -1654,7 +1680,14 @@ Open decisions:
   written down. It no longer blocks M02. **Decision (2026-09-13):**
   Propose/intercept semantics: P09 Minerva proposes an action and P06 Justitia
   intercepts and decides; the subsystem graph's edge identifiers are kept (typed
-  in M14).
+  in M14). **Typed (M14):** `aegis_justitia::contracts::graph::GateDirection`
+  admits a single variant, so the settled direction is the only one an action
+  proposal can carry and the opposite reading does not decode; the edge is still
+  named `ACTION_GATE_INTERCEPT`. **Still open:** only the direction was decided.
+  The transport half of this question is untouched -- DSP-03 records three
+  transports for the one edge and is carried as decision D26 -- and the code
+  record is split to say so: `D03_ACTION_GATE_DIRECTION` is closed,
+  `D03_ACTION_GATE_TRANSPORT` is not, and `D03_ACTION_GATE` is the pair.
 - **D04** Does Justitia also gate Vesta sandbox execution (P06 -> P10
   SYSCALL_INTERCEPT)? Options: Yes, add the edge to the graph of record; No,
   Vesta is gated transitively through P09. Recommended: Record as unresolved in
@@ -1662,7 +1695,10 @@ Open decisions:
   (REQ-GRAPH-02). The subsystem graph omits it (REQ-P10-07). **Decision
   (2026-09-13):** Recorded as unresolved in M14; both the direct P06 to P10 path
   and the transitive path through P09 are contract-tested in M06 before the
-  graph is changed.
+  graph is changed. **Recorded (M14):**
+  `aegis_justitia::contracts::graph::D04_SANDBOX_GATE` carries the unresolved
+  state and `SandboxAdmissionPath` keeps both readings representable, each with
+  its hops and its graph membership under test; neither is authoritative.
 - **D05** Which direction is the P05/P12 design-token edge? Options: P12
   produces tokens consumed by P05 (export-002); P05 -> P12 as recorded in
   export-062 (CONSUMES_DESIGN_TOKENS). Recommended: P12 is the producer; keep

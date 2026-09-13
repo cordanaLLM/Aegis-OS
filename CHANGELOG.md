@@ -13,6 +13,49 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (P06 consumer contracts, milestone M14)
+
+- The three edges P06 Justitia speaks over now have versioned schemas as typed
+  Rust structs in `crates/aegis-justitia/src/contracts/`: the action proposal
+  from P09 Minerva, the decision request to P05 Forum and the signed audit
+  record to P16 Athena. Each carries an explicit contract-version tag, refuses
+  unknown fields, and validates every field during decoding through the bounded
+  types the crate already used, so a decoded payload owns no heap at all. Every
+  refusal carries a correlation, and the schema tag and the correlation
+  identifier are read independently, so a version tag one byte outside the
+  identifier charset cannot make the refusal anonymous: a rejected payload can
+  be tied to the conversation it belonged to without logging the payload itself.
+- Decoding is bounded rather than allocation-free, and the documentation now
+  says so. An escape-free payload costs no heap on any contract path, but JSON
+  permits an escape where a target path carries a solidus, and `serde_json`
+  unescapes such a string into a heap scratch buffer; that scratch, and the
+  decoder's own error value on a refusal, are transient and bounded by the
+  4096-byte payload bound, which is enforced before parsing.
+  `tests/allocation_bounds.rs` asserts the difference instead of avoiding the
+  case.
+- Decision D03's direction half is closed in the type system rather than only in
+  prose: the gate direction is a single-variant enum, so a proposal asserting
+  the reading D03 rejected does not decode, while the graph's
+  `ACTION_GATE_INTERCEPT` edge identifier is kept. D03's transport half is not
+  closed and is recorded as open in the same place, so the code record cannot
+  read as broader than the roadmap record; the choice stays with dispute DSP-03
+  and decision D26. Decision D04 is recorded as unresolved, with both Vesta
+  admission paths representable and neither authoritative; the tests over them
+  sweep that decision register, and the behavioural admission contract remains
+  M06 work.
+- The hardened `justitia-interceptor` unit is a declarative contract file at
+  `crates/aegis-justitia/contracts/justitia-interceptor.service`, next to the
+  crate a reader would look in. Its header says it is a contract and not an
+  installed unit, and library code reviews it, so deleting `IPAddressDeny=any`
+  or the contract marker fails a test instead of passing unnoticed. Nothing
+  installs, enables or starts it, and the binary it names is not built.
+- `serde` and `serde_json` became ordinary dependencies of the crate at the
+  versions already pinned, so the default build gate covers the consumer schemas
+  instead of only the all-features run. The JSON Lines ledger renderer stays
+  behind its feature. No transport was implemented and none is implied: there is
+  no D-Bus, no socket, no eBPF and no TPM2 signing, and a signature field is a
+  field encoding rather than a signer.
+
 ### Changed (kernel construction)
 
 - Decision D70 is amended and milestone M26 added: Aegis builds the kernel in
