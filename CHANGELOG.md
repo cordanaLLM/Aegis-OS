@@ -29,6 +29,12 @@ version and is never released.
 
 ### Changed (reference profile)
 
+- Four decisions settled: rustup provides the pinned Rust toolchain (D61), Aegis
+  validates image definitions locally with mkosi while Imago is a scaffold
+  (D56), Firecracker is the sandbox VMM with passthrough left to the QEMU
+  harness (D58), and the UI admits the latest Node major tracked forward (D65).
+  D69 records the project-wide policy of tracking latest upstream releases
+  rather than freezing pins.
 - The image, sandbox, signing and TPM tools the roadmap needs are installed on
   the reference profile (mkosi 27, Firecracker 1.17.0, sbsigntools 0.9.5,
   tpm2-tools 5.8, erofs-utils 1.9.4, ukify 261, virt-firmware 26.9) and recorded

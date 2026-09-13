@@ -219,7 +219,7 @@
         "Audit-ledger hashing sits behind a trait, and the algorithm decision (D02: SHA-256 or BLAKE3; MD5 excluded) is recorded",
         "Out of scope, deferred explicitly: the consumer contracts and the hardened unit contract (M14), eBPF compilation and verifier load (M19, M10), and TPM2 signing (M20)",
         "planning/components.json P06 status is advanced with the evidence path; `make verify-all` passes",
-        "The pinned Rust toolchain is installed through rustup (extra/rustup 1.29.1) and recorded in a committed rust-toolchain.toml; `rustc --version` inside the workspace reports the pinned version and NOT the distribution rustc 1.98.1 observed on the reference profile, and the template matrix row cites both values so the substitution is auditable."
+        "The pinned Rust toolchain is installed through rustup (extra/rustup 1.29.1) and recorded in a committed rust-toolchain.toml; `rustup show active-toolchain` inside the workspace reports the pinned toolchain and `rustup which rustc` resolves to the rustup path rather than /usr/bin/rustc; the pinned release and the distribution release currently carry the same version string because the distribution ships current stable, and the template matrix row cites both values so the substitution is auditable."
       ],
       "cheapest_exit": "Promote the drafted P06 test module into a library crate with a trait boundary for hashing and signing. No TPM2, D-Bus or eBPF.",
       "epics": [
@@ -441,7 +441,8 @@
         "The kernel requirement schema is validated positively against planning/hardware-profile.json as a real reference payload, with each asserted feature traceable to its probe command (zgrep /proc/config.gz, /sys/kernel/security/lsm, /sys/kernel/btf/vmlinux, /sys/class/powercap, /sys/kernel/iommu_groups).",
         "Negative case bound to a measured absence: a requirement payload demanding CONFIG_PREEMPT_RT is rejected against the reference profile, whose running kernel reports '# CONFIG_PREEMPT_RT is not set' with CONFIG_PREEMPT_DYNAMIC=y.",
         "Boundary case: a requirement payload demanding only CONFIG_HZ_1000 is accepted, since the reference profile sets CONFIG_HZ_1000=y while still failing the PREEMPT_RT requirement \u2014 proving the schema discriminates per feature and not per kernel flavour.",
-        "D56 is recorded: mkosi is not installed and M18 takes D14's 'validate through the Imago result' branch, or mkosi is pinned at extra/mkosi 27-1 which supersedes the register's inherited 'mkosi v24+' row with an exact pin."
+        "D56 is recorded: mkosi is not installed and M18 takes D14's 'validate through the Imago result' branch, or mkosi is pinned at extra/mkosi 27-1 which supersedes the register's inherited 'mkosi v24+' row with an exact pin.",
+        "mkosi 27 is installed on the reference profile and validates the image definitions locally while Imago remains a scaffold (D56); the validation is Aegis-side and constructs no product image, and it moves to consuming an Imago result once Imago returns real artifacts"
       ],
       "cheapest_exit": "Author the two schemas and validate them against the M03 files with the Rust toolchain from M02.",
       "epics": [
@@ -1167,7 +1168,8 @@
         "The Playwright and axe-core suite runs headless in a container with zero violations on the default state; it fails when the focus outline is removed; the focus width and contrast boundary follows D16",
         "D17 (Bootstrap fork versus no monolithic CSS) is recorded; no `|| true` in the accessibility gate",
         "The admitted Node, pnpm, Playwright and Svelte versions are committed as lockfiles and the admission explicitly resolves the M01 drift-register row: the reference profile runs Node v26.8.2 and pnpm 10.29.3, neither of which is the register's Node 20 or Node 22, so the row is closed with an exact pin and not inherited (D65).",
-        "The Playwright browser revision is pinned to the version actually exercised; the reference profile has chromium-1228 cached, and the gate must fail rather than silently download a different revision."
+        "The Playwright browser revision is pinned to the version actually exercised; the reference profile has chromium-1228 cached, and the gate must fail rather than silently download a different revision.",
+        "The Node major is the latest release line (26.x on the reference profile) and is tracked forward by Renovate rather than pinned to an older line (D65)"
       ],
       "cheapest_exit": "Build the token file plus one Svelte component and run the axe suite in a container. No compositor and no daemons.",
       "epics": [
@@ -1346,13 +1348,14 @@
         "P16"
       ],
       "exit_criteria": [
-        "D58 is recorded and the chosen VMM is pinned through the template matrix before any microVM run: Firecracker 1.17.0 (extra/firecracker 1.17.0-1, currently absent) or QEMU 11.1.1 with the microvm machine type and MICROVM.4m.fd (already present).",
+        "D58 is decided: Firecracker is the sandbox VMM, pinned through the template matrix before any microVM run (1.17.0 installed on the reference profile, currently absent) or QEMU 11.1.1 with the microvm machine type and MICROVM.4m.fd (already present).",
         "Every measured boot time and memory footprint that replaces a scaffold literal records which VMM produced it; Firecracker and QEMU microvm numbers are never presented as interchangeable.",
         "One AF_VSOCK candidate evaluation round-trips over the measured transport, with /dev/vhost-vsock and the CONFIG_VHOST_VSOCK=m module recorded as the mechanism.",
         "Verify against the pinned release before relying on it: the sandbox VMM's device passthrough limits are read from the pinned release documentation rather than assumed",
         "One criterion states that a pass on the reference profile is development evidence only: it does not qualify hardware, does not close the hardware gate, and is not release evidence.",
         "A pass here is development evidence on the reference profile and closes no hardware gate",
-        "Firecracker 1.17.0 and its jailer are installed on the reference profile; the pinned version is recorded at activation"
+        "Firecracker 1.17.0 and its jailer are installed on the reference profile; the pinned version is recorded at activation",
+        "Firecracker has no PCI passthrough, so passthrough work stays with the QEMU-based harness (D58)"
       ],
       "cheapest_exit": "Run the candidate evaluation sandbox on the admitted VMM and record measured boot time, footprint and one AF_VSOCK round trip.",
       "epics": [
