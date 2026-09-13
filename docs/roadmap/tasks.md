@@ -77,7 +77,11 @@ Status: draft requiring review
 | T71 | REQ-P10-02, REQ-P03-02 | M12 / E12-3: GPU template boundary | M08, M10, M11, M17, T69 | Positive: one backend fixture result is retained, or a not-needed decision is recorded. Negative: a Go library as a direct Rust dependency is rejected. Boundary: an ABI mapping with zero functions is not accepted as a boundary. | cordanaLLM/Aegis-OS |
 | T72 | REQ-P03-07, REQ-P10-02 | M12: Optional candidate template-native-gpu (Golusoris-family template, not accepted): provide or confirm a native/GPU template boundary with ABI mapping and one backend fixture, or record that no Aegis component needs it | M08, M10, M11, M17 | Positive: one retained backend fixture result, or a recorded not-needed decision. Negative: a Go library proposed as a direct Rust dependency is refused. | unassigned |
 
-Dependencies are milestone ids, plus the first task of the same milestone where the work builds on it. A task may start when every listed dependency is done. Owner is the repository that must produce the evidence. `unassigned` marks work that no repository has accepted yet; a proposed producer named in the Work column is not an owner until it accepts the contract.
+Dependencies are milestone ids, plus the first task of the same milestone where
+the work builds on it. A task may start when every listed dependency is done.
+Owner is the repository that must produce the evidence. `unassigned` marks work
+that no repository has accepted yet; a proposed producer named in the Work
+column is not an owner until it accepts the contract.
 
 ## Unresolved work
 

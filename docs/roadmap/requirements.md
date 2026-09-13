@@ -4,7 +4,10 @@ Status: draft requiring review
 
 ## Requirements
 
-Each requirement cites a source id and the first 12 hex characters of its sha256; the verbatim quote is held privately. Requirement text is limited to what the cited span states. Repository facts and inferences are kept in the roadmap and plan prose, not in the requirement text.
+Each requirement cites a source id and the first 12 hex characters of its
+sha256; the verbatim quote is held privately. Requirement text is limited to
+what the cited span states. Repository facts and inferences are kept in the
+roadmap and plan prose, not in the requirement text.
 
 ### P01 aegis-fabrica
 
@@ -273,219 +276,446 @@ Each requirement cites a source id and the first 12 hex characters of its sha256
 
 ## Interfaces and behavior
 
-Graph of record: export-062 (subsystem_graph.json). An edge counts as connected only after it is typed with a schema, correlation id, exact revision and bounded retries, and a result is recorded. Disputed directions are marked, and the contract milestone is named.
+Graph of record: export-062 (subsystem_graph.json). An edge counts as connected
+only after it is typed with a schema, correlation id, exact revision and bounded
+retries, and a result is recorded. Disputed directions are marked, and the
+contract milestone is named.
 
 | Source | Target | Relation | Transport | Contract milestone | Dispute |
 | --- | --- | --- | --- | --- | --- |
-| P01_Fabrica | P02_Janus_Vallum | PRODUCES_UKI_IMAGE | mkosi / sbsign | M18/M09 |  |
-| P02_Janus_Vallum | P06_Justitia | PROVIDES_TPM2_ATTESTATION | Hardware TPM2 PCR | M20 |  |
-| P03_Vulcan | P09_Minerva | GPUDIRECT_WEIGHT_STREAMING | PCIe P2PDMA / CUDA GPUDirect | M17 |  |
+| P01_Fabrica | P02_Janus_Vallum | PRODUCES_UKI_IMAGE | mkosi / sbsign | M18/M09 | |
+| P02_Janus_Vallum | P06_Justitia | PROVIDES_TPM2_ATTESTATION | Hardware TPM2 PCR | M20 | |
+| P03_Vulcan | P09_Minerva | GPUDIRECT_WEIGHT_STREAMING | PCIe P2PDMA / CUDA GPUDirect | M17 | |
 | P03_Vulcan | P15_Hestia | ZERO_COPY_MEDIA_INGEST | PCIe BAR / Memory Mapping | M17 | not in export-002/003 |
-| P04_Mercurius | P05_Forum | SYNC_DESKTOP_SHELL | AF_UNIX Socket Stream | M07 |  |
-| P04_Mercurius | P07_Lictor | FOCUS_SWITCH_NOTIFY | Eclipse Zenoh Zero-Copy Shared Memory | M07 |  |
-| P04_Mercurius | P10_Vesta | DISPATCH_MCP_SIDECARS | MCP JSON-RPC over Stdio/SSE | M07 |  |
+| P04_Mercurius | P05_Forum | SYNC_DESKTOP_SHELL | AF_UNIX Socket Stream | M07 | |
+| P04_Mercurius | P07_Lictor | FOCUS_SWITCH_NOTIFY | Eclipse Zenoh Zero-Copy Shared Memory | M07 | |
+| P04_Mercurius | P10_Vesta | DISPATCH_MCP_SIDECARS | MCP JSON-RPC over Stdio/SSE | M07 | |
 | P05_Forum | P12_Concordia | CONSUMES_DESIGN_TOKENS | CSS Custom Properties / ARIA Bridges | M16 | D05 direction |
 | P06_Justitia | P09_Minerva | ACTION_GATE_INTERCEPT | eBPF action_gate.bpf.c / D-Bus | M14 | D03 direction/transport |
-| P06_Justitia | P05_Forum | DISPATCH_DECISION_REQUEST | D-Bus / Unix Socket | M14 |  |
-| P06_Justitia | P16_Athena | AUDIT_RECONSTRUCTIVE_CANDIDATE | BLAKE3 Checkpoint Ledger | M14 |  |
-| P07_Lictor | P04_Mercurius | PRIORITIZE_COMPOSITOR_THREAD | Linux sched_ext struct_ops / scx_cake | M07 |  |
-| P07_Lictor | P08_Calliope | ENFORCE_REALTIME_RTPRIO | Linux cgroups v2 / RLIMIT_RTPRIO | M07 |  |
-| P07_Lictor | P09_Minerva | DYNAMIC_VRAM_SWAP | drm_sched Priority / Dynamic VRAM Allocator | M07 |  |
-| P08_Calliope | P04_Mercurius | SHARE_DMA_BUF_STREAM | PipeWire pipewiresrc / SPA_DATA_DmaBuf | M07 |  |
-| P08_Calliope | P11_Ludus | REMOTE_PLAY_CAPTURE | Gamescope / PipeWire DMA-BUF | M07 |  |
-| P09_Minerva | P10_Vesta | EXECUTE_WASMED_CAPSULE | AF_VSOCK / Wazero Wasm WIT | M06 |  |
+| P06_Justitia | P05_Forum | DISPATCH_DECISION_REQUEST | D-Bus / Unix Socket | M14 | |
+| P06_Justitia | P16_Athena | AUDIT_RECONSTRUCTIVE_CANDIDATE | BLAKE3 Checkpoint Ledger | M14 | |
+| P07_Lictor | P04_Mercurius | PRIORITIZE_COMPOSITOR_THREAD | Linux sched_ext struct_ops / scx_cake | M07 | |
+| P07_Lictor | P08_Calliope | ENFORCE_REALTIME_RTPRIO | Linux cgroups v2 / RLIMIT_RTPRIO | M07 | |
+| P07_Lictor | P09_Minerva | DYNAMIC_VRAM_SWAP | drm_sched Priority / Dynamic VRAM Allocator | M07 | |
+| P08_Calliope | P04_Mercurius | SHARE_DMA_BUF_STREAM | PipeWire pipewiresrc / SPA_DATA_DmaBuf | M07 | |
+| P08_Calliope | P11_Ludus | REMOTE_PLAY_CAPTURE | Gamescope / PipeWire DMA-BUF | M07 | |
+| P09_Minerva | P10_Vesta | EXECUTE_WASMED_CAPSULE | AF_VSOCK / Wazero Wasm WIT | M06 | |
 | P09_Minerva | P14_Hephaestus | VERIFY_CODE_CAD | Z3 Symbolic Solver / PAL Engine | M06 | REQ-GRAPH-05 direction |
-| P10_Vesta | P16_Athena | SANDBOX_CANDIDATE_EVALUATION | Firecracker MicroVM / AF_VSOCK | M06 |  |
-| P11_Ludus | P02_Janus_Vallum | ATTEST_GAME_TRANSACTION | Hardware TPM2 PCR Quote | M08 |  |
-| P11_Ludus | P04_Mercurius | DISPATCH_RICH_PRESENCE | Local Unix Domain Socket /tmp/discord-ipc-0 | M08 |  |
-| P12_Concordia | P15_Hestia | ENFORCE_A11Y_STANDARDS | Playwright axe-core CI Gate / Svelte CSS | M04 |  |
-| P13_Tellus | P07_Lictor | SPATIOTEMPORAL_TASK_SHIFT | D-Bus / kepler_power.bpf | M05 |  |
-| P13_Tellus | P05_Forum | EMIT_CARBON_TELEMETRY | D-Bus Signal org.aegisos.Tellus1 | M05 |  |
-| P14_Hephaestus | P15_Hestia | RENDER_GEOMETRY_MICROFRONTEND | Svelte 5 Micro-Frontend / PGlite OPFS | M08 |  |
-| P15_Hestia | P04_Mercurius | REGISTER_PIP_OVERLAY | wlr-layer-shell Overlay Surface Protocol | M17 |  |
-| P16_Athena | P02_Janus_Vallum | TRIGGER_SYSUPDATE_ROLLBACK | systemd-sysupdate / systemd-boot NVRAM | M05 |  |
-| P16_Athena | P13_Tellus | EVALUATE_CANDIDATE_CARBON_SCI | ISO/IEC 21031:2024 SCI Rate Calculation | M05 |  |
+| P10_Vesta | P16_Athena | SANDBOX_CANDIDATE_EVALUATION | Firecracker MicroVM / AF_VSOCK | M06 | |
+| P11_Ludus | P02_Janus_Vallum | ATTEST_GAME_TRANSACTION | Hardware TPM2 PCR Quote | M08 | |
+| P11_Ludus | P04_Mercurius | DISPATCH_RICH_PRESENCE | Local Unix Domain Socket /tmp/discord-ipc-0 | M08 | |
+| P12_Concordia | P15_Hestia | ENFORCE_A11Y_STANDARDS | Playwright axe-core CI Gate / Svelte CSS | M04 | |
+| P13_Tellus | P07_Lictor | SPATIOTEMPORAL_TASK_SHIFT | D-Bus / kepler_power.bpf | M05 | |
+| P13_Tellus | P05_Forum | EMIT_CARBON_TELEMETRY | D-Bus Signal org.aegisos.Tellus1 | M05 | |
+| P14_Hephaestus | P15_Hestia | RENDER_GEOMETRY_MICROFRONTEND | Svelte 5 Micro-Frontend / PGlite OPFS | M08 | |
+| P15_Hestia | P04_Mercurius | REGISTER_PIP_OVERLAY | wlr-layer-shell Overlay Surface Protocol | M17 | |
+| P16_Athena | P02_Janus_Vallum | TRIGGER_SYSUPDATE_ROLLBACK | systemd-sysupdate / systemd-boot NVRAM | M05 | |
+| P16_Athena | P13_Tellus | EVALUATE_CANDIDATE_CARBON_SCI | ISO/IEC 21031:2024 SCI Rate Calculation | M05 | |
 | P06_Justitia | P10_Vesta | SYSCALL_INTERCEPT (export-002 only) | eBPF action_gate | M14 record, M06 tests | D04 not in graph of record |
 | P15_Hestia | P02_Janus_Vallum | PGLITE_OPFS_STORAGE (export-002 only) | Btrfs @pglite subvolume | M17 | REQ-GRAPH-03 not in graph of record |
 
 External producer interfaces (docs/integration/stack.md):
 
-- Aegis -> Imago: the versioned product input manifest (repart definitions, sysupdate transfer, mkosi configuration references) is authored in M18 and proposed in M09. The result returns image/UKI digest, signature reference and boot evidence. Status: declared, unverified; the producer identity was unresolved at revision time.
-- Aegis -> Nucleus: the kernel requirement payload (BPF LSM, sched_ext, BTF, RAPL, VFIO/IOMMU, KVM; ABI; accepted architectures) is authored in M18 and proposed in M09. The result returns kernel version/config digest, artifact digest and provenance. Status: declared, unverified; Nucleus currently validates a fixed symbol list, per the private readiness matrix.
-- Golusoris and template-native-gpu: optional, and only for components that need a native/GPU backend (M12). The language boundary is respected: no Go library is a direct Rust dependency; otherwise a protocol/FFI adapter with contract tests is used.
-- Upstream projects (systemd, wlroots, PipeWire, Firecracker, Z3, PGlite, Steamworks, CAD/solver stack): versions are not active pins. Each is selected through the template matrix at the activation that needs it.
+- Aegis -> Imago: the versioned product input manifest (repart definitions,
+  sysupdate transfer, mkosi configuration references) is authored in M18 and
+  proposed in M09. The result returns image/UKI digest, signature reference and
+  boot evidence. Status: declared, unverified; the producer identity was
+  unresolved at revision time.
+- Aegis -> Nucleus: the kernel requirement payload (BPF LSM, sched_ext, BTF,
+  RAPL, VFIO/IOMMU, KVM; ABI; accepted architectures) is authored in M18 and
+  proposed in M09. The result returns kernel version/config digest, artifact
+  digest and provenance. Status: declared, unverified; Nucleus currently
+  validates a fixed symbol list, per the private readiness matrix.
+- Golusoris and template-native-gpu: optional, and only for components that need
+  a native/GPU backend (M12). The language boundary is respected: no Go library
+  is a direct Rust dependency; otherwise a protocol/FFI adapter with contract
+  tests is used.
+- Upstream projects (systemd, wlroots, PipeWire, Firecracker, Z3, PGlite,
+  Steamworks, CAD/solver stack): versions are not active pins. Each is selected
+  through the template matrix at the activation that needs it.
 
 Behavioral contracts derived from the requirements:
 
-- Justitia decision engine (M02): input is an action proposal with maker identity, risk tier, reviewers, due timestamp and killswitch state. Output is Allow, Block or Escalate(DecisionRequest). Errors are maker-as-checker, insufficient distinct checkers, expired request (fail closed) and killswitch engaged.
-- Justitia consumer contracts (M14): DecisionRequest, action proposal and signed audit record schemas are versioned. Unknown versions and unsigned proposals are rejected.
-- Athena candidate lifecycle (M05): input is a candidate id and metrics (latency_ms, memory_mb, sci_carbon_rate, null_model_retention). Output is Publish or Invalidate plus a hash-chained ledger record. Errors are an empty id or a missing prior record.
-- Tellus SCI engine (M05): input is energy, grid intensity, embodied carbon and functional units. Output is an SCI rate and a defer decision. Non-positive functional units are handled by fallback.
-- Lictor tier classifier (M07): input is burst durations. Output is a tier per the source thresholds, using strict comparisons. A missing task context falls back to interactive.
-- Compositor registry and Tier-1 socket (M07): bounded to 256 surfaces and 64 clients; overflow returns an error.
-- Repart and sysupdate definitions (M03): validated with `systemd-repart --dry-run=yes` against a scratch image and `systemd-sysupdate --root=<scratch tree> --offline list`. Non-zero exits and ignored-key diagnostics both fail.
-- A/B lifecycle (M15): candidate, signature check, delta acquisition, slot swap, watchdog, then bless or rollback.
+- Justitia decision engine (M02): input is an action proposal with maker
+  identity, risk tier, reviewers, due timestamp and killswitch state. Output is
+  Allow, Block or Escalate(DecisionRequest). Errors are maker-as-checker,
+  insufficient distinct checkers, expired request (fail closed) and killswitch
+  engaged.
+- Justitia consumer contracts (M14): DecisionRequest, action proposal and signed
+  audit record schemas are versioned. Unknown versions and unsigned proposals
+  are rejected.
+- Athena candidate lifecycle (M05): input is a candidate id and metrics
+  (latency_ms, memory_mb, sci_carbon_rate, null_model_retention). Output is
+  Publish or Invalidate plus a hash-chained ledger record. Errors are an empty
+  id or a missing prior record.
+- Tellus SCI engine (M05): input is energy, grid intensity, embodied carbon and
+  functional units. Output is an SCI rate and a defer decision. Non-positive
+  functional units are handled by fallback.
+- Lictor tier classifier (M07): input is burst durations. Output is a tier per
+  the source thresholds, using strict comparisons. A missing task context falls
+  back to interactive.
+- Compositor registry and Tier-1 socket (M07): bounded to 256 surfaces and 64
+  clients; overflow returns an error.
+- Repart and sysupdate definitions (M03): validated with `systemd-repart
+  --dry-run=yes` against a scratch image and `systemd-sysupdate --root=<scratch
+  tree> --offline list`. Non-zero exits and ignored-key diagnostics both fail.
+- A/B lifecycle (M15): candidate, signature check, delta acquisition, slot swap,
+  watchdog, then bless or rollback.
 
 ## Acceptance criteria
 
-Every public interface needs positive, negative and boundary tests (HISS-15). Criteria per milestone, in rank order, follow the epics:
+Every public interface needs positive, negative and boundary tests (HISS-15).
+Criteria per milestone, in rank order, follow the epics:
 
 ### M00 (done)
 
-- E00-1 Governance gate reported with its limits: Positive: make verify-all passes. Negative: a drifted generated client file fails `compile-context --verify`. Boundary: the report states preparation/governance scope only; simulated boot output is never cited as evidence.
-- E00-2 Split licence scaffold committed: LICENSING.md and REUSE.toml record EUPL-1.2 for technical material and CC-BY-SA-4.0 for prose. The proposal Cargo workspace (export-006) also declares EUPL-1.2; no workspace manifest is committed in the repository yet.
-- E00-3 Remote declared; proposal identity recorded for reconciliation: origin resolves to cordanaLLM/Aegis-OS with main present remotely. The proposal identity cordanaLLM/aegis-os (export-006) differs in letter case and is carried into the M01 register; hosted readback is not claimed.
+- E00-1 Governance gate reported with its limits: Positive: make verify-all
+  passes. Negative: a drifted generated client file fails `compile-context
+  --verify`. Boundary: the report states preparation/governance scope only;
+  simulated boot output is never cited as evidence.
+- E00-2 Split licence scaffold committed: LICENSING.md and REUSE.toml record
+  EUPL-1.2 for technical material and CC-BY-SA-4.0 for prose. The proposal Cargo
+  workspace (export-006) also declares EUPL-1.2; no workspace manifest is
+  committed in the repository yet.
+- E00-3 Remote declared; proposal identity recorded for reconciliation: origin
+  resolves to cordanaLLM/Aegis-OS with main present remotely. The proposal
+  identity cordanaLLM/aegis-os (export-006) differs in letter case and is
+  carried into the M01 register; hosted readback is not claimed.
 
 ### M01 (ready)
 
-- E01-1 Crate and UI inventory with manifest status: Positive: 12 Rust and 3 UI candidates are listed with source id and hash. Negative: a candidate without a source hash fails review. Boundary: Vulcan and Hestia appear with status 'not a proposal-workspace member', and the P01/P02 crate location is decided.
-- E01-2 Graph and source contradiction register: Each disputed edge or value names both sources and the affected contract. export-062 stays the graph of record until a decision changes it.
-- E01-3 Toolchain, identity and version-drift register: Every pinned or floating toolchain is listed with its source and marked as proposal data. Nothing is installed. Each drift item becomes a decision.
-- E01-4 Imported workflow quarantine: Imported CI, release and integration scripts stay inactive. Their failure-suppressing and simulated-output steps are listed as defects to fix before any activation.
+- E01-1 Crate and UI inventory with manifest status: Positive: 12 Rust and 3 UI
+  candidates are listed with source id and hash. Negative: a candidate without a
+  source hash fails review. Boundary: Vulcan and Hestia appear with status 'not
+  a proposal-workspace member', and the P01/P02 crate location is decided.
+- E01-2 Graph and source contradiction register: Each disputed edge or value
+  names both sources and the affected contract. export-062 stays the graph of
+  record until a decision changes it.
+- E01-3 Toolchain, identity and version-drift register: Every pinned or floating
+  toolchain is listed with its source and marked as proposal data. Nothing is
+  installed. Each drift item becomes a decision.
+- E01-4 Imported workflow quarantine: Imported CI, release and integration
+  scripts stay inactive. Their failure-suppressing and simulated-output steps
+  are listed as defects to fix before any activation.
 
 ### M02 (blocked)
 
-- E02-1 Workspace root, manifest, lock and Rust toolchain admission: Positive: the crate builds under `cargo build -p aegis-justitia` and a workspace-wide invocation. Negative: an unlocked dependency change fails `cargo build --locked`. Boundary: clippy with -D warnings passes with zero warnings.
-- E02-2 Decision engine with positive, negative and boundary tests: Positive: a Tier C action is allowed, and two distinct non-maker checkers are accepted. Negative: maker as checker is rejected, and a duplicate checker is rejected. Boundary: due timestamps equal to now and to now-1 both fail closed, and the killswitch blocks Tier C.
-- E02-3 Audit ledger algorithm decision and trait boundary: Positive: one algorithm is recorded and a chain re-walk verifies. Negative: a single flipped byte is detected, and a missing signer returns an error. Boundary: an empty ledger verifies as the genesis state. MD5 is removed.
+- E02-1 Workspace root, manifest, lock and Rust toolchain admission: Positive:
+  the crate builds under `cargo build -p aegis-justitia` and a workspace-wide
+  invocation. Negative: an unlocked dependency change fails `cargo build
+  --locked`. Boundary: clippy with -D warnings passes with zero warnings.
+- E02-2 Decision engine with positive, negative and boundary tests: Positive: a
+  Tier C action is allowed, and two distinct non-maker checkers are accepted.
+  Negative: maker as checker is rejected, and a duplicate checker is rejected.
+  Boundary: due timestamps equal to now and to now-1 both fail closed, and the
+  killswitch blocks Tier C.
+- E02-3 Audit ledger algorithm decision and trait boundary: Positive: one
+  algorithm is recorded and a chain re-walk verifies. Negative: a single flipped
+  byte is detected, and a missing signer returns an error. Boundary: an empty
+  ledger verifies as the genesis state. MD5 is removed.
 
 ### M14 (blocked)
 
-- E14-1 Action-gate direction decision and action proposal contract: Positive: a signed, well-formed proposal round-trips. Negative: an unsigned or malformed proposal is rejected. Boundary: a proposal at the maximum field lengths is accepted, and one byte over is rejected.
-- E14-2 DecisionRequest and audit record contracts: Positive: both schemas round-trip. Negative: an unknown schema version is rejected. Boundary: an audit record whose previous hash is the all-zero genesis value is accepted only as the first record. The PLD effective date is tracked as an external deadline.
-- E14-3 Hardened unit contract: Positive: the unit file declares IPAddressDeny=any. Negative: a review check fails if the directive is removed. Boundary: the unit is not installed or started in this milestone.
+- E14-1 Action-gate direction decision and action proposal contract: Positive: a
+  signed, well-formed proposal round-trips. Negative: an unsigned or malformed
+  proposal is rejected. Boundary: a proposal at the maximum field lengths is
+  accepted, and one byte over is rejected.
+- E14-2 DecisionRequest and audit record contracts: Positive: both schemas
+  round-trip. Negative: an unknown schema version is rejected. Boundary: an
+  audit record whose previous hash is the all-zero genesis value is accepted
+  only as the first record. The PLD effective date is tracked as an external
+  deadline.
+- E14-3 Hardened unit contract: Positive: the unit file declares
+  IPAddressDeny=any. Negative: a review check fails if the directive is removed.
+  Boundary: the unit is not installed or started in this milestone.
 
 ### M03 (blocked)
 
-- E03-1 Repart analyzer gate: Positive: the dry run exits 0 with no ignored-key diagnostics. Negative: a missing Type= exits non-zero, and an unknown key fails the gate. Boundary: ESP min equal to max is accepted, and inverted min greater than max is rejected.
-- E03-2 Sysupdate transfer gate: Positive: the rewritten transfer lists without error offline. Negative: the imported transfer is rejected (exit 1). Boundary: a transfer with both root slots and no writable target parses, and one with a single slot is flagged against the A/B requirement.
-- E03-3 Definition parser crate: Positive: the definitions round-trip through the parser. Negative: a duplicate section or malformed size is rejected. Boundary: 512M and 1G parse exactly, and 511M below the minimum is flagged.
-- E03-4 PCR measurement acceptance target: The PCR 0/4/7/11 strategy is documented as the acceptance target for M11 boot evidence. It is not claimed here.
+- E03-1 Repart analyzer gate: Positive: the dry run exits 0 with no ignored-key
+  diagnostics. Negative: a missing Type= exits non-zero, and an unknown key
+  fails the gate. Boundary: ESP min equal to max is accepted, and inverted min
+  greater than max is rejected.
+- E03-2 Sysupdate transfer gate: Positive: the rewritten transfer lists without
+  error offline. Negative: the imported transfer is rejected (exit 1). Boundary:
+  a transfer with both root slots and no writable target parses, and one with a
+  single slot is flagged against the A/B requirement.
+- E03-3 Definition parser crate: Positive: the definitions round-trip through
+  the parser. Negative: a duplicate section or malformed size is rejected.
+  Boundary: 512M and 1G parse exactly, and 511M below the minimum is flagged.
+- E03-4 PCR measurement acceptance target: The PCR 0/4/7/11 strategy is
+  documented as the acceptance target for M11 boot evidence. It is not claimed
+  here.
 
 ### M18 (blocked)
 
-- E18-1 Product input manifest schema: Positive: the manifest built from the M03 files validates. Negative: a manifest without a correlation id or exact revision is rejected. Boundary: a retry count at the bound is accepted, and one above is rejected.
-- E18-2 Kernel requirement schema and kernel identity decision: Positive: the payload lists the kernel features required by P06, P07 and P13. Negative: an unknown architecture is rejected. Boundary: an empty requirement list is rejected explicitly, not accepted as 'no requirements'.
-- E18-3 mkosi admission decision: Positive: if admitted, `mkosi summary` parses the Output stanza. Negative: a version below the floor is refused. Boundary: the floor version itself is accepted.
+- E18-1 Product input manifest schema: Positive: the manifest built from the M03
+  files validates. Negative: a manifest without a correlation id or exact
+  revision is rejected. Boundary: a retry count at the bound is accepted, and
+  one above is rejected.
+- E18-2 Kernel requirement schema and kernel identity decision: Positive: the
+  payload lists the kernel features required by P06, P07 and P13. Negative: an
+  unknown architecture is rejected. Boundary: an empty requirement list is
+  rejected explicitly, not accepted as 'no requirements'.
+- E18-3 mkosi admission decision: Positive: if admitted, `mkosi summary` parses
+  the Output stanza. Negative: a version below the floor is refused. Boundary:
+  the floor version itself is accepted.
 
 ### M15 (blocked)
 
-- E15-1 A/B lifecycle state machine: Positive: the happy path reaches Bless. Negative: a signature failure reaches Discard. Boundary: watchdog expiry exactly at the timeout takes Rollback, and one tick before does not.
-- E15-2 Reversible consolidation decision: The decision is recorded, and a test shows that a reopened slot still requires a verity match before Bless.
+- E15-1 A/B lifecycle state machine: Positive: the happy path reaches Bless.
+  Negative: a signature failure reaches Discard. Boundary: watchdog expiry
+  exactly at the timeout takes Rollback, and one tick before does not.
+- E15-2 Reversible consolidation decision: The decision is recorded, and a test
+  shows that a reopened slot still requires a verity match before Bless.
 
 ### M05 (blocked)
 
-- E05-1 Tellus SCI arithmetic: Positive: a hand-computed SCI matches. Negative: functional_units <= 0 falls back without NaN. Boundary: 300.0 is not deferred, 300.001 is deferred, and slices never exceed 16.
-- E05-2 Athena lifecycle and Pareto gate: Positive: a passing candidate reaches Publish. Negative: exceeding any single bound reaches Invalidate with a ledger entry, and an empty id is rejected. Boundary: latency 1.5 and retention 0.99 are exercised exactly.
-- E05-3 Hash-chained ledger in Rust: Positive: a chain re-walk verifies. Negative: a tampered record is detected. Boundary: the genesis record is verified, and the algorithm matches D02.
-- E05-4 Evolution-loop edge contracts: Positive: typed request and response round-trip for each edge. Negative: malformed payloads are rejected. Boundary: the sysupdate call is stubbed, and an empty candidate list is handled explicitly.
+- E05-1 Tellus SCI arithmetic: Positive: a hand-computed SCI matches. Negative:
+  functional_units <= 0 falls back without NaN. Boundary: 300.0 is not deferred,
+  300.001 is deferred, and slices never exceed 16.
+- E05-2 Athena lifecycle and Pareto gate: Positive: a passing candidate reaches
+  Publish. Negative: exceeding any single bound reaches Invalidate with a ledger
+  entry, and an empty id is rejected. Boundary: latency 1.5 and retention 0.99
+  are exercised exactly.
+- E05-3 Hash-chained ledger in Rust: Positive: a chain re-walk verifies.
+  Negative: a tampered record is detected. Boundary: the genesis record is
+  verified, and the algorithm matches D02.
+- E05-4 Evolution-loop edge contracts: Positive: typed request and response
+  round-trip for each edge. Negative: malformed payloads are rejected. Boundary:
+  the sysupdate call is stubbed, and an empty candidate list is handled
+  explicitly.
 
 ### M06 (blocked)
 
-- E06-1 Minerva router, replay and solver logic: Positive: expert registration and routing succeed. Negative: route returns None when no expert matches. Boundary: the 32nd expert is accepted and the 33rd rejected; the 128th trajectory step is accepted and the 129th rejected; relabelling flips only negative rewards.
-- E06-2 Vesta bounded controllers: Positive: 64 microVMs and 128 capsules are accepted. Negative: terminating an unknown id returns false. Boundary: the 65th microVM and 129th capsule fail. The boot-time literal is marked unmeasured.
-- E06-3 Wasm runtime boundary decision: The decision is recorded. Venus and AF_VSOCK pricing stay deferred hardware-backed requirements (M21).
-- E06-4 Agent-chain edge contracts: Positive: typed contracts round-trip. Negative: unsigned or malformed proposals are rejected. Boundary: a capsule request at the capsule bound is accepted, and one over is rejected.
+- E06-1 Minerva router, replay and solver logic: Positive: expert registration
+  and routing succeed. Negative: route returns None when no expert matches.
+  Boundary: the 32nd expert is accepted and the 33rd rejected; the 128th
+  trajectory step is accepted and the 129th rejected; relabelling flips only
+  negative rewards.
+- E06-2 Vesta bounded controllers: Positive: 64 microVMs and 128 capsules are
+  accepted. Negative: terminating an unknown id returns false. Boundary: the
+  65th microVM and 129th capsule fail. The boot-time literal is marked
+  unmeasured.
+- E06-3 Wasm runtime boundary decision: The decision is recorded. Venus and
+  AF_VSOCK pricing stay deferred hardware-backed requirements (M21).
+- E06-4 Agent-chain edge contracts: Positive: typed contracts round-trip.
+  Negative: unsigned or malformed proposals are rejected. Boundary: a capsule
+  request at the capsule bound is accepted, and one over is rejected.
 
 ### M17 (blocked)
 
-- E17-1 Vulcan validation crate: Positive: an aligned BAR is accepted. Negative: a misaligned BAR is rejected. Boundary: block_count 0 and 8193 are rejected, 8192 is accepted, and the ring index wraps.
-- E17-2 Hestia vector-store state machine: Positive: an initialized store answers queries. Negative: a query before init fails. Boundary: limits 0 and 101 fail, and 1 and 100 pass.
-- E17-3 P03 and P15 interface contracts: Positive: the descriptors round-trip. Negative: a malformed descriptor is rejected. Boundary: a descriptor at the maximum block count is accepted, and one over is rejected.
+- E17-1 Vulcan validation crate: Positive: an aligned BAR is accepted. Negative:
+  a misaligned BAR is rejected. Boundary: block_count 0 and 8193 are rejected,
+  8192 is accepted, and the ring index wraps.
+- E17-2 Hestia vector-store state machine: Positive: an initialized store
+  answers queries. Negative: a query before init fails. Boundary: limits 0 and
+  101 fail, and 1 and 100 pass.
+- E17-3 P03 and P15 interface contracts: Positive: the descriptors round-trip.
+  Negative: a malformed descriptor is rejected. Boundary: a descriptor at the
+  maximum block count is accepted, and one over is rejected.
 
 ### M07 (blocked)
 
-- E07-1 Compositor registry and Tier-1 socket bounds: Positive: 256 surfaces and 64 clients are accepted. Negative: the 257th surface is rejected and the 65th client is not admitted. Boundary: a pacing-constant test pins the chosen value.
-- E07-2 wlroots and mesh design decision: The decision is recorded. The Zenoh version is selected at activation after checking current upstream, with a mocked transport test: a publish round-trips, a subscriber cannot write back, and an empty key expression is rejected.
-- E07-3 Lictor EWMA tiers and broker: Positive: bursts below each threshold classify per the source comparisons. Negative: an unregistered focus PID throttles nothing. Boundary: bursts exactly at each threshold classify per the strict comparison.
-- E07-4 Calliope plugin lifecycle and DMA-BUF descriptors: Positive: 32 slots are accepted. Negative: the 33rd slot and an illegal transition are rejected. Boundary: stride arithmetic is checked at 0 and at u32::MAX/4.
-- E07-5 Real-time edge contracts: Positive: typed focus-switch, RTPRIO grant and DMA-BUF stream descriptors round-trip. Negative: malformed descriptors are rejected. Boundary: an RTPRIO value at the source value is accepted, and one above is rejected.
+- E07-1 Compositor registry and Tier-1 socket bounds: Positive: 256 surfaces and
+  64 clients are accepted. Negative: the 257th surface is rejected and the 65th
+  client is not admitted. Boundary: a pacing-constant test pins the chosen
+  value.
+- E07-2 wlroots and mesh design decision: The decision is recorded. The Zenoh
+  version is selected at activation after checking current upstream, with a
+  mocked transport test: a publish round-trips, a subscriber cannot write back,
+  and an empty key expression is rejected.
+- E07-3 Lictor EWMA tiers and broker: Positive: bursts below each threshold
+  classify per the source comparisons. Negative: an unregistered focus PID
+  throttles nothing. Boundary: bursts exactly at each threshold classify per the
+  strict comparison.
+- E07-4 Calliope plugin lifecycle and DMA-BUF descriptors: Positive: 32 slots
+  are accepted. Negative: the 33rd slot and an illegal transition are rejected.
+  Boundary: stride arithmetic is checked at 0 and at u32::MAX/4.
+- E07-5 Real-time edge contracts: Positive: typed focus-switch, RTPRIO grant and
+  DMA-BUF stream descriptors round-trip. Negative: malformed descriptors are
+  rejected. Boundary: an RTPRIO value at the source value is accepted, and one
+  above is rejected.
 
 ### M08 (blocked)
 
-- E08-1 Ludus launch-argument validator: Positive: 64 args are accepted. Negative: 65 args are rejected. Boundary: an empty argument list is handled explicitly and its authentication outcome is recorded.
-- E08-2 Hephaestus bounded loops: Positive: a mesh under the bound is accepted. Negative: a missing STEP path errors. Boundary: 500000 elements are accepted and 500001 rejected, and the iteration bound is honoured. CAD and solver versions are recorded as unpinned.
-- E08-3 P11 and P14 interface contracts: Positive: the descriptors round-trip. Negative: a receipt without a signature field is rejected. Boundary: a viewport descriptor at the mesh bound is accepted.
+- E08-1 Ludus launch-argument validator: Positive: 64 args are accepted.
+  Negative: 65 args are rejected. Boundary: an empty argument list is handled
+  explicitly and its authentication outcome is recorded.
+- E08-2 Hephaestus bounded loops: Positive: a mesh under the bound is accepted.
+  Negative: a missing STEP path errors. Boundary: 500000 elements are accepted
+  and 500001 rejected, and the iteration bound is honoured. CAD and solver
+  versions are recorded as unpinned.
+- E08-3 P11 and P14 interface contracts: Positive: the descriptors round-trip.
+  Negative: a receipt without a signature field is rejected. Boundary: a
+  viewport descriptor at the mesh bound is accepted.
 
 ### M19 (blocked)
 
-- E19-1 action_gate LSM object: Positive: the program loads, and an exec event reaches a stub ringbuf consumer where BPF LSM is active. Negative: the unchecked-pointer variant is rejected. Boundary: if BPF LSM is not active on the host, attach is recorded as unavailable rather than passed.
-- E19-2 scx_cake struct_ops object: Positive: struct_ops loads where sched_ext is present. Negative: the unbounded-loop variant is rejected. Boundary: all-stub handlers load.
-- E19-3 kepler_power probe object: Positive: the tracepoint program loads. Negative: an out-of-bounds map access variant is rejected. Boundary: the hardcoded TDP literal is recorded as a non-measurement.
+- E19-1 action_gate LSM object: Positive: the program loads, and an exec event
+  reaches a stub ringbuf consumer where BPF LSM is active. Negative: the
+  unchecked-pointer variant is rejected. Boundary: if BPF LSM is not active on
+  the host, attach is recorded as unavailable rather than passed.
+- E19-2 scx_cake struct_ops object: Positive: struct_ops loads where sched_ext
+  is present. Negative: the unbounded-loop variant is rejected. Boundary:
+  all-stub handlers load.
+- E19-3 kepler_power probe object: Positive: the tracepoint program loads.
+  Negative: an out-of-bounds map access variant is rejected. Boundary: the
+  hardcoded TDP literal is recorded as a non-measurement.
 
 ### M04 (blocked)
 
-- E04-1 UI toolchain admission and lockfiles: Positive: the pinned Node and pnpm versions install from the lockfile. Negative: a lockfile mismatch fails `pnpm install --frozen-lockfile`. Boundary: the gate fails on the first violation and is not suppressed.
-- E04-2 Concordia tokens and axe-core harness: Positive: zero violations on the default state. Negative: a stripped outline fails. Boundary: the focus width chosen by D16 passes, one pixel less fails; 3:1 contrast passes and 2.99:1 fails; 200% text scaling causes no overflow. The truncated container digest is recorded as non-pinnable.
+- E04-1 UI toolchain admission and lockfiles: Positive: the pinned Node and pnpm
+  versions install from the lockfile. Negative: a lockfile mismatch fails `pnpm
+  install --frozen-lockfile`. Boundary: the gate fails on the first violation
+  and is not suppressed.
+- E04-2 Concordia tokens and axe-core harness: Positive: zero violations on the
+  default state. Negative: a stripped outline fails. Boundary: the focus width
+  chosen by D16 passes, one pixel less fails; 3:1 contrast passes and 2.99:1
+  fails; 200% text scaling causes no overflow. The truncated container digest is
+  recorded as non-pinnable.
 
 ### M16 (blocked)
 
-- E16-1 Forum shell state and lifecycle with stubs: Positive: each lifecycle transition in the source order succeeds. Negative: a transition from Deleted is rejected. Boundary: Rate-Limited to Quarantined at the limit is exercised exactly.
-- E16-2 Consumer contracts and token-edge decision: Positive: DecisionRequest and Tellus telemetry payloads parse. Negative: an unknown schema version is rejected. Boundary: a telemetry update with zero watts renders without error.
+- E16-1 Forum shell state and lifecycle with stubs: Positive: each lifecycle
+  transition in the source order succeeds. Negative: a transition from Deleted
+  is rejected. Boundary: Rate-Limited to Quarantined at the limit is exercised
+  exactly.
+- E16-2 Consumer contracts and token-edge decision: Positive: DecisionRequest
+  and Tellus telemetry payloads parse. Negative: an unknown schema version is
+  rejected. Boundary: a telemetry update with zero watts renders without error.
 
 ### M09 (blocked)
 
-- E09-1 Imago consumption of the product input manifest: Positive: an accepted request returns image digest, signature reference and boot-evidence fields. Negative: a malformed manifest is rejected with a correlated error. Boundary: a retry at the bound is recorded, and one above is refused.
-- E09-2 Nucleus consumption of the kernel requirement payload: Positive: a result returns kernel version/config digest, artifact digest and provenance. Negative: an unsatisfiable feature is rejected with a correlated error. Boundary: an empty requirement list is rejected explicitly.
-- E09-3 Pair evidence and identity status: The retained pair shows correlation id and exact revisions. Simulated output is refused. Identity status is recorded.
+- E09-1 Imago consumption of the product input manifest: Positive: an accepted
+  request returns image digest, signature reference and boot-evidence fields.
+  Negative: a malformed manifest is rejected with a correlated error. Boundary:
+  a retry at the bound is recorded, and one above is refused.
+- E09-2 Nucleus consumption of the kernel requirement payload: Positive: a
+  result returns kernel version/config digest, artifact digest and provenance.
+  Negative: an unsatisfiable feature is rejected with a correlated error.
+  Boundary: an empty requirement list is rejected explicitly.
+- E09-3 Pair evidence and identity status: The retained pair shows correlation
+  id and exact revisions. Simulated output is refused. Identity status is
+  recorded.
 
 ### M11 (blocked)
 
-- E11-1 Imago result consumed and verified: Positive: digest and signature verify locally. Negative: a tampered image digest or bad signature is rejected. Boundary: a producer version exactly at the floor is accepted, and one below is rejected.
-- E11-2 Real boot evidence replaces the simulated script: Positive: PCR values are read back from swtpm, and the verity root hash matches. Negative: a modified root image fails verity and does not boot to the established state. Boundary: a PCR policy that omits PCR 11 fails to unseal /var. The imported script is not used.
-- E11-3 Analyzer gate without suppression in the image path: Positive: the M03 gate passes on the image inputs. Negative: an ignored-key diagnostic fails the image acceptance. Boundary: no step carries failure suppression.
-- E11-4 A/B transfer exercised: Positive: the second slot is written read-only and boots. Negative: a transfer with a bad signature is discarded. Boundary: watchdog expiry before bless rolls back once.
+- E11-1 Imago result consumed and verified: Positive: digest and signature
+  verify locally. Negative: a tampered image digest or bad signature is
+  rejected. Boundary: a producer version exactly at the floor is accepted, and
+  one below is rejected.
+- E11-2 Real boot evidence replaces the simulated script: Positive: PCR values
+  are read back from swtpm, and the verity root hash matches. Negative: a
+  modified root image fails verity and does not boot to the established state.
+  Boundary: a PCR policy that omits PCR 11 fails to unseal /var. The imported
+  script is not used.
+- E11-3 Analyzer gate without suppression in the image path: Positive: the M03
+  gate passes on the image inputs. Negative: an ignored-key diagnostic fails the
+  image acceptance. Boundary: no step carries failure suppression.
+- E11-4 A/B transfer exercised: Positive: the second slot is written read-only
+  and boots. Negative: a transfer with a bad signature is discarded. Boundary:
+  watchdog expiry before bless rolls back once.
 
 ### M10 (blocked)
 
-- E10-1 action_gate on the Nucleus kernel: Positive: the program loads and attaches. Negative: the unchecked-pointer variant is rejected. Boundary: BPF LSM absent from the kernel config fails the milestone with a recorded reason.
-- E10-2 scx_cake on the Nucleus kernel: Positive: struct_ops attaches. Negative: the unbounded variant is rejected. Boundary: a kernel without sched_ext is recorded as a Nucleus requirement defect.
-- E10-3 kepler_power on the Nucleus kernel: Positive: the tracepoint attaches. Negative: a missing tracepoint is reported, not ignored. Boundary: zero energy delta over an idle interval is recorded as a value, not an error.
+- E10-1 action_gate on the Nucleus kernel: Positive: the program loads and
+  attaches. Negative: the unchecked-pointer variant is rejected. Boundary: BPF
+  LSM absent from the kernel config fails the milestone with a recorded reason.
+- E10-2 scx_cake on the Nucleus kernel: Positive: struct_ops attaches. Negative:
+  the unbounded variant is rejected. Boundary: a kernel without sched_ext is
+  recorded as a Nucleus requirement defect.
+- E10-3 kepler_power on the Nucleus kernel: Positive: the tracepoint attaches.
+  Negative: a missing tracepoint is reported, not ignored. Boundary: zero energy
+  delta over an idle interval is recorded as a value, not an error.
 
 ### M21 (blocked)
 
-- E21-1 RAPL-backed carbon telemetry: Positive: SCI is computed from measured energy. Negative: unreadable counters fail closed with an error, not a default value. Boundary: counter wraparound between two samples yields a correct positive delta.
-- E21-2 Firecracker and AF_VSOCK sandboxing: Positive: a microVM boots and the candidate evaluation round-trips over AF_VSOCK. Negative: a microVM request above the memory limit is refused. Boundary: the 64th microVM on real KVM is accepted and the 65th refused.
-- E21-3 Venus GPU pricing deferred: Recorded as deferred to M12. It is not claimed here.
+- E21-1 RAPL-backed carbon telemetry: Positive: SCI is computed from measured
+  energy. Negative: unreadable counters fail closed with an error, not a default
+  value. Boundary: counter wraparound between two samples yields a correct
+  positive delta.
+- E21-2 Firecracker and AF_VSOCK sandboxing: Positive: a microVM boots and the
+  candidate evaluation round-trips over AF_VSOCK. Negative: a microVM request
+  above the memory limit is refused. Boundary: the 64th microVM on real KVM is
+  accepted and the 65th refused.
+- E21-3 Venus GPU pricing deferred: Recorded as deferred to M12. It is not
+  claimed here.
 
 ### M13 (blocked)
 
-- E13-1 Hosted ruleset/label and identity readback: Positive: rulesets and labels read back from the hosted side match .github/rulesets and .config/labels.yaml. Negative: a missing required check is reported as drift. Boundary: the proposal identity case difference is resolved or recorded.
-- E13-2 Signing and provenance for a real artifact: Positive: the signature verifies against the M11 artifact. Negative: verification fails against a modified artifact, and an unverified action reference fails workflow lint. Boundary: signing an absent artifact fails rather than producing an empty signature.
-- E13-3 Publication settings and consumers: Positive: one recorded consumer enables delivery. Negative: delivery is refused with zero recorded consumers. Boundary: a consumer without a pinned version is not counted.
+- E13-1 Hosted ruleset/label and identity readback: Positive: rulesets and
+  labels read back from the hosted side match .github/rulesets and
+  .config/labels.yaml. Negative: a missing required check is reported as drift.
+  Boundary: the proposal identity case difference is resolved or recorded.
+- E13-2 Signing and provenance for a real artifact: Positive: the signature
+  verifies against the M11 artifact. Negative: verification fails against a
+  modified artifact, and an unverified action reference fails workflow lint.
+  Boundary: signing an absent artifact fails rather than producing an empty
+  signature.
+- E13-3 Publication settings and consumers: Positive: one recorded consumer
+  enables delivery. Negative: delivery is refused with zero recorded consumers.
+  Boundary: a consumer without a pinned version is not counted.
 
 ### M20 (blocked)
 
-- E20-1 PCR quote signs an audit record: Positive: an audit record signed with the quote verifies. Negative: a record signed under a different PCR state fails verification. Boundary: a quote over exactly PCR 0/4/7/11 is accepted, and a quote missing PCR 11 is rejected.
-- E20-2 PCR-sealed /var unseal: Positive: /var unseals under the enrolled policy. Negative: a wrong PCR policy fails to unseal. Boundary: changing only PCR 7 is enough to prevent unseal.
+- E20-1 PCR quote signs an audit record: Positive: an audit record signed with
+  the quote verifies. Negative: a record signed under a different PCR state
+  fails verification. Boundary: a quote over exactly PCR 0/4/7/11 is accepted,
+  and a quote missing PCR 11 is rejected.
+- E20-2 PCR-sealed /var unseal: Positive: /var unseals under the enrolled
+  policy. Negative: a wrong PCR policy fails to unseal. Boundary: changing only
+  PCR 7 is enough to prevent unseal.
 
 ### M12 (blocked)
 
-- E12-1 DMA-BUF sharing paths: Positive: one measured zero-copy transfer per path. Negative: an invalid DMA-BUF fd is rejected without a CPU copy fallback being counted as success. Boundary: the 64th buffer is accepted and the 65th refused on real hardware.
-- E12-2 VFIO and P2PDMA paths: Positive: one measured NVMe-to-GPU transfer. Negative: a device outside its IOMMU group is refused. Boundary: a transfer of exactly 8192 blocks succeeds, and 8193 is refused before dispatch.
-- E12-3 GPU template boundary: Positive: one backend fixture result is retained, or a not-needed decision is recorded. Negative: a Go library as a direct Rust dependency is rejected. Boundary: an ABI mapping with zero functions is not accepted as a boundary.
+- E12-1 DMA-BUF sharing paths: Positive: one measured zero-copy transfer per
+  path. Negative: an invalid DMA-BUF fd is rejected without a CPU copy fallback
+  being counted as success. Boundary: the 64th buffer is accepted and the 65th
+  refused on real hardware.
+- E12-2 VFIO and P2PDMA paths: Positive: one measured NVMe-to-GPU transfer.
+  Negative: a device outside its IOMMU group is refused. Boundary: a transfer of
+  exactly 8192 blocks succeeds, and 8193 is refused before dispatch.
+- E12-3 GPU template boundary: Positive: one backend fixture result is retained,
+  or a not-needed decision is recorded. Negative: a Go library as a direct Rust
+  dependency is rejected. Boundary: an ABI mapping with zero functions is not
+  accepted as a boundary.
 
 ## Constraints and unknowns
 
 Constraints:
 
-- The concept is preserved with no redesign. Praetor governance is canonical, and notebook exports are immutable proposal data, including their dependency versions.
-- `make verify-all` verifies preparation and governance only. Build, image, boot, hardware, accessibility and release are separate blocked gates.
-- Aegis owns product requirements and adapters, Imago owns image construction, and Nucleus owns kernel construction. Golusoris supplies compatible shared packages, and a Go library is never a direct dependency of a Rust daemon.
-- Toolchains enter through the template matrix only as components activate. Every activation needs a manifest, a dependency lock, an interface contract and positive/negative/boundary tests.
-- HISS invariants apply to activated code: bounded loops, no unwrap/expect, no recursion, zero warnings and function-size limits. Scaffold `assert!` bounds are refactored to `Result` before their negative tests count.
-- A host or stock kernel, or workstation measurements, are local fixtures. They never close a milestone that requires the Nucleus kernel or an Aegis image.
+- The concept is preserved with no redesign. Praetor governance is canonical,
+  and notebook exports are immutable proposal data, including their dependency
+  versions.
+- `make verify-all` verifies preparation and governance only. Build, image,
+  boot, hardware, accessibility and release are separate blocked gates.
+- Aegis owns product requirements and adapters, Imago owns image construction,
+  and Nucleus owns kernel construction. Golusoris supplies compatible shared
+  packages, and a Go library is never a direct dependency of a Rust daemon.
+- Toolchains enter through the template matrix only as components activate.
+  Every activation needs a manifest, a dependency lock, an interface contract
+  and positive/negative/boundary tests.
+- HISS invariants apply to activated code: bounded loops, no unwrap/expect, no
+  recursion, zero warnings and function-size limits. Scaffold `assert!` bounds
+  are refactored to `Result` before their negative tests count.
+- A host or stock kernel, or workstation measurements, are local fixtures. They
+  never close a milestone that requires the Nucleus kernel or an Aegis image.
 - Public documents cite ids and hashes only; quotes stay private.
 
 Unknowns (see open decisions D01-D20):
 
 - The kernel identity and version line.
-- Versions for wlroots, Mesa, PGlite, Steamworks, the CAD/solver stack, Firecracker and the Wasm engine.
+- Versions for wlroots, Mesa, PGlite, Steamworks, the CAD/solver stack,
+  Firecracker and the Wasm engine.
 - The GPU vendor for the P08/P11/P15 DMA-BUF paths.
 - Whether P03 -> P15 exists outside the graph JSON.
 - The exact SCI functional-unit definitions.
 - The D-Bus interface schemas for Lictor and Minerva.
 - The real container digest for the Concordia validator.
-- Whether reports for P09, P13 and P16 exist at all; they are absent from the export.
-- Whether the configured Imago/Nucleus origins will resolve, and whether builder workflow identities will be canonicalized (private readiness matrix).
-- {{unresolved}}: no source states a minimum host specification for M11/M12/M20/M21 beyond KVM, OVMF, swtpm, TPM2, RAPL, an NVMe SSD and an NVIDIA/AMD GPU.
+- Whether reports for P09, P13 and P16 exist at all; they are absent from the
+  export.
+- Whether the configured Imago/Nucleus origins will resolve, and whether builder
+  workflow identities will be canonicalized (private readiness matrix).
+- {{unresolved}}: no source states a minimum host specification for
+  M11/M12/M20/M21 beyond KVM, OVMF, swtpm, TPM2, RAPL, an NVMe SSD and an
+  NVIDIA/AMD GPU.

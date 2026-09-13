@@ -25,6 +25,7 @@ verbatim, so an evasive command survives a payload shape this script cannot map.
 A git hook cannot observe --no-verify because git skips hooks entirely, so this
 script is deliberately not part of lefthook.yml.
 """
+
 import json
 import os
 import re

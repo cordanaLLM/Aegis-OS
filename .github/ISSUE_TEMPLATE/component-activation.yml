@@ -1,3 +1,4 @@
+---
 name: "Component Activation Request"
 description: "Propose promoting one component from proposal to active implementation"
 title: "[ACTIVATE]: P"
@@ -6,7 +7,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        Activation requires the four preconditions from `GOVERNANCE.md`: component manifest, dependency lock, interface contract, and positive/negative/boundary tests. Reference the milestone in `planning/roadmap.json` that this request unblocks.
+        Activation requires the four preconditions from `GOVERNANCE.md`:
+        component manifest, dependency lock, interface contract, and
+        positive, negative and boundary tests. Reference the milestone in
+        `planning/roadmap.json` that this request unblocks.
   - type: input
     id: component
     attributes:
@@ -32,7 +36,9 @@ body:
     id: contract
     attributes:
       label: "Interface contract"
-      description: "Schemas, transports, correlation IDs, and owning repositories for every cross-component edge."
+      description: >-
+        Schemas, transports, correlation IDs, and owning repositories for every cross-component
+        edge.
     validations:
       required: true
   - type: textarea
@@ -45,6 +51,7 @@ body:
     id: evidence
     attributes:
       label: "Evidence limits"
-      description: "State what the tests do NOT prove (no build, boot, hardware, or release claims)."
+      description: >-
+        State what the tests do NOT prove (no build, boot, hardware, or release claims).
     validations:
       required: true

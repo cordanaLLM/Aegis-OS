@@ -1,19 +1,17 @@
-// Markdown lint policy for this repository (editor extension and CLI read this file).
-// MD013 (line length) is off: generated planning tables and cited requirement rows
-// exceed any fixed width. MD060 (table column style) is off for the same reason.
+// Markdown lint policy. Every default rule stays on. The single exception is
+// structural: a GitHub Flavored Markdown table row cannot be wrapped without
+// breaking the table, and the requirement, task and milestone registers are
+// tables by design, so MD013 skips table rows. Prose, headings and code blocks
+// are still held to the 80-column limit.
 {
   "config": {
     "default": true,
-    "MD013": false,
-    "MD060": false
+    "MD013": { "tables": false }
   },
   "globs": ["**/*.md"],
   "ignores": [
     ".workingdir/**",
     ".workingdir2/**",
-    "site/**",
-    "LICENSES/**",
-    // Generated verbatim by praetorctl paperclip; fix upstream, not here.
-    ".paperclip/rules.md"
+    "site/**"
   ]
 }

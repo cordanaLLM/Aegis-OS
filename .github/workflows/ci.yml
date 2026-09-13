@@ -1,3 +1,4 @@
+---
 # Preparation gate: governance, planning structure, licence texts and REUSE only.
 # It builds nothing from the OS concept and never enables image, boot or release.
 name: Preparation gate
@@ -19,6 +20,9 @@ env:
   LEFTHOOK_SHA256: "22ff1ad48d1a0f4dca8d6b7e920056c6a9015f9204e5b693858ed9c2db759a16"
   REUSE_VERSION: "6.2.0"
   MARKDOWNLINT_VERSION: "0.23.2"
+  YAMLLINT_VERSION: "1.38.0"
+  FLAKE8_VERSION: "7.3.0"
+  BLACK_VERSION: "26.5.1"
   # Published Praetor commit that builds the praetorctl this gate pins.
   PRAETOR_COMMIT: "8d617bddf08042ad828d8a5c3c7852c4f000ce5d"
 
@@ -36,9 +40,10 @@ jobs:
       - name: Release pull requests stay blocked until roadmap milestone M13 is done
         if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--')
         run: |
-          state="$(python3 -c 'import json; print(next((m["state"] for m in json.load(open("planning/roadmap.json"))["milestones"] if m["id"] == "M13"), "missing"))')"
+          state="$(python3 tools/roadmap_state.py M13)"
           if [ "$state" != "done" ]; then
-            echo "::error::release pull request blocked: planning/roadmap.json milestone M13 (release signing and remote delivery) has state \"$state\", expected \"done\"."
+            echo "::error::release pull request blocked: roadmap milestone M13" \
+              "(release signing and remote delivery) is \"$state\", expected \"done\"."
             exit 1
           fi
           printf '%s\n' 'roadmap M13 is done; release pull requests may proceed.'
@@ -66,7 +71,8 @@ jobs:
           test "$(git -C praetor-src rev-parse HEAD)" = "$PRAETOR_COMMIT"
           mkdir -p "$RUNNER_TEMP/bin"
           ( cd praetor-src && go mod download && go mod verify \
-            && go build -trimpath -buildvcs=false -o "$RUNNER_TEMP/bin/praetorctl" ./cmd/standardsctl )
+            && go build -trimpath -buildvcs=false \
+              -o "$RUNNER_TEMP/bin/praetorctl" ./cmd/standardsctl )
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
           # The Praetor checkout is a build input only; the preparation gate must
           # not scan or publish it as Aegis repository content.
@@ -88,6 +94,15 @@ jobs:
 
       - name: Markdown lint
         run: npx --yes "markdownlint-cli2@${MARKDOWNLINT_VERSION}"
+
+      - name: YAML lint
+        run: pipx run "yamllint==${YAMLLINT_VERSION}" .
+
+      - name: Python lint
+        run: |
+          pipx run "flake8==${FLAKE8_VERSION}" .
+          pipx run "black==${BLACK_VERSION}" --check --line-length 100 \
+            tools .config/agent/hooks
 
       - name: Shell lint
         run: git ls-files '*.sh' | xargs -r shellcheck -x

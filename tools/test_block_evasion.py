@@ -17,20 +17,49 @@ LEFTHOOK_PUSH = "LEFTHOOK=0 git push origin main"
 ALLOWED = "git status --short"
 
 CLIENT_PAYLOADS = {
-    "claude-code": lambda cmd: {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": cmd}},
-    "codex-cli": lambda cmd: {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": cmd}},
-    "gemini-cli": lambda cmd: {"hook_event_name": "BeforeTool", "tool_name": "run_shell_command", "tool_input": {"command": cmd, "description": "run"}},
-    "copilot-pascal": lambda cmd: {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": cmd}},
+    "claude-code": lambda cmd: {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_input": {"command": cmd},
+    },
+    "codex-cli": lambda cmd: {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_input": {"command": cmd},
+    },
+    "gemini-cli": lambda cmd: {
+        "hook_event_name": "BeforeTool",
+        "tool_name": "run_shell_command",
+        "tool_input": {"command": cmd, "description": "run"},
+    },
+    "copilot-pascal": lambda cmd: {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_input": {"command": cmd},
+    },
     "copilot-camel": lambda cmd: {"toolName": "bash", "toolArgs": json.dumps({"command": cmd})},
-    "cursor": lambda cmd: {"hook_event_name": "beforeShellExecution", "command": cmd, "cwd": "/repo", "sandbox": False},
-    "windsurf": lambda cmd: {"agent_action_name": "pre_run_command", "tool_info": {"command_line": cmd, "cwd": "/repo"}},
+    "cursor": lambda cmd: {
+        "hook_event_name": "beforeShellExecution",
+        "command": cmd,
+        "cwd": "/repo",
+        "sandbox": False,
+    },
+    "windsurf": lambda cmd: {
+        "agent_action_name": "pre_run_command",
+        "tool_info": {"command_line": cmd, "cwd": "/repo"},
+    },
 }
 
 
 def run_hook(payload_text, env=None):
     return subprocess.run(
-        ["python3", "-B", str(HOOK)], input=payload_text, text=True,
-        capture_output=True, cwd=str(ROOT), env=env, timeout=30,
+        ["python3", "-B", str(HOOK)],
+        input=payload_text,
+        text=True,
+        capture_output=True,
+        cwd=str(ROOT),
+        env=env,
+        timeout=30,
     )
 
 

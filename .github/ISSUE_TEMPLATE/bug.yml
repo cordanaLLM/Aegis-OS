@@ -1,3 +1,4 @@
+---
 name: "Bug Report"
 description: "Report a defect in planning artifacts, governance tooling, or a verification gate"
 title: "[BUG]: "
@@ -6,7 +7,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please verify the failure against the current default branch with `make verify-all` before filing.
+        Please verify the failure against the current default branch with
+        `make verify-all` before filing.
   - type: textarea
     id: summary
     attributes:

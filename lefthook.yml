@@ -1,3 +1,4 @@
+---
 # Lefthook Configuration (HISS-16 Governance)
 # Governance commands fail closed: a failing or missing praetorctl blocks the commit or push.
 extends:
@@ -14,28 +15,55 @@ pre-commit:
   parallel: true
   commands:
     context-check:
-      run: if command -v praetorctl >/dev/null 2>&1; then praetorctl compile-context --verify; elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl compile-context --verify; else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2; exit 1; fi
+      run: >-
+        if command -v praetorctl >/dev/null 2>&1; then praetorctl compile-context --verify;
+        elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl compile-context --verify;
+        else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2;
+        exit 1; fi
     hiss-audit:
-      run: if command -v praetorctl >/dev/null 2>&1; then praetorctl audit; elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl audit; else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2; exit 1; fi
+      run: >-
+        if command -v praetorctl >/dev/null 2>&1; then praetorctl audit;
+        elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl audit;
+        else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2;
+        exit 1; fi
 
 post-commit:
   commands:
     state-sync:
-      run: if command -v praetorctl >/dev/null 2>&1; then praetorctl state sync .; elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl state sync .; else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2; exit 1; fi
+      run: >-
+        if command -v praetorctl >/dev/null 2>&1; then praetorctl state sync .;
+        elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl state sync .;
+        else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2;
+        exit 1; fi
     dedupe-cadence:
-      run: if command -v praetorctl >/dev/null 2>&1; then praetorctl dedupe cadence --threshold=20 --record .; elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl dedupe cadence --threshold=20 --record .; else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2; exit 1; fi
+      run: >-
+        if command -v praetorctl >/dev/null 2>&1;
+        then praetorctl dedupe cadence --threshold=20 --record .; elif [ -d ./cmd/standardsctl ];
+        then go run ./cmd/standardsctl dedupe cadence --threshold=20 --record .;
+        else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2;
+        exit 1; fi
 
 pre-push:
   parallel: false
   commands:
     flavor-audit:
-      run: if command -v praetorctl >/dev/null 2>&1; then praetorctl flavor audit .; elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl flavor audit .; else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2; exit 1; fi
+      run: >-
+        if command -v praetorctl >/dev/null 2>&1; then praetorctl flavor audit .;
+        elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl flavor audit .;
+        else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2;
+        exit 1; fi
     audit:
-      run: if command -v praetorctl >/dev/null 2>&1; then praetorctl audit; elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl audit; else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2; exit 1; fi
+      run: >-
+        if command -v praetorctl >/dev/null 2>&1; then praetorctl audit;
+        elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl audit;
+        else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2;
+        exit 1; fi
     gate:
       run: >-
         gate_mode="";
-        if [ ! -f go.mod ]; then gate_mode="--dry-run"; echo "no go.mod, race-detector stage skipped and no receipt minted" >&2; fi;
+        if [ ! -f go.mod ]; then gate_mode="--dry-run";
+        echo "no go.mod, race-detector stage skipped, no receipt minted" >&2; fi;
         if command -v praetorctl >/dev/null 2>&1; then praetorctl gate run --path=. $gate_mode;
         elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl gate run --path=. $gate_mode;
-        else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2; exit 1; fi
+        else echo "HISS-16 hook cannot run: praetorctl is not installed" >&2;
+        exit 1; fi
