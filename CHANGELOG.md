@@ -14,7 +14,7 @@ version and is never released.
 
 ### Added (2026-09-13, later)
 - Registered the anti-evasion interceptor as committed client settings for Claude Code, Codex CLI, Gemini CLI, Copilot, Cursor and Windsurf, with eleven payload-shape tests.
-- `VERSION` and a release train (release-please) that keeps the changelog and version current in a release pull request which stays blocked until roadmap milestone M13.
+- `VERSION` and a release train (release-please) that keeps the changelog and version current in a release pull request which stays blocked until roadmap milestone M13. The train itself runs only when the repository variable `RELEASE_TRAIN_ENABLED` is `true`, because the organization currently forbids Actions from opening pull requests.
 - MkDocs documentation portal published to GitHub Pages, with the `docs:seo-portal` facet and pinned documentation dependencies.
 
 ### Changed (2026-09-13, later)

@@ -3,6 +3,13 @@
 # releases stay skipped until planning/roadmap.json records milestone M13
 # (release signing and remote delivery) as done, and the Preparation gate
 # refuses to pass on a release-please branch until the same condition holds.
+#
+# The job runs only when the repository variable RELEASE_TRAIN_ENABLED is
+# "true". The organization currently forbids GitHub Actions from creating pull
+# requests, which makes release-please fail after it has already pushed its
+# branch. Enable the organization setting "Allow GitHub Actions to create and
+# approve pull requests" first, then:
+#   gh api --method PATCH repos/cordanaLLM/Aegis-OS/actions/variables/RELEASE_TRAIN_ENABLED -f name=RELEASE_TRAIN_ENABLED -f value=true
 name: Release please
 
 on:
@@ -20,6 +27,7 @@ concurrency:
 jobs:
   release-please:
     name: Release pull request
+    if: vars.RELEASE_TRAIN_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -47,3 +55,15 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           skip-github-release: ${{ steps.gate.outputs.skip-github-release }}
+
+  disabled-notice:
+    name: Release train disabled
+    if: vars.RELEASE_TRAIN_ENABLED != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Explain why no release pull request is maintained
+        run: |
+          printf '%s\n' 'Release train disabled: repository variable RELEASE_TRAIN_ENABLED is not "true".' \
+            'Enable "Allow GitHub Actions to create and approve pull requests" for the organization,' \
+            'then set the variable to true. Releases additionally stay blocked until roadmap M13 is done.'
