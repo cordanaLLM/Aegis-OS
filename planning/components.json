@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "stage": "planning",
+  "concept_source_sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+  "components": [
+    {
+      "id": "P01",
+      "name": "aegis-fabrica",
+      "proposed_domain": "OS Build System & UKI Synthesis",
+      "status": "proposal",
+      "activation_blockers": [
+        "Imago/Nucleus request and artifact contracts",
+        "pinned image/kernel inputs",
+        "real artifact and boot evidence"
+      ]
+    },
+    {
+      "id": "P02",
+      "name": "aegis-janus-vallum",
+      "proposed_domain": "Partition Geometry & TPM2 Storage Security",
+      "status": "proposal",
+      "activation_blockers": [
+        "Imago/Nucleus request and artifact contracts",
+        "pinned image/kernel inputs",
+        "real artifact and boot evidence"
+      ]
+    },
+    {
+      "id": "P03",
+      "name": "aegis-vulcan",
+      "proposed_domain": "User-Space PCIe Drivers & Direct DMA",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P04",
+      "name": "aegis-compositor",
+      "proposed_domain": "Wayland Compositor & Tri-Tier Agent Mesh",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P05",
+      "name": "aegis-forum-shell",
+      "proposed_domain": "Non-Blocking UI Shell & Process Isolation",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P06",
+      "name": "aegis-justitia",
+      "proposed_domain": "EU AI Act Compliance & Action Interceptor",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P07",
+      "name": "aegis-lictor",
+      "proposed_domain": "Resource Broker Daemon & eBPF Schedulers",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P08",
+      "name": "aegis-calliope",
+      "proposed_domain": "Real-Time Multimedia Pipeline & PipeWire RTL",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P09",
+      "name": "aegis-minerva",
+      "proposed_domain": "20W Biomimetic AI Framework & Ephemeral Tiny Experts",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P10",
+      "name": "aegis-vesta",
+      "proposed_domain": "MicroVM Isolation & Thread-Per-Core Runtimes",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P11",
+      "name": "aegis-ludus",
+      "proposed_domain": "Native Gaming Integration & Steamworks FFI",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P12",
+      "name": "aegis-concordia",
+      "proposed_domain": "Accessible Sovereign Design System & EN 301 549",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P13",
+      "name": "aegis-tellus",
+      "proposed_domain": "Carbon-Aware Compute Scheduling & eBPF Telemetry",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P14",
+      "name": "aegis-hephaestus",
+      "proposed_domain": "Open B-Rep CAD Kernels & Multi-Physics Solvers",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P15",
+      "name": "aegis-hestia",
+      "proposed_domain": "Sovereign Productivity App Engine & Local PGlite",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    },
+    {
+      "id": "P16",
+      "name": "aegis-athena",
+      "proposed_domain": "Continuous Evolutionary Adoption & 20W A/B Testing",
+      "status": "proposal",
+      "activation_blockers": [
+        "component manifests and dependency locks",
+        "real positive, negative and boundary tests",
+        "pinned shared integration contract"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+# Private notebook exports, connection guides, evidence, and session state.
+/.workingdir/
+/.workingdir2/
+.standards-receipt.json
+__pycache__/
+*.pyc
+/target/
+node_modules/
+/.cache/
+/build/mkosi.output/
+/build/mkosi.builddir/
+*.raw
+*.qcow2
+*.efi
+*.iso
+# Dependency lockfiles are versioned once implementation dependencies are selected.
+/.workingdir/

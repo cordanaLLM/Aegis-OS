@@ -1,0 +1,12 @@
+version: 1
+repository:
+    owner: cordanaLLM
+    name: Aegis-OS
+    visibility: public
+    description: ""
+    homepage: ""
+    topics: []
+profiles:
+    - planning-artifacts
+facets:
+    - agent:sandboxed

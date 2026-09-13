@@ -1,0 +1,5 @@
+# Project preparation gate layered over Praetor's generated governance hooks.
+pre-commit:
+  commands:
+    preparation:
+      run: make verify-all
