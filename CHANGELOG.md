@@ -13,6 +13,15 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Changed (kernel sourcing)
+
+- Decision D70 records where kernels come from: Nucleus builds them against the
+  Aegis kernel requirement schema authored in M18, and a distribution realtime
+  package is only an interim source for an early guest fixture, with its
+  configuration read back from inside the guest. The schema must therefore
+  express the preemption model, timer frequency, sched_ext, BPF LSM and BTF
+  options the control-plane subsystems need.
+
 ### Fixed (reference profile)
 
 - Corrected the reference-profile support for the boot harness and the

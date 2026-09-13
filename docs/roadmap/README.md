@@ -1956,6 +1956,13 @@ Open decisions:
   first component lands on Rust edition 2024 with the current stable toolchain
   and current crate releases; Renovate proposes the moves and the gates prove
   them.
+- **D70** Where does the kernel for realtime and scheduler work come from?
+  Decision (2026-09-13): Nucleus builds it against the Aegis kernel requirement
+  schema authored in M18. A distribution realtime package may serve as an
+  interim source for an early guest fixture, with its configuration read back
+  from inside the guest rather than assumed, because the product will need
+  options no general-purpose package carries and kernel construction belongs to
+  Nucleus under docs/integration/stack.md.
 
 ## Evidence
 
