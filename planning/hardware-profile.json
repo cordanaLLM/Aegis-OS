@@ -51,7 +51,7 @@
     "tpm2": {
       "present": true,
       "evidence_command": "cat /sys/class/tpm/tpm0/tpm_version_major",
-      "note": "discrete TPM 2.0; swtpm also installed for virtual machines"
+      "note": "discrete TPM 2.0; swtpm also installed for virtual machines; /dev/tpm0 and /dev/tpmrm0 are group tss and the developer account is not a member, so tpm2-tools reads run privileged (a root read of PCR 7 succeeded)"
     },
     "iommu": {
       "present": true,
@@ -106,7 +106,7 @@
     "gpu_dma_buf_and_peer_memory": {
       "present": true,
       "evidence_command": "modinfo nvidia | grep -E '^(version|license)'; modinfo -n nvidia_peermem",
-      "note": "NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.3.1 present; the Intel and AMD cards provide DMA-BUF through their in-tree drivers"
+      "note": "NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.3.1 present; the Intel and AMD cards provide DMA-BUF through their in-tree drivers; the Arc A380 is bound to i915 at probe time, and the same kernel ships xe with a PCI alias for 8086:56a5 (CONFIG_DRM_XE=m), so rebinding it to xe for drm_sched is supported here"
     }
   },
   "gpus": [
@@ -172,27 +172,29 @@
     },
     "pnpm": {
       "present": true,
-      "version": "10.29.3"
+      "version": "10.29.3",
+      "provenance": "user-local install, not distribution-managed"
     },
     "cosign": {
       "present": true,
-      "version": "{"
+      "version": "{",
+      "provenance": "user-local install, not distribution-managed"
     },
     "mkosi": {
-      "present": false,
-      "version": null
+      "present": true,
+      "version": "mkosi 27"
     },
     "firecracker": {
-      "present": false,
-      "version": null
+      "present": true,
+      "version": "Firecracker v1.17.0"
     },
     "sbsign": {
-      "present": false,
-      "version": null
+      "present": true,
+      "version": "sbsign 0.9.5"
     },
     "tpm2_pcrread": {
-      "present": false,
-      "version": null
+      "present": true,
+      "version": "tool=\"tpm2_pcrread\" version=\"5.8\" tctis=\"libtss2-tctildr\" tcti-default"
     },
     "scx_schedulers": {
       "present": true,
@@ -208,7 +210,8 @@
     },
     "nvidia_fs": {
       "present": false,
-      "version": null
+      "version": null,
+      "note": "GPUDirect Storage is gated to datacentre cards, so installing it would not make the path demonstrable here"
     },
     "qemu-img": {
       "present": true,
@@ -227,24 +230,26 @@
       "version": "installed"
     },
     "mkfs_erofs": {
-      "present": false,
-      "version": null
+      "present": true,
+      "version": "mkfs.erofs (erofs-utils) 1.9.4"
     },
     "ukify": {
-      "present": false,
-      "version": null
+      "present": true,
+      "version": "ukify 261 (261.3-1-arch)"
     },
     "rustup": {
       "present": false,
-      "version": null
+      "version": null,
+      "note": "deliberately not installed: it conflicts with the distribution rust package; the pinned-toolchain choice is decision D61"
     },
     "sbctl": {
       "present": false,
-      "version": null
+      "version": null,
+      "note": "virt-firmware covers the OVMF variable store; sbctl is an alternative"
     },
     "virt-firmware": {
-      "present": false,
-      "version": null
+      "present": true,
+      "version": "virt-firmware 26.9 (virt.firmware module)"
     },
     "systemd": {
       "present": true,
@@ -263,16 +268,6 @@
       "kind": "package install"
     },
     {
-      "action": "Install extra/mkosi 27, extra/erofs-utils 1.9.4, extra/sbsigntools 0.9.5 and extra/tpm2-tools 5.8, each pinned through the template matrix",
-      "unblocks": "image definition validation, EROFS and dm-verity images, unified kernel image signing and TPM policy checks for M03, M11, M13 and M20",
-      "kind": "package install"
-    },
-    {
-      "action": "Install Firecracker with its jailer, or use the already installed QEMU microvm machine type",
-      "unblocks": "P10 microVM sandboxing measurements in M21",
-      "kind": "package install"
-    },
-    {
       "action": "Load vfio-pci to bind a GPU, and install the nvidia-fs module for GPUDirect Storage",
       "unblocks": "P03 passthrough and peer DMA; DMA-BUF and peer memory already work with the installed open driver, so only the storage-to-GPU path needs nvidia-fs",
       "kind": "module or package"
@@ -281,6 +276,16 @@
       "action": "Pin the toolchain versions that are already installed (Rust 1.98.1, clang, bpftool, QEMU, swtpm, systemd 261, Node, pnpm, cosign) through the template matrix",
       "unblocks": "every activation milestone, which must name a pinned toolchain before its gate runs",
       "kind": "governance"
+    },
+    {
+      "action": "Add the developer account to the tss group, or run TPM checks privileged",
+      "unblocks": "unprivileged tpm2-tools reads for M20; a privileged read already works",
+      "kind": "system setting"
+    },
+    {
+      "action": "Rebind the Arc A380 from i915 to xe when drm_sched is needed from the Intel card",
+      "unblocks": "a second drm_sched provider for M25 beside amdgpu; the kernel ships xe with a PCI alias for this device",
+      "kind": "module or package"
     }
   ]
 }
