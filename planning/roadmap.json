@@ -451,7 +451,8 @@
         "Negative case bound to a measured absence: a requirement payload demanding CONFIG_PREEMPT_RT is rejected against the reference profile, whose running kernel reports '# CONFIG_PREEMPT_RT is not set' with CONFIG_PREEMPT_DYNAMIC=y.",
         "Boundary case: a requirement payload demanding only CONFIG_HZ_1000 is accepted, since the reference profile sets CONFIG_HZ_1000=y while still failing the PREEMPT_RT requirement \u2014 proving the schema discriminates per feature and not per kernel flavour.",
         "D56 is recorded: mkosi is not installed and M18 takes D14's 'validate through the Imago result' branch, or mkosi is pinned at extra/mkosi 27-1 which supersedes the register's inherited 'mkosi v24+' row with an exact pin.",
-        "mkosi 27 is installed on the reference profile and validates the image definitions locally while Imago remains a scaffold (D56); the validation is Aegis-side and constructs no product image, and it moves to consuming an Imago result once Imago returns real artifacts"
+        "mkosi 27 is installed on the reference profile and validates the image definitions locally while Imago remains a scaffold (D56); the validation is Aegis-side and constructs no product image, and it moves to consuming an Imago result once Imago returns real artifacts",
+        "The kernel requirement schema expresses the realtime and scheduler options P07 and P08 need (preemption model, timer frequency, sched_ext, BPF LSM, BTF), because Nucleus builds the kernel and a distribution package is only an interim fixture source (D70)"
       ],
       "cheapest_exit": "Author the two schemas and validate them against the M03 files with the Rust toolchain from M02.",
       "epics": [
@@ -1420,8 +1421,8 @@
       ],
       "exit_criteria": [
         "Toolchain admission: QEMU 11.1.1 and the realtime kernel package are selected through the template matrix with pinned versions",
+        "D70 is applied: the guest kernel is an interim source for the latency fixture only. A distribution realtime package may be used to get a first measurement, and its configuration is read back from inside the guest rather than assumed; the kernel the product depends on is built by Nucleus against the Aegis kernel requirement schema from M18",
         "D57 is recorded with the realtime kernel obtained without modifying the reference host: the distribution package is downloaded only (no installation, no bootloader entry) and its kernel image and modules are passed to the guest",
-        "That the packaged realtime kernel sets CONFIG_PREEMPT_RT is verified from the package itself before the milestone starts; until verified it is recorded as an unmeasured assumption",
         "The guest kernel's configuration is read back from inside the virtual machine and confirms CONFIG_PREEMPT_RT, while the same probe on the reference host confirms it is not set there",
         "Positive: the latency fixture produces measured figures for the tier thresholds on the guest. Negative: the same fixture on the non-realtime host is recorded as not satisfying the determinism claim. Boundary: a run at the threshold and one step beyond it are reported differently",
         "A pass here is development evidence on the reference profile and closes no hardware gate"
@@ -1456,7 +1457,7 @@
       "reference_profile": {
         "support": "partial",
         "requires": [],
-        "rationale": "the realtime kernel is a distribution package run in a guest, not a host change; it stays partial only until the package is confirmed to set CONFIG_PREEMPT_RT, which is unmeasured"
+        "rationale": "the host is not realtime, and the fixture runs in a guest. The interim kernel is a distribution package; the production kernel is a Nucleus build against the M18 schema (D70)"
       }
     },
     {
