@@ -1,0 +1,1961 @@
+{
+  "schema_version": 1,
+  "source_bundle_sha256": "8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6",
+  "generated_for_milestone": "M01",
+  "stage": "planning",
+  "scope": "Planning data only. No manifest, lock, build, boot, image or release evidence is recorded or implied by this file.",
+  "publication_rule": "Public rows cite source ids and sha256 digests. No private path is recorded and no quoted span exceeds 200 characters.",
+  "graph_of_record": {
+    "source_id": "export-062",
+    "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+    "note": "The subsystem graph stays the graph of record at M01; no decision in this register edits it."
+  },
+  "candidates": [
+    {
+      "candidate_id": "C01",
+      "component": "P01",
+      "language": "declarative-config + proposed Rust crate",
+      "proposed_paths": [
+        "build/ (mkosi, repart and sysupdate definition inputs)",
+        "crates/<undecided>/ definition parser (D15; no source records a crate name)"
+      ],
+      "in_proposed_workspace": false,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-010",
+          "sha256": "1748925bf81e5a610586d34bef30b62345de024a7271390be9b13d41efa079b5",
+          "title": "[Report P01] Project Fabrica - OS Build System & UKI Synthesis.md",
+          "bytes": 10147
+        },
+        {
+          "id": "export-049",
+          "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
+          "title": "mkosi.conf",
+          "bytes": 910
+        },
+        {
+          "id": "export-053",
+          "sha256": "d85a1f6ceb0ed37ac9e25e6c576a58f034efbdce8bad3832336b0c6335e2deac",
+          "title": "repart-00-esp.conf",
+          "bytes": 124
+        },
+        {
+          "id": "export-054",
+          "sha256": "41d6d121b142e68d3daec8d2708962631a644bd1c31f268db6c59f351a43c8fa",
+          "title": "repart-10-root-a.conf",
+          "bytes": 117
+        },
+        {
+          "id": "export-055",
+          "sha256": "c915f281532f2c48acdf1ff6d5e0343b6e5b3b95af6a9fae5a8b77edf2795f88",
+          "title": "repart-20-var.conf",
+          "bytes": 145
+        },
+        {
+          "id": "export-063",
+          "sha256": "b284bb77c19f33a6674357a28f26f183984ee59707bd8c9dfd572da4dbf768a2",
+          "title": "sysupdate-10-root.conf",
+          "bytes": 403
+        }
+      ],
+      "missing": [
+        "crate name and path for the D15 definition parser",
+        "crate Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "positive, negative and boundary tests",
+        "Imago request and artefact contracts",
+        "pinned image and kernel inputs"
+      ],
+      "note": "Boundary row: no P01 crate exists in the proposed workspace (export-006) or the directory map (export-007)."
+    },
+    {
+      "candidate_id": "C02",
+      "component": "P02",
+      "language": "declarative-config + proposed Rust crate",
+      "proposed_paths": [
+        "build/ (repart drop-ins and sysupdate transfer definitions)",
+        "crates/<undecided>/ A/B lifecycle (D15; no source records a crate name)"
+      ],
+      "in_proposed_workspace": false,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-011",
+          "sha256": "528da609dab7ad5931400eb1631cfb0b106da5f1310842f0025f73317069b433",
+          "title": "[Report P02] Project Janus & Vallum - Partition Geometry & Storage Security.md",
+          "bytes": 11279
+        },
+        {
+          "id": "export-053",
+          "sha256": "d85a1f6ceb0ed37ac9e25e6c576a58f034efbdce8bad3832336b0c6335e2deac",
+          "title": "repart-00-esp.conf",
+          "bytes": 124
+        },
+        {
+          "id": "export-054",
+          "sha256": "41d6d121b142e68d3daec8d2708962631a644bd1c31f268db6c59f351a43c8fa",
+          "title": "repart-10-root-a.conf",
+          "bytes": 117
+        },
+        {
+          "id": "export-055",
+          "sha256": "c915f281532f2c48acdf1ff6d5e0343b6e5b3b95af6a9fae5a8b77edf2795f88",
+          "title": "repart-20-var.conf",
+          "bytes": 145
+        },
+        {
+          "id": "export-063",
+          "sha256": "b284bb77c19f33a6674357a28f26f183984ee59707bd8c9dfd572da4dbf768a2",
+          "title": "sysupdate-10-root.conf",
+          "bytes": 403
+        }
+      ],
+      "missing": [
+        "crate name and path for the D15 A/B lifecycle crate",
+        "crate Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "tests for candidate, signature check, delta acquisition, slot swap, watchdog, bless and rollback",
+        "TPM2 and secure-boot hardware or emulator evidence"
+      ],
+      "note": "Boundary row: no P02 crate exists in export-006 or export-007; crates/README.md reserves P03-P16 only."
+    },
+    {
+      "candidate_id": "C03",
+      "component": "P03",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-vulcan/src/main.rs"
+      ],
+      "in_proposed_workspace": false,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-012",
+          "sha256": "9b502c76509bcf22b1fa4ae2e93b7347589259d99254b217561782d7ac9e9384",
+          "title": "[Report P03] Project Vulcan - User-Space PCIe Drivers & Direct DMA.md",
+          "bytes": 12680
+        },
+        {
+          "id": "export-038",
+          "sha256": "fe2cb01cfd13f13becd0aa0b996ae4838a052c60ff9d79b7c3e5e34529ece747",
+          "title": "aegis-vulcan-main.rs",
+          "bytes": 3818
+        }
+      ],
+      "missing": [
+        "crates/aegis-vulcan/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "workspace membership decision (open decision D22)",
+        "boundary tests for BAR alignment, block-count bounds and ring-buffer index",
+        "IOMMU, VFIO, NVMe and GPU peer-to-peer evidence"
+      ],
+      "note": "Boundary row: absent from the ten export-006 members and from the export-007 directory map (REQ-WS-01)."
+    },
+    {
+      "candidate_id": "C04",
+      "component": "P04",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-compositor/src/main.rs",
+        "build/mkosi.extra/usr/lib/systemd/system/aegis-compositor.service"
+      ],
+      "in_proposed_workspace": true,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-013",
+          "sha256": "7f4c22813332ffd81f92f0b82a30553f5da3c1e7494088fec6861dc7aa0df3cf",
+          "title": "[Report P04] Project Mercurius - Wayland Compositor Infrastructure & Agent Mesh.md",
+          "bytes": 10320
+        },
+        {
+          "id": "export-027",
+          "sha256": "f19640d7a7dad8d1aa587a164450ec17bae9e74f731761f0100f045a8922831f",
+          "title": "aegis-compositor-main.rs",
+          "bytes": 9253
+        },
+        {
+          "id": "export-028",
+          "sha256": "d74a93eac654d1e34b2e3cd7f35f2600f0f94dc38003aa7bd0cd81ea6e64e77d",
+          "title": "aegis-compositor.service",
+          "bytes": 682
+        }
+      ],
+      "missing": [
+        "crates/aegis-compositor/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "positive, negative and boundary tests",
+        "compositor dependency pins (D08 and ADR-0001 select pure Rust; export-007 still says wlroots)",
+        "frame-pacing constant (M07)"
+      ],
+      "note": "Member 1 of the ten-entry export-006 members array."
+    },
+    {
+      "candidate_id": "C05",
+      "component": "P05",
+      "language": "svelte",
+      "proposed_paths": [
+        "ui/forum-shell/src/App.svelte"
+      ],
+      "in_proposed_workspace": false,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-014",
+          "sha256": "659691a2d7d04dc67783f2b3a01bbe6ae818f62b271718fcea6322e61d6b0e8a",
+          "title": "[Report P05] Project Forum - Non-Blocking Desktop Shell & Process Isolation.md",
+          "bytes": 13574
+        },
+        {
+          "id": "export-043",
+          "sha256": "e3dbfa226e54fd6a6896e7a2e5371dd8b5d98a1546a99c0e823a8360905babd9",
+          "title": "forum-shell-App.svelte",
+          "bytes": 5546
+        },
+        {
+          "id": "export-023",
+          "sha256": "a0d06b6b8e6c8a0ac76f32377d8c39293ad2f191771755694b70eac53abe31f4",
+          "title": "a11y.spec.ts",
+          "bytes": 1254
+        }
+      ],
+      "missing": [
+        "ui/forum-shell/package.json",
+        "JavaScript lockfile",
+        "accessibility test wiring (export-023 is proposal data, quarantined)",
+        "UI toolchain pin (D10; open decisions D42 and D43)",
+        "Concordia token consumption contract (D05)"
+      ],
+      "note": "Not applicable to export-006: that workspace is a Cargo workspace and declares no UI package."
+    },
+    {
+      "candidate_id": "C06",
+      "component": "P06",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-justitia/src/main.rs",
+        "crates/aegis-justitia/tests/"
+      ],
+      "in_proposed_workspace": true,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-015",
+          "sha256": "fcbe2caed363770ae2b9d36c583c1eeb1d0ffddc880a6c61b4b18f6200988cdc",
+          "title": "[Report P06] Project Justitia - Regulatory Compliance, Action Interception & Governance.md",
+          "bytes": 10073
+        },
+        {
+          "id": "export-031",
+          "sha256": "5ff68332814874c6c1e59a905c2041758ce24eafca50491beb288d561a7267db",
+          "title": "aegis-justitia-main.rs",
+          "bytes": 4249
+        },
+        {
+          "id": "export-047",
+          "sha256": "971948673346948f0e85dba99470667cb09399fe25dd804c84f5f8a83e46b26d",
+          "title": "justitia_interceptor_test.rs",
+          "bytes": 9667
+        },
+        {
+          "id": "export-024",
+          "sha256": "50a41ecd0b744f217c394e51e7e999ba596065701de92aea414e87bb3965c3e1",
+          "title": "action_gate.bpf.c",
+          "bytes": 1454
+        }
+      ],
+      "missing": [
+        "crates/aegis-justitia/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "library code outside #[cfg(test)] (export-047 defines its engine inside the test module)",
+        "hash-algorithm trait boundary (D02)",
+        "eBPF compile and verifier evidence for action_gate (M19, M10)"
+      ],
+      "note": "Member 3 of the export-006 members array; first component promoted end-to-end (D01, M02)."
+    },
+    {
+      "candidate_id": "C07",
+      "component": "P07",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-lictor/src/main.rs",
+        "bpf/scx_cake.bpf.c"
+      ],
+      "in_proposed_workspace": true,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-016",
+          "sha256": "cfa58b5b23b8a0f75651be6fc0a68b410aefd66111b98b08d0f3c1fd3a85ada7",
+          "title": "[Report P07] Project Lictor - Resource Broker Daemon, Performance Kernel Tuning & GPU Scheduling.md",
+          "bytes": 9405
+        },
+        {
+          "id": "export-032",
+          "sha256": "30d67bc5229014b386e5dfa7e8c4dc4bccbf663041eb3b4714128073c3e6331f",
+          "title": "aegis-lictor-main.rs",
+          "bytes": 3241
+        },
+        {
+          "id": "export-056",
+          "sha256": "39af243568ad90f2a9f26d25522143ab7159c6e00f1fad619b864b791ffdb2d2",
+          "title": "scx_cake.bpf.c",
+          "bytes": 5092
+        }
+      ],
+      "missing": [
+        "crates/aegis-lictor/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "eBPF toolchain admission (M19; open decision D40)",
+        "positive, negative and boundary tests",
+        "kernel sched_ext evidence (D20 keeps eBPF out of the first image)"
+      ],
+      "note": "Member 2 of the export-006 members array; export-007 maps crates/aegis-lictor and bpf/ jointly to P07."
+    },
+    {
+      "candidate_id": "C08",
+      "component": "P08",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-calliope/src/main.rs"
+      ],
+      "in_proposed_workspace": true,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-017",
+          "sha256": "afbc0af8056d5022c8c1e494cb549d9400cb78bae41d6140e4209f73bb3ddcdb",
+          "title": "[Report P08] Project Calliope - Real-Time Multimedia Pipeline, PipeWire RTL & Sandboxed Plugins.md",
+          "bytes": 10195
+        },
+        {
+          "id": "export-026",
+          "sha256": "c2f1e433cd32b7a68245f99e648c661c31a407b03b22c6574b7d082980dc4b25",
+          "title": "aegis-calliope-main.rs",
+          "bytes": 5517
+        }
+      ],
+      "missing": [
+        "crates/aegis-calliope/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "PipeWire dependency pin (none is declared in export-006)",
+        "positive, negative and boundary tests",
+        "PipeWire and DMA-BUF runtime evidence"
+      ],
+      "note": "Member 4 of the export-006 members array."
+    },
+    {
+      "candidate_id": "C09",
+      "component": "P09",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-minerva/src/main.rs"
+      ],
+      "in_proposed_workspace": true,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-034",
+          "sha256": "213a95fc0d02401f89c198abac4ca5b80f34f9dbfce904dc9de1d5aae3cbec2a",
+          "title": "aegis-minerva-main.rs",
+          "bytes": 9805
+        }
+      ],
+      "missing": [
+        "crates/aegis-minerva/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "blueprint-level requirement source: the bundle holds no P09 report",
+        "action-proposal schema typed against P06 (D03, M14)",
+        "positive, negative and boundary tests"
+      ],
+      "note": "Coverage gap: one source only. The 62-source bundle spans export-001 to export-063 with export-008 absent."
+    },
+    {
+      "candidate_id": "C10",
+      "component": "P10",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-vesta/src/main.rs"
+      ],
+      "in_proposed_workspace": true,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-018",
+          "sha256": "5dbc6d071bbba9577c212c110a93298336ca0bab1b17a203e4048db5d32e59a9",
+          "title": "[Report P10] Project Vesta - MicroVM Isolation, Wasm Component Sandboxing & Thread-Per-Core Runtimes.md",
+          "bytes": 9959
+        },
+        {
+          "id": "export-037",
+          "sha256": "ce490c88081f31b9efdb3dc6f4b3671269e877f4ef4b7e3ce590c7937d576d1c",
+          "title": "aegis-vesta-main.rs",
+          "bytes": 8027
+        }
+      ],
+      "missing": [
+        "crates/aegis-vesta/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "Wasm runtime selected through the template matrix (D06)",
+        "contract tests for the direct and transitive P06 gating paths (D04)",
+        "thread-per-core runtime decision (open decision D46)"
+      ],
+      "note": "Member 6 of the export-006 members array."
+    },
+    {
+      "candidate_id": "C11",
+      "component": "P11",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-ludus/src/main.rs"
+      ],
+      "in_proposed_workspace": true,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-019",
+          "sha256": "b0aa6e54ed57d638ba5dda2c3f8d58bf9517a6498ec4a5f411922c713cf8ceff",
+          "title": "[Report P11] Project Ludus - Native Gaming Integration, Steamworks SDK & Discord Rich Presence.md",
+          "bytes": 9589
+        },
+        {
+          "id": "export-033",
+          "sha256": "531cbdf98eb578897c9834848bc303cd7770a3febc9660cca0f50520c20b3c15",
+          "title": "aegis-ludus-main.rs",
+          "bytes": 4189
+        }
+      ],
+      "missing": [
+        "crates/aegis-ludus/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "removal of the Steamworks path before activation (D12 and ADR-0002 exclude it)",
+        "a named rich-presence library (open decision D48)",
+        "TPM2 evidence for transaction signing"
+      ],
+      "note": "Member 7 of the export-006 members array."
+    },
+    {
+      "candidate_id": "C12",
+      "component": "P12",
+      "language": "css design tokens",
+      "proposed_paths": [
+        "ui/concordia-tokens/concordia-tokens.css"
+      ],
+      "in_proposed_workspace": false,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-020",
+          "sha256": "1748f49bb7f8dd849fd0b3ce913b9d1e9a0c2e3bc2789c3ecec740f8a68f9f06",
+          "title": "[Report P12] Project Concordia - Accessible Sovereign Design System & EN 301 549 Conformance.md",
+          "bytes": 12833
+        },
+        {
+          "id": "export-042",
+          "sha256": "411fb8c2d731b6e6850d5bd911dad65ad46d12d1e021b35703ebaa6aa7790f70",
+          "title": "concordia-tokens.css",
+          "bytes": 2423
+        },
+        {
+          "id": "export-023",
+          "sha256": "a0d06b6b8e6c8a0ac76f32377d8c39293ad2f191771755694b70eac53abe31f4",
+          "title": "a11y.spec.ts",
+          "bytes": 1254
+        }
+      ],
+      "missing": [
+        "ui/concordia-tokens/package.json",
+        "JavaScript lockfile",
+        "accessibility test package (export-023 is quarantined proposal data)",
+        "focus-ring width applied per D16 (3px token, 2px boundary minimum)",
+        "confirmation that no monolithic CSS library is introduced (D17)"
+      ],
+      "note": "Not applicable to export-006: no JavaScript package manifest exists in any source."
+    },
+    {
+      "candidate_id": "C13",
+      "component": "P13",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-tellus/src/main.rs",
+        "bpf/kepler_power.bpf.c"
+      ],
+      "in_proposed_workspace": true,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-036",
+          "sha256": "25813d24073335631e7c55c750de3d394787363f36c118f0c515e1556835b7dd",
+          "title": "aegis-tellus-main.rs",
+          "bytes": 5430
+        },
+        {
+          "id": "export-048",
+          "sha256": "293357bac7d3d2bbe238159a2b8a79a13693da8c91345c554fa3d8cd97ec7fa6",
+          "title": "kepler_power.bpf.c",
+          "bytes": 2029
+        }
+      ],
+      "missing": [
+        "crates/aegis-tellus/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "blueprint-level requirement source: the bundle holds no P13 report",
+        "telemetry payload schema for the P16 consumer",
+        "positive, negative and boundary tests"
+      ],
+      "note": "Member 8 of the export-006 members array; coverage gap, one blueprint-free source plus one eBPF probe."
+    },
+    {
+      "candidate_id": "C14",
+      "component": "P14",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-hephaestus/src/main.rs"
+      ],
+      "in_proposed_workspace": true,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-021",
+          "sha256": "6a3cda152e6c22d3333b40c369001617e4706341da244d8a19debc6607a490d3",
+          "title": "[Report P14] Project Hephaestus - Open B-Rep CAD Kernels & Multi-Physics Solvers.md",
+          "bytes": 10979
+        },
+        {
+          "id": "export-029",
+          "sha256": "42799618652005cddcd75fd26067a16d8c4fef16cef5ef6041ce1ed9d0435d2f",
+          "title": "aegis-hephaestus-main.rs",
+          "bytes": 4622
+        }
+      ],
+      "missing": [
+        "crates/aegis-hephaestus/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "CAD and solver dependency pins (absent from the export-006 dependency table)",
+        "licence decision for GPL-licensed solver bindings",
+        "positive, negative and boundary tests"
+      ],
+      "note": "Member 9 of the export-006 members array; REQ-P14-07 states the membership explicitly."
+    },
+    {
+      "candidate_id": "C15",
+      "component": "P15",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-hestia/src/main.rs"
+      ],
+      "in_proposed_workspace": false,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-022",
+          "sha256": "46cea660df6344df1d3cb033871e0f0e1a1a29c0e048bec5e11e85c388e3cee5",
+          "title": "[Report P15] Project Hestia - Sovereign Productivity & Native App Engine.md",
+          "bytes": 9424
+        },
+        {
+          "id": "export-030",
+          "sha256": "689d175667d602859de14157948337dddfc913bdfe645d51f501342e1e026bf4",
+          "title": "aegis-hestia-main.rs",
+          "bytes": 3688
+        }
+      ],
+      "missing": [
+        "crates/aegis-hestia/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "workspace membership decision (open decision D22)",
+        "typed boundary to the Svelte package (D09, applied in M17)",
+        "boundary test for the vector-store initialisation and the 1..=100 query limit"
+      ],
+      "note": "Boundary row: absent from export-006; export-007 maps P15 to ui/hestia-app only. Rust half of D09."
+    },
+    {
+      "candidate_id": "C16",
+      "component": "P15",
+      "language": "svelte",
+      "proposed_paths": [
+        "ui/hestia-app/src/App.svelte"
+      ],
+      "in_proposed_workspace": false,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-045",
+          "sha256": "359466152a371ee6d08dc69c8b5c17dfb648668e7a5b834bb5ec8df0bf4aa0f2",
+          "title": "hestia-App.svelte",
+          "bytes": 4850
+        },
+        {
+          "id": "export-022",
+          "sha256": "46cea660df6344df1d3cb033871e0f0e1a1a29c0e048bec5e11e85c388e3cee5",
+          "title": "[Report P15] Project Hestia - Sovereign Productivity & Native App Engine.md",
+          "bytes": 9424
+        }
+      ],
+      "missing": [
+        "ui/hestia-app/package.json",
+        "JavaScript lockfile",
+        "accessibility test",
+        "typed boundary to the Rust crate (D09)",
+        "UI toolchain pin (D10)"
+      ],
+      "note": "UI half of D09. Not applicable to export-006: that workspace declares no UI package."
+    },
+    {
+      "candidate_id": "C17",
+      "component": "P16",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-athena/src/main.rs"
+      ],
+      "in_proposed_workspace": true,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "export-025",
+          "sha256": "6b23723ddb768ce4882c4f398cd1ee5409adf8851d5da8b4016434c5ba0ca3e8",
+          "title": "aegis-athena-main.rs",
+          "bytes": 3235
+        }
+      ],
+      "missing": [
+        "crates/aegis-athena/Cargo.toml",
+        "workspace Cargo.toml and Cargo.lock",
+        "blueprint-level requirement source: the bundle holds no P16 report",
+        "hash-algorithm trait so that D02 supersedes the ledger named in export-007",
+        "signed audit-record schema (M14)"
+      ],
+      "note": "Member 10 of the export-006 members array; REQ-P16-07 states the membership explicitly."
+    }
+  ],
+  "contradictions": [
+    {
+      "id": "DSP-01",
+      "subject": "P05/P12 design-token edge direction",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Graph of record: edge P05_Forum -> P12_Concordia, relation CONSUMES_DESIGN_TOKENS, transport CSS custom properties and ARIA bridges."
+      },
+      "side_b": {
+        "source_id": "export-002",
+        "sha256": "7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91",
+        "summary": "Architecture document draws the arrow the other way: P12 supplies accessibility design tokens to P05."
+      },
+      "affected_contract": "Concordia design-token and ARIA bridge contract consumed by the Forum shell; producer identity.",
+      "milestone": "M16 (direction recorded); token harness M04",
+      "status": "resolved",
+      "resolution": "D05: P12 Concordia produces the design tokens and P05 Forum consumes them; the graph edge identifier is kept with the direction annotated (M16)."
+    },
+    {
+      "id": "DSP-02",
+      "subject": "P06/P09 action-gate edge direction",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Graph of record: edge P06_Justitia -> P09_Minerva, relation ACTION_GATE_INTERCEPT, pre-execution risk-tier gate and approval routing."
+      },
+      "side_b": {
+        "source_id": "export-002",
+        "sha256": "7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91",
+        "summary": "Architecture document draws P09 -> P06: Minerva raises the pre-execution interception request."
+      },
+      "affected_contract": "Action-proposal schema between P09 Minerva and P06 Justitia (allow, block or escalate).",
+      "milestone": "M14 (typed); engine M02",
+      "status": "resolved",
+      "resolution": "D03: propose/intercept semantics. P09 proposes and P06 intercepts and decides; the graph edge identifiers are kept (typed in M14)."
+    },
+    {
+      "id": "DSP-03",
+      "subject": "P06/P09 action-gate transport: three transports named for one edge",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Transport recorded as the eBPF action_gate program combined with D-Bus."
+      },
+      "side_b": {
+        "source_id": "export-002",
+        "sha256": "7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91",
+        "summary": "Communication matrix records a Unix domain socket with a sub-500 microsecond budget."
+      },
+      "affected_contract": "P06/P09 wire contract: bus name, socket path, eBPF map or ring-buffer layout, and the sub-500 microsecond budget.",
+      "milestone": "M14; eBPF half re-verified in M19 and M10",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-04",
+      "subject": "P06 -> P10 syscall-interception edge existence",
+      "side_a": {
+        "source_id": "export-002",
+        "sha256": "7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91",
+        "summary": "Draws a P06 -> P10 syscall-interception edge carried by the action_gate eBPF program."
+      },
+      "side_b": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "No P06 -> P10 edge exists among the 28 edges; Vesta is reached only from P09 by capsule execution."
+      },
+      "affected_contract": "Whether Justitia gates Vesta syscalls directly or transitively through P09; Vesta admission path.",
+      "milestone": "M14 (recorded), M06 (both paths contract-tested)",
+      "status": "resolved",
+      "resolution": "D04: recorded as unresolved in M14; both the direct P06 to P10 path and the transitive path through P09 are contract-tested in M06 before the graph is changed."
+    },
+    {
+      "id": "DSP-05",
+      "subject": "P09/P14 code-CAD verification edge direction",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Graph of record: P09_Minerva -> P14_Hephaestus, relation VERIFY_CODE_CAD, parametric constraint and dimension checks."
+      },
+      "side_b": {
+        "source_id": "export-002",
+        "sha256": "7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91",
+        "summary": "Architecture document draws P14 -> P09 for the same solver-backed verification."
+      },
+      "affected_contract": "Code-CAD verification request and result schema; which side owns the solver invocation.",
+      "milestone": "M06 (P09 router and solver); P14 slice M08",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-06",
+      "subject": "P15/P02 local-database storage edge existence",
+      "side_a": {
+        "source_id": "export-002",
+        "sha256": "7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91",
+        "summary": "Draws P15 -> P02 for local database storage on the dedicated Btrfs subvolume."
+      },
+      "side_b": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "P15_Hestia has exactly one outbound edge, to P04 for overlay registration; no P15 -> P02 edge exists."
+      },
+      "affected_contract": "Hestia storage contract against the P02 var-partition subvolume, snapshot and encryption ownership.",
+      "milestone": "M17 (Hestia slice); definitions M03, lifecycle M15",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-07",
+      "subject": "Ledger hash algorithm: three algorithms for one ledger",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Graph of record names a BLAKE3 checkpoint ledger as the P06 -> P16 audit transport."
+      },
+      "side_b": {
+        "source_id": "export-015",
+        "sha256": "fcbe2caed363770ae2b9d36c583c1eeb1d0ffddc880a6c61b4b18f6200988cdc",
+        "summary": "The P06 audit-record schema field for the previous record is a SHA-256 hex digest of the previous signed block."
+      },
+      "affected_contract": "Signed audit-record schema (P06 to P16) and the Athena ledger hash-chain trait.",
+      "milestone": "M02 (recorded), M05 (ledger), M14 (schema)",
+      "status": "resolved",
+      "resolution": "D02: SHA-256 hash chain behind a hash-algorithm trait; MD5 excluded; BLAKE3 only through a later recorded decision. The graph string is annotated, not edited, at M01."
+    },
+    {
+      "id": "DSP-08",
+      "subject": "Focus-indicator width: 3px token against a 2px stroke",
+      "side_a": {
+        "source_id": "export-042",
+        "sha256": "411fb8c2d731b6e6850d5bd911dad65ad46d12d1e021b35703ebaa6aa7790f70",
+        "summary": "Token file sets a focus-ring width of 3px with a 2px offset, and raises the width again inside the forced-colors block."
+      },
+      "side_b": {
+        "source_id": "export-020",
+        "sha256": "1748f49bb7f8dd849fd0b3ce913b9d1e9a0c2e3bc2789c3ecec740f8a68f9f06",
+        "summary": "Report requires a focus indicator with a minimum 3:1 contrast ratio and a 2px stroke width, and declares a 2px token."
+      },
+      "affected_contract": "Concordia focus-ring token contract and the accessibility boundary assertion consumed by the P05 shell.",
+      "milestone": "M04 (accessibility harness boundary test)",
+      "status": "resolved",
+      "resolution": "D16: a 3px focus-ring token with a 2px minimum enforced by the boundary test. The forced-colors override must not be read as a violation."
+    },
+    {
+      "id": "DSP-09",
+      "subject": "CSS framework: framework fork against token-only delivery",
+      "side_a": {
+        "source_id": "export-004",
+        "sha256": "15831276a058d0779bbc0df9d13d865ce7edffaee43ab6a0a0b39dbb0f5c3029",
+        "summary": "Section prose describes Concordia as a fork of a monolithic CSS framework with improved accessibility."
+      },
+      "side_b": {
+        "source_id": "export-004",
+        "sha256": "15831276a058d0779bbc0df9d13d865ce7edffaee43ab6a0a0b39dbb0f5c3029",
+        "summary": "The trade-off matrix in the same source records design tokens as chosen and monolithic CSS libraries as discarded."
+      },
+      "affected_contract": "ui/concordia-tokens dependency surface and the P05/P12 token contract (tokens against framework classes).",
+      "milestone": "M04",
+      "status": "resolved",
+      "resolution": "D17: design tokens without a monolithic CSS library; the framework-fork statement is superseded. Both sides are the same source id, which is a source-internal conflict."
+    },
+    {
+      "id": "DSP-10",
+      "subject": "Boot kernel identity: distribution package against a produced kernel artefact",
+      "side_a": {
+        "source_id": "export-049",
+        "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
+        "summary": "The image content package list names a real-time distribution kernel package with no version."
+      },
+      "side_b": {
+        "source_id": "public:docs/integration/stack.md",
+        "sha256": "dbc7e10aecaadc05a7833c07b96d161694a860e209180f29b50366ea238f0211",
+        "summary": "The shared ownership table assigns kernel configuration, patch selection and artefact production to the Nucleus repository."
+      },
+      "affected_contract": "Aegis-side kernel requirement payload (LSM, sched_ext, BTF, RAPL, VFIO/IOMMU, KVM; ABI; architectures) and the image content list.",
+      "milestone": "M18 (schema); consumed at M09 and M11; eBPF re-verification M10",
+      "status": "resolved",
+      "resolution": "D07: both. The image boots a pinned distribution real-time kernel by default and a Nucleus artefact overrides it once M09 delivers one. The version floor stays open (D55)."
+    },
+    {
+      "id": "DSP-11",
+      "subject": "P08/P11 remote-play capture edge direction",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Graph of record: P08_Calliope -> P11_Ludus, relation REMOTE_PLAY_CAPTURE, a sub-5 millisecond encoded video stream."
+      },
+      "side_b": {
+        "source_id": "export-002",
+        "sha256": "7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91",
+        "summary": "Architecture document draws P11 -> P08 for the same buffer-sharing capture stream."
+      },
+      "affected_contract": "Capture contract: which subsystem opens the stream and owns the sub-5 millisecond encode budget.",
+      "milestone": "M07 (P08) and M08 (P11); GPU path M12",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-12",
+      "subject": "P12/P15 accessibility-enforcement edge direction",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Graph of record: P12_Concordia -> P15_Hestia, relation ENFORCE_A11Y_STANDARDS, conformance assertions."
+      },
+      "side_b": {
+        "source_id": "export-003",
+        "sha256": "13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c",
+        "summary": "Master diagram draws the Hestia application as a consumer of Concordia, the reverse direction."
+      },
+      "affected_contract": "Ownership of the accessibility assertion gate for the Hestia surface: producer enforcing or application consuming.",
+      "milestone": "M04 (harness) and M17 (Hestia slice)",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-13",
+      "subject": "P13 -> P05 carbon-telemetry budget: delivery deadline against emission interval",
+      "side_a": {
+        "source_id": "export-002",
+        "sha256": "7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91",
+        "summary": "Communication matrix records a D-Bus signal with a sub-2 millisecond figure for power and carbon updates."
+      },
+      "side_b": {
+        "source_id": "export-003",
+        "sha256": "13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c",
+        "summary": "Communication matrix records the same signal interface with a one-second interval."
+      },
+      "affected_contract": "Telemetry signal contract: emission period against delivery deadline, and the shell status-bar refresh assertion.",
+      "milestone": "M05 (producer); consumer M16",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-14",
+      "subject": "P04 -> P05 compositor/shell endpoint and budget stated by one source only",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Graph of record: P04_Mercurius -> P05_Forum over a Unix socket stream, with no endpoint path and no budget."
+      },
+      "side_b": {
+        "source_id": "export-003",
+        "sha256": "13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c",
+        "summary": "The only source naming the socket path and a sub-100 microsecond budget; export-002 omits the edge entirely."
+      },
+      "affected_contract": "Compositor and shell IPC contract: socket path, framing, and which budget the contract test asserts.",
+      "milestone": "M07 (producer) and M16 (consumer with stubbed IPC)",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-15",
+      "subject": "P06 -> P05 decision-request edge: absent from one document, budget exceeds the gate",
+      "side_a": {
+        "source_id": "export-002",
+        "sha256": "7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91",
+        "summary": "Communication matrix records a D-Bus decision-request prompt with a sub-1 millisecond figure."
+      },
+      "side_b": {
+        "source_id": "export-003",
+        "sha256": "13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c",
+        "summary": "No Justitia to shell edge appears in the master diagram or the matrix; Justitia connects only to Minerva and the TPM."
+      },
+      "affected_contract": "Versioned decision-request schema and whether the human-oversight prompt sits inside the sub-500 microsecond interception gate.",
+      "milestone": "M14 (schema); consumer typed in M16",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-16",
+      "subject": "P09 -> P10 capsule execution: transport, endpoint and latency disagree",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Graph of record: a virtual-socket transport named together with a Go Wasm runtime; the P10 node budget is a sub-125 millisecond microVM boot."
+      },
+      "side_b": {
+        "source_id": "export-003",
+        "sha256": "13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c",
+        "summary": "Communication matrix records the same virtual-socket family with a concrete address and a sub-1 millisecond budget."
+      },
+      "affected_contract": "Vesta capsule-dispatch contract: address and port, fallback, and whether the budget covers a warm call or a cold boot.",
+      "milestone": "M06",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-17",
+      "subject": "P07 -> P09 VRAM swap: transport disagreement and a different endpoint",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Graph of record: transport is the kernel GPU scheduler priority path plus a dynamic VRAM allocator, with no bus call."
+      },
+      "side_b": {
+        "source_id": "export-002",
+        "sha256": "7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91",
+        "summary": "Communication matrix adds D-Bus with a sub-100 microsecond budget and an explicit inference-pause payload."
+      },
+      "affected_contract": "Broker to agent pause and swap control contract: a bus method on the agent daemon or a scheduler-only action.",
+      "milestone": "M07 (broker); GPU evidence M12",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-18",
+      "subject": "P03 -> P09 weight-streaming endpoint: subsystem target against hardware target",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Graph of record: P03_Vulcan -> P09_Minerva over a peer-to-peer DMA path; export-002 agrees with this direction."
+      },
+      "side_b": {
+        "source_id": "export-003",
+        "sha256": "13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c",
+        "summary": "Draws the peer-to-peer path from storage to the GPU and from P03 to the GPU, with no P09 endpoint."
+      },
+      "affected_contract": "Weight-streaming contract: whether Minerva requests a stream from Vulcan or only observes a programmed hardware path.",
+      "milestone": "M17 (P03 validation crate); DMA evidence M12",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-19",
+      "subject": "Eight graph-of-record edges appear in neither architecture document",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Graph-only edges: P03->P15, P06->P16, P07->P04, P07->P08, P11->P02, P11->P04, P14->P15, P15->P04."
+      },
+      "side_b": {
+        "source_id": "export-002",
+        "sha256": "7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91",
+        "summary": "Draws sixteen edges and names none of the eight; export-003 lists six matrix rows and names none of them either."
+      },
+      "affected_contract": "Eight interface contracts with a single supporting source each; none can be typed as a two-source-agreed edge.",
+      "milestone": "M07, M08, M14, M17 (per edge)",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-20",
+      "subject": "Five edges present in the graph and one document but absent from the other",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Carries P08->P04, P10->P16, P13->P07, P16->P13 and P06->P05; export-002 carries the same five."
+      },
+      "side_b": {
+        "source_id": "export-003",
+        "sha256": "13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c",
+        "summary": "None of the five relations appears in the master diagram or the matrix."
+      },
+      "affected_contract": "M05 evolution loop, M06 sandbox evaluation, M07 buffer-sharing stream; P06->P05 is tracked separately in DSP-15.",
+      "milestone": "M05, M06, M07",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-21",
+      "subject": "Node set: hardware, kernel and transport nodes outside the sixteen-subsystem graph",
+      "side_a": {
+        "source_id": "export-062",
+        "sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
+        "summary": "Declares sixteen nodes and 28 edges; every node is a subsystem, and hardware and transports appear only as attribute strings."
+      },
+      "side_b": {
+        "source_id": "export-003",
+        "sha256": "13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c",
+        "summary": "Adds CPU, GPU, storage, TPM, three eBPF programs, a mesh transport and a sidecar protocol as first-class nodes."
+      },
+      "affected_contract": "Owner of the TPM attestation contract (P02 or direct hardware access) and of sidecar dispatch (P04 or an unowned transport).",
+      "milestone": "M20 (attestation slice), M07 (compositor IPC registry)",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-22",
+      "subject": "Btrfs subvolume set for the var partition",
+      "side_a": {
+        "source_id": "export-055",
+        "sha256": "c915f281532f2c48acdf1ff6d5e0343b6e5b3b95af6a9fae5a8b77edf2795f88",
+        "summary": "The partition definition declares five subvolumes for the var partition."
+      },
+      "side_b": {
+        "source_id": "export-003",
+        "sha256": "13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c",
+        "summary": "The storage model prose lists only four of the same five subvolumes."
+      },
+      "affected_contract": "P02 var-partition definition validated offline, and the database subvolume the Hestia storage dependency rests on.",
+      "milestone": "M03 (definitions validated offline), M15 (A/B lifecycle)",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": "DSP-23",
+      "subject": "P04 compositor implementation: mandated C library against a pure-Rust scaffold",
+      "side_a": {
+        "source_id": "export-013",
+        "sha256": "7f4c22813332ffd81f92f0b82a30553f5da3c1e7494088fec6861dc7aa0df3cf",
+        "summary": "The report rejects higher-level abstractions and mandates a C-based compositor library for absolute control of the event loop."
+      },
+      "side_b": {
+        "source_id": "export-027",
+        "sha256": "f19640d7a7dad8d1aa587a164450ec17bae9e74f731761f0100f045a8922831f",
+        "summary": "The only code artefact is pure Rust with no foreign-function binding to that library and no version pinned anywhere."
+      },
+      "affected_contract": "P04 registry and IPC state-machine backend, and the admitted toolchain (a C toolchain against a Rust-only workspace).",
+      "milestone": "M07",
+      "status": "resolved",
+      "resolution": "D08: pure Rust compositor; the C library mandate is superseded (ADR-0001). No C compositor toolchain is admitted."
+    },
+    {
+      "id": "DSP-24",
+      "subject": "P15 Hestia location: Rust crate against UI package",
+      "side_a": {
+        "source_id": "export-030",
+        "sha256": "689d175667d602859de14157948337dddfc913bdfe645d51f501342e1e026bf4",
+        "summary": "The file header places Hestia under crates/aegis-hestia as a Rust daemon for the productivity and application engine."
+      },
+      "side_b": {
+        "source_id": "export-007",
+        "sha256": "84f43472c5369d00a40ba9ded70915b4e4e18d28e4fa383f8ac73b71ed611ce8",
+        "summary": "The directory map lists only ui/hestia-app for P15 and carries no crates/aegis-hestia row."
+      },
+      "affected_contract": "P15 component path in the inventory and the typed boundary between the Rust logic and the Svelte package.",
+      "milestone": "M01 (recorded), applied at M17",
+      "status": "resolved",
+      "resolution": "D09: both. A Rust crate for the storage and vector logic and a Svelte package for the UI, with a typed boundary (M17)."
+    },
+    {
+      "id": "DSP-25",
+      "subject": "P10 Wasm capsule runtime against the language-boundary rule",
+      "side_a": {
+        "source_id": "export-037",
+        "sha256": "ce490c88081f31b9efdb3dc6f4b3671269e877f4ef4b7e3ce590c7937d576d1c",
+        "summary": "A Rust daemon describes its capsules in terms of a Go-implemented Wasm runtime; the graph repeats that runtime in the transport string."
+      },
+      "side_b": {
+        "source_id": "public:docs/integration/stack.md",
+        "sha256": "dbc7e10aecaadc05a7833c07b96d161694a860e209180f29b50366ea238f0211",
+        "summary": "Shared package reuse must respect language boundaries: a Go library is not a direct dependency of a Rust daemon without an adapter and contract tests."
+      },
+      "affected_contract": "Vesta capsule-execution contract and the crate dependency set; also the P09 -> P10 transport string.",
+      "milestone": "M06",
+      "status": "resolved",
+      "resolution": "D06: a Rust-native WebAssembly runtime selected at M06 through the template matrix; no Go runtime and no protocol adapter. The graph string is annotated, not edited."
+    },
+    {
+      "id": "DSP-26",
+      "subject": "P11 proprietary SDK against the subsystem's own open-source constraint",
+      "side_a": {
+        "source_id": "export-019",
+        "sha256": "b0aa6e54ed57d638ba5dda2c3f8d58bf9517a6498ec4a5f411922c713cf8ceff",
+        "summary": "The report wraps proprietary C++ SDK headers through a binding generator to isolate the runtime from that ABI."
+      },
+      "side_b": {
+        "source_id": "export-004",
+        "sha256": "15831276a058d0779bbc0df9d13d865ce7edffaee43ab6a0a0b39dbb0f5c3029",
+        "summary": "The trade-off matrix records free and open-source compliance as the declared constraint for the same subsystem."
+      },
+      "affected_contract": "P11 crate dependency set and the image content list; a licence decision before any SDK is vendored.",
+      "milestone": "M08 (negative test proves crate and image build without it)",
+      "status": "resolved",
+      "resolution": "D12: the proprietary SDK is excluded from the Aegis image; P11 covers only free and open-source integration paths (ADR-0002)."
+    },
+    {
+      "id": "DSP-27",
+      "subject": "P02 security model: reversible consolidation against permanent hardening",
+      "side_a": {
+        "source_id": "export-004",
+        "sha256": "15831276a058d0779bbc0df9d13d865ce7edffaee43ab6a0a0b39dbb0f5c3029",
+        "summary": "The trade-off matrix poses reversible structural consolidation against permanent hardening for the P02 security model."
+      },
+      "side_b": {
+        "source_id": "export-011",
+        "sha256": "528da609dab7ad5931400eb1631cfb0b106da5f1310842f0025f73317069b433",
+        "summary": "Root-hash verification must make the read-only root filesystem bit-for-bit identical to the signed release before it is trusted."
+      },
+      "affected_contract": "P02 A/B candidate lifecycle state machine against the root-integrity requirement.",
+      "milestone": "M15",
+      "status": "resolved",
+      "resolution": "D13: reversible structural consolidation, reconciled with root-hash integrity in M15."
+    }
+  ],
+  "toolchain_drift": [
+    {
+      "item": "tokio async runtime",
+      "proposed_pin": "1.38 with all features",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "1.53.1, published 2026-07-20 (crates.io)",
+      "drift": "outdated: fifteen minor releases behind; the caret pin would resolve to the current release",
+      "milestone": "M02, re-locked per crate at each consuming milestone"
+    },
+    {
+      "item": "monoio thread-per-core runtime",
+      "proposed_pin": "0.2 with the bytes feature",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "0.2.4, published 2024-08-20; newest release upstream",
+      "drift": "current pin, stale upstream: no release in over two years, which is a maintenance risk for the thread-per-core mandate",
+      "milestone": "M06 and M07 (runtime selected at activation)"
+    },
+    {
+      "item": "aya user-space eBPF loader",
+      "proposed_pin": "0.12",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "0.14.0, published 2026-06-24 (crates.io)",
+      "drift": "outdated: two breaking pre-1.0 minors behind; the pin will not upgrade under semantic versioning",
+      "milestone": "M19 (eBPF toolchain admission)"
+    },
+    {
+      "item": "aya kernel-space eBPF crate",
+      "proposed_pin": "0.1 under the old crate name",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "the old crate name does not exist on crates.io; the successor crate is at 0.2.1, published 2026-06-30",
+      "drift": "unresolvable: the dependency cannot be fetched at all, so the proposal workspace would fail on its first build; delete rather than bump",
+      "milestone": "M19"
+    },
+    {
+      "item": "memmap2 memory-mapping wrapper",
+      "proposed_pin": "0.9",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "0.9.11, published 2026-06-22 (crates.io)",
+      "drift": "current: the 0.9 series is still newest",
+      "milestone": "M17 (P03 validation crate)"
+    },
+    {
+      "item": "zenoh mesh IPC",
+      "proposed_pin": "1.0",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "1.10.1, published 2026-09-07 (crates.io)",
+      "drift": "outdated: ten minor releases behind within the 1.x line; the most actively released dependency in the set",
+      "milestone": "M07 (the proposal pin is not inherited)"
+    },
+    {
+      "item": "serde",
+      "proposed_pin": "1.0 with derive",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "1.0.229, published 2026-07-18 (crates.io)",
+      "drift": "current",
+      "milestone": "M02"
+    },
+    {
+      "item": "serde_json",
+      "proposed_pin": "1.0",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "1.0.151, published 2026-07-20 (crates.io)",
+      "drift": "current",
+      "milestone": "M02"
+    },
+    {
+      "item": "tracing",
+      "proposed_pin": "0.1",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "0.1.44, published 2025-12-18 (crates.io)",
+      "drift": "current",
+      "milestone": "M02"
+    },
+    {
+      "item": "tracing-subscriber",
+      "proposed_pin": "0.3 with env-filter",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "0.3.23, published 2026-03-13 (crates.io)",
+      "drift": "current",
+      "milestone": "M02"
+    },
+    {
+      "item": "anyhow",
+      "proposed_pin": "1.0",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "1.0.104, published 2026-07-18 (crates.io)",
+      "drift": "current",
+      "milestone": "M02"
+    },
+    {
+      "item": "thiserror",
+      "proposed_pin": "1.0",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "2.0.20, published 2026-08-08 (crates.io)",
+      "drift": "outdated across a major boundary: the caret pin can never reach the current line",
+      "milestone": "M02 (decided once, workspace-wide)"
+    },
+    {
+      "item": "Rust edition",
+      "proposed_pin": "2021",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "2024 is the newest stabilised edition (Rust Edition Guide)",
+      "drift": "outdated by one edition; cheapest to change before any crate exists",
+      "milestone": "M02"
+    },
+    {
+      "item": "workspace package version",
+      "proposed_pin": "1.0.0",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "no workspace manifest is committed and no release exists; the tracked VERSION file reads 0.1.0",
+      "drift": "not drift but an aspirational release number that would misstate maturity",
+      "milestone": "M02 (initial version) and M13 (release versioning)"
+    },
+    {
+      "item": "project identity URL",
+      "proposed_pin": "a lowercase repository path",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "the configured canonical remote uses the repository's own letter case",
+      "drift": "mismatched: the case difference redirects silently and would produce wrong crate metadata and documentation links",
+      "milestone": "M02, re-checked at M13"
+    },
+    {
+      "item": "workspace licence",
+      "proposed_pin": "EUPL-1.2",
+      "source_id": "export-006",
+      "sha256": "6e694e01e13615bf977e9bb849b8a6a033d8aa6d3d0558d5522af4c440b9d097",
+      "current_upstream": "the committed REUSE metadata declares EUPL-1.2 for technical material and CC BY-SA 4.0 for prose",
+      "drift": "current: the proposal value agrees with the committed technical layer; it carries no prose-layer declaration",
+      "milestone": "M02"
+    },
+    {
+      "item": "Rust toolchain channel",
+      "proposed_pin": "unpinned floating stable channel in the guide and the imported CI",
+      "source_id": "export-007",
+      "sha256": "84f43472c5369d00a40ba9ded70915b4e4e18d28e4fa383f8ac73b71ed611ce8",
+      "current_upstream": "stable 1.98.1, dated 2026-09-01 (static.rust-lang.org channel manifest)",
+      "drift": "unpinned: no version drift but no reproducibility, and no pinned version before a cargo gate runs",
+      "milestone": "M02, reused by later Rust milestones"
+    },
+    {
+      "item": "eBPF linker",
+      "proposed_pin": "unpinned cargo install with no version",
+      "source_id": "export-007",
+      "sha256": "84f43472c5369d00a40ba9ded70915b4e4e18d28e4fa383f8ac73b71ed611ce8",
+      "current_upstream": "0.11.1, published 2026-09-07 (crates.io)",
+      "drift": "unpinned floating install; needed only if the Rust eBPF path is chosen over the C path",
+      "milestone": "M19"
+    },
+    {
+      "item": "C compiler and toolchain for eBPF",
+      "proposed_pin": "a floor of major version 18 only",
+      "source_id": "export-007",
+      "sha256": "84f43472c5369d00a40ba9ded70915b4e4e18d28e4fa383f8ac73b71ed611ce8",
+      "current_upstream": "23.1.1, released 2026-09-08 (upstream releases)",
+      "drift": "outdated floor, five majors behind current; a floor is not a pin, and the imported Makefile invokes the compiler with no version guard",
+      "milestone": "M19"
+    },
+    {
+      "item": "image build tool",
+      "proposed_pin": "a floor of version 24 or later",
+      "source_id": "export-007",
+      "sha256": "84f43472c5369d00a40ba9ded70915b4e4e18d28e4fa383f8ac73b71ed611ce8",
+      "current_upstream": "version 27, released 2026-08-27; the distribution package is at the same major",
+      "drift": "outdated floor and unpinned; the tool is not installed on this workstation",
+      "milestone": "M18, conditionally (D14)"
+    },
+    {
+      "item": "image distribution and release",
+      "proposed_pin": "a rolling distribution with the release set to latest",
+      "source_id": "export-049",
+      "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
+      "current_upstream": "the named distribution is rolling and publishes no numbered release; latest resolves to whatever a mirror serves at build time",
+      "drift": "unpinned by construction: a non-reproducible image input that contradicts the determinism flags in the imported Makefile",
+      "milestone": "M18 (D18)"
+    },
+    {
+      "item": "image output version string",
+      "proposed_pin": "a hardcoded 1.0.0 in the output filename",
+      "source_id": "export-049",
+      "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
+      "current_upstream": "no image or release exists; the release train is gated and M13 is blocked",
+      "drift": "not assessable as drift: a hardcoded version that no release process produces, and the imported release workflow uses a different filename",
+      "milestone": "M11 (naming) and M13 (release)"
+    },
+    {
+      "item": "boot kernel package",
+      "proposed_pin": "a bare real-time kernel package name with no version",
+      "source_id": "export-049",
+      "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
+      "current_upstream": "the distribution package resolves to a rolling real-time kernel; upstream publishes separate stable, mainline and longterm lines",
+      "drift": "unpinned: a bare package name against a rolling repository resolves to a different kernel on every build",
+      "milestone": "M18 (D07 and D18); re-verified at M10"
+    },
+    {
+      "item": "target kernel floor",
+      "proposed_pin": "a floor plus an unreleased target version",
+      "source_id": "export-016",
+      "sha256": "cfa58b5b23b8a0f75651be6fc0a68b410aefd66111b98b08d0f3c1fd3a85ada7",
+      "current_upstream": "the named target version is not released; upstream lists it only as a release candidate, with an earlier stable and longterm line available",
+      "drift": "partly unknowable: the floor is satisfied by current lines, but the named target does not exist as a release",
+      "milestone": "M18 (feature payload, not a version list)"
+    },
+    {
+      "item": "Node.js runtime",
+      "proposed_pin": "a hardcoded major in the imported CI against a different major in the guide",
+      "source_id": "export-041",
+      "sha256": "e05ddc9466fcfbf4615d6a466f03f0c64ae95745de77c613309cd628d8fb4513",
+      "current_upstream": "the CI major reached end of life on 2026-04-30; the guide major is in maintenance until 2027-04-30; the current active long-term line is two majors newer",
+      "drift": "outdated on both sides: neither imported value is a supported long-term release",
+      "milestone": "M04 (D10); consumed by M16"
+    },
+    {
+      "item": "UI package manager",
+      "proposed_pin": "unpinned install script with no version",
+      "source_id": "export-007",
+      "sha256": "84f43472c5369d00a40ba9ded70915b4e4e18d28e4fa383f8ac73b71ed611ce8",
+      "current_upstream": "12.4.1 (npm dist-tag latest)",
+      "drift": "unpinned, and contradicted: the imported CI and Makefile assume a different package manager entirely",
+      "milestone": "M04"
+    },
+    {
+      "item": "UI framework",
+      "proposed_pin": "major version only, no minor or patch anywhere",
+      "source_id": "export-007",
+      "sha256": "84f43472c5369d00a40ba9ded70915b4e4e18d28e4fa383f8ac73b71ed611ce8",
+      "current_upstream": "5.57.0 (npm dist-tag latest)",
+      "drift": "current major, unpinned minor: the reactive syntax used by the imported components remains valid",
+      "milestone": "M04; manifest at M16"
+    },
+    {
+      "item": "browser test runner",
+      "proposed_pin": "unpinned; named in five sources with no version",
+      "source_id": "export-041",
+      "sha256": "e05ddc9466fcfbf4615d6a466f03f0c64ae95745de77c613309cd628d8fb4513",
+      "current_upstream": "1.63.0, released 2026-09-04",
+      "drift": "unpinned: browser binaries are pinned per runner release, so an unpinned runner means unpinned browsers",
+      "milestone": "M04"
+    },
+    {
+      "item": "accessibility rule engine",
+      "proposed_pin": "unpinned",
+      "source_id": "export-023",
+      "sha256": "a0d06b6b8e6c8a0ac76f32377d8c39293ad2f191771755694b70eac53abe31f4",
+      "current_upstream": "4.13.0, released 2026-08-05",
+      "drift": "unpinned, and a correctness problem: the imported standards file makes a full pass a hard gate, so the gate's definition of pass would change between runs",
+      "milestone": "M04"
+    },
+    {
+      "item": "release-workflow toolchain action",
+      "proposed_pin": "a major tag on an action namespace",
+      "source_id": "export-052",
+      "sha256": "78920f9334214134e704b47256b657c332f485ff096412caf2e336c50204ab95",
+      "current_upstream": "the referenced repository returns HTTP 404; no published action exists at that name",
+      "drift": "nonexistent: unresolvable, and a name-squatting exposure in a job holding write permissions; replace, do not re-pin",
+      "milestone": "M13"
+    },
+    {
+      "item": "checkout action",
+      "proposed_pin": "a major tag rather than a commit digest",
+      "source_id": "export-041",
+      "sha256": "e05ddc9466fcfbf4615d6a466f03f0c64ae95745de77c613309cd628d8fb4513",
+      "current_upstream": "7.0.1, released 2026-07-20",
+      "drift": "outdated by three majors and tag-pinned; a mutable tag is the standard supply-chain weakness",
+      "milestone": "M13"
+    },
+    {
+      "item": "Node setup action",
+      "proposed_pin": "a major tag",
+      "source_id": "export-041",
+      "sha256": "e05ddc9466fcfbf4615d6a466f03f0c64ae95745de77c613309cd628d8fb4513",
+      "current_upstream": "7.0.0, released 2026-07-14",
+      "drift": "outdated by three majors, tag-pinned, and carries the end-of-life Node major as its input",
+      "milestone": "M04 and M13"
+    },
+    {
+      "item": "Rust cache action",
+      "proposed_pin": "a major tag",
+      "source_id": "export-041",
+      "sha256": "e05ddc9466fcfbf4615d6a466f03f0c64ae95745de77c613309cd628d8fb4513",
+      "current_upstream": "2.9.2, released 2026-08-06",
+      "drift": "current major, tag-pinned rather than digest-pinned; the only imported action whose major is still live",
+      "milestone": "M13"
+    },
+    {
+      "item": "community Rust toolchain action",
+      "proposed_pin": "a moving branch reference",
+      "source_id": "export-041",
+      "sha256": "e05ddc9466fcfbf4615d6a466f03f0c64ae95745de77c613309cd628d8fb4513",
+      "current_upstream": "the repository publishes one release tag and is conventionally referenced by named branch refs",
+      "drift": "unpinned by design: both the action code and the installed Rust version float",
+      "milestone": "M02 and M13"
+    },
+    {
+      "item": "release publishing action",
+      "proposed_pin": "a major tag",
+      "source_id": "export-052",
+      "sha256": "78920f9334214134e704b47256b657c332f485ff096412caf2e336c50204ab95",
+      "current_upstream": "3.0.3, released 2026-08-30",
+      "drift": "outdated by one major, tag-pinned; it publishes a non-draft release, so it must stay inactive until M13",
+      "milestone": "M13"
+    },
+    {
+      "item": "provenance generator workflow",
+      "proposed_pin": "a semantic tag on a reusable workflow",
+      "source_id": "export-052",
+      "sha256": "78920f9334214134e704b47256b657c332f485ff096412caf2e336c50204ab95",
+      "current_upstream": "2.1.0, released 2025-02-24",
+      "drift": "outdated by one minor; the tag form is the documented practice for this reusable workflow, so only the version is at issue",
+      "milestone": "M13"
+    },
+    {
+      "item": "artefact signing tool",
+      "proposed_pin": "unpinned distribution package plus a legacy experimental flag",
+      "source_id": "export-052",
+      "sha256": "78920f9334214134e704b47256b657c332f485ff096412caf2e336c50204ab95",
+      "current_upstream": "3.1.3, released 2026-08-06",
+      "drift": "unpinned, and the experimental flag belongs to a superseded major line; the pin must name the upstream version, not a distribution package",
+      "milestone": "M13, with M11 admission"
+    },
+    {
+      "item": "systemd components",
+      "proposed_pin": "unpinned package names only",
+      "source_id": "export-049",
+      "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
+      "current_upstream": "261.3, released 2026-09-10; the workstation runs the same major",
+      "drift": "unpinned with no floor, although the definition syntax has changed across recent majors; the imported CI suppresses the validator's exit code",
+      "milestone": "M03 (floor) and M18"
+    },
+    {
+      "item": "compositor C library",
+      "proposed_pin": "unpinned; named as an image package with no version in any source",
+      "source_id": "export-049",
+      "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
+      "current_upstream": "0.20.2, tagged 2026-07-07 upstream",
+      "drift": "unpinned and superseded: D08 and ADR-0001 select a pure Rust compositor, so the image package entry must be removed at M18",
+      "milestone": "none in Aegis; removal at M18"
+    },
+    {
+      "item": "audio server stack",
+      "proposed_pin": "unpinned; four package names and many prose mentions, none with a version",
+      "source_id": "export-049",
+      "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
+      "current_upstream": "1.6.8, tagged 2026-07-09 upstream",
+      "drift": "unpinned; the proposal's latency claim depends on settings that have changed across the current major line",
+      "milestone": "M07 logic slice; real pin at M18"
+    },
+    {
+      "item": "microVM hypervisor",
+      "proposed_pin": "unpinned",
+      "source_id": "export-018",
+      "sha256": "5dbc6d071bbba9577c212c110a93298336ca0bab1b17a203e4048db5d32e59a9",
+      "current_upstream": "1.17.0, released 2026-09-10",
+      "drift": "unpinned; no admission is needed before the hardware-gated milestone",
+      "milestone": "M21"
+    },
+    {
+      "item": "Go Wasm runtime",
+      "proposed_pin": "unpinned",
+      "source_id": "export-037",
+      "sha256": "ce490c88081f31b9efdb3dc6f4b3671269e877f4ef4b7e3ce590c7937d576d1c",
+      "current_upstream": "1.12.0 under a renamed upstream organisation; the old path now redirects",
+      "drift": "unpinned and superseded by D06; also barred by the language-boundary rule. The organisation rename is itself a drift signal",
+      "milestone": "none; excluded at M06"
+    },
+    {
+      "item": "Wasm plugin framework",
+      "proposed_pin": "unpinned",
+      "source_id": "export-037",
+      "sha256": "ce490c88081f31b9efdb3dc6f4b3671269e877f4ef4b7e3ce590c7937d576d1c",
+      "current_upstream": "1.30.0, released 2026-06-04",
+      "drift": "unpinned; it survives D06 because its Rust SDK works with a Rust-native runtime",
+      "milestone": "M06"
+    },
+    {
+      "item": "embedded WASM database",
+      "proposed_pin": "unpinned",
+      "source_id": "export-022",
+      "sha256": "46cea660df6344df1d3cb033871e0f0e1a1a29c0e048bec5e11e85c388e3cee5",
+      "current_upstream": "0.5.8, published 2026-08-26",
+      "drift": "unpinned and pre-1.0, so every minor is potentially breaking; it carries the local persistence layer",
+      "milestone": "M17, with the JavaScript half at M04"
+    },
+    {
+      "item": "proprietary game-platform SDK",
+      "proposed_pin": "unpinned",
+      "source_id": "export-019",
+      "sha256": "b0aa6e54ed57d638ba5dda2c3f8d58bf9517a6498ec4a5f411922c713cf8ceff",
+      "current_upstream": "not verifiable from an open source: the download and version listing sit behind a partner login",
+      "drift": "unknowable, and moot: D12 and ADR-0002 exclude it from the image; the licence terms also conflict with the technical layer",
+      "milestone": "none; excluded"
+    },
+    {
+      "item": "chat-platform presence integration",
+      "proposed_pin": "unpinned, and no concrete library is named",
+      "source_id": "export-019",
+      "sha256": "b0aa6e54ed57d638ba5dda2c3f8d58bf9517a6498ec4a5f411922c713cf8ceff",
+      "current_upstream": "not determinable: the sources name no library, and the legacy project publishes no current release identity",
+      "drift": "unknowable: a missing-dependency decision rather than version drift",
+      "milestone": "M08 (open decision D54)"
+    },
+    {
+      "item": "mesh generator",
+      "proposed_pin": "unpinned",
+      "source_id": "export-021",
+      "sha256": "6a3cda152e6c22d3333b40c369001617e4706341da244d8a19debc6607a490d3",
+      "current_upstream": "4.15.2 (current advertised download series)",
+      "drift": "unpinned; its licence interacts with the technical layer, so a linking decision is owed before any binding is admitted",
+      "milestone": "M08 at the earliest"
+    },
+    {
+      "item": "CFD solver",
+      "proposed_pin": "unpinned, and the fork is not identified",
+      "source_id": "export-021",
+      "sha256": "6a3cda152e6c22d3333b40c369001617e4706341da244d8a19debc6607a490d3",
+      "current_upstream": "one line is at a dated current release; the other line could not be read in this session and is reported as unverified",
+      "drift": "unpinned and ambiguous: no pin is expressible until the fork is chosen",
+      "milestone": "M08 at the earliest"
+    },
+    {
+      "item": "Rust B-Rep CAD kernels",
+      "proposed_pin": "unpinned; neither appears in the proposal dependency table",
+      "source_id": "export-021",
+      "sha256": "6a3cda152e6c22d3333b40c369001617e4706341da244d8a19debc6607a490d3",
+      "current_upstream": "one kernel's registry release is from 2024-09-20 while its repository was pushed on 2026-09-07; the other is at 0.1.9 from 2026-02-12",
+      "drift": "unpinned, with a registry-against-repository divergence, so the pin must say whether it targets the published crate or a revision",
+      "milestone": "M08"
+    },
+    {
+      "item": "SMT solver",
+      "proposed_pin": "unpinned",
+      "source_id": "export-034",
+      "sha256": "213a95fc0d02401f89c198abac4ca5b80f34f9dbfce904dc9de1d5aae3cbec2a",
+      "current_upstream": "5.1.0, released 2026-08-16; the 5.x line succeeded the 4.x line in July 2026",
+      "drift": "unpinned, and upstream crossed a major boundary within the last two months, so any remembered 4.x assumption is stale",
+      "milestone": "later than M06, which admits no solver binding"
+    },
+    {
+      "item": "power-telemetry project",
+      "proposed_pin": "unpinned; the probe is reimplemented locally",
+      "source_id": "export-061",
+      "sha256": "e7d07dd56ca78497f61622526b4e95abcea4314b7342a3b11df46ba4918f07dc",
+      "current_upstream": "0.11.4, released 2026-02-16, in a slowing cadence",
+      "drift": "unpinned and pre-1.0; the version matters only if the upstream project is adopted rather than the local probe",
+      "milestone": "M05, M19 and M21"
+    },
+    {
+      "item": "scheduler framework and scheduler program",
+      "proposed_pin": "unpinned; the program is a local object with no toolchain version",
+      "source_id": "export-056",
+      "sha256": "39af243568ad90f2a9f26d25522143ab7159c6e00f1fad619b864b791ffdb2d2",
+      "current_upstream": "1.1.3, released 2026-08-19; the kernel feature itself has been mainline since the 6.12 line",
+      "drift": "unpinned, and effectively a kernel pin in disguise because the interface tracks the kernel",
+      "milestone": "M19 (local fixture) and M10 (against the pinned kernel)"
+    },
+    {
+      "item": "emulator, firmware and TPM emulation",
+      "proposed_pin": "unpinned package names plus a hardcoded firmware path",
+      "source_id": "export-007",
+      "sha256": "84f43472c5369d00a40ba9ded70915b4e4e18d28e4fa383f8ac73b71ed611ce8",
+      "current_upstream": "the distribution packages are at current versions for the targeted distribution",
+      "drift": "unpinned; the hardcoded firmware path in the image definition is a portability defect rather than version drift",
+      "milestone": "M11, shared with M10"
+    },
+    {
+      "item": "TPM tooling",
+      "proposed_pin": "unpinned package name only",
+      "source_id": "export-049",
+      "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
+      "current_upstream": "the distribution package is at its current version",
+      "drift": "unpinned; the library choice is a contract input for the signed audit-record schema",
+      "milestone": "M20, recorded at M18"
+    },
+    {
+      "item": "remaining image packages",
+      "proposed_pin": "unpinned bare package names for nine further packages",
+      "source_id": "export-049",
+      "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
+      "current_upstream": "each resolves to whatever the rolling repository serves at build time; no version is claimed by the source",
+      "drift": "unpinned; drift is not assessable without a chosen snapshot",
+      "milestone": "M18 (D18)"
+    },
+    {
+      "item": "compositor frame-pacing constant",
+      "proposed_pin": "a loop throttle that contradicts the same file's refresh-rate comment and render budget",
+      "source_id": "export-027",
+      "sha256": "f19640d7a7dad8d1aa587a164450ec17bae9e74f731761f0100f045a8922831f",
+      "current_upstream": "not an upstream artefact: the stated refresh rate implies a frame period roughly seventy times longer than the constant",
+      "drift": "internally inconsistent rather than outdated; an internal pin, included because the epic's acceptance covers it",
+      "milestone": "M07"
+    }
+  ],
+  "quarantined_artifacts": [
+    {
+      "artifact": "imported continuous-integration workflow",
+      "source_id": "export-041",
+      "sha256": "e05ddc9466fcfbf4615d6a466f03f0c64ae95745de77c613309cd628d8fb4513",
+      "claims": "Three jobs: a Rust format, lint and test gate called a Power-of-Ten check; an image synthesis and headless boot verification; and an accessibility conformance gate.",
+      "defects": [
+        {
+          "defect": "Failure suppression in both definition validators",
+          "evidence": "Each validation step ends in a shell true fallback, so a malformed partition geometry or transfer definition reports success (REQ-CI-01)."
+        },
+        {
+          "defect": "Failure suppression in dependency installation",
+          "evidence": "Dependency install and browser install both end in a true fallback, so the job stays green with nothing installed."
+        },
+        {
+          "defect": "Conformance reported without executing the check",
+          "evidence": "The accessibility suite itself ends in a true fallback, so a gate named for a conformance standard can never fail (REQ-CI-02)."
+        },
+        {
+          "defect": "Unpinned third-party actions",
+          "evidence": "Every action is referenced by a mutable tag or branch rather than a commit digest; one toolchain action floats on a branch."
+        },
+        {
+          "defect": "Toolchain drift hardcoded",
+          "evidence": "A now end-of-life Node major is hardcoded, conflicting with the imported guide's own major (REQ-CI-03)."
+        },
+        {
+          "defect": "Simulated boot output pulled into CI",
+          "evidence": "The boot step executes the imported integration script, which prints boot, measurement and integrity success without starting an emulator (REQ-BOOT-02)."
+        },
+        {
+          "defect": "No pinned toolchain for the image job",
+          "evidence": "The Rust channel resolves at run time and image packages install unversioned from the runner distribution, so the job is not reproducible."
+        },
+        {
+          "defect": "No eBPF gate",
+          "evidence": "No job compiles or verifier-loads any of the three eBPF programs, although the workflow calls itself an invariant check."
+        }
+      ],
+      "replacement_milestone": "No whole-file replacement: the Rust gate is authorable at M02, the accessibility gate at M04, the eBPF gate at M19, and image synthesis with a real boot gate at M11.",
+      "tracked_in_repository": false
+    },
+    {
+      "artifact": "imported release and attestation workflow",
+      "source_id": "export-052",
+      "sha256": "78920f9334214134e704b47256b657c332f485ff096412caf2e336c50204ab95",
+      "claims": "On any version tag push: build, synthesize a boot image, sign it, generate provenance and publish a non-draft, non-prerelease public release with the image, its signature and an integrity artefact.",
+      "defects": [
+        {
+          "defect": "A tag push alone can create a release",
+          "evidence": "No manual gate, no environment approval and no artefact precondition; release delivery is blocked until M13 (D11)."
+        },
+        {
+          "defect": "Publishes immediately and publicly",
+          "evidence": "Draft and prerelease are both false with generated notes, so a single accidental tag becomes a real published release (REQ-REL-01)."
+        },
+        {
+          "defect": "Unverified third-party action with write permissions",
+          "evidence": "The toolchain action namespace resolves to HTTP 404 inside a job holding contents, identity-token and packages write (REQ-REL-02)."
+        },
+        {
+          "defect": "Unpinned third-party actions",
+          "evidence": "Every action floats on a mutable tag, including the reusable provenance workflow and the action that creates the release."
+        },
+        {
+          "defect": "Excessive standing permissions",
+          "evidence": "Write permissions are granted at workflow level to every step, including the unverified action, rather than scoped to the publishing step."
+        },
+        {
+          "defect": "Signing without verification",
+          "evidence": "Keyless signing is enabled through an experimental flag; no signature is verified, no certificate identity policy is asserted and no signer attestation is retained."
+        },
+        {
+          "defect": "Provenance that cannot be valid",
+          "evidence": "The subject list is a single hash over a file set where encoded per-artefact digests are expected, and a reusable workflow is invoked from a step position."
+        },
+        {
+          "defect": "Publishes an artefact never produced",
+          "evidence": "The release includes an integrity artefact that no step in the workflow produces, and no boot or measurement evidence is collected anywhere."
+        }
+      ],
+      "replacement_milestone": "M13 (release signing and remote delivery), and not before an M11 artefact exists and the unverified action reference is replaced with a digest-pinned, verified action.",
+      "tracked_in_repository": false
+    },
+    {
+      "artifact": "imported integration and sanity script",
+      "source_id": "export-046",
+      "sha256": "9d566b66ab939bf0bbf745d3772d2bad08974010fe9df8f1c3abfbc6b247436d",
+      "claims": "States that it evaluates partition geometries, boot of the unified image and daemon interfaces, and validates a headless boot with measurement, integrity and volume unlock.",
+      "defects": [
+        {
+          "defect": "Simulated boot and measurement output",
+          "evidence": "The branch prints a simulation notice and sleeps; no emulator, firmware, TPM emulator or container runner is invoked anywhere in the file."
+        },
+        {
+          "defect": "Boot and measurement success printed",
+          "evidence": "A boot success line and specific measurement register values are printed although no TPM was read (REQ-BOOT-02)."
+        },
+        {
+          "defect": "Integrity verification printed",
+          "evidence": "A root-hash verification line is printed with no hash computed and no device mapped."
+        },
+        {
+          "defect": "Volume unlock printed",
+          "evidence": "A policy-based volume unlock line is printed with no volume and no policy evaluated."
+        },
+        {
+          "defect": "Success printed without executing the check",
+          "evidence": "A loop prints a pass line for each of nine hardcoded crate names; no path is inspected and no build tool is invoked, so it would pass in an empty directory."
+        },
+        {
+          "defect": "File existence treated as verification",
+          "evidence": "Presence of one definition file is reported as geometry verified; contents are never parsed and three further definitions are never checked."
+        },
+        {
+          "defect": "Unconditional green exit",
+          "evidence": "The script always reaches a success banner and exits zero; the advertised daemon interface evaluation is never implemented."
+        }
+      ],
+      "replacement_milestone": "Split: offline definition validation with real exit codes at M03; a real boot check with retained emulator logs and measurement readback at M11; signing at M20. Until then no gate may reference it.",
+      "tracked_in_repository": false
+    },
+    {
+      "artifact": "imported build orchestrator",
+      "source_id": "export-009",
+      "sha256": "3068c85b768a2ab713883e549b7f1a82ebc4f7d2935b5c9efbe07642f0f813ed",
+      "claims": "Targets for build, eBPF, UI, test, lint, format, accessibility, image and boot, advertised as enforcing Power-of-Ten build invariants and zero-drift compilation.",
+      "defects": [
+        {
+          "defect": "Simulated output inside the test gate",
+          "evidence": "The test target runs the simulated integration script, so a green test run includes fabricated boot and measurement passes (REQ-P14-08)."
+        },
+        {
+          "defect": "Hardcoded identity presented as determinism",
+          "evidence": "A fixed epoch and an all-zero seed are baked into the image target, which makes every build produce identical partition identifiers on every machine."
+        },
+        {
+          "defect": "Unpinned dependency resolution",
+          "evidence": "The UI build re-resolves and mutates the lockfile instead of installing from it, contradicting the zero-drift claim in the same file."
+        },
+        {
+          "defect": "Incomplete eBPF gate",
+          "evidence": "Only one of the three imported eBPF programs is compiled, and no verifier load is attempted."
+        },
+        {
+          "defect": "Unreachable boot target",
+          "evidence": "It boots an image path that no target in the file produces and passes an SSH key into the guest, an undeclared credential path into a supposedly immutable image."
+        },
+        {
+          "defect": "Unpinned toolchain",
+          "evidence": "The build, compiler and image tools are taken from the path with no version pin and no availability check."
+        },
+        {
+          "defect": "No verification or governance gate",
+          "evidence": "No target runs the repository's verification, audit or context-compile checks, so adopting the file would replace the governance gate."
+        }
+      ],
+      "replacement_milestone": "Target by target: Rust targets at M02, accessibility at M04, a complete eBPF target with verifier load at M19, image and boot targets at M11. The tracked Makefile stays authoritative.",
+      "tracked_in_repository": false
+    },
+    {
+      "artifact": "imported repository population script",
+      "source_id": "export-057",
+      "sha256": "76e31b8e4e4b5f241ea9f45a23b665a69f63fd63e58b5249a2168af313bba71e",
+      "claims": "States that it initialises the canonical directory layout, places all scaffolded files into it, and then prints a completion banner.",
+      "defects": [
+        {
+          "defect": "Failure suppression",
+          "evidence": "The final permission change ends in a true fallback; under strict error handling it is the only guarded command, so the suppression is deliberate."
+        },
+        {
+          "defect": "Success printed without executing the work",
+          "evidence": "Every copy is guarded on source existence, with no counter, manifest check or digest verification, so the banner prints whether it copied fifty files or none."
+        },
+        {
+          "defect": "Self-copy at the repository root",
+          "evidence": "Five copies have identical source and destination when run from the root, which the copy tool rejects, so the run aborts mid-population or silently does nothing."
+        },
+        {
+          "defect": "Overwrites governance configuration",
+          "evidence": "It copies proposal standards data over the tracked governance configuration with no diff, review or backup."
+        },
+        {
+          "defect": "Activates both quarantined workflows",
+          "evidence": "It installs the failure-suppressing CI and the tag-triggered publishing workflow into the workflow directory in one unreviewed step."
+        },
+        {
+          "defect": "References a source that does not exist",
+          "evidence": "It copies a second root partition definition that exists nowhere in the import set; the existence guard swallows it and the A/B scheme is created without a B slot."
+        },
+        {
+          "defect": "Creates unmanifested crate skeletons",
+          "evidence": "It creates twelve crate source trees with no manifests, no workspace root and no lock, producing a tree that cannot build."
+        }
+      ],
+      "replacement_milestone": "None: superseded outright. Each component's directory, manifest, lock and interface contract are created by hand at the milestone that activates it. Bulk population by script is not reintroduced.",
+      "tracked_in_repository": false
+    },
+    {
+      "artifact": "imported checkpoint ledger module",
+      "source_id": "export-040",
+      "sha256": "84b1ca13cc33524ce5d508cdc99d8067e46c1ae7f7b110ecc69c348102011a20",
+      "claims": "A deterministic hash-chained audit trail said to enforce Power-of-Ten invariants for experiment and candidate auditing, appending records linked by a previous-record hash.",
+      "defects": [
+        {
+          "defect": "Claim contradicted by the code",
+          "evidence": "The header advertises one hash algorithm and the implementation computes another; this is the ledger-hash contradiction recorded as DSP-07."
+        },
+        {
+          "defect": "No algorithm boundary",
+          "evidence": "The algorithm is hardcoded at the call site with no trait or injection point, so the boundary D02 requires does not exist."
+        },
+        {
+          "defect": "Hardcoded system path",
+          "evidence": "A system-wide absolute path is the default constructor argument; it needs elevated rights to create and is not configurable per environment."
+        },
+        {
+          "defect": "Chain trusted blindly",
+          "evidence": "Only the last line is parsed and its self-declared hash is adopted as the chain head; nothing recomputes a record hash or walks the chain."
+        },
+        {
+          "defect": "Unhandled errors",
+          "evidence": "File read, parse and property access are unguarded, so a truncated final line, the normal outcome of a crash mid-append, throws out of the constructor."
+        },
+        {
+          "defect": "Non-atomic append and no signing",
+          "evidence": "Appends without locking or flushing, so concurrent writers interleave; records carry no signature and the encoding order is never pinned."
+        },
+        {
+          "defect": "No tests",
+          "evidence": "No positive, negative or boundary test accompanies a public interface, so the three-dimensional testing invariant is unmet."
+        }
+      ],
+      "replacement_milestone": "The trait boundary and D02 land at M02; a corrected ledger with chain verification, canonical encoding, injected storage and three-dimensional tests at M05; signed records at M14 and M20.",
+      "tracked_in_repository": false
+    },
+    {
+      "artifact": "imported accessibility specification",
+      "source_id": "export-023",
+      "sha256": "a0d06b6b8e6c8a0ac76f32377d8c39293ad2f191771755694b70eac53abe31f4",
+      "claims": "An accessibility audit suite named for a European conformance standard: a rule-engine scan asserting zero violations, and a focus-indicator test named for a contrast ratio and a stroke width.",
+      "defects": [
+        {
+          "defect": "Conformance reported without measuring it",
+          "evidence": "The focus test reads style, width and colour but asserts only that the outline style is not none; contrast is never computed and width is never compared."
+        },
+        {
+          "defect": "Assertion weaker than the claim",
+          "evidence": "The single substantive assertion discards the two other collected properties, so the D16 width boundary is not implemented."
+        },
+        {
+          "defect": "Hardcoded development origin",
+          "evidence": "Both tests navigate to a hardcoded local development origin with no managed server, fixture or readiness gate, so in CI the load fails and the suppressed job still reports a pass."
+        },
+        {
+          "defect": "No negative or boundary case",
+          "evidence": "Nothing asserts that removing the focus outline fails the suite, and no case exercises the minimum width, which M04 requires."
+        },
+        {
+          "defect": "Coverage narrower than the conformance claim",
+          "evidence": "One route in its default state is scanned behind a single selector, while conformance is claimed for the whole shell."
+        },
+        {
+          "defect": "Unpinned toolchain",
+          "evidence": "The test runner and rule engine are imported with no version pinned anywhere in the import set."
+        }
+      ],
+      "replacement_milestone": "M04 (accessibility harness): headless against a managed server, zero violations on the default state, failing when the focus outline is removed, and implementing the D16 boundary.",
+      "tracked_in_repository": false
+    },
+    {
+      "artifact": "imported action-interceptor test module",
+      "source_id": "export-047",
+      "sha256": "971948673346948f0e85dba99470667cb09399fe25dd804c84f5f8a83e46b26d",
+      "claims": "Seven Rust unit tests covering risk-tier routing, maker-checker separation, two-checker enforcement for high-risk actions, decision timeout fail-closed behaviour and a global killswitch.",
+      "defects": [
+        {
+          "defect": "Tests its own mock, not product code",
+          "evidence": "The engine and every type are defined inside the test-only module, so nothing ships and a release build compiles none of it; M02 requires library code."
+        },
+        {
+          "defect": "Forbidden unwrapping",
+          "evidence": "Six unwrap calls on clock durations and a result; a pre-epoch clock would panic the interceptor instead of failing closed, against the error-handling invariant."
+        },
+        {
+          "defect": "Fail-open boundary",
+          "evidence": "Expiry uses a strict comparison, so a request due in the current second is still approvable; the boundary fails open, and no test covers the equality case."
+        },
+        {
+          "defect": "Missing boundary test",
+          "evidence": "The only expiry case is one second past due; nothing exercises the equality edge that the strict comparison leaves open."
+        },
+        {
+          "defect": "Warning hygiene",
+          "evidence": "Two imports are unused, which alone fails the required deny-warnings lint gate."
+        },
+        {
+          "defect": "Decision request never persisted",
+          "evidence": "The constructed request is bound to a discarded name and dropped, so the returned identifier refers to no record and the approval path is unreachable from interception."
+        },
+        {
+          "defect": "Test-only constant left in the engine",
+          "evidence": "A short approval window is hardcoded into the engine with a comment admitting it is for testing; the timeout is policy and belongs in configuration with its own bounds."
+        },
+        {
+          "defect": "High-risk path not enforced at interception",
+          "evidence": "The tier match never branches on the high-risk flag, so a high-risk action declared at the lowest tier is simply allowed and the two-checker rule is never consulted."
+        },
+        {
+          "defect": "Missing coverage",
+          "evidence": "The killswitch test covers only the lowest tier; no test covers audit-record emission or hash chaining, and no hashing or signing boundary exists."
+        }
+      ],
+      "replacement_milestone": "M02 (P06 promoted end-to-end): library code in the crate behind a workspace root and a committed lock, no unwrapping, equality failing closed, and three-dimensional tests under the lint gate.",
+      "tracked_in_repository": false
+    }
+  ]
+}

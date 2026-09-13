@@ -66,7 +66,7 @@
       "id": "M01",
       "title": "Component inventory reconciliation and decision register",
       "rank": 1,
-      "state": "ready",
+      "state": "done",
       "blocked_by": [
         "M00"
       ],
@@ -171,13 +171,20 @@
           "acceptance": "Imported CI, release and integration scripts stay inactive. Their failure-suppressing and simulated-output steps are listed as defects to fix before any activation."
         }
       ],
-      "evidence": []
+      "evidence": [
+        "planning/candidates.json: 17 candidate rows covering all sixteen components, 27 contradictions (15 open), 56 toolchain drift rows, 8 quarantined imported artefacts",
+        "docs/roadmap/inventory.md: the public register, recording that no Cargo.toml, Cargo.lock or package manifest is committed and that crates/ and ui/ hold only README.md",
+        "tools/verify_preparation.py verify_candidates(): validates schema, the pinned source bundle, component coverage, digest form, row bounds, contradiction sides and status, and quarantine invariants; it recomputes the digest of every public repository citation and fails closed on a manifest claim while the component is still a proposal",
+        "tools/test_preparation.py: ten register tests covering positive, negative and boundary cases, including the public-citation mismatch and the summary length boundary",
+        "make verify-all at this commit: 35 tests OK, praetorctl audit and compile-context --verify pass, licence digests and roadmap blocking states verified",
+        "Scope limit: planning evidence only. No manifest, lock, build, image, boot, hardware, accessibility or release gate is closed or claimed by this milestone"
+      ]
     },
     {
       "id": "M02",
       "title": "First component promoted end-to-end: P06 aegis-justitia decision engine",
       "rank": 2,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M01"
       ],
