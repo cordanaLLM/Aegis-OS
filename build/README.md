@@ -35,6 +35,11 @@ carries no comment syntax, so those three files cite their sources in-band
 instead: each feature row names the recorded requirement it comes from. The
 observations, the probe commands and their output are in
 `docs/build/product-input.md`.
+These files say what an A/B update *is*. What happens to a candidate release
+moving through them -- signature check, delta acquisition, slot swap, boot
+watchdog, and bless or rollback -- is modelled by `crates/aegis-janus-lifecycle`
+and described in `docs/build/ab-lifecycle.md`. That model stubs every effect: it
+runs no systemd command, opens no device and reboots nothing.
 
 These are reviewed declarative inputs, not a built image. No image, artefact,
 signature or boot evidence is produced or claimed here. `mkosi summary` resolves

@@ -91,6 +91,79 @@ version and is never released.
   criterion 4 and `M20` (two criteria unrendered) are not, because rewriting
   another milestone's recorded criteria does not belong in this delivery.
 
+### Added (P02 A/B candidate lifecycle, milestone M15)
+
+- `crates/aegis-janus-lifecycle` is the third activated crate and the second
+  half of decision D15. It models one candidate release from declaration
+  through the signature check, delta acquisition, slot swap and boot watchdog
+  to bless or rollback. The definitions in `build/` say what an A/B update is;
+  this says what happens to a candidate moving through them.
+- The watchdog is the half-open interval `[armed_at, due_at)`, so expiry is
+  `now >= due_at`: exactly at the timeout the candidate rolls back and one tick
+  before it does not. Equality expires because that is the fail-closed reading.
+  The boundary tests fork one machine and drive the copies at `due - 1`, `due`
+  and `due + 1`, so the runs differ in the clock reading and in nothing else.
+- Expiry is a property of the deadline, not of the event that samples it. An
+  on-trial state evaluates the deadline before it dispatches the event, so past
+  `due_at` every offered event rolls the candidate back, a `bless` included,
+  and the D13 maintenance window is bounded the same way. Evaluating the
+  deadline only on a `tick` would leave REQ-P02-08 satisfiable only by a
+  well-behaved driver: one that never sampled the clock could bless a candidate
+  whose watchdog had expired long ago. The forced rollback is traced under the
+  event that was offered, because the trace records what happened rather than
+  what was asked for.
+- The clock is a parameter and never ambient. `Machine::step` takes a `Clock`,
+  the only implementation shipped is a stub a caller sets, no module names
+  `SystemTime`, and a clock that steps backwards is refused rather than
+  averaged away: a watchdog that could be wound back would never expire.
+- Decision D13 is recorded against the dm-verity requirement and reconciled
+  with it by one rule: reopening a blessed slot discards its dm-verity
+  measurement, so re-blessing requires a fresh measurement equal to the signed
+  release root hash. Reversibility costs a re-verification and never costs the
+  integrity check. The register in `src/decision.rs` states the decision and
+  admits nothing; the state machine holds the rule, and the tests tie the two
+  together so the register cannot drift away from the behaviour.
+- The transition trace is designed as the artefact milestone M24 consumes, not
+  as a log. It renders as JSON Lines -- a header naming the release, both slots
+  and the signed root hash, then one record per accepted step with a dense
+  ascending sequence number -- and every line carries a versioned schema tag.
+  There is no floating point, map ordering, host timestamp or free text in it,
+  and a version that would need a JSON escape is refused rather than escaped.
+  Rendering is a fixed point of parsing, which is what makes a byte-for-byte
+  comparison sound rather than coincidental; the happy path is held against a
+  golden seven-line rendering.
+- systemd and sysupdate calls are stubbed structurally rather than by promise.
+  The calls are values that describe what a real implementation would run, a
+  scripted stub answers them, and a sweep over the crate's own sources fails if
+  any of twenty recorded identifiers appears -- ways to start a process, open a
+  file or device, read the host clock, consult the environment, reach a socket,
+  a path or a thread, pull a file in at compile time, or step outside safe
+  Rust. Nothing runs `systemd-sysupdate`, writes a slot, computes a hash or
+  reboots. The sweep is stated as what it is: a regression gate over an
+  enumeration, not a proof over every identifier that could reach the host. No
+  list of identifiers can be the second, and the crate says so rather than
+  claiming it.
+- The public-surface sweep reads public struct fields and `pub static` as
+  declarations, not only keyword-introduced items. `TraceHeader`, `TraceLine`,
+  `DecisionRecord` and `Citation` are all-public-field structs -- the whole
+  rendered form of the trace M24 will diff against -- and they were outside the
+  sweep until now.
+- The no-allocation claim is bounded rather than absolute, and is made
+  falsifiable: a transition allocates nothing because every value the machine
+  holds is `Copy` and the trace is a fixed array, and the test binds that to
+  `Machine: Copy` and a recorded size bound, so adding a `Vec`, `String` or
+  `Box` anywhere inside the machine stops the test compiling. Rendering and
+  parsing a trace do allocate, and the documentation says so.
+- `sysupdate.d(5)` defines a `Verify=` key that the reviewed
+  `build/sysupdate.d/10-root.transfer` does not set. The signature stage is
+  modelled because REQ-P02-01 requires it, and is recorded as an open point
+  rather than claimed of the reviewed definition.
+- Scope: a pure state machine with stubbed effects. No image is built, nothing
+  boots, no slot is written and no TPM is touched. P02 `aegis-janus-vallum`
+  stays a proposal: this crate models the lifecycle and is not the component
+  daemon. M24 becomes ready; M11, M20 and the image, boot and release gates
+  remain blocked.
+
 ### Added (P01/P02 definitions validated offline, milestone M03)
 
 - The P01 Fabrica and P02 Praesidium declarative inputs are now reviewed files

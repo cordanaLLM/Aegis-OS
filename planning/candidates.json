@@ -77,7 +77,7 @@
       "language": "declarative-config + proposed Rust crate",
       "proposed_paths": [
         "build/repart.d and build/sysupdate.d (reviewed repart drop-ins and the A/B transfer, M03)",
-        "crates/<undecided>/ A/B lifecycle (D15; M15 records the crate name)"
+        "crates/aegis-janus-lifecycle/ A/B candidate lifecycle (D15, created in M15)"
       ],
       "in_proposed_workspace": false,
       "manifest_present": false,
@@ -115,12 +115,12 @@
         }
       ],
       "missing": [
-        "crate name and path for the D15 A/B lifecycle crate",
-        "crate Cargo.toml",
-        "tests for candidate, signature check, delta acquisition, slot swap, watchdog, bless and rollback",
-        "TPM2 and secure-boot hardware or emulator evidence"
+        "a P02 component crate; aegis-janus-lifecycle models the A/B lifecycle and is not the daemon",
+        "real signature, dm-verity and sysupdate effects; the lifecycle crate stubs every one of them",
+        "TPM2 and secure-boot hardware or emulator evidence",
+        "real artefact and boot evidence"
       ],
-      "note": "The repart and transfer definitions are reviewed and gated (M03); the A/B lifecycle crate is M15 work and no P02 component manifest exists."
+      "note": "The D15 A/B lifecycle path is decided and created (crates/aegis-janus-lifecycle, M15); manifest_present stays false because P02 itself has no component manifest."
     },
     {
       "candidate_id": "C03",
