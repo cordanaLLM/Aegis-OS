@@ -24,6 +24,13 @@ boundaries: a Go library is not a direct dependency of a Rust daemon. Use a
 compatible library or an explicit protocol/FFI adapter with contract tests. GPU
 templates are candidates only for components that require those backends.
 
+While Imago and Nucleus are scaffolds, Aegis performs the parts it cannot defer:
+it validates image definitions locally (D56) and builds the kernel locally (D70,
+milestone M26). Neither produces a release artifact, and both hand back to the
+owning repository once it returns real artifacts against the contract pinned in
+M09. Ownership in the table above is unchanged; only who currently does the work
+is.
+
 Activation order: the ranked, blocking-state roadmap in `docs/roadmap/README.md`
 and `planning/roadmap.json` is authoritative (`make readiness` lists the ready
 set). It keeps the original sequence below but orders local, hardware-free

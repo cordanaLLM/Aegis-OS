@@ -13,6 +13,17 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Changed (kernel construction)
+
+- Decision D70 is amended and milestone M26 added: Aegis builds the kernel in
+  this repository while Nucleus is a scaffold, for the same reason D56 keeps
+  image-definition validation here while Imago is a scaffold. M26 pins a source,
+  expresses the M18 requirements as a tracked configuration fragment, and reads
+  the produced configuration back from inside a guest. It is development
+  evidence and never a release artifact; kernel construction returns to Nucleus
+  once Nucleus returns real artifacts. The ranking controller placed M26 at rank
+  12 and moved the realtime fixture behind it.
+
 ### Changed (kernel sourcing)
 
 - Decision D70 records where kernels come from: Nucleus builds them against the

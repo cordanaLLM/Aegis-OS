@@ -272,79 +272,9 @@
       }
     },
     {
-      "id": "M14",
-      "title": "P06 consumer interface contracts and hardened unit contract",
-      "rank": 3,
-      "state": "ready",
-      "blocked_by": [
-        "M02"
-      ],
-      "unblocks": [
-        "M05",
-        "M06",
-        "M16",
-        "M20"
-      ],
-      "cost": "small",
-      "needs_hardware": false,
-      "needs_external_contract": false,
-      "owner_repo": "cordanaLLM/Aegis-OS",
-      "subsystems": [
-        "P06",
-        "P05",
-        "P09",
-        "P16"
-      ],
-      "exit_criteria": [
-        "D03 (direction and transport of the P06/P09 action gate) is closed and D04 (P06 to P10 syscall intercept) is recorded",
-        "Versioned schemas exist for the DecisionRequest (P06 to P05), the action proposal (P09 and P06, direction per D03) and the signed audit record (P06 to P16); each schema has contract tests with positive, negative and boundary payloads",
-        "The justitia-interceptor unit stays a declarative contract (IPAddressDeny=any) and is not installed or executed",
-        "Uses the Rust toolchain admitted in M02; no new toolchain; `make verify-all` passes"
-      ],
-      "cheapest_exit": "Write the three schemas as typed Rust structs with serde round-trip tests. No transport is implemented.",
-      "epics": [
-        {
-          "id": "E14-1",
-          "title": "Action-gate direction decision and action proposal contract",
-          "requirement_ids": [
-            "REQ-P09-03",
-            "REQ-P09-05",
-            "REQ-GRAPH-04",
-            "REQ-GRAPH-02"
-          ],
-          "acceptance": "Positive: a signed, well-formed proposal round-trips. Negative: an unsigned or malformed proposal is rejected. Boundary: a proposal at the maximum field lengths is accepted, and one byte over is rejected."
-        },
-        {
-          "id": "E14-2",
-          "title": "DecisionRequest and audit record contracts",
-          "requirement_ids": [
-            "REQ-GOV-03",
-            "REQ-P06-08",
-            "REQ-P06-10",
-            "REQ-P16-03"
-          ],
-          "acceptance": "Positive: both schemas round-trip. Negative: an unknown schema version is rejected. Boundary: an audit record whose previous hash is the all-zero genesis value is accepted only as the first record. The PLD effective date is tracked as an external deadline."
-        },
-        {
-          "id": "E14-3",
-          "title": "Hardened unit contract",
-          "requirement_ids": [
-            "REQ-P06-02"
-          ],
-          "acceptance": "Positive: the unit file declares IPAddressDeny=any. Negative: a review check fails if the directive is removed. Boundary: the unit is not installed or started in this milestone."
-        }
-      ],
-      "evidence": [],
-      "reference_profile": {
-        "support": "not-hardware",
-        "requires": [],
-        "rationale": "Unmoved. Highest score in the whole graph at (1+11)/2 = 6.0; the profile changes nothing about it because it is pure schema work."
-      }
-    },
-    {
       "id": "M03",
       "title": "P01/P02 definitions validated offline with host systemd",
-      "rank": 4,
+      "rank": 3,
       "state": "ready",
       "blocked_by": [
         "M02"
@@ -423,6 +353,76 @@
       }
     },
     {
+      "id": "M14",
+      "title": "P06 consumer interface contracts and hardened unit contract",
+      "rank": 4,
+      "state": "ready",
+      "blocked_by": [
+        "M02"
+      ],
+      "unblocks": [
+        "M05",
+        "M06",
+        "M16",
+        "M20"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P06",
+        "P05",
+        "P09",
+        "P16"
+      ],
+      "exit_criteria": [
+        "D03 (direction and transport of the P06/P09 action gate) is closed and D04 (P06 to P10 syscall intercept) is recorded",
+        "Versioned schemas exist for the DecisionRequest (P06 to P05), the action proposal (P09 and P06, direction per D03) and the signed audit record (P06 to P16); each schema has contract tests with positive, negative and boundary payloads",
+        "The justitia-interceptor unit stays a declarative contract (IPAddressDeny=any) and is not installed or executed",
+        "Uses the Rust toolchain admitted in M02; no new toolchain; `make verify-all` passes"
+      ],
+      "cheapest_exit": "Write the three schemas as typed Rust structs with serde round-trip tests. No transport is implemented.",
+      "epics": [
+        {
+          "id": "E14-1",
+          "title": "Action-gate direction decision and action proposal contract",
+          "requirement_ids": [
+            "REQ-P09-03",
+            "REQ-P09-05",
+            "REQ-GRAPH-04",
+            "REQ-GRAPH-02"
+          ],
+          "acceptance": "Positive: a signed, well-formed proposal round-trips. Negative: an unsigned or malformed proposal is rejected. Boundary: a proposal at the maximum field lengths is accepted, and one byte over is rejected."
+        },
+        {
+          "id": "E14-2",
+          "title": "DecisionRequest and audit record contracts",
+          "requirement_ids": [
+            "REQ-GOV-03",
+            "REQ-P06-08",
+            "REQ-P06-10",
+            "REQ-P16-03"
+          ],
+          "acceptance": "Positive: both schemas round-trip. Negative: an unknown schema version is rejected. Boundary: an audit record whose previous hash is the all-zero genesis value is accepted only as the first record. The PLD effective date is tracked as an external deadline."
+        },
+        {
+          "id": "E14-3",
+          "title": "Hardened unit contract",
+          "requirement_ids": [
+            "REQ-P06-02"
+          ],
+          "acceptance": "Positive: the unit file declares IPAddressDeny=any. Negative: a review check fails if the directive is removed. Boundary: the unit is not installed or started in this milestone."
+        }
+      ],
+      "evidence": [],
+      "reference_profile": {
+        "support": "not-hardware",
+        "requires": [],
+        "rationale": "Unmoved. Highest score in the whole graph at (1+11)/2 = 6.0; the profile changes nothing about it because it is pure schema work."
+      }
+    },
+    {
       "id": "M18",
       "title": "Aegis-side product input manifest and kernel requirement schemas (local)",
       "rank": 5,
@@ -431,7 +431,8 @@
         "M03"
       ],
       "unblocks": [
-        "M09"
+        "M09",
+        "M26"
       ],
       "cost": "small",
       "needs_hardware": false,
@@ -953,9 +954,66 @@
       }
     },
     {
+      "id": "M26",
+      "title": "Aegis-built kernel with the pinned configuration",
+      "rank": 12,
+      "state": "blocked",
+      "blocked_by": [
+        "M18"
+      ],
+      "unblocks": [
+        "M23"
+      ],
+      "cost": "medium",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P07",
+        "P08",
+        "P06",
+        "P13"
+      ],
+      "reference_profile": {
+        "support": "full",
+        "requires": [],
+        "rationale": "the build toolchain is complete on the reference profile (gcc, clang, make, bc, flex, bison, pahole 1.31 for BTF, cpio, zstd) with 32 threads and ample disk; no hardware capability is needed to compile and boot a kernel in a guest"
+      },
+      "exit_criteria": [
+        "D70 applies: Aegis builds the kernel here while Nucleus is a scaffold, exactly as D56 keeps image-definition validation here while Imago is a scaffold. The build moves to Nucleus when Nucleus returns real artifacts, and this milestone's output is never a release artifact",
+        "Toolchain admission: the compiler, make, bc, flex, bison, pahole and the archive tools are selected through the template matrix with the reference-profile versions recorded",
+        "The kernel source is pinned by version and digest, and the configuration is expressed as a tracked fragment applied to a named base configuration, not as a full copied .config",
+        "The fragment sets exactly what the M18 schema requires and the build reads it back: CONFIG_PREEMPT_RT, the timer frequency, CONFIG_SCHED_CLASS_EXT, CONFIG_BPF_LSM and CONFIG_DEBUG_INFO_BTF are confirmed in the produced .config rather than assumed",
+        "Positive: the build produces a bootable image and the guest reports the required options from inside itself. Negative: a fragment that contradicts a required option fails the build gate rather than producing a silently non-conforming kernel. Boundary: a required option set as a module where the schema demands built-in is rejected",
+        "A pass here is development evidence on the reference profile. It closes no boot, hardware or release gate, and it is not a substitute for the Nucleus contract in M09"
+      ],
+      "cheapest_exit": "Apply a configuration fragment to a pinned upstream source, build, and read the produced configuration back from inside a guest. No packaging, no signing, no release.",
+      "epics": [
+        {
+          "id": "E26-1",
+          "title": "Pinned source and configuration fragment",
+          "requirement_ids": [
+            "REQ-P07-01",
+            "REQ-P01-09"
+          ],
+          "acceptance": "Positive: the fragment applies to the pinned base and the produced configuration carries every required option. Negative: a contradictory fragment fails the gate. Boundary: an option set as a module where the schema demands built-in is rejected."
+        },
+        {
+          "id": "E26-2",
+          "title": "Guest boot and configuration read-back",
+          "requirement_ids": [
+            "REQ-P07-02",
+            "REQ-P08-01"
+          ],
+          "acceptance": "Positive: the guest boots and reports the required options from inside itself. Negative: a kernel missing a required option is refused by the read-back check. Boundary: the read-back runs on the exact built artifact, not on the host kernel."
+        }
+      ],
+      "evidence": []
+    },
+    {
       "id": "M19",
       "title": "eBPF objects loaded through the verifier on the host kernel",
-      "rank": 12,
+      "rank": 13,
       "state": "blocked",
       "blocked_by": [
         "M05",
@@ -1023,9 +1081,70 @@
       }
     },
     {
+      "id": "M23",
+      "title": "P07 and P08 latency fixtures on a realtime kernel guest",
+      "rank": 14,
+      "state": "blocked",
+      "blocked_by": [
+        "M07",
+        "M26"
+      ],
+      "unblocks": [
+        "M10"
+      ],
+      "cost": "medium",
+      "needs_hardware": true,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P07",
+        "P08"
+      ],
+      "exit_criteria": [
+        "Toolchain admission: QEMU 11.1.1 and the realtime kernel package are selected through the template matrix with pinned versions",
+        "D70 is applied: the guest kernel is an interim source for the latency fixture only. the guest kernel is the one this repository builds in M26 while Nucleus is a scaffold, with its configuration read back from inside the guest; the kernel the product ships is built by Nucleus against the M18 schema once Nucleus is real",
+        "D57 is recorded with the realtime kernel obtained without modifying the reference host: the distribution package is downloaded only (no installation, no bootloader entry) and its kernel image and modules are passed to the guest",
+        "The guest kernel's configuration is read back from inside the virtual machine and confirms CONFIG_PREEMPT_RT, while the same probe on the reference host confirms it is not set there",
+        "Positive: the latency fixture produces measured figures for the tier thresholds on the guest. Negative: the same fixture on the non-realtime host is recorded as not satisfying the determinism claim. Boundary: a run at the threshold and one step beyond it are reported differently",
+        "A pass here is development evidence on the reference profile and closes no hardware gate"
+      ],
+      "cheapest_exit": "Boot the distribution realtime kernel in a guest and run the latency fixture there, recording that the reference host itself is not realtime.",
+      "epics": [
+        {
+          "id": "E23-1",
+          "title": "Compositor registry and Tier-1 socket bounds",
+          "requirement_ids": [
+            "REQ-P04-04",
+            "REQ-P04-05",
+            "REQ-P04-07",
+            "REQ-P04-08"
+          ],
+          "acceptance": "Positive: 256 surfaces and 64 clients are accepted. Negative: the 257th surface is rejected and the 65th client is not admitted. Boundary: a pacing-constant test pins the chosen value."
+        },
+        {
+          "id": "E23-2",
+          "title": "wlroots and mesh design decision",
+          "requirement_ids": [
+            "REQ-P04-01",
+            "REQ-P04-02",
+            "REQ-P04-03",
+            "REQ-P04-06"
+          ],
+          "acceptance": "The decision is recorded. The Zenoh version is selected at activation after checking current upstream, with a mocked transport test: a publish round-trips, a subscriber cannot write back, and an empty key expression is rejected."
+        }
+      ],
+      "evidence": [],
+      "split_from": "M07",
+      "reference_profile": {
+        "support": "full",
+        "requires": [],
+        "rationale": "the fixture runs in a guest on a kernel this repository builds (M26) while Nucleus is a scaffold; no host change and no absent capability is involved"
+      }
+    },
+    {
       "id": "M24",
       "title": "Local boot harness over an externally supplied artifact",
-      "rank": 13,
+      "rank": 15,
       "state": "blocked",
       "blocked_by": [
         "M15"
@@ -1091,7 +1210,7 @@
     {
       "id": "M04",
       "title": "UI accessibility harness: P12 Concordia tokens",
-      "rank": 14,
+      "rank": 16,
       "state": "ready",
       "blocked_by": [
         "M02"
@@ -1155,7 +1274,7 @@
     {
       "id": "M16",
       "title": "P05 Forum shell state and lifecycle with stubbed IPC",
-      "rank": 15,
+      "rank": 17,
       "state": "blocked",
       "blocked_by": [
         "M04",
@@ -1212,7 +1331,7 @@
     {
       "id": "M21",
       "title": "Workstation hardware slices: RAPL counters and KVM sandboxing",
-      "rank": 16,
+      "rank": 18,
       "state": "blocked",
       "blocked_by": [
         "M05"
@@ -1280,7 +1399,7 @@
     {
       "id": "M25",
       "title": "GPU DMA-BUF sharing and VFIO passthrough slices",
-      "rank": 17,
+      "rank": 19,
       "state": "blocked",
       "blocked_by": [
         "M08",
@@ -1344,7 +1463,7 @@
     {
       "id": "M22",
       "title": "P10 microVM sandbox measurements on KVM",
-      "rank": 18,
+      "rank": 20,
       "state": "blocked",
       "blocked_by": [
         "M06"
@@ -1401,69 +1520,9 @@
       }
     },
     {
-      "id": "M23",
-      "title": "P07 and P08 latency fixtures on a realtime kernel guest",
-      "rank": 19,
-      "state": "blocked",
-      "blocked_by": [
-        "M07"
-      ],
-      "unblocks": [
-        "M10"
-      ],
-      "cost": "medium",
-      "needs_hardware": true,
-      "needs_external_contract": false,
-      "owner_repo": "cordanaLLM/Aegis-OS",
-      "subsystems": [
-        "P07",
-        "P08"
-      ],
-      "exit_criteria": [
-        "Toolchain admission: QEMU 11.1.1 and the realtime kernel package are selected through the template matrix with pinned versions",
-        "D70 is applied: the guest kernel is an interim source for the latency fixture only. A distribution realtime package may be used to get a first measurement, and its configuration is read back from inside the guest rather than assumed; the kernel the product depends on is built by Nucleus against the Aegis kernel requirement schema from M18",
-        "D57 is recorded with the realtime kernel obtained without modifying the reference host: the distribution package is downloaded only (no installation, no bootloader entry) and its kernel image and modules are passed to the guest",
-        "The guest kernel's configuration is read back from inside the virtual machine and confirms CONFIG_PREEMPT_RT, while the same probe on the reference host confirms it is not set there",
-        "Positive: the latency fixture produces measured figures for the tier thresholds on the guest. Negative: the same fixture on the non-realtime host is recorded as not satisfying the determinism claim. Boundary: a run at the threshold and one step beyond it are reported differently",
-        "A pass here is development evidence on the reference profile and closes no hardware gate"
-      ],
-      "cheapest_exit": "Boot the distribution realtime kernel in a guest and run the latency fixture there, recording that the reference host itself is not realtime.",
-      "epics": [
-        {
-          "id": "E23-1",
-          "title": "Compositor registry and Tier-1 socket bounds",
-          "requirement_ids": [
-            "REQ-P04-04",
-            "REQ-P04-05",
-            "REQ-P04-07",
-            "REQ-P04-08"
-          ],
-          "acceptance": "Positive: 256 surfaces and 64 clients are accepted. Negative: the 257th surface is rejected and the 65th client is not admitted. Boundary: a pacing-constant test pins the chosen value."
-        },
-        {
-          "id": "E23-2",
-          "title": "wlroots and mesh design decision",
-          "requirement_ids": [
-            "REQ-P04-01",
-            "REQ-P04-02",
-            "REQ-P04-03",
-            "REQ-P04-06"
-          ],
-          "acceptance": "The decision is recorded. The Zenoh version is selected at activation after checking current upstream, with a mocked transport test: a publish round-trips, a subscriber cannot write back, and an empty key expression is rejected."
-        }
-      ],
-      "evidence": [],
-      "split_from": "M07",
-      "reference_profile": {
-        "support": "partial",
-        "requires": [],
-        "rationale": "the host is not realtime, and the fixture runs in a guest. The interim kernel is a distribution package; the production kernel is a Nucleus build against the M18 schema (D70)"
-      }
-    },
-    {
       "id": "M09",
       "title": "Cross-repository contract pin: one local request/result pair",
-      "rank": 20,
+      "rank": 21,
       "state": "blocked",
       "blocked_by": [
         "M18"
@@ -1535,7 +1594,7 @@
     {
       "id": "M11",
       "title": "Minimal image build with artifact, signature and boot evidence",
-      "rank": 21,
+      "rank": 22,
       "state": "blocked",
       "blocked_by": [
         "M09",
@@ -1618,7 +1677,7 @@
     {
       "id": "M10",
       "title": "eBPF objects re-verified against the Nucleus-pinned kernel in a VM",
-      "rank": 22,
+      "rank": 23,
       "state": "blocked",
       "blocked_by": [
         "M09",
@@ -1685,7 +1744,7 @@
     {
       "id": "M20",
       "title": "TPM2 attestation slice on swtpm: audit-record signing and /var unseal",
-      "rank": 23,
+      "rank": 24,
       "state": "blocked",
       "blocked_by": [
         "M11",
@@ -1749,7 +1808,7 @@
     {
       "id": "M12",
       "title": "GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths",
-      "rank": 24,
+      "rank": 25,
       "state": "blocked",
       "blocked_by": [
         "M25",
@@ -1824,7 +1883,7 @@
     {
       "id": "M13",
       "title": "Release signing and remote delivery (stack.md step 5)",
-      "rank": 25,
+      "rank": 26,
       "state": "blocked",
       "blocked_by": [
         "M11"

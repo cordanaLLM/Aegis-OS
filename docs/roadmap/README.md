@@ -138,29 +138,30 @@ score.
 | 0 | M00 | Governance gate, split licence and remote declaration | done | trivial | no | no | not-hardware | - | M01 |
 | 1 | M01 | Component inventory reconciliation and decision register | done | small | no | no | not-hardware | M00 | M02 |
 | 2 | M02 | First component promoted end-to-end: P06 aegis-justitia decision engine | ready | small | no | no | not-hardware | M01 | M14, M03, M17, M07, M04 |
-| 3 | M14 | P06 consumer interface contracts and hardened unit contract | blocked | small | no | no | not-hardware | M02 | M05, M06, M16, M20 |
-| 4 | M03 | P01/P02 definitions validated offline with host systemd | blocked | small | no | no | not-hardware | M02 | M18, M15 |
-| 5 | M18 | Aegis-side product input manifest and kernel requirement schemas (local) | blocked | small | no | no | not-hardware | M03 | M09 |
+| 3 | M03 | P01/P02 definitions validated offline with host systemd | blocked | small | no | no | not-hardware | M02 | M18, M15 |
+| 4 | M14 | P06 consumer interface contracts and hardened unit contract | blocked | small | no | no | not-hardware | M02 | M05, M06, M16, M20 |
+| 5 | M18 | Aegis-side product input manifest and kernel requirement schemas (local) | blocked | small | no | no | not-hardware | M03 | M09, M26 |
 | 6 | M15 | P02 A/B candidate lifecycle state machine | blocked | small | no | no | not-hardware | M03 | M24 |
 | 7 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | blocked | trivial | no | no | not-hardware | M02 | M25 |
 | 8 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | blocked | small | no | no | not-hardware | M14 | M19, M21 |
 | 9 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | blocked | small | no | no | not-hardware | M14 | M08, M22 |
 | 10 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | blocked | small | no | no | not-hardware | M06 | M25 |
 | 11 | M07 | Real-time control plane: P04, P07 and P08 logic | blocked | medium | no | no | not-hardware | M02 | M19, M23 |
-| 12 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | full | M05, M07 | M10 |
-| 13 | M24 | Local boot harness over an externally supplied artifact | blocked | large | yes | no | full | M15 | M11 |
-| 14 | M04 | UI accessibility harness: P12 Concordia tokens | blocked | medium | no | no | not-hardware | M02 | M16 |
-| 15 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
-| 16 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | blocked | small | yes | no | full (privileged read) | M05 | - |
-| 17 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | blocked | medium | yes | no | full | M08, M17 | M12 |
-| 18 | M22 | P10 microVM sandbox measurements on KVM | blocked | medium | yes | no | full | M06 | - |
-| 19 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | partial | M07 | M10 |
-| 20 | M09 | Cross-repository contract pin: one local request/result pair | blocked | small | no | yes | partial | M18 | M11, M10 |
-| 21 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | medium | yes | yes | partial | M09, M24 | M13, M20, M12 |
-| 22 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | blocked | medium | yes | yes | partial | M09, M19, M23 | M12 |
-| 23 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
-| 24 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | partial | M25, M10, M11 | - |
-| 25 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
+| 12 | M26 | Aegis-built kernel with the pinned configuration | blocked | medium | no | no | full | M18 | M23 |
+| 13 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | full | M05, M07 | M10 |
+| 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | full | M07, M26 | M10 |
+| 15 | M24 | Local boot harness over an externally supplied artifact | blocked | large | yes | no | full | M15 | M11 |
+| 16 | M04 | UI accessibility harness: P12 Concordia tokens | blocked | medium | no | no | not-hardware | M02 | M16 |
+| 17 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
+| 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | blocked | small | yes | no | full (privileged read) | M05 | - |
+| 19 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | blocked | medium | yes | no | full | M08, M17 | M12 |
+| 20 | M22 | P10 microVM sandbox measurements on KVM | blocked | medium | yes | no | full | M06 | - |
+| 21 | M09 | Cross-repository contract pin: one local request/result pair | blocked | small | no | yes | partial | M18 | M11, M10 |
+| 22 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | medium | yes | yes | partial | M09, M24 | M13, M20, M12 |
+| 23 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | blocked | medium | yes | yes | partial | M09, M19, M23 | M12 |
+| 24 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
+| 25 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | partial | M25, M10, M11 | - |
+| 26 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
 
 The reference profile column records what the machine in
 `planning/hardware-profile.json` can evidence for that milestone. A pass there
@@ -363,7 +364,7 @@ Epics:
 
 ### M14 - P06 consumer interface contracts and hardened unit contract
 
-Rank 3. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 4. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M05, M06, M16, M20.
 
@@ -403,7 +404,7 @@ Epics:
 
 ### M03 - P01/P02 definitions validated offline with host systemd
 
-Rank 4. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 3. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M18, M15.
 
@@ -787,7 +788,7 @@ Epics:
 
 ### M19 - eBPF objects loaded through the verifier on the host kernel
 
-Rank 12. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 13. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile: full.
 Blocked by: M05, M07. Unblocks: M10.
 
@@ -850,7 +851,7 @@ Epics:
 
 ### M21 - Workstation hardware slices: RAPL counters and KVM sandboxing
 
-Rank 16. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 18. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full
 (privileged read). Blocked by: M05. Unblocks: nothing.
 
@@ -914,7 +915,7 @@ Epics:
 
 ### M24 - Local boot harness over an externally supplied artifact
 
-Rank 13. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 15. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M15. Unblocks: M11.
 
@@ -964,7 +965,7 @@ Epics:
 
 ### M04 - UI accessibility harness: P12 Concordia tokens
 
-Rank 14. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 16. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M16.
 
@@ -1011,7 +1012,7 @@ Epics:
 
 ### M16 - P05 Forum shell state and lifecycle with stubbed IPC
 
-Rank 15. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 17. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M04, M14. Unblocks: nothing.
 
@@ -1041,7 +1042,7 @@ Epics:
 
 ### M25 - GPU DMA-BUF sharing and VFIO passthrough slices
 
-Rank 17. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 19. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M08, M17. Unblocks: M12.
 
@@ -1090,7 +1091,7 @@ Epics:
 
 ### M22 - P10 microVM sandbox measurements on KVM
 
-Rank 18. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 20. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M06. Unblocks: nothing.
 
@@ -1137,9 +1138,57 @@ Epics:
   above the memory limit is refused. Boundary: the 64th microVM on real KVM is
   accepted and the 65th refused.
 
+### M26 - Aegis-built kernel with the pinned configuration
+
+Rank 12. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: no. Needs external contract: no. Reference profile: full.
+Blocked by: M18. Unblocks: M23.
+
+Exit criteria:
+
+- D70 applies: Aegis builds the kernel here while Nucleus is a scaffold, exactly
+  as D56 keeps image-definition validation here while Imago is a scaffold. The
+  build moves to Nucleus when Nucleus returns real artifacts, and this
+  milestone's output is never a release artifact
+- Toolchain admission: the compiler, make, bc, flex, bison, pahole and the
+  archive tools are selected through the template matrix with the
+  reference-profile versions recorded
+- The kernel source is pinned by version and digest, and the configuration is
+  expressed as a tracked fragment applied to a named base configuration, not as
+  a full copied .config
+- The fragment sets exactly what the M18 schema requires and the build reads it
+  back: CONFIG_PREEMPT_RT, the timer frequency, CONFIG_SCHED_CLASS_EXT,
+  CONFIG_BPF_LSM and CONFIG_DEBUG_INFO_BTF are confirmed in the produced .config
+  rather than assumed
+- Positive: the build produces a bootable image and the guest reports the
+  required options from inside itself. Negative: a fragment that contradicts a
+  required option fails the build gate rather than producing a silently
+  non-conforming kernel. Boundary: a required option set as a module where the
+  schema demands built-in is rejected
+- A pass here is development evidence on the reference profile. It closes no
+  boot, hardware or release gate, and it is not a substitute for the Nucleus
+  contract in M09
+
+Cheapest exit: Apply a configuration fragment to a pinned upstream source,
+build, and read the produced configuration back from inside a guest. No
+packaging, no signing, no release.
+
+Epics:
+
+- **E26-1 Pinned source and configuration fragment**. Requirements: REQ-P07-01,
+  REQ-P01-09. Acceptance: Positive: the fragment applies to the pinned base and
+  the produced configuration carries every required option. Negative: a
+  contradictory fragment fails the gate. Boundary: an option set as a module
+  where the schema demands built-in is rejected.
+- **E26-2 Guest boot and configuration read-back**. Requirements: REQ-P07-02,
+  REQ-P08-01. Acceptance: Positive: the guest boots and reports the required
+  options from inside itself. Negative: a kernel missing a required option is
+  refused by the read-back check. Boundary: the read-back runs on the exact
+  built artifact, not on the host kernel.
+
 ### M23 - P07 and P08 latency fixtures on a realtime kernel guest
 
-Rank 19. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 14. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: partial.
 Blocked by: M07. Unblocks: M10.
 
@@ -1184,7 +1233,7 @@ Epics:
 
 ### M09 - Cross-repository contract pin: one local request/result pair
 
-Rank 20. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 21. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: yes. Reference profile: partial.
 Blocked by: M18. Unblocks: M11, M10.
 
@@ -1235,7 +1284,7 @@ Epics:
 
 ### M11 - Minimal image build with artifact, signature and boot evidence
 
-Rank 21. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 22. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M24. Unblocks: M13, M20, M12.
 
@@ -1295,7 +1344,7 @@ Epics:
 
 ### M10 - eBPF objects re-verified against the Nucleus-pinned kernel in a VM
 
-Rank 22. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 23. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M19, M23. Unblocks: M12.
 
@@ -1342,7 +1391,7 @@ Epics:
 
 ### M20 - TPM2 attestation slice on swtpm: audit-record signing and /var unseal
 
-Rank 23. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 24. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: full.
 Blocked by: M11, M14. Unblocks: nothing.
 
@@ -1394,7 +1443,7 @@ Epics:
 
 ### M12 - GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths
 
-Rank 24. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 25. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M25, M10, M11. Unblocks: nothing.
 
@@ -1449,7 +1498,7 @@ Epics:
 
 ### M13 - Release signing and remote delivery (stack.md step 5)
 
-Rank 25. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 26. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: yes. Reference profile: partial.
 Blocked by: M11. Unblocks: nothing.
 
@@ -1956,19 +2005,17 @@ Open decisions:
   first component lands on Rust edition 2024 with the current stable toolchain
   and current crate releases; Renovate proposes the moves and the gates prove
   them.
-- **D70** Where does the kernel for realtime and scheduler work come from?
-  Decision (2026-09-13): Nucleus builds it against the Aegis kernel requirement
-  schema authored in M18. A distribution realtime package may serve as an
-  interim source for an early guest fixture, with its configuration read back
-  from inside the guest rather than assumed, because the product will need
-  options no general-purpose package carries and kernel construction belongs to
-  Nucleus under docs/integration/stack.md.
 
-## Evidence
-
-Bundle sha256: 8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6.
-Sources cited by requirements (id, sha256):
-
+- **D70** Where does the kernel come from? Decision (2026-09-13, amended the
+  same day): Aegis builds the kernel in this repository while Nucleus is a
+  scaffold, for the same reason D56 keeps image-definition validation here while
+  Imago is a scaffold. A repository cannot defer construction to a producer that
+  cannot yet produce. The build is milestone M26: a pinned source, a tracked
+  configuration fragment expressing what the M18 schema requires, and a
+  read-back of the produced configuration from inside a guest. It is development
+  evidence and never a release artifact. Kernel construction returns to Nucleus,
+  which owns it under docs/integration/stack.md, once Nucleus returns real
+  artifacts against the M09 contract.
 - export-001 f32a74743af5ab85c0682a5384cf01b71b0e9e2878d8f8ce09a6d592211e4ea5
 - export-002 7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91
 - export-003 13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c
