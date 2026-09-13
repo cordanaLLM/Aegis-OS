@@ -1752,8 +1752,10 @@ Exit criteria:
 - Unblocking evidence: a real PCR quote from swtpm signs one M14 audit record,
   and /var unseals only under the enrolled PCR policy
 - tpm2-tools 5.8 (or the chosen TSS library, e.g. a Rust tss-esapi binding) is
-  pinned through the template matrix before any quote is taken; the reference
-  profile has neither installed today.
+  pinned through the template matrix before any quote is taken. Both are present
+  on the reference profile -- swtpm 0.10.2-1.1 and tpm2-tools 5.8-1.1, read back
+  from `swtpm --version` and `tpm2_pcrread --version` -- so what this criterion
+  still requires is the pin, not the installation.
 - The swtpm quote path is recorded as pre-proven on the M24 harness, so this
   milestone exercises it against the real M11 image rather than debugging the
   mechanism for the first time.
