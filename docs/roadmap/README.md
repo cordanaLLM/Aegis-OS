@@ -142,7 +142,7 @@ score.
 | 3 | M14 | P06 consumer interface contracts and hardened unit contract | done | small | no | no | not-hardware | M02 | M05, M06, M16, M20 |
 | 4 | M03 | P01/P02 definitions validated offline with host systemd | done | small | no | no | not-hardware | M02 | M18, M15 |
 | 5 | M18 | Aegis-side product input manifest and kernel requirement schemas (local) | done | small | no | no | not-hardware | M03 | M09, M26 |
-| 6 | M15 | P02 A/B candidate lifecycle state machine | ready | small | no | no | not-hardware | M03 | M24 |
+| 6 | M15 | P02 A/B candidate lifecycle state machine | done | small | no | no | not-hardware | M03 | M24 |
 | 7 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | ready | trivial | no | no | not-hardware | M02 | M25 |
 | 8 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | ready | small | no | no | not-hardware | M14 | M19, M21 |
 | 9 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | ready | small | no | no | not-hardware | M14 | M08, M22 |
@@ -151,7 +151,7 @@ score.
 | 12 | M26 | Aegis-built kernel with the pinned configuration | ready | medium | no | no | full | M18 | M23 |
 | 13 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | full | M05, M07 | M10 |
 | 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | full | M07, M26 | M10 |
-| 15 | M24 | Local boot harness over an externally supplied artifact | blocked | large | yes | no | full | M15 | M11 |
+| 15 | M24 | Local boot harness over an externally supplied artifact | ready | large | yes | no | full | M15 | M11 |
 | 16 | M04 | UI accessibility harness: P12 Concordia tokens | ready | medium | no | no | not-hardware | M02 | M16 |
 | 17 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
 | 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | blocked | small | yes | no | full (privileged read) | M05 | - |
@@ -701,7 +701,7 @@ Epics:
 
 ### M15 - P02 A/B candidate lifecycle state machine
 
-Rank 6. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 6. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M03. Unblocks: M24.
 
@@ -1092,7 +1092,7 @@ Epics:
 
 ### M24 - Local boot harness over an externally supplied artifact
 
-Rank 15. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 15. State: ready. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M15. Unblocks: M11.
 
@@ -1933,7 +1933,11 @@ Open decisions:
   dm-verity requirement in M15. Why: REQ-P02-05 and REQ-P02-01 pull in different
   directions, and the interaction is unspecified. **Decision (2026-09-13):**
   Reversible structural consolidation, reconciled with dm-verity root integrity
-  in M15.
+  in M15. Applied in M15: reopening a blessed slot discards its dm-verity
+  measurement, so re-blessing requires a fresh measurement equal to the signed
+  release root hash. The register is
+  `crates/aegis-janus-lifecycle/src/decision.rs`; the rule is held by the state
+  machine next to it.
 - **D14** Does mkosi run in Aegis (for mkosi summary validation) or only inside
   Imago? Options: Admit mkosi through the Aegis template matrix at the v24+
   floor; Validate mkosi configuration only through the Imago result.
@@ -1951,7 +1955,8 @@ Open decisions:
   paths for the P03-P16 daemons only. Neither P01 nor P02 has a proposed crate
   in the inventory. **Decision (2026-09-13):** New crates under crates/ in the
   shared Rust workspace for the P01/P02 definition parser and the P02 A/B
-  lifecycle; crates/README.md is updated when they are created.
+  lifecycle; crates/README.md is updated when they are created. Both exist:
+  `crates/aegis-fabrica-defs` (M03) and `crates/aegis-janus-lifecycle` (M15).
 - **D16** Which focus-indicator width is the accessibility boundary: 2px or 3px?
   Options: 2px stroke (export-023 test, export-020 report CSS); 3px ring width
   (export-042 tokens); 3px token with a 2px minimum test threshold. Recommended:

@@ -12,6 +12,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "aegis-janus-lifecycle"
+version = "0.1.0"
+dependencies = [
+ "base16ct",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "aegis-justitia"
 version = "0.1.0"
 dependencies = [

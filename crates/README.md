@@ -16,10 +16,11 @@ tests.
 | :--- | :--- | :--- | :--- |
 | `aegis-justitia` | P06 decision engine | M02, M14 | Risk tiers, maker-checker oversight, Annex III escalation, approval timeouts, a one-way killswitch, and a hash-linked audit ledger behind a hashing trait (M02). Versioned consumer schemas for the P09, P05 and P16 edges and the reviewed hardened-unit contract (M14). Library only. |
 | `aegis-fabrica-defs` | P01/P02 declarative inputs | M03, M18 | The definition parser D15 records: `repart.d(5)` drop-ins and the `sysupdate.d(5)` transfer, split into what systemd refuses and what the recorded requirement refuses (M03). The Aegis product input manifest and the kernel requirement schemas, on bounded field types that validate while decoding (M18). Library only. |
+| `aegis-janus-lifecycle` | P02 A/B candidate lifecycle | M15 | The A/B lifecycle D15 records: one candidate from declaration through the signature check, delta acquisition, slot swap and boot watchdog to bless or rollback, plus the D13 reopening. Pure state machine with an injected clock, stubbed systemd effects and a machine-readable transition trace. Library only. |
 
-Both are members of the workspace root `Cargo.toml`. The member list is written
-out rather than globbed, so the remaining reserved directories stay inactive
-until they meet the same bar.
+All three are members of the workspace root `Cargo.toml`. The member list is
+written out rather than globbed, so the remaining reserved directories stay
+inactive until they meet the same bar.
 
 `aegis-fabrica-defs` owns the declarative inputs in `build/`, not the P01 or P02
 component daemon. M18 widened it from a parser to the P01/P02 input contracts:
@@ -28,6 +29,9 @@ in `src/kernel.rs`, and the bounded field types both are built from in
 `src/field.rs`. The manifest is validated against the reviewed definition files
 rather than against a description of them, and the kernel requirement is checked
 against the measured profile in `planning/hardware-profile.json`.
+
+`aegis-janus-lifecycle` models what happens to a candidate release moving
+through those inputs. Neither crate is the P01 or P02 component daemon.
 
 P01 `aegis-fabrica` and P02 `aegis-janus-vallum` remain proposals in
 `planning/components.json`: their activation blockers are image, kernel and
@@ -45,6 +49,16 @@ file, contacts a repository, runs mkosi, builds a kernel, or produces or
 verifies a digest or a signature. An artifact digest and an artifact signature
 are field encodings; the caller supplies the definition text, and the mkosi gate
 in `tools/verify_mkosi_definitions.py` is what runs a tool.
+
+Deliberately outside `aegis-janus-lifecycle`: every effect. Nothing in it runs
+`systemd-sysupdate`, opens a device, computes a dm-verity hash, verifies a
+signature, changes a boot order or reboots. `SysupdateCall` describes the calls
+a real implementation would make and `StubSysupdate` answers them from a script;
+`tests/stubbed_effects.rs` sweeps the crate's own sources for twenty recorded
+identifiers that would be needed to do any of it and fails if one appears -- a
+regression gate over an enumeration, not a proof over every such identifier.
+The clock is injected for the same reason: the watchdog boundary is only
+meaningful if a test owns the time.
 
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2

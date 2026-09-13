@@ -3,7 +3,7 @@
 
 [workspace]
 resolver = "3"
-members = ["crates/aegis-fabrica-defs", "crates/aegis-justitia"]
+members = ["crates/aegis-fabrica-defs", "crates/aegis-janus-lifecycle", "crates/aegis-justitia"]
 
 [workspace.package]
 version = "0.1.0"
