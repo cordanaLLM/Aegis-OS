@@ -14,7 +14,7 @@ tests.
 
 | Crate | Component | Milestone | Scope |
 | :--- | :--- | :--- | :--- |
-| `aegis-justitia` | P06 decision engine | M02 | Risk tiers, maker-checker oversight, Annex III escalation, approval timeouts, a one-way killswitch, and a hash-linked audit ledger behind a hashing trait. Library only. |
+| `aegis-justitia` | P06 decision engine | M02, M14 | Risk tiers, maker-checker oversight, Annex III escalation, approval timeouts, a one-way killswitch, and a hash-linked audit ledger behind a hashing trait (M02). Versioned consumer schemas for the P09, P05 and P16 edges and the reviewed hardened-unit contract (M14). Library only. |
 
 `aegis-justitia` is the first and, for now, the only member of the workspace
 root `Cargo.toml`. The member list is written out rather than globbed, so the
@@ -23,10 +23,15 @@ Activation covers the crate gate only: `cargo fmt`, `cargo build --locked`,
 `cargo test` and `cargo clippy -D warnings` on the pinned toolchain. No native
 pass is claimed by this directory.
 
-Deliberately outside `aegis-justitia` at this milestone: the consumer and
-hardened-unit contracts, eBPF compilation and verifier load, TPM2 signing, the
-D-Bus transport, and any file-backed ledger sink. The signing and sink
-boundaries ship as traits so those deferrals are typed holes rather than
+The consumer contracts live in `aegis-justitia/src/contracts/` and the hardened
+unit is a contract file in `aegis-justitia/contracts/`, reviewed by library code
+and installed nowhere.
+
+Deliberately outside `aegis-justitia` at this milestone: every transport. There
+is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
+signing and no file-backed ledger sink. A signature field in a schema is a field
+encoding; the crate neither produces nor verifies a signature. The signing and
+sink boundaries ship as traits so those deferrals are typed holes rather than
 placeholders; the unbound signer fails closed.
 
 ## Reserved
