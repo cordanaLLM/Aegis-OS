@@ -1022,9 +1022,130 @@
       }
     },
     {
+      "id": "M04",
+      "title": "UI accessibility harness: P12 Concordia tokens",
+      "rank": 13,
+      "state": "ready",
+      "blocked_by": [
+        "M02"
+      ],
+      "unblocks": [
+        "M16"
+      ],
+      "cost": "medium",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P12"
+      ],
+      "exit_criteria": [
+        "Toolchain admission: Node, pnpm, Playwright browsers and Svelte are selected through the template matrix with pinned versions (D10: latest stable versions at activation, fast adoption through Renovate, sveltesentio adopted once mature) before any UI gate runs; package manifests and lockfiles are committed for ui/concordia-tokens",
+        "The Playwright and axe-core suite runs headless in a container with zero violations on the default state; it fails when the focus outline is removed; the focus width and contrast boundary follows D16",
+        "D17 (Bootstrap fork versus no monolithic CSS) is recorded; no `|| true` in the accessibility gate",
+        "The admitted Node, pnpm, Playwright and Svelte versions are committed as lockfiles and the admission explicitly resolves the M01 drift-register row: the reference profile runs Node v26.8.2 and pnpm 10.29.3, neither of which is the register's Node 20 or Node 22, so the row is closed with an exact pin and not inherited (D65).",
+        "The Playwright browser revision is pinned to the version actually exercised; the reference profile has chromium-1228 cached, and the gate must fail rather than silently download a different revision.",
+        "The Node major is the latest release line (26.x on the reference profile) and is tracked forward by Renovate rather than pinned to an older line (D65)"
+      ],
+      "cheapest_exit": "Build the token file plus one Svelte component and run the axe suite in a container. No compositor and no daemons.",
+      "epics": [
+        {
+          "id": "E04-1",
+          "title": "UI toolchain admission and lockfiles",
+          "requirement_ids": [
+            "REQ-UI-01",
+            "REQ-CI-03",
+            "REQ-P12-08",
+            "REQ-CI-02"
+          ],
+          "acceptance": "Positive: the pinned Node and pnpm versions install from the lockfile. Negative: a lockfile mismatch fails `pnpm install --frozen-lockfile`. Boundary: the gate fails on the first violation and is not suppressed."
+        },
+        {
+          "id": "E04-2",
+          "title": "Concordia tokens and axe-core harness",
+          "requirement_ids": [
+            "REQ-P12-01",
+            "REQ-P12-05",
+            "REQ-P12-06",
+            "REQ-P05-06",
+            "REQ-UI-02",
+            "REQ-P12-02",
+            "REQ-P12-03",
+            "REQ-P12-04",
+            "REQ-P12-07",
+            "REQ-P12-09"
+          ],
+          "acceptance": "Positive: zero violations on the default state. Negative: a stripped outline fails. Boundary: the focus width chosen by D16 passes, one pixel less fails; 3:1 contrast passes and 2.99:1 fails; 200% text scaling causes no overflow. The truncated container digest is recorded as non-pinnable."
+        }
+      ],
+      "evidence": [],
+      "reference_profile": {
+        "support": "not-hardware",
+        "requires": [],
+        "rationale": "Down two places, 13 -> 15, score 0.500. It is category 2 (Node, pnpm, Playwright and Svelte must be installed at pinned versions and committed as lockfiles), so it sorts below the category-1 block that now includes M19 and M21. The profile does not make it cheaper so much as it makes one register row urgent: the machine runs Node v26.8.2, which is NEITHER of the M01 drift register's 'Node 20 vs 22"
+      }
+    },
+    {
+      "id": "M16",
+      "title": "P05 Forum shell state and lifecycle with stubbed IPC",
+      "rank": 14,
+      "state": "blocked",
+      "blocked_by": [
+        "M04",
+        "M14"
+      ],
+      "unblocks": [],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P05"
+      ],
+      "exit_criteria": [
+        "ui/forum-shell has its package manifest and lockfile on the toolchain admitted in M04",
+        "The shell state and typed process lifecycle are unit-tested with compositor, Justitia and Tellus inputs stubbed",
+        "The DecisionRequest consumer is typed against the M14 schema; the P05/P12 token-edge direction (D05) is recorded"
+      ],
+      "cheapest_exit": "Unit-test the Svelte store and lifecycle logic with mocked socket and D-Bus connections.",
+      "epics": [
+        {
+          "id": "E16-1",
+          "title": "Forum shell state and lifecycle with stubs",
+          "requirement_ids": [
+            "REQ-P05-01",
+            "REQ-P05-02",
+            "REQ-P05-03",
+            "REQ-P05-04",
+            "REQ-P05-05",
+            "REQ-P05-07",
+            "REQ-P05-08",
+            "REQ-P04-07"
+          ],
+          "acceptance": "Positive: each lifecycle transition in the source order succeeds. Negative: a transition from Deleted is rejected. Boundary: Rate-Limited to Quarantined at the limit is exercised exactly."
+        },
+        {
+          "id": "E16-2",
+          "title": "Consumer contracts and token-edge decision",
+          "requirement_ids": [
+            "REQ-GRAPH-01",
+            "REQ-P13-04",
+            "REQ-P06-08"
+          ],
+          "acceptance": "Positive: DecisionRequest and Tellus telemetry payloads parse. Negative: an unknown schema version is rejected. Boundary: a telemetry update with zero watts renders without error."
+        }
+      ],
+      "evidence": [],
+      "reference_profile": {
+        "support": "not-hardware",
+        "requires": [],
+        "rationale": "Down two places, 14 -> 16, following M04. It is category 1 (it only reuses the toolchain M04 admits) and therefore sorts ahead of the remaining category-2 work at M25 and M22, but it cannot become available until M04 is done, which is what fixes it at 16."
+      }
+    },
+    {
       "id": "M21",
       "title": "Workstation hardware slices: RAPL counters and KVM sandboxing",
-      "rank": 13,
+      "rank": 15,
       "state": "blocked",
       "blocked_by": [
         "M05"
@@ -1090,195 +1211,9 @@
       }
     },
     {
-      "id": "M24",
-      "title": "Local boot harness over an externally supplied artifact",
-      "rank": 14,
-      "state": "blocked",
-      "blocked_by": [
-        "M15"
-      ],
-      "unblocks": [
-        "M11"
-      ],
-      "cost": "large",
-      "needs_hardware": true,
-      "needs_external_contract": false,
-      "owner_repo": "cordanaLLM/Aegis-OS",
-      "subsystems": [
-        "P01",
-        "P02"
-      ],
-      "exit_criteria": [
-        "Toolchain admission before any boot: QEMU 11.1.1, the edk2 OVMF images present on the reference profile (OVMF_CODE.4m.fd, OVMF_VARS.4m.fd, OVMF_CODE.secboot.4m.fd) and swtpm 0.10.2 are selected through the template matrix with pinned versions",
-        "The harness is parameterised over an externally supplied bootable artifact: a pinned upstream distribution image or an Imago return. Aegis constructs no image here; image construction stays with cordanaLLM/imago per docs/integration/stack.md",
-        "A swtpm instance is attached to the guest and PCR 0, 4, 7 and 11 are read back from inside the booted guest and retained; the reading records that host Secure Boot is disabled, so PCR 7 documents the firmware state rather than attesting a trusted chain",
-        "Positive: the supplied artifact boots headless under QEMU with KVM and the harness captures the console log, the PCR values and the exit status",
-        "Negative: an artifact whose digest does not match the pinned value is refused before boot, and a guest that fails to reach the login prompt within the recorded timeout fails the harness",
-        "Boundary: the harness is exercised at its timeout, one second under and one second over, and reports the two outcomes differently",
-        "A pass here is development evidence on the reference profile. It closes no image, boot, hardware or release gate, and it is not evidence for M11",
-        "ukify 261, sbsigntools 0.9.5, erofs-utils 1.9.4 and virt-firmware 26.9 are installed on the reference profile for the guest-side key store and unified kernel image signing"
-      ],
-      "cheapest_exit": "Boot a pinned upstream image headless under QEMU with OVMF and swtpm, and retain the console log and PCR readback. No image is constructed.",
-      "epics": [
-        {
-          "id": "E24-1",
-          "title": "Imago result consumed and verified",
-          "requirement_ids": [
-            "REQ-P01-01",
-            "REQ-P01-06",
-            "REQ-P01-08"
-          ],
-          "acceptance": "Positive: digest and signature verify locally. Negative: a tampered image digest or bad signature is rejected. Boundary: a producer version exactly at the floor is accepted, and one below is rejected."
-        },
-        {
-          "id": "E24-2",
-          "title": "Real boot evidence replaces the simulated script",
-          "requirement_ids": [
-            "REQ-BOOT-01",
-            "REQ-BOOT-02",
-            "REQ-P01-05",
-            "REQ-P02-02",
-            "REQ-P02-01"
-          ],
-          "acceptance": "Positive: PCR values are read back from swtpm, and the verity root hash matches. Negative: a modified root image fails verity and does not boot to the established state. Boundary: a PCR policy that omits PCR 11 fails to unseal /var. The imported script is not used."
-        }
-      ],
-      "evidence": [],
-      "split_from": "M11",
-      "reference_profile": {
-        "support": "partial",
-        "requires": [
-          "kvm",
-          "tpm2"
-        ],
-        "rationale": "QEMU, OVMF and swtpm are present; host Secure Boot stays disabled, so signature verification is demonstrated with a guest-side key store"
-      }
-    },
-    {
-      "id": "M04",
-      "title": "UI accessibility harness: P12 Concordia tokens",
-      "rank": 15,
-      "state": "ready",
-      "blocked_by": [
-        "M02"
-      ],
-      "unblocks": [
-        "M16"
-      ],
-      "cost": "medium",
-      "needs_hardware": false,
-      "needs_external_contract": false,
-      "owner_repo": "cordanaLLM/Aegis-OS",
-      "subsystems": [
-        "P12"
-      ],
-      "exit_criteria": [
-        "Toolchain admission: Node, pnpm, Playwright browsers and Svelte are selected through the template matrix with pinned versions (D10: latest stable versions at activation, fast adoption through Renovate, sveltesentio adopted once mature) before any UI gate runs; package manifests and lockfiles are committed for ui/concordia-tokens",
-        "The Playwright and axe-core suite runs headless in a container with zero violations on the default state; it fails when the focus outline is removed; the focus width and contrast boundary follows D16",
-        "D17 (Bootstrap fork versus no monolithic CSS) is recorded; no `|| true` in the accessibility gate",
-        "The admitted Node, pnpm, Playwright and Svelte versions are committed as lockfiles and the admission explicitly resolves the M01 drift-register row: the reference profile runs Node v26.8.2 and pnpm 10.29.3, neither of which is the register's Node 20 or Node 22, so the row is closed with an exact pin and not inherited (D65).",
-        "The Playwright browser revision is pinned to the version actually exercised; the reference profile has chromium-1228 cached, and the gate must fail rather than silently download a different revision.",
-        "The Node major is the latest release line (26.x on the reference profile) and is tracked forward by Renovate rather than pinned to an older line (D65)"
-      ],
-      "cheapest_exit": "Build the token file plus one Svelte component and run the axe suite in a container. No compositor and no daemons.",
-      "epics": [
-        {
-          "id": "E04-1",
-          "title": "UI toolchain admission and lockfiles",
-          "requirement_ids": [
-            "REQ-UI-01",
-            "REQ-CI-03",
-            "REQ-P12-08",
-            "REQ-CI-02"
-          ],
-          "acceptance": "Positive: the pinned Node and pnpm versions install from the lockfile. Negative: a lockfile mismatch fails `pnpm install --frozen-lockfile`. Boundary: the gate fails on the first violation and is not suppressed."
-        },
-        {
-          "id": "E04-2",
-          "title": "Concordia tokens and axe-core harness",
-          "requirement_ids": [
-            "REQ-P12-01",
-            "REQ-P12-05",
-            "REQ-P12-06",
-            "REQ-P05-06",
-            "REQ-UI-02",
-            "REQ-P12-02",
-            "REQ-P12-03",
-            "REQ-P12-04",
-            "REQ-P12-07",
-            "REQ-P12-09"
-          ],
-          "acceptance": "Positive: zero violations on the default state. Negative: a stripped outline fails. Boundary: the focus width chosen by D16 passes, one pixel less fails; 3:1 contrast passes and 2.99:1 fails; 200% text scaling causes no overflow. The truncated container digest is recorded as non-pinnable."
-        }
-      ],
-      "evidence": [],
-      "reference_profile": {
-        "support": "not-hardware",
-        "requires": [],
-        "rationale": "Down two places, 13 -> 15, score 0.500. It is category 2 (Node, pnpm, Playwright and Svelte must be installed at pinned versions and committed as lockfiles), so it sorts below the category-1 block that now includes M19 and M21. The profile does not make it cheaper so much as it makes one register row urgent: the machine runs Node v26.8.2, which is NEITHER of the M01 drift register's 'Node 20 vs 22"
-      }
-    },
-    {
-      "id": "M16",
-      "title": "P05 Forum shell state and lifecycle with stubbed IPC",
-      "rank": 16,
-      "state": "blocked",
-      "blocked_by": [
-        "M04",
-        "M14"
-      ],
-      "unblocks": [],
-      "cost": "small",
-      "needs_hardware": false,
-      "needs_external_contract": false,
-      "owner_repo": "cordanaLLM/Aegis-OS",
-      "subsystems": [
-        "P05"
-      ],
-      "exit_criteria": [
-        "ui/forum-shell has its package manifest and lockfile on the toolchain admitted in M04",
-        "The shell state and typed process lifecycle are unit-tested with compositor, Justitia and Tellus inputs stubbed",
-        "The DecisionRequest consumer is typed against the M14 schema; the P05/P12 token-edge direction (D05) is recorded"
-      ],
-      "cheapest_exit": "Unit-test the Svelte store and lifecycle logic with mocked socket and D-Bus connections.",
-      "epics": [
-        {
-          "id": "E16-1",
-          "title": "Forum shell state and lifecycle with stubs",
-          "requirement_ids": [
-            "REQ-P05-01",
-            "REQ-P05-02",
-            "REQ-P05-03",
-            "REQ-P05-04",
-            "REQ-P05-05",
-            "REQ-P05-07",
-            "REQ-P05-08",
-            "REQ-P04-07"
-          ],
-          "acceptance": "Positive: each lifecycle transition in the source order succeeds. Negative: a transition from Deleted is rejected. Boundary: Rate-Limited to Quarantined at the limit is exercised exactly."
-        },
-        {
-          "id": "E16-2",
-          "title": "Consumer contracts and token-edge decision",
-          "requirement_ids": [
-            "REQ-GRAPH-01",
-            "REQ-P13-04",
-            "REQ-P06-08"
-          ],
-          "acceptance": "Positive: DecisionRequest and Tellus telemetry payloads parse. Negative: an unknown schema version is rejected. Boundary: a telemetry update with zero watts renders without error."
-        }
-      ],
-      "evidence": [],
-      "reference_profile": {
-        "support": "not-hardware",
-        "requires": [],
-        "rationale": "Down two places, 14 -> 16, following M04. It is category 1 (it only reuses the toolchain M04 admits) and therefore sorts ahead of the remaining category-2 work at M25 and M22, but it cannot become available until M04 is done, which is what fixes it at 16."
-      }
-    },
-    {
       "id": "M25",
       "title": "GPU DMA-BUF sharing and VFIO passthrough slices",
-      "rank": 17,
+      "rank": 16,
       "state": "blocked",
       "blocked_by": [
         "M08",
@@ -1342,7 +1277,7 @@
     {
       "id": "M22",
       "title": "P10 microVM sandbox measurements on KVM",
-      "rank": 18,
+      "rank": 17,
       "state": "blocked",
       "blocked_by": [
         "M06"
@@ -1401,7 +1336,7 @@
     {
       "id": "M23",
       "title": "P07 and P08 latency fixtures on a realtime kernel guest",
-      "rank": 19,
+      "rank": 18,
       "state": "blocked",
       "blocked_by": [
         "M07"
@@ -1456,6 +1391,71 @@
         "support": "partial",
         "requires": [],
         "rationale": "the reference host is not realtime; the kernel comes from the distribution package and runs in a guest"
+      }
+    },
+    {
+      "id": "M24",
+      "title": "Local boot harness over an externally supplied artifact",
+      "rank": 19,
+      "state": "blocked",
+      "blocked_by": [
+        "M15"
+      ],
+      "unblocks": [
+        "M11"
+      ],
+      "cost": "large",
+      "needs_hardware": true,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P01",
+        "P02"
+      ],
+      "exit_criteria": [
+        "Toolchain admission before any boot: QEMU 11.1.1, the edk2 OVMF images present on the reference profile (OVMF_CODE.4m.fd, OVMF_VARS.4m.fd, OVMF_CODE.secboot.4m.fd) and swtpm 0.10.2 are selected through the template matrix with pinned versions",
+        "The harness is parameterised over an externally supplied bootable artifact: a pinned upstream distribution image or an Imago return. Aegis constructs no image here; image construction stays with cordanaLLM/imago per docs/integration/stack.md",
+        "A swtpm instance is attached to the guest and PCR 0, 4, 7 and 11 are read back from inside the booted guest and retained; the reading records that host Secure Boot is disabled, so PCR 7 documents the firmware state rather than attesting a trusted chain",
+        "Positive: the supplied artifact boots headless under QEMU with KVM and the harness captures the console log, the PCR values and the exit status",
+        "Negative: an artifact whose digest does not match the pinned value is refused before boot, and a guest that fails to reach the login prompt within the recorded timeout fails the harness",
+        "Boundary: the harness is exercised at its timeout, one second under and one second over, and reports the two outcomes differently",
+        "A pass here is development evidence on the reference profile. It closes no image, boot, hardware or release gate, and it is not evidence for M11",
+        "ukify 261, sbsigntools 0.9.5, erofs-utils 1.9.4 and virt-firmware 26.9 are installed on the reference profile for the guest-side key store and unified kernel image signing"
+      ],
+      "cheapest_exit": "Boot a pinned upstream image headless under QEMU with OVMF and swtpm, and retain the console log and PCR readback. No image is constructed.",
+      "epics": [
+        {
+          "id": "E24-1",
+          "title": "Imago result consumed and verified",
+          "requirement_ids": [
+            "REQ-P01-01",
+            "REQ-P01-06",
+            "REQ-P01-08"
+          ],
+          "acceptance": "Positive: digest and signature verify locally. Negative: a tampered image digest or bad signature is rejected. Boundary: a producer version exactly at the floor is accepted, and one below is rejected."
+        },
+        {
+          "id": "E24-2",
+          "title": "Real boot evidence replaces the simulated script",
+          "requirement_ids": [
+            "REQ-BOOT-01",
+            "REQ-BOOT-02",
+            "REQ-P01-05",
+            "REQ-P02-02",
+            "REQ-P02-01"
+          ],
+          "acceptance": "Positive: PCR values are read back from swtpm, and the verity root hash matches. Negative: a modified root image fails verity and does not boot to the established state. Boundary: a PCR policy that omits PCR 11 fails to unseal /var. The imported script is not used."
+        }
+      ],
+      "evidence": [],
+      "split_from": "M11",
+      "reference_profile": {
+        "support": "partial",
+        "requires": [
+          "kvm",
+          "tpm2"
+        ],
+        "rationale": "QEMU, OVMF and swtpm are present; host Secure Boot stays disabled, so signature verification is demonstrated with a guest-side key store"
       }
     },
     {
@@ -1872,5 +1872,16 @@
         "rationale": "Down six places, 19 -> 25, to last. It is the sole category-5 milestone and the stated order puts release behind everything. This is also the strictest reading of the rule the maintainer set: a local pass on one developer machine is never release evidence, so the reference profile cannot move this milestone at all \u2014 it can only make the milestones ahead of it finish sooner. Its cheapest_exit (reco"
       }
     }
-  ]
+  ],
+  "ranking": {
+    "controller": "tools/rank_roadmap.py",
+    "rule": "Order by tier, then by unblocking value per unit cost. Tiers: local work (including hardware measured on the reference profile, D68), unmeasured hardware, an absent capability, an unverified cross-repository contract, release.",
+    "costs": {
+      "trivial": 1,
+      "small": 2,
+      "medium": 4,
+      "large": 8
+    },
+    "override": "A milestone may sit away from its computed position only with rank_override.reason."
+  }
 }

@@ -122,6 +122,17 @@ First-component justification (rule 3): P06 aegis-justitia is promoted first
 
 ## Ranked milestones
 
+The order is computed, not hand-assigned. tools/rank_roadmap.py ranks every
+milestone by tier and then by unblocking value per unit cost, and make
+verify-all fails when the committed order drifts from it. Tiers, cheapest
+resistance first: local work, which since D68 includes hardware whose capability
+is measured on the reference profile; hardware that is not measured there; work
+needing a capability the profile lacks; work needing an unverified
+cross-repository contract; release. A milestone may sit away from its computed
+position only by recording rank_override with a reason, which the gate then
+accepts and a reader can audit. Run tools/rank_roadmap.py --explain to see each
+score.
+
 | Rank | ID | Milestone | State | Cost | HW | Ext. contract | Reference profile | Blocked by | Unblocks |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 0 | M00 | Governance gate, split licence and remote declaration | done | trivial | no | no | not-hardware | - | M01 |
@@ -137,13 +148,13 @@ First-component justification (rule 3): P06 aegis-justitia is promoted first
 | 10 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | blocked | small | no | no | not-hardware | M06 | M25 |
 | 11 | M07 | Real-time control plane: P04, P07 and P08 logic | blocked | medium | no | no | not-hardware | M02 | M19, M23 |
 | 12 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | full | M05, M07 | M10 |
-| 13 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | blocked | small | yes | no | full (privileged read) | M05 | - |
-| 14 | M24 | Local boot harness over an externally supplied artifact | blocked | large | yes | no | partial | M15 | M11 |
-| 15 | M04 | UI accessibility harness: P12 Concordia tokens | blocked | medium | no | no | not-hardware | M02 | M16 |
-| 16 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
-| 17 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | blocked | medium | yes | no | full | M08, M17 | M12 |
-| 18 | M22 | P10 microVM sandbox measurements on KVM | blocked | medium | yes | no | full | M06 | - |
-| 19 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | partial | M07 | M10 |
+| 13 | M04 | UI accessibility harness: P12 Concordia tokens | blocked | medium | no | no | not-hardware | M02 | M16 |
+| 14 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
+| 15 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | blocked | small | yes | no | full (privileged read) | M05 | - |
+| 16 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | blocked | medium | yes | no | full | M08, M17 | M12 |
+| 17 | M22 | P10 microVM sandbox measurements on KVM | blocked | medium | yes | no | full | M06 | - |
+| 18 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | partial | M07 | M10 |
+| 19 | M24 | Local boot harness over an externally supplied artifact | blocked | large | yes | no | partial | M15 | M11 |
 | 20 | M09 | Cross-repository contract pin: one local request/result pair | blocked | small | no | yes | partial | M18 | M11, M10 |
 | 21 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | medium | yes | yes | partial | M09, M24 | M13, M20, M12 |
 | 22 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | blocked | medium | yes | yes | partial | M09, M19, M23 | M12 |
@@ -839,7 +850,7 @@ Epics:
 
 ### M21 - Workstation hardware slices: RAPL counters and KVM sandboxing
 
-Rank 13. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 15. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full
 (privileged read). Blocked by: M05. Unblocks: nothing.
 
@@ -903,7 +914,7 @@ Epics:
 
 ### M24 - Local boot harness over an externally supplied artifact
 
-Rank 14. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 19. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: partial.
 Blocked by: M15. Unblocks: M11.
 
@@ -953,7 +964,7 @@ Epics:
 
 ### M04 - UI accessibility harness: P12 Concordia tokens
 
-Rank 15. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 13. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M16.
 
@@ -1000,7 +1011,7 @@ Epics:
 
 ### M16 - P05 Forum shell state and lifecycle with stubbed IPC
 
-Rank 16. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 14. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M04, M14. Unblocks: nothing.
 
@@ -1030,7 +1041,7 @@ Epics:
 
 ### M25 - GPU DMA-BUF sharing and VFIO passthrough slices
 
-Rank 17. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 16. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M08, M17. Unblocks: M12.
 
@@ -1079,7 +1090,7 @@ Epics:
 
 ### M22 - P10 microVM sandbox measurements on KVM
 
-Rank 18. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 17. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M06. Unblocks: nothing.
 
@@ -1128,7 +1139,7 @@ Epics:
 
 ### M23 - P07 and P08 latency fixtures on a realtime kernel guest
 
-Rank 19. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 18. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: partial.
 Blocked by: M07. Unblocks: M10.
 

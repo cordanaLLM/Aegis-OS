@@ -350,6 +350,7 @@ class PreparationTests(unittest.TestCase):
             "rank": rank,
             "state": state,
             "blocked_by": list(blocked_by),
+            "unblocks": [],
             "cost": "small",
             "exit_criteria": ["evidence"],
             "epics": [{"id": f"E{mid}-1"}],

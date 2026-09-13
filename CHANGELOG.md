@@ -13,6 +13,15 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (ranking controller)
+
+- The roadmap order is now computed by tools/rank_roadmap.py from unblocking
+  value per unit cost within resistance tiers, and make verify-all fails when
+  the committed order drifts from it without a recorded override. Adopting the
+  computed order moved six milestones; the controller also enforces decision
+  D68, so hardware measured on the reference profile ranks with local work
+  instead of being demoted for needing hardware at all.
+
 ### Added (M02 first component)
 
 - First component activated end to end (milestone M02): `crates/aegis-justitia`
