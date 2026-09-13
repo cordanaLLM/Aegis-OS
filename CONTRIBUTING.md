@@ -22,7 +22,7 @@ component and milestone state; never restate that state here.
 
 That is not the whole gate a pull request faces, so a green local run is not yet
 a green pull request. The `Makefile` also declares verification targets that
-`verify-all` never invokes, and beyond `make verify-all` the `Preparation gate`
+`verify-all` never invokes, and beyond `make verify-all` the `Verification gate`
 status check runs further licence, Markdown, YAML, Python and shell linting and
 checks the Developer Certificate of Origin sign-off on the pull request's
 commits.

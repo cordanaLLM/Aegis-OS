@@ -40,7 +40,7 @@ Current verified state at revision time:
 - `origin` resolves to <https://github.com/cordanaLLM/Aegis-OS.git>, read back
   with `git ls-remote`. The hosted ruleset `praetor-main-protection` is active
   on `main` and reads back as deletion and non-fast-forward protection, linear
-  history, pull requests, and the required `Preparation gate` status check.
+  history, pull requests, and the required `Verification gate` status check.
 - Every milestone and epic is mirrored as a GitHub milestone and a `roadmap`
   issue; `planning/roadmap.json` stays the source of truth.
 - The private readiness matrix records the Imago/Nucleus edges as declared but

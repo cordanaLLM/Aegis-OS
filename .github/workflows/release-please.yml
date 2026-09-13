@@ -2,7 +2,7 @@
 # Release train: keeps CHANGELOG.md and VERSION current inside an automatically
 # maintained release pull request. It publishes nothing. Tagging and GitHub
 # releases stay skipped until planning/roadmap.json records milestone M13
-# (release signing and remote delivery) as done, and the Preparation gate
+# (release signing and remote delivery) as done, and the Verification gate
 # refuses to pass on a release-please branch until the same condition holds.
 #
 # The job runs only when the repository variable RELEASE_TRAIN_ENABLED is
