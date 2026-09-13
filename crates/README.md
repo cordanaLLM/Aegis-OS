@@ -24,6 +24,8 @@ the component stays a proposal.
 | `aegis-hestia` | P15 store and overlay validation slice | M17 | The Rust half of decision D09: the vector-store initialisation gate and `1..=100` query bound, the picture-in-picture overlay controller, the versioned registration P15 hands to P04, and `HestiaView`, the typed boundary payload the Svelte package would read. Library only. |
 | `aegis-tellus` | P13 carbon slice | M05 | The ISO/IEC 21031:2024 SCI rate `((E * I) + M) / R`, the 300 gCO2eq/kWh spatiotemporal defer threshold compared strictly, the sixteen-slice cgroup table, the `Delta V` bidding contract, and the zone-list wattage seam M21 substitutes a measured RAPL delta into. Versioned payloads for the P16 and P07 edges. Library only. |
 | `aegis-athena` | P16 evolution loop | M05 | The seven-stage candidate lifecycle with only Invalidate terminal, the four-objective Pareto promotion gate, the nine structural maturity gates, and the SHA-256 hash-chained checkpoint ledger over the D02 trait. The versioned trigger P16 hands to P02, and the M14 audit record consumed rather than redefined. Library only. |
+| `aegis-minerva` | P09 agent-chain middle link | M06 | The bounded Alps expert table and its 20 W envelope, the `AgentHER` trajectory buffer whose relabeller flips only failed steps, the constraint screen that can refuse and cannot accept, the versioned request P09 submits to P14, and the two payloads P09 builds from other crates' types rather than redefining. Library only. |
+| `aegis-vesta` | P10 sandbox-controller validation slice | M06 | The bounded microVM and capsule tables of export-037, decision D06's Rust-native runtime with the rejected runtime unrepresentable on the wire, the capsule request P09 sends and the candidate evaluation P16 receives, each carrying the D58 VMM identity, and the recorded boot-time literal carried as an `Unmeasured` value. Library only. |
 
 Every crate above is a member of the workspace root `Cargo.toml`. The member
 list is written out rather than globbed, so the remaining reserved directories
@@ -31,8 +33,9 @@ stay inactive until they meet the same bar, and the crate tests check the
 invariant rather than the count: a crate directory that has a manifest is a
 member, and nothing else is. M17 settled open decision D22, which asked whether
 the P03 and P15 Rust candidates join the list at all -- REQ-WS-01 had recorded
-their absence from the *proposed* workspace as a defect -- and M05 added the two
-crates REQ-P16-07 and REQ-P13-08 name.
+their absence from the *proposed* workspace as a defect. M05 added the two
+crates REQ-P16-07 and REQ-P13-08 name, and M06 the two REQ-P09-01 and
+REQ-P10-01 name.
 
 `aegis-fabrica-defs` owns the declarative inputs in `build/`, not the P01 or P02
 component daemon. M18 widened it from a parser to the P01/P02 input contracts:

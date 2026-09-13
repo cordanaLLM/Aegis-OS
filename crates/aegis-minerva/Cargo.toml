@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "aegis-minerva"
+description = "Aegis OS P09 validation slice: the bounded Alps expert router, the AgentHER trajectory relabeller and the constraint screen, the M14 action proposal consumed rather than redefined, and the versioned code-CAD verification request P09 submits to P14. No GPU, no D-Bus, no Z3, no inference, no transport."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+aegis-justitia = { path = "../aegis-justitia" }
+aegis-vesta = { path = "../aegis-vesta" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

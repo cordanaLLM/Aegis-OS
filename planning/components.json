@@ -541,12 +541,11 @@
         "scaffold/crates/aegis-minerva/src/main.rs"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent",
-        "no individual blueprint report; evidence limited to architecture documents and trade-off guide",
-        "real hardware or emulator evidence for each listed hardware requirement"
+        "a P09 component daemon; crates/aegis-minerva holds the expert table, the trajectory buffer, the constraint screen and the two payloads P09 produces, and loads no model and runs no inference",
+        "an accelerator path: no GPU context, no weight streaming and no power metering, all absent by design at M06",
+        "a transport for the action proposal and the capsule request, both stubbed; the eBPF half is M19 and M10",
+        "a solver: REQ-P09-08 names one and M06 admits no Z3 foreign-function interface, so the crate screens and submits rather than deciding",
+        "real hardware or emulator evidence for each listed hardware requirement, including the 20 W envelope and the 1.5 ms routing cap, which are recorded as unmeasured"
       ],
       "cheapest_first_slice": {
         "description": "Build and unit-test the AlpsRouter, AgentHerEngine, and NeuroSymbolicSolver structs from the export-034 source candidate as a standalone `crates/aegis-minerva` library crate (no GPU, no D-Bus, no Z3 FFI, no real inference) \u2014 i.e. compile only the pure in-memory data-structure/logic layer (fixed-size expert table, fixed",
@@ -556,7 +555,8 @@
         "verification": "cargo test on a dev workstation/container: positive \u2014 register_expert() succeeds under MAX_SLM_EXPERTS and route_intent() returns the lowest-cost active expert for a matching domain within max_power_watts<=20.0; negative \u2014 register_expert()"
       },
       "decisions": [
-        "D03: proposes actions to P06"
+        "D03: proposes actions to P06; the M14 proposal type is consumed at M06, not redefined",
+        "D27: the P09/P14 verification direction is typed at M06 and stays unresolved"
       ]
     },
     {
@@ -599,11 +599,11 @@
         "scaffold/crates/aegis-vesta/src/main.rs"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent",
-        "real hardware or emulator evidence for each listed hardware requirement"
+        "a P10 component daemon; crates/aegis-vesta holds the sandbox and capsule tables, the bounds and the two payloads, and starts no monitor and instantiates no WebAssembly module",
+        "a virtual machine monitor and a guest: no KVM ioctl, no Firecracker or QEMU process, no jailer and no guest kernel, all absent by design at M06",
+        "a WebAssembly runtime: D06 selects a Rust-native one at M06 and pins none; admission is docs/roadmap/toolchain-admission.md's business",
+        "a transport for the capsule request and the candidate evaluation, both stubbed; AF_VSOCK and Venus pricing are deferred to M21",
+        "real hardware or emulator evidence for each listed hardware requirement; the boot-time and footprint figures are recorded as unmeasured and M22 is where a measurement would come from"
       ],
       "cheapest_first_slice": {
         "description": "A Rust crate-level unit-test suite for the existing aegis-vesta domain types and controllers already sketched in export-037 (MicroVmController, WasmCapsuleManager, IoUringThreadCore) run under `cargo test -p aegis-vesta` in a plain container with no Firecracker binary, no KVM device, and no external contract: (1) Micro",
@@ -613,8 +613,9 @@
         "verification": "`cargo test -p aegis-vesta --workspace` (per Makefile's `test` target) with explicit positive cases (successful spawn/register within bounds), negative cases (spawn/register beyond MAX_MICROVMS/MAX_WASM_CAPSULES returns the documented Err v"
       },
       "decisions": [
-        "D04: direct and transitive P06 gating contract-tested",
-        "D06: Rust-native WebAssembly runtime"
+        "D04: direct and transitive P06 gating paths are both carried by the M06 capsule request and neither is settled",
+        "D06: Rust-native WebAssembly runtime, recorded and applied at M06",
+        "D58: every capsule request and candidate evaluation names the VMM it runs under"
       ]
     },
     {

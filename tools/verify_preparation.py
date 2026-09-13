@@ -98,6 +98,23 @@ PROFILE_CAPABILITIES = {
 }
 PROFILE_IDENTIFIERS = ("hostname", "serial", "uuid", "macaddress", "ip_address")
 QUOTE_LIMIT = 200
+# planning/candidates.json cites a tracked repository file as "public:<path>" with
+# that file's full sha256, and verify_public_citation() rehashes it. The same
+# convention is written by hand outside the register - in a crate's own source and
+# in the roadmap documents - with a 12-character prefix instead of a full digest,
+# and nothing read those. A superseded prefix for docs/integration/stack.md
+# survived review in crates/aegis-vesta/src/decision.rs because the only check on
+# it was a Rust test comparing the constant with a copy of itself. This sweep
+# finds the citations it can recognise and runs the same comparison over the
+# prefix. It is a check over the citations written in this shape, not a proof
+# that every claim in a crate or a document is sourced.
+PUBLIC_CITATION = re.compile(r"public:(?P<path>[A-Za-z0-9_][A-Za-z0-9_./-]*\.[A-Za-z0-9]+)")
+CITATION_PREFIX = re.compile(r"[\"`](?P<prefix>[0-9a-f]{12})[\"`]")
+CITATION_PREFIX_LEN = 12
+# The digest follows the path within one struct field or one table cell. A wider
+# window would start matching an unrelated hexadecimal literal further down.
+CITATION_WINDOW = 200
+CITATION_DOCUMENTS = ("docs/roadmap/README.md", "docs/roadmap/inventory.md")
 
 
 def tracked_paths():
@@ -376,18 +393,73 @@ def verify_library_aborts():
                         )
 
 
+def citation_files():
+    """Every file this sweep reads: each workspace member's library sources, then the
+    roadmap documents that repeat the register's citations in prose."""
+    paths = []
+    for member in workspace_members():
+        source = member / "src"
+        if not source.is_dir():
+            raise ValueError(f"Workspace member {member.name} has no src directory")
+        paths.extend(sorted(source.rglob("*.rs")))
+    for name in CITATION_DOCUMENTS:
+        path = ROOT / name
+        if path.is_file() and not path.is_symlink():
+            paths.append(path)
+    return paths
+
+
+def verify_crate_citations():
+    """Check every `public:` citation this sweep can recognise against its file.
+
+    This is a check over an enumeration, not a proof over a category: it reads
+    the files citation_files() lists, matches PUBLIC_CITATION, and compares the
+    first CITATION_PREFIX_LEN characters of the named file's sha256 with the
+    quoted prefix that follows within CITATION_WINDOW characters. A citation
+    written in another shape, or in a file outside that list, is invisible here.
+    Returns the number of citations actually compared, so a sweep that silently
+    stops finding any is visible to its tests.
+    """
+    checked = 0
+    for path in citation_files():
+        text = path.read_text(encoding="utf-8")
+        for match in PUBLIC_CITATION.finditer(text):
+            number = text.count("\n", 0, match.start()) + 1
+            label = f"{path.relative_to(ROOT)}:{number}"
+            source_id = "public:" + match["path"]
+            window = CITATION_PREFIX.search(text, match.end(), match.end() + CITATION_WINDOW)
+            if window is None:
+                raise ValueError(
+                    f"{label} cites {source_id} with no quoted 12-character digest "
+                    f"prefix in the following {CITATION_WINDOW} characters"
+                )
+            actual = public_citation_digest(source_id)[:CITATION_PREFIX_LEN]
+            if window["prefix"] != actual:
+                raise ValueError(
+                    f"{label} cites {source_id} as {window['prefix']}; the tracked "
+                    f"file hashes to {actual} -- the citation names a superseded revision"
+                )
+            checked += 1
+    return checked
+
+
 def verify_digest(value, label):
     """Accept only a full lowercase hexadecimal sha256 digest."""
     if not isinstance(value, str) or len(value) != 64 or value.strip(HEX) != "":
         raise ValueError(f"{label} needs a 64-character lowercase sha256 digest")
 
 
-def verify_public_citation(source_id, digest):
-    """A public citation must hash to the tracked file it names."""
+def public_citation_digest(source_id):
+    """The sha256 of the tracked file a public citation names."""
     path = ROOT / source_id.split("public:", 1)[1].split("@")[0]
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"Cited repository file is missing: {source_id}")
-    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def verify_public_citation(source_id, digest):
+    """A public citation must hash to the tracked file it names."""
+    if public_citation_digest(source_id) != digest:
         raise ValueError(
             f"Cited repository file changed since the register was written: {source_id}"
         )
@@ -535,6 +607,7 @@ def main():
     milestones = verify_roadmap()
     verify_roadmap_document(milestones)
     verify_library_aborts()
+    verify_crate_citations()
     profile = verify_hardware_profile(milestones)
     verify_ranking(milestones)
     if args.sources:
