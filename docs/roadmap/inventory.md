@@ -35,15 +35,18 @@ D09 gives it both a Rust crate and a UI package.
 Two facts hold for every row without exception, and both were checked against
 the tracked tree rather than inferred:
 
-1. **No `Cargo.toml`, `Cargo.lock`, `package.json` or JavaScript lockfile is
-   committed anywhere in this repository.** A `git ls-files` query for those
-   names and for Rust, Svelte, TypeScript and CSS sources returns nothing.
-   Therefore every row below records no manifest and no lockfile.
-2. **The reserved directories hold only their README files.** A `git ls-files`
-   query over `crates` and `ui` returns exactly two paths, the two README
-   files. The
-   per-component subdirectories that exist on a working tree contain no files at
-   all, and git tracks no empty directory.
+1. **Recorded on 2026-09-13 at milestone M01, and superseded in part by M02.**
+   When this register was written, no `Cargo.toml`, `Cargo.lock`,
+   `package.json` or JavaScript lockfile was committed anywhere, and `crates`
+   and `ui` tracked only their README files. Milestone M02 then activated P06:
+   the workspace root `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml` and
+   `crates/aegis-justitia/` are committed, and the P06 row below records that
+   manifest and lockfile.
+2. **Every other component still records no manifest and no lockfile.** A
+   `git ls-files` query for manifest and lockfile names returns only the
+   workspace root files and the P06 crate; no other reserved directory tracks
+   anything but its README. `verify_candidates()` fails closed if a row claims
+   otherwise while its component is still a proposal.
 
 "In proposed workspace" refers to membership of the ten-member Cargo workspace
 declared by the imported proposal manifest (`export-006`, `6e694e01e136`). It is

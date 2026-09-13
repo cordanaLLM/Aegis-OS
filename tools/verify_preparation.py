@@ -4,10 +4,12 @@
 import argparse
 import hashlib
 import json
+import os
+import re
 import string
 import subprocess
 import tomllib
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 HEX = string.hexdigits.lower()
@@ -18,6 +20,28 @@ LICENSE_TEXTS = {
 }
 LICENSE_IDS = {"EUPL-1.2", "CC-BY-SA-4.0"}
 ROADMAP_STATES = {"done", "ready", "blocked"}
+# A component is a proposal until it carries the evidence ACTIVATION_EVIDENCE
+# names. "activated" is the only advanced status this tool admits: it means the
+# component has its own recorded directory, a tracked manifest inside that
+# directory, a tracked dependency lock and a test command that names the
+# component. It is deliberately NOT a runtime claim - native build, image, boot,
+# hardware and release remain separate blocked gates, so a status such as
+# "boot-verified" still fails closed.
+#
+# The binding matters as much as the existence: without it a component could
+# certify itself with another component's manifest and another component's test
+# command, and every path would still be tracked. So the recorded component path
+# must name the component, the manifest must sit under that path, and the test
+# command must name the component too.
+COMPONENT_STATUSES = {"proposal", "activated"}
+ACTIVATED_STATUS = "activated"
+ACTIVATION_EVIDENCE = (
+    "component_path",
+    "manifest_path",
+    "lockfile_path",
+    "test_command",
+)
+ACTIVATION_TRACKED_PATHS = ("manifest_path", "lockfile_path")
 ROADMAP_COSTS = {"trivial", "small", "medium", "large"}
 REGISTER_BUNDLE = "8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6"
 REGISTER_LIMITS = {
@@ -46,6 +70,86 @@ PROFILE_IDENTIFIERS = ("hostname", "serial", "uuid", "macaddress", "ip_address")
 QUOTE_LIMIT = 200
 
 
+def tracked_paths():
+    """Return every path git has in the index, so evidence cannot cite a stray file."""
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=ROOT,
+            capture_output=True,
+            check=True,
+            timeout=30,
+            env=git_env(),
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
+        raise ValueError(
+            f"Cannot read the git index at {ROOT}: activation evidence is unverifiable"
+        ) from error
+    return {name for name in result.stdout.decode().split("\0") if name}
+
+
+def verify_evidence_binding(row, evidence):
+    """Evidence must certify this component, not merely exist somewhere in the tree."""
+    name = row["name"]
+    component_path = evidence["component_path"].strip("/")
+    if name not in PurePosixPath(component_path).parts:
+        raise ValueError(
+            f"Unqualified readiness claim: {row['id']} records component path "
+            f"{component_path!r}, which does not name {name}"
+        )
+    directory = ROOT / component_path
+    if directory.is_symlink() or not directory.is_dir():
+        raise ValueError(
+            f"Unqualified readiness claim: {row['id']} component path {component_path!r} "
+            "is not a directory"
+        )
+    manifest = evidence["manifest_path"]
+    if not manifest.startswith(f"{component_path}/"):
+        raise ValueError(
+            f"Unqualified readiness claim: {row['id']} cites manifest {manifest!r}, "
+            f"which is outside its own path {component_path!r}"
+        )
+    if not re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", evidence["test_command"]):
+        raise ValueError(
+            f"Unqualified readiness claim: {row['id']} test command does not name {name}"
+        )
+    declared = tomllib.loads((ROOT / manifest).read_text()).get("package", {}).get("name")
+    if declared != name:
+        raise ValueError(
+            f"Unqualified readiness claim: {row['id']} cites a manifest declaring "
+            f"{declared!r}, not {name!r}"
+        )
+
+
+def verify_activation_evidence(row, tracked):
+    """An advanced status needs tracked evidence; anything less fails closed."""
+    evidence = row.get("activation_evidence")
+    if not isinstance(evidence, dict):
+        raise ValueError(f"Unqualified readiness claim: {row['id']} records no activation evidence")
+    for field in ACTIVATION_EVIDENCE:
+        value = evidence.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Unqualified readiness claim: {row['id']} lacks {field}")
+    for field in ACTIVATION_TRACKED_PATHS:
+        path = evidence[field]
+        if path not in tracked:
+            raise ValueError(
+                f"Unqualified readiness claim: {row['id']} cites {field} {path!r}, "
+                "which git does not track"
+            )
+        if (ROOT / path).is_symlink() or not (ROOT / path).is_file():
+            raise ValueError(f"Unqualified readiness claim: {row['id']} {field} is not a file")
+    verify_evidence_binding(row, evidence)
+    if not row.get("milestone"):
+        raise ValueError(f"Unqualified readiness claim: {row['id']} names no milestone")
+
+
+def git_env():
+    """Environment for git calls: a hook exports GIT_DIR and GIT_INDEX_FILE, and
+    inheriting them would read another repository's index instead of ROOT's."""
+    return {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+
+
 def read_json(path):
     if path.is_symlink() or not path.is_file() or path.stat().st_size > 1 << 20:
         raise ValueError(f"Invalid or oversized metadata: {path.name}")
@@ -60,9 +164,14 @@ def verify_components():
     expected = {f"P{i:02}" for i in range(1, 17)}
     if {row["id"] for row in components} != expected:
         raise ValueError("Missing or duplicate subsystem IDs")
+    tracked = None
     for row in components:
-        if row["status"] != "proposal" or not row["activation_blockers"]:
+        if row["status"] not in COMPONENT_STATUSES or not row["activation_blockers"]:
             raise ValueError(f"Unqualified readiness claim: {row['id']}")
+        if row["status"] == ACTIVATED_STATUS:
+            if tracked is None:
+                tracked = tracked_paths()
+            verify_activation_evidence(row, tracked)
     return components
 
 
@@ -73,6 +182,7 @@ def verify_privacy():
         capture_output=True,
         check=True,
         timeout=10,
+        env=git_env(),
     )
     if result.stdout:
         raise ValueError("Private working data is tracked or staged")
@@ -80,6 +190,7 @@ def verify_privacy():
         ["git", "check-ignore", "-q", "--no-index", ".workingdir/privacy-probe"],
         cwd=ROOT,
         check=True,
+        env=git_env(),
         timeout=10,
     )
 
@@ -180,7 +291,7 @@ def verify_side(side, label):
         verify_public_citation(source_id, side["sha256"])
 
 
-def verify_candidate(row, proposals):
+def verify_candidate(row, proposals, activated):
     if not row["proposed_paths"] or not row["sources"]:
         raise ValueError(f"Candidate {row['candidate_id']} needs a path and a source")
     for source in row["sources"]:
@@ -190,6 +301,11 @@ def verify_candidate(row, proposals):
         raise ValueError(
             f"Candidate {row['candidate_id']} claims a manifest while {row['component']} "
             "is still a proposal"
+        )
+    if row["component"] in activated and not (row["manifest_present"] and row["lockfile_present"]):
+        raise ValueError(
+            f"Candidate {row['candidate_id']} records no manifest or lock while "
+            f"{row['component']} is activated"
         )
 
 
@@ -203,7 +319,7 @@ def verify_dispute(row):
         raise ValueError(f"Contradiction {row['id']} records a resolution only when resolved")
 
 
-def verify_register_rows(data, proposals):
+def verify_register_rows(data, proposals, activated):
     for name, limit in REGISTER_LIMITS.items():
         rows = data[name]
         if not 1 <= len(rows) <= limit:
@@ -212,7 +328,7 @@ def verify_register_rows(data, proposals):
     if len(set(ids)) != len(ids):
         raise ValueError("Duplicate candidate identifiers")
     for row in data["candidates"]:
-        verify_candidate(row, proposals)
+        verify_candidate(row, proposals, activated)
     for row in data["contradictions"]:
         verify_dispute(row)
     for row in data["toolchain_drift"]:
@@ -229,10 +345,11 @@ def verify_candidates(components):
     if data["schema_version"] != 1 or data["source_bundle_sha256"] != REGISTER_BUNDLE:
         raise ValueError("Register must declare schema 1 and the pinned source bundle")
     proposals = {row["id"] for row in components if row["status"] == "proposal"}
+    activated = {row["id"] for row in components if row["status"] == ACTIVATED_STATUS}
     covered = {row["component"] for row in data["candidates"]}
     if covered != {row["id"] for row in components}:
         raise ValueError("Register must cover every component exactly once or more")
-    verify_register_rows(data, proposals)
+    verify_register_rows(data, proposals, activated)
     return data
 
 

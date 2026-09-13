@@ -12,6 +12,7 @@
   "ignores": [
     ".workingdir/**",
     ".workingdir2/**",
-    "site/**"
+    "site/**",
+    "target/**"
   ]
 }

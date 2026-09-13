@@ -13,6 +13,31 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (M02 first component)
+
+- First component activated end to end (milestone M02): `crates/aegis-justitia`
+  carries the P06 decision engine as library code (risk tiers, maker-checker
+  separation, Annex III handling, approval timeout, a one-way killswitch latch
+  and a pending registry that reclaims decided and expired holds) on a new Rust
+  workspace with a committed lockfile and a pinned toolchain. 96 tests, clippy
+  with warnings denied, rustdoc with warnings denied and rustfmt all clean.
+- Audit ledger hashing behind a trait with a SHA-256 implementation and a
+  fixed-width digest, so the MD5 exclusion is enforced by the type rather than
+  by prose. Every decision arm writes exactly one audit record, and a decision
+  that cannot be recorded halts the unit instead of passing quietly.
+- `docs/roadmap/toolchain-admission.md`: the admitted toolchain matrix,
+  recording each pinned version, how it is pinned and what it replaced.
+
+### Changed (M02 first component)
+
+- `make verify-all` now carries the crate gate, so the instruction every agent
+  follows covers the Rust evidence; CI materialises the pinned toolchain and its
+  components first, because the runner ships neither by that name.
+- A component may advance from proposal to activated only with evidence git
+  tracks, bound to it by path and by the crate name its own manifest declares,
+  and named by its test command. The M01 register records that M02 superseded
+  its no-manifest statement.
+
 ### Added (reference profile)
 
 - `planning/hardware-profile.json`: the measured capabilities of the reference

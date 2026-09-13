@@ -321,6 +321,13 @@ Exit criteria:
   version string because the distribution ships current stable, and the template
   matrix row cites both values so the substitution is auditable.
 
+The template matrix row itself is
+[the toolchain admission matrix](toolchain-admission.md). It records the pinned
+Rust 1.98.1, the rustup 1.29.1 that provides it, the distribution `rust
+1:1.98.1-1.1` it replaced, clippy 0.1.98 and rustfmt 1.9.0 as pinned components,
+the crates the workspace pins, and the gate tools that are still pinned by
+nothing.
+
 Cheapest exit: Promote the drafted P06 test module into a library crate with a
 trait boundary for hashing and signing. No TPM2, D-Bus or eBPF.
 

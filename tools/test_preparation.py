@@ -4,6 +4,7 @@ import contextlib
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -13,6 +14,17 @@ from unittest.mock import patch
 
 import roadmap_state as state
 import verify_preparation as check
+
+
+def git(*args, timeout=10):
+    """Run git without the repository environment a hook exports.
+
+    A pre-commit hook sets GIT_DIR and GIT_INDEX_FILE. Without scrubbing them a
+    fixture's `git add` would run against the repository being committed instead
+    of its own temporary clone, and would stage files nobody asked for.
+    """
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    return subprocess.run(list(args), check=True, timeout=timeout, env=env)
 
 
 class PreparationTests(unittest.TestCase):
@@ -38,7 +50,7 @@ class PreparationTests(unittest.TestCase):
         }
 
     def git_init(self):
-        subprocess.run(["git", "init", "-q", str(self.root)], check=True, timeout=10)
+        git("git", "init", "-q", str(self.root))
         (self.root / ".gitignore").write_text("/.workingdir/\n")
 
     def write_components(self):
@@ -56,10 +68,158 @@ class PreparationTests(unittest.TestCase):
                 check.verify_components()
 
     def test_runtime_claim_needs_new_contract(self):
-        self.data["components"][0]["status"] = "boot-verified"
+        for status in ("boot-verified", "released", "activated-ish", ""):
+            self.data["components"][0]["status"] = status
+            self.write_components()
+            with self.assertRaises(ValueError):
+                check.verify_components()
+
+    def track(self, *paths, crate="sub-1"):
+        """Write and stage a manifest-shaped file at each path under the fixture root.
+
+        A manifest declares a crate name because the evidence binding reads it;
+        a lockfile carries no package table and is written empty.
+        """
+        for path in paths:
+            target = self.root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            body = f'[package]\nname = "{crate}"\n' if path.endswith("Cargo.toml") else ""
+            target.write_text(body)
+        git("git", "-C", str(self.root), "add", *paths)
+
+    def activate(self, **evidence):
+        """Advance P01 to the activated status with tracked evidence on disk.
+
+        Every field the guards read is written afresh, blockers included, so a
+        test that breaks one field cannot leave a second field broken for the
+        next call and satisfy a later guard by accident.
+        """
+        self.git_init()
+        self.track("crates/sub-1/Cargo.toml", "Cargo.lock")
+        row = self.data["components"][0]
+        row["status"] = check.ACTIVATED_STATUS
+        row["milestone"] = "M02"
+        row["activation_blockers"] = ["real hardware evidence"]
+        row["activation_evidence"] = {
+            "component_path": "crates/sub-1",
+            "manifest_path": "crates/sub-1/Cargo.toml",
+            "lockfile_path": "Cargo.lock",
+            "test_command": "cargo test -p sub-1",
+        }
+        row["activation_evidence"].update(evidence)
+        self.write_components()
+        return row
+
+    def test_activation_with_tracked_evidence_passes(self):
+        """Positive: a component may advance when it carries tracked evidence."""
+        self.activate()
+        rows = check.verify_components()
+        self.assertEqual(rows[0]["status"], check.ACTIVATED_STATUS)
+
+    def test_activation_without_evidence_fails_closed(self):
+        """Negative: an unqualified advance is refused."""
+        self.git_init()
+        row = self.data["components"][0]
+        row["status"] = check.ACTIVATED_STATUS
         self.write_components()
         with self.assertRaises(ValueError):
             check.verify_components()
+        row["activation_evidence"] = "crates/demo/Cargo.toml"
+        self.write_components()
+        with self.assertRaises(ValueError):
+            check.verify_components()
+
+    def test_activation_evidence_must_be_tracked_and_complete(self):
+        """Boundary: each required field, one at a time, and an untracked path."""
+        for field in check.ACTIVATION_EVIDENCE:
+            self.activate()
+            del self.data["components"][0]["activation_evidence"][field]
+            self.write_components()
+            with self.assertRaises(ValueError):
+                check.verify_components()
+        for blank in ("", "   "):
+            self.activate(test_command=blank)
+            with self.assertRaises(ValueError):
+                check.verify_components()
+        self.activate()
+        (self.root / "untracked.lock").write_text("version = 4\n")
+        self.data["components"][0]["activation_evidence"]["lockfile_path"] = "untracked.lock"
+        self.write_components()
+        with self.assertRaises(ValueError):
+            check.verify_components()
+        self.activate()
+        self.data["components"][0]["activation_evidence"]["manifest_path"] = "absent/Cargo.toml"
+        self.write_components()
+        with self.assertRaises(ValueError):
+            check.verify_components()
+
+    def test_evidence_under_the_components_own_path_certifies_it(self):
+        """Positive: a manifest inside the component's path, named by its test command."""
+        self.activate()
+        rows = check.verify_components()
+        evidence = rows[0]["activation_evidence"]
+        self.assertEqual(evidence["component_path"], "crates/sub-1")
+        self.assertTrue(evidence["manifest_path"].startswith("crates/sub-1/"))
+        self.assertIn(rows[0]["name"], evidence["test_command"])
+
+    def test_another_components_manifest_does_not_certify_this_one(self):
+        """Negative: a tracked manifest belonging to another crate is refused."""
+        self.activate()
+        self.track("crates/sub-9/Cargo.toml")
+        self.data["components"][0]["activation_evidence"][
+            "manifest_path"
+        ] = "crates/sub-9/Cargo.toml"
+        self.write_components()
+        with self.assertRaises(ValueError) as caught:
+            check.verify_components()
+        self.assertIn("outside its own path", str(caught.exception))
+
+    def test_the_evidence_binding_is_exact(self):
+        """Boundary: a sibling prefix, a foreign path and an unnamed command all fail."""
+        # "crates/sub-10" merely starts with "crates/sub-1"; it is not inside it.
+        self.activate()
+        self.track("crates/sub-10/Cargo.toml")
+        self.data["components"][0]["activation_evidence"][
+            "manifest_path"
+        ] = "crates/sub-10/Cargo.toml"
+        self.write_components()
+        with self.assertRaises(ValueError) as caught:
+            check.verify_components()
+        self.assertIn("outside its own path", str(caught.exception))
+
+        self.activate(component_path="crates")
+        with self.assertRaises(ValueError) as caught:
+            check.verify_components()
+        self.assertIn("does not name", str(caught.exception))
+
+        self.activate(component_path="crates/sub-1/Cargo.toml")
+        with self.assertRaises(ValueError) as caught:
+            check.verify_components()
+        self.assertIn("is not a directory", str(caught.exception))
+
+        self.activate(test_command="make verify-rust")
+        with self.assertRaises(ValueError) as caught:
+            check.verify_components()
+        self.assertIn("test command does not name", str(caught.exception))
+
+    def test_activation_still_needs_remaining_blockers(self):
+        """Boundary: activation is not a runtime claim, so blockers must remain."""
+        self.activate()
+        self.data["components"][0]["activation_blockers"] = []
+        self.write_components()
+        with self.assertRaises(ValueError) as caught:
+            check.verify_components()
+        self.assertNotIn("names no milestone", str(caught.exception))
+
+    def test_activation_needs_a_milestone_with_every_other_guard_satisfied(self):
+        """Boundary: the missing-milestone guard is reached, not masked by another."""
+        row = self.activate()
+        self.assertTrue(row["activation_blockers"], "blockers must be intact here")
+        del self.data["components"][0]["milestone"]
+        self.write_components()
+        with self.assertRaises(ValueError) as caught:
+            check.verify_components()
+        self.assertIn("names no milestone", str(caught.exception))
 
     def write_licensing(self, texts, identifiers=("EUPL-1.2", "CC-BY-SA-4.0")):
         digests = {}
@@ -155,11 +315,7 @@ class PreparationTests(unittest.TestCase):
         private = self.root / ".workingdir"
         private.mkdir()
         (private / "note.md").write_text("private")
-        subprocess.run(
-            ["git", "-C", str(self.root), "add", "-f", ".workingdir/note.md"],
-            check=True,
-            timeout=10,
-        )
+        git("git", "-C", str(self.root), "add", "-f", ".workingdir/note.md")
         with self.assertRaises(ValueError):
             check.verify_privacy()
 
@@ -233,6 +389,22 @@ class PreparationTests(unittest.TestCase):
             self.write_roadmap(rows)
             with self.assertRaises(ValueError):
                 check.verify_roadmap()
+
+    def test_a_manifest_declaring_another_crate_does_not_certify_this_one(self):
+        """Negative: the manifest's own package name must match the component."""
+        self.activate()
+        self.track("crates/sub-1/Cargo.toml", crate="someone-else")
+        with self.assertRaises(ValueError) as caught:
+            check.verify_components()
+        self.assertIn("not 'sub-1'", str(caught.exception))
+
+    def test_a_test_command_naming_a_longer_crate_does_not_certify_this_one(self):
+        """Boundary: the component name must appear as a whole word."""
+        self.activate(test_command="cargo test -p sub-10")
+        with self.assertRaises(ValueError):
+            check.verify_components()
+        self.activate(test_command="cargo test --locked -p sub-1")
+        self.assertEqual(len(check.verify_components()), 16)
 
     def test_source_integrity_and_inventory_drift(self):
         source = self.root / ".workingdir/notebookllmprep"
@@ -341,6 +513,41 @@ class RegisterTests(unittest.TestCase):
         self.register(candidates=data["candidates"])
         with self.assertRaises(ValueError):
             check.verify_candidates(self.components)
+
+    def activated_components(self):
+        """Return the inventory with P01 advanced to the activated status."""
+        rows = [dict(row) for row in self.components]
+        rows[0]["status"] = check.ACTIVATED_STATUS
+        return rows
+
+    def test_activated_component_may_record_its_manifest(self):
+        """Positive: once the component is activated the register may claim it."""
+        data = self.register()
+        data["candidates"][0]["manifest_present"] = True
+        data["candidates"][0]["lockfile_present"] = True
+        self.register(candidates=data["candidates"])
+        self.assertTrue(check.verify_candidates(self.activated_components()))
+
+    def test_activated_component_without_a_recorded_manifest_fails(self):
+        """Negative: an activated component whose row claims nothing fails closed."""
+        self.register()
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.activated_components())
+
+    def test_activated_component_needs_both_manifest_and_lock(self):
+        """Boundary: one of the two claims is not enough; both are required."""
+        for manifest, lockfile in ((True, False), (False, True)):
+            data = self.register()
+            data["candidates"][0]["manifest_present"] = manifest
+            data["candidates"][0]["lockfile_present"] = lockfile
+            self.register(candidates=data["candidates"])
+            with self.assertRaises(ValueError):
+                check.verify_candidates(self.activated_components())
+        data = self.register()
+        data["candidates"][0]["manifest_present"] = True
+        data["candidates"][0]["lockfile_present"] = True
+        self.register(candidates=data["candidates"])
+        self.assertTrue(check.verify_candidates(self.activated_components()))
 
     def test_digest_form_is_enforced(self):
         for bad in ("A" * 64, "a" * 63, "z" * 64, 42):
