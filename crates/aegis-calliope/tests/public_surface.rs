@@ -51,16 +51,26 @@ const LINE_BOUND: usize = 4096;
 /// so that removing one item on purpose does not fail the gate, while dropping
 /// the field arm -- which would cost far more than that -- does. Removing
 /// public surface on purpose means lowering the floor on purpose.
-const MINIMUM_SURFACE: usize = 194;
+///
+/// It is a reading of this revision and not a fixed property of the crate. At
+/// this revision the walk collects 236 names of which a keyword-only sweep
+/// collects 204, so the floor sits at 236 less a margin of six. It was 194
+/// before milestone M23 added `src/measured.rs`, and leaving it there is what
+/// `the_field_arm_carries_the_floor` caught: a keyword-only sweep would have
+/// cleared 194 on its own, so dropping the field arm would no longer have
+/// failed the gate.
+const MINIMUM_SURFACE: usize = 230;
 
 /// How many of the collected names only the M15 arm reads.
 ///
 /// Measured on 2026-09-13 by running the same walk twice, once with the arm
-/// and once without. `the_field_arm_carries_the_floor` asserts the difference,
-/// so the figure cannot drift out of agreement with the code the way a number
-/// stated only in prose can. Every one of them is a public struct field; this
-/// crate declares no `pub static` today, so that half of the arm is coverage
-/// for a shape this `src/` does not yet use.
+/// and once without, and re-read unchanged at M23.
+/// `the_field_arm_carries_the_floor` asserts the difference, so the figure
+/// cannot drift out of agreement with the code the way a number stated only in
+/// prose can. Every one of them is a public struct field; this crate declares
+/// no `pub static` today, so that half of the arm is coverage for a shape this
+/// `src/` does not yet use. `src/measured.rs` added no public field, which is
+/// why this figure did not move when [`MINIMUM_SURFACE`] did.
 const FIELD_ARM_NAMES: usize = 32;
 
 /// Which enclosing block makes an unmarked item public API.

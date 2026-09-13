@@ -106,6 +106,7 @@ nav:
       - P02 A/B lifecycle and transition trace: build/ab-lifecycle.md
       - Aegis-built kernel and guest read-back: build/kernel.md
       - eBPF fixtures and verifier evidence: build/bpf.md
+      - Latency fixture and determinism verdicts: build/latency.md
   - Integration:
       - Shared ownership and contracts: integration/stack.md
   - Decisions:

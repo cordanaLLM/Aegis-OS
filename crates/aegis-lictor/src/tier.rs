@@ -28,9 +28,11 @@
 //! goes through the verifier. A [`DispatchQueue`] is a value, not a queue.
 //!
 //! **No timing figure is produced.** A burst duration is a number a caller
-//! hands in; nothing here reads a clock, and the reference kernel is
-//! `PREEMPT_DYNAMIC` rather than `PREEMPT_RT`, so the determinism the tiers
-//! exist to deliver is not demonstrated by this milestone at all.
+//! hands in; nothing here reads a clock. The three thresholds below are
+//! recorded from `scx_cake.bpf.c`, not observed, and they stay that way.
+//! Milestone M23 measures a kernel against them in [`crate::determinism`], and
+//! reads the values out of this module rather than restating them -- so does
+//! `tools/verify_latency_fixture.py`.
 
 /// The upper edge of the critical tier, in nanoseconds (100 microseconds).
 pub const BURST_CRITICAL_NS: u64 = 100_000;

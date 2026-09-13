@@ -15,10 +15,15 @@
 //! observation. Its [`Display`](core::fmt::Display) renders `5 (declared,
 //! unmeasured)`, and `tests/declared_literals.rs` fails to compile if one of
 //! the three constants becomes a bare integer. A round-trip latency is a
-//! property of a running graph on a scheduled thread, and the reference kernel
-//! is `PREEMPT_DYNAMIC` rather than `PREEMPT_RT`, so **no latency or
-//! determinism figure is produced by this milestone**; milestone M23 is where
-//! one would come from.
+//! property of a running graph on a scheduled thread, and **nothing in this
+//! module is a measurement of one**.
+//!
+//! Milestone M23 did measure a kernel, and the figures live in
+//! [`crate::measured`] as [`Measured<T>`](crate::measured::Measured) values
+//! carrying the kernel that produced them. The three constants here stay
+//! declared: what M23 measured is a wakeup latency on a kernel, not the
+//! round-trip latency export-017 asks for, and the 5 ms figure is still a
+//! target rather than a reading.
 //!
 //! [`quantum_latency_micros`] is the one figure here that is neither a target
 //! nor a reading: it is exact arithmetic on two declared constants, and it is

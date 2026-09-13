@@ -13,6 +13,73 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (P07 and P08 latency fixtures on a realtime kernel guest, milestone M23)
+
+- **The first measured timing figure in this repository, and the first one that
+  had to be prevented from meaning the wrong thing.** `make verify-latency`
+  (`tools/verify_latency_fixture.py`) boots the kernel M26 builds in a guest,
+  runs `cyclictest` 2.10 inside it and again on the reference host with the
+  identical argument vector, and reports every figure against the P07 tier edges
+  and the P08 round-trip target with the kernel that produced it.
+  `docs/build/latency.md` is the evidence.
+- **The non-realtime host measured the *lower* worst case.** 267461 ns against
+  the realtime guest's 273969 ns in the recorded run, because the guest's
+  virtual CPU is a thread on that host. Across five runs the host's worst case
+  was the lower one four times and the higher one once, so ranking the two
+  kernels by figure is not only wrong in principle, it does not give a stable
+  answer. The means never crossed. Every host verdict is
+  `kernel-not-realtime` regardless: `DeterminismVerdict::of` checks the kernel
+  **before** the attainment, and the falsifier is a host reading of zero
+  nanoseconds, which is still refused.
+- **`Measured<T>` beside M07's `Declared<T>`,** in `aegis-calliope`. A measured
+  figure carries a `KernelIdentity` -- a release string and a `PreemptionModel`,
+  both read back from inside the machine that produced it -- and a
+  `MeasurementTool` whose `measures()` states in one sentence what the tool
+  actually observes. There is no conversion between the two wrappers in either
+  direction, and `tests/declared_literals.rs` now sweeps the crate for six
+  spellings of one; a planted `impl From<Declared<u64>> for Measured<u64>` was
+  caught and failed the suite. The pattern is M05's `Provenance`: a figure
+  carries how it was obtained, and the rule deciding the label is written down
+  and tested.
+- **The critical tier was not attained, and is reported as not attained.** The
+  guest's worst case is 2.7 times the 100 microsecond `BURST_CRITICAL_NS` edge,
+  so REQ-P07-01's deterministic tier-0 response is still not demonstrated and no
+  friendlier threshold was chosen to make it look otherwise. The interactive and
+  frame edges and the 5 ms P08 target are satisfied.
+- **One probe file, run on both machines.** `tools/guest/aegis-preempt-probe.sh`
+  is copied into the guest's initramfs and executed there, and executed by the
+  gate on the host under the same `bash`; it prints the running kernel's own
+  `CONFIG_PREEMPT_RT` line verbatim rather than a verdict. Guest:
+  `CONFIG_PREEMPT_RT=y` beside `7.2.5-aegis-m26`. Host:
+  `# CONFIG_PREEMPT_RT is not set` beside `7.2.4-1-cachyos`.
+- **D57's constraint holds by construction, and the mechanism it recommended was
+  not used.** No `linux-rt` package is downloaded, installed or booted; the
+  kernel is a file no package owns, with no `/lib/modules` entry. What the gate
+  cannot check is said rather than implied: `/boot` is mode 0700 root here, so
+  bootloader entries are not enumerated. Standing in for that is the complete
+  set of programs the gate may start, resolved from its own syntax tree in
+  `tools/test_latency_fixture.py` and asserted as an equality, so the list can
+  carry neither an unlisted program nor a dead entry. The first form of that
+  sweep resolved `argv` bindings across the whole module and silently attributed
+  four programs to another function's vector; scoped to one function it now
+  reports the two call sites it cannot name instead of hiding them.
+- **A false negative in the tool's own output is recorded rather than dropped.**
+  `cyclictest` reports `"realtime": 0` on both machines, including the guest
+  with `CONFIG_PREEMPT_RT=y`, because it reads `/sys/kernel/realtime` -- a file
+  the out-of-tree realtime patch set added and mainline does not. The
+  `kernel_attrs[]` array of `linux-7.2.5` holds nine entries and none is
+  `realtime`, and a whole-tree search for `KERNEL_ATTR_RO(realtime)` finds
+  nothing.
+- **The report proves the current run produced it.** The gate deletes the report
+  file, hands the guest a fresh nonce on its kernel command line and refuses any
+  other value; patching the guest to print a fixed nonce made the gate fail, as
+  it should.
+- `make verify-latency` is deliberately **not** in `make verify-all`: it
+  consumes `make verify-kernel`'s output, and CI has no `/dev/kvm`, no emulator
+  and no `rt-tests`. Both stand-down paths print why and exit 0. What CI does
+  re-run is the verdict rule, the recorded admission, the thresholds the gate
+  reads out of the crates, and the program allowlist.
+
 ### Added (eBPF objects through the host kernel's verifier, milestone M19)
 
 - The first work in this repository that reaches a real kernel. Four objects
