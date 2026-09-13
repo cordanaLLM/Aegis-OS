@@ -67,7 +67,13 @@ def verify_licensing():
         raise ValueError("LICENSING.md explains the split licence and must exist")
 
 
+MILESTONE_FIELDS = {"id", "title", "rank", "state", "blocked_by", "cost", "exit_criteria", "epics"}
+
+
 def verify_milestone(row, by_id):
+    missing = MILESTONE_FIELDS - row.keys()
+    if missing:
+        raise ValueError(f"Milestone {row.get('id', '?')} lacks fields {sorted(missing)}")
     if row["state"] not in ROADMAP_STATES or row["cost"] not in ROADMAP_COSTS:
         raise ValueError(f"Milestone {row['id']} has an invalid state or cost")
     if not row["exit_criteria"] or not row["epics"]:
@@ -143,12 +149,16 @@ def main():
     rows = verify_components()
     verify_privacy()
     verify_licensing()
+    milestones = verify_roadmap()
     if args.sources:
         verify_sources()
     if args.readiness:
         for row in rows:
             print(f"{row['id']} {row['name']}: {row['status']}; " + "; ".join(row["activation_blockers"]))
-    print("PASS: planning structure, privacy and licence texts; native build/boot/release unverified")
+        for row in milestones:
+            marker = "READY" if row["state"] == "ready" else row["state"]
+            print(f"{row['id']} [{marker}] rank {row['rank']} cost {row['cost']}: {row['title']}; blocked by " + (", ".join(row["blocked_by"]) or "nothing"))
+    print("PASS: planning structure, privacy, licence texts and roadmap states; native build/boot/release unverified")
 
 
 if __name__ == "__main__":

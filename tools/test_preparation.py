@@ -100,12 +100,14 @@ class PreparationTests(unittest.TestCase):
         self.write_components()
         self.git_init()
         self.write_licensing({})
+        self.write_roadmap([self.milestone("M00", 0, "ready")])
         out = io.StringIO()
         argv = ["verify_preparation.py", "--readiness"]
         with patch.object(sys, "argv", argv), patch.object(check, "LICENSE_TEXTS", {}):
             with contextlib.redirect_stdout(out):
                 check.main()
         self.assertEqual(out.getvalue().count(": proposal; real test"), 16)
+        self.assertIn("M00 [READY]", out.getvalue())
 
     def test_blocked_targets_fail_closed(self):
         root = Path(__file__).resolve().parent.parent
@@ -115,7 +117,8 @@ class PreparationTests(unittest.TestCase):
             self.assertIn("blocked", result.stderr)
 
     def milestone(self, mid, rank, state, blocked_by=(), **extra):
-        row = {"id": mid, "rank": rank, "state": state, "blocked_by": list(blocked_by), "cost": "small",
+        row = {"id": mid, "title": f"milestone {mid}", "rank": rank, "state": state,
+               "blocked_by": list(blocked_by), "cost": "small",
                "exit_criteria": ["evidence"], "epics": [{"id": f"E{mid}-1"}]}
         row.update(extra)
         return row
@@ -139,6 +142,7 @@ class PreparationTests(unittest.TestCase):
             [self.milestone("M00", 0, "ready", ["M09"])],
             [self.milestone("M00", 0, "ready"), self.milestone("M01", 2, "blocked", ["M00"])],
             [self.milestone("M00", 1, "ready"), self.milestone("M01", 0, "blocked", ["M00"])],
+            [{"id": "M00", "rank": 0, "state": "ready"}],
         ]
         for rows in bad:
             self.write_roadmap(rows)

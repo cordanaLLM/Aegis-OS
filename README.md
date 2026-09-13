@@ -4,17 +4,21 @@
 [![Code: EUPL 1.2](https://img.shields.io/badge/code-EUPL--1.2-315c9b.svg)](LICENSING.md)
 [![Original content: CC BY-SA 4.0](https://img.shields.io/badge/original%20content-CC%20BY--SA%204.0-b85c00.svg)](LICENSING.md)
 
-Local planning repository for an image-based Linux OS with sixteen proposed
-subsystems. The NotebookLM concept is preserved; this checkout currently
-qualifies repository preparation, not a working OS.
+Planning repository for an image-based Linux OS with sixteen proposed
+subsystems. The original concept is preserved; this repository currently
+qualifies preparation, governance, and a source-cited roadmap, not a working OS.
 
-Run `make verify-all` for the current preparation gate. Run `make readiness`
-for the component state and remaining activation blockers. Build, boot, and
-release gates remain blocked until their real inputs and checks exist.
+Run `make verify-all` for the preparation gate. Run `make readiness` for the
+component inventory, the remaining activation blockers, and the roadmap
+milestones that are ready to start. Build, boot, and release gates remain
+blocked until their real inputs and checks exist. The canonical remote is
+<https://github.com/cordanaLLM/Aegis-OS>; `CONTEXT.md` defines the vocabulary.
 
 | Path | Purpose |
 | --- | --- |
-| `planning/components.json` | Component inventory and explicit readiness |
+| `planning/components.json` | Component inventory, dependencies, blockers, cheapest first slice |
+| `planning/roadmap.json` | Milestones with blocking states, ranked by unblocking value per cost |
+| `docs/roadmap/` | Roadmap, cited requirements, and dependency-ordered tasks |
 | `docs/integration/stack.md` | Shared ownership and cross-repository contracts |
 | `LICENSING.md`, `REUSE.toml` | Split licence: EUPL-1.2 technical material, CC BY-SA 4.0 prose |
 | `build/`, `crates/`, `bpf/`, `ui/`, `tests/` | Reserved implementation locations |

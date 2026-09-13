@@ -10,7 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Split licensing: EUPL-1.2 for technical material and CC BY-SA 4.0 for original prose, with REUSE metadata, pinned canonical licence texts, and a fail-closed digest check in `make verify-all`.
 - Community and governance scaffold: code of conduct, governance, maintainers, support, code owners, issue templates, and Renovate configuration.
-- Source-cited roadmap under `docs/roadmap/` with machine-readable milestone blocking states in `planning/roadmap.json`.
+- Source-cited roadmap under `docs/roadmap/` with machine-readable milestone blocking states in `planning/roadmap.json`, validated by `make verify-all` and listed by `make readiness`.
+- Enriched component inventory: graph edges, external producers, hardware requirements, candidate sources, and the cheapest hardware-free first slice per subsystem.
+- Governance-only GitHub Actions workflow (Preparation gate) that builds the pinned praetorctl, runs `make verify-all`, REUSE lint, and a DCO sign-off check.
+- `CONTEXT.md` domain glossary and `make verify-reuse`.
 
 ### Changed
 - Governance documents now state the Rust-neutral I/O timeout rule, the DCO sign-off requirement, the planning-stage security scope, and the ADR numbering convention consistently.

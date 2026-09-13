@@ -24,10 +24,18 @@ boundaries: a Go library is not a direct dependency of a Rust daemon. Use a
 compatible library or an explicit protocol/FFI adapter with contract tests.
 GPU templates are candidates only for components that require those backends.
 
-Activation order:
+Activation order: the ranked, blocking-state roadmap in `docs/roadmap/README.md`
+and `planning/roadmap.json` is authoritative (`make readiness` lists the ready
+set). It keeps the original sequence below but orders local, hardware-free
+component work ahead of the producer contract pin, because both builder
+identities are currently unresolved on GitHub and a blocked external step must
+not stall work that can already be verified.
 
-1. Finish the component inventory and source provenance (preparation gate).
-2. Pin image/kernel producer schemas and test one request/result pair locally.
-3. Select one component's manifests, locks, templates, and real tests.
-4. Build one minimal image and retain artifact/signature/boot evidence.
-5. Enable remote delivery only after publication settings and consumers exist.
+1. Finish the component inventory and source provenance (roadmap M00, M01).
+2. Promote one component end-to-end with manifests, locks, template selection,
+   and real tests (M02), then the other hardware-free slices.
+3. Author the Aegis-side product input and kernel requirement schemas (M18),
+   then pin the Imago/Nucleus schemas and test one request/result pair (M09).
+4. Build one minimal image and retain artifact, signature and boot evidence (M11).
+5. Enable release signing and remote delivery only after publication settings
+   and consumers exist (M13).

@@ -88,8 +88,12 @@ make verify-all
 
 # Aegis OS preparation contract
 
-Current stage: local planning and scaffold preparation. Read `README.md` and
-`planning/components.json` first; load one relevant source artifact at a time.
+Current stage: planning and scaffold preparation. Read `README.md`,
+`planning/components.json` and `planning/roadmap.json` first, run `make readiness`
+to find the ready milestones, and work on the highest-ranked ready milestone.
+Update a milestone's `state` and `evidence` only with real committed evidence;
+`make verify-all` rejects inconsistent blocking states. Load one relevant source
+artifact at a time.
 The original OS concept is preserved. This task governs repository preparation,
 not architectural redesign or implementation of the sixteen subsystems.
 

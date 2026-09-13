@@ -1,0 +1,1444 @@
+{
+  "schema_version": 1,
+  "generated_from": "docs/roadmap/README.md",
+  "source_bundle_sha256": "8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6",
+  "method": "Dependency DAG built from the sixteen activation cards in planning/components.json: subsystem edges from the subsystem graph (export-062), external producers (Imago, Nucleus, Golusoris, upstream), toolchain admissions and hardware needs. Milestones are bounded, verifiable states. Each is costed (trivial=1, small=2, medium=4, large=8), scored by the number of milestones it transitively unblocks, and flagged for hardware or unverified cross-repository contracts. Ranking takes the available milestone (all blockers ranked) with the highest (1 + transitive unblocks) / cost, under hard rules: (1) done or purely local work ranks before anything needing hardware or an unverified cross-repository contract; (2) the first cross-repository milestone is stack.md step 2 (M09: pin Imago/Nucleus schemas and test one request/result pair locally), preceded by the Aegis-owned schema authoring (M18); (3) exactly one first component (P06, M02) is promoted end-to-end before any second component; (4) build, boot and release milestones are blocked with the evidence that unblocks them; (5) state=ready iff every blocked_by milestone is done. Ties break toward the milestone with more transitive unblocks, then toward the critical path to the first artifact (M11), then toward milestones without an unverified external contract in their own flags or ancestry, then toward milestones without hardware. blocked_by lists direct blockers only; unblocks is its exact inverse.",
+  "milestones": [
+    {
+      "id": "M00",
+      "title": "Governance gate, split licence and remote declaration",
+      "rank": 0,
+      "state": "done",
+      "blocked_by": [],
+      "unblocks": [
+        "M01"
+      ],
+      "cost": "trivial",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [],
+      "exit_criteria": [
+        "`make verify-all` passes and reports preparation/governance scope only (reported by this session's preparation run and recorded in the private verification log; this revision did not re-run it because the gate may write local state)",
+        "LICENSE, LICENSES/, LICENSING.md and REUSE.toml are tracked; REUSE.toml declares EUPL-1.2 for technical material and CC-BY-SA-4.0 for prose (commit a2c9626)",
+        "Remote `origin` https://github.com/cordanaLLM/Aegis-OS.git is configured; `git ls-remote --heads origin` (read-only) shows main at the committed checkpoint 42a23c8; hosted ruleset/label readback, publication settings and hosted acceptance are not claimed and belong to M13",
+        "The done state rests on committed tree 42a23c8 (which also commits the enriched planning/components.json); uncommitted working-tree edits to CHANGELOG.md and README.md and the untracked CONTEXT.md observed at revision time are outside these criteria"
+      ],
+      "cheapest_exit": "Read-only readback: `git ls-files LICENSE LICENSING.md REUSE.toml`, `git remote -v`, `git ls-remote --heads origin`.",
+      "epics": [
+        {
+          "id": "E00-1",
+          "title": "Governance gate reported with its limits",
+          "requirement_ids": [
+            "REQ-BOOT-02"
+          ],
+          "acceptance": "Positive: make verify-all passes. Negative: a drifted generated client file fails `compile-context --verify`. Boundary: the report states preparation/governance scope only; simulated boot output is never cited as evidence."
+        },
+        {
+          "id": "E00-2",
+          "title": "Split licence scaffold committed",
+          "requirement_ids": [
+            "REQ-GOV-01"
+          ],
+          "acceptance": "LICENSING.md and REUSE.toml record EUPL-1.2 for technical material and CC-BY-SA-4.0 for prose. The proposal Cargo workspace (export-006) also declares EUPL-1.2; no workspace manifest is committed in the repository yet."
+        },
+        {
+          "id": "E00-3",
+          "title": "Remote declared; proposal identity recorded for reconciliation",
+          "requirement_ids": [
+            "REQ-GOV-02"
+          ],
+          "acceptance": "origin resolves to cordanaLLM/Aegis-OS with main present remotely. The proposal identity cordanaLLM/aegis-os (export-006) differs in letter case and is carried into the M01 register; hosted readback is not claimed."
+        }
+      ],
+      "evidence": [
+        "commit a2c9626 (licence scaffold)",
+        "commit 4d0d798 (canonical remote declared)",
+        "commit 42a23c8 (component inventory enrichment and governance-only CI gate)",
+        "git ls-remote --heads origin: refs/heads/main 42a23c8",
+        "private preparation verification log: PASS, preparation/governance only"
+      ]
+    },
+    {
+      "id": "M01",
+      "title": "Component inventory reconciliation and decision register",
+      "rank": 1,
+      "state": "ready",
+      "blocked_by": [
+        "M00"
+      ],
+      "unblocks": [
+        "M02"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P01",
+        "P02",
+        "P03",
+        "P04",
+        "P05",
+        "P06",
+        "P07",
+        "P08",
+        "P09",
+        "P10",
+        "P11",
+        "P12",
+        "P13",
+        "P14",
+        "P15",
+        "P16"
+      ],
+      "exit_criteria": [
+        "Entry condition: `make verify-all` is re-run at the committed tip (42a23c8 or later) and passes",
+        "The inventory records, for each of the 12 Rust candidates and 3 UI candidates, its source export id and hash, proposed path, proposal-workspace membership (export-006) and missing manifests; it states that no Cargo.toml is committed and that crates/*/ directories hold no crate files",
+        "The inventory decides where the P01/P02 definition parser and the P02 A/B lifecycle crate live, since crates/README.md reserves paths for P03-P16 only (D15)",
+        "Every graph contradiction (P05/P12, P06/P09, P06/P10, P09/P14, P15/P02) and every source conflict (ledger hash, focus-ring width, CSS framework, kernel identity) is an open decision that names the sources on each side",
+        "The toolchain and version-drift register lists every imported pin as proposal data (mkosi v24+, Node 20 vs 22, aya/memmap2/zenoh versions, the unverified release action) plus the unpinned upstream projects; imported CI/release workflows are marked inactive",
+        "`make verify-all` still passes"
+      ],
+      "cheapest_exit": "Write the inventory and decision register as reviewed planning files. No code and no toolchain installation.",
+      "epics": [
+        {
+          "id": "E01-1",
+          "title": "Crate and UI inventory with manifest status",
+          "requirement_ids": [
+            "REQ-WS-01",
+            "REQ-P14-07",
+            "REQ-P16-07",
+            "REQ-P08-08",
+            "REQ-P09-08",
+            "REQ-P06-07",
+            "REQ-P13-08",
+            "REQ-P12-08",
+            "REQ-P15-05"
+          ],
+          "acceptance": "Positive: 12 Rust and 3 UI candidates are listed with source id and hash. Negative: a candidate without a source hash fails review. Boundary: Vulcan and Hestia appear with status 'not a proposal-workspace member', and the P01/P02 crate location is decided."
+        },
+        {
+          "id": "E01-2",
+          "title": "Graph and source contradiction register",
+          "requirement_ids": [
+            "REQ-GRAPH-01",
+            "REQ-GRAPH-02",
+            "REQ-GRAPH-03",
+            "REQ-GRAPH-04",
+            "REQ-GRAPH-05",
+            "REQ-P09-03",
+            "REQ-P09-05",
+            "REQ-P10-07",
+            "REQ-P15-07",
+            "REQ-P14-05",
+            "REQ-P12-07",
+            "REQ-P12-09",
+            "REQ-UI-02"
+          ],
+          "acceptance": "Each disputed edge or value names both sources and the affected contract. export-062 stays the graph of record until a decision changes it."
+        },
+        {
+          "id": "E01-3",
+          "title": "Toolchain, identity and version-drift register",
+          "requirement_ids": [
+            "REQ-GOV-02",
+            "REQ-P01-08",
+            "REQ-P02-06",
+            "REQ-CI-03",
+            "REQ-UI-01",
+            "REQ-REL-02",
+            "REQ-P01-07",
+            "REQ-P03-08",
+            "REQ-P04-08",
+            "REQ-P01-01"
+          ],
+          "acceptance": "Every pinned or floating toolchain is listed with its source and marked as proposal data. Nothing is installed. Each drift item becomes a decision."
+        },
+        {
+          "id": "E01-4",
+          "title": "Imported workflow quarantine",
+          "requirement_ids": [
+            "REQ-CI-01",
+            "REQ-CI-02",
+            "REQ-BOOT-02",
+            "REQ-REL-01",
+            "REQ-P14-08"
+          ],
+          "acceptance": "Imported CI, release and integration scripts stay inactive. Their failure-suppressing and simulated-output steps are listed as defects to fix before any activation."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M02",
+      "title": "First component promoted end-to-end: P06 aegis-justitia decision engine",
+      "rank": 2,
+      "state": "blocked",
+      "blocked_by": [
+        "M01"
+      ],
+      "unblocks": [
+        "M14",
+        "M03",
+        "M17",
+        "M07",
+        "M04"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P06"
+      ],
+      "exit_criteria": [
+        "A workspace root Cargo.toml is created (the repository has none; export-006 is proposal data) with crates/aegis-justitia as its only activated member; the crate manifest and a committed Cargo.lock exist",
+        "Toolchain admission: the stable Rust toolchain (cargo, clippy, rustfmt) is selected through the template matrix with a pinned version before any cargo gate runs",
+        "Risk-tier, maker-checker, Annex III, timeout and killswitch logic exists as library code (not only in #[cfg(test)]) with positive, negative and boundary tests passing under `cargo test -p aegis-justitia` and `cargo clippy -p aegis-justitia --all-targets -- -D warnings`",
+        "Audit-ledger hashing sits behind a trait, and the algorithm decision (D02: SHA-256 or BLAKE3; MD5 excluded) is recorded",
+        "Out of scope, deferred explicitly: the consumer contracts and the hardened unit contract (M14), eBPF compilation and verifier load (M19, M10), and TPM2 signing (M20)",
+        "planning/components.json P06 status is advanced with the evidence path; `make verify-all` passes"
+      ],
+      "cheapest_exit": "Promote the drafted P06 test module into a library crate with a trait boundary for hashing and signing. No TPM2, D-Bus or eBPF.",
+      "epics": [
+        {
+          "id": "E02-1",
+          "title": "Workspace root, manifest, lock and Rust toolchain admission",
+          "requirement_ids": [
+            "REQ-P06-07",
+            "REQ-P16-08",
+            "REQ-GOV-01"
+          ],
+          "acceptance": "Positive: the crate builds under `cargo build -p aegis-justitia` and a workspace-wide invocation. Negative: an unlocked dependency change fails `cargo build --locked`. Boundary: clippy with -D warnings passes with zero warnings."
+        },
+        {
+          "id": "E02-2",
+          "title": "Decision engine with positive, negative and boundary tests",
+          "requirement_ids": [
+            "REQ-P06-01",
+            "REQ-P06-03",
+            "REQ-P06-04",
+            "REQ-GOV-03"
+          ],
+          "acceptance": "Positive: a Tier C action is allowed, and two distinct non-maker checkers are accepted. Negative: maker as checker is rejected, and a duplicate checker is rejected. Boundary: due timestamps equal to now and to now-1 both fail closed, and the killswitch blocks Tier C."
+        },
+        {
+          "id": "E02-3",
+          "title": "Audit ledger algorithm decision and trait boundary",
+          "requirement_ids": [
+            "REQ-P06-09",
+            "REQ-P16-09",
+            "REQ-P16-01"
+          ],
+          "acceptance": "Positive: one algorithm is recorded and a chain re-walk verifies. Negative: a single flipped byte is detected, and a missing signer returns an error. Boundary: an empty ledger verifies as the genesis state. MD5 is removed."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M14",
+      "title": "P06 consumer interface contracts and hardened unit contract",
+      "rank": 3,
+      "state": "blocked",
+      "blocked_by": [
+        "M02"
+      ],
+      "unblocks": [
+        "M05",
+        "M06",
+        "M16",
+        "M20"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P06",
+        "P05",
+        "P09",
+        "P16"
+      ],
+      "exit_criteria": [
+        "D03 (direction and transport of the P06/P09 action gate) is closed and D04 (P06 to P10 syscall intercept) is recorded",
+        "Versioned schemas exist for the DecisionRequest (P06 to P05), the action proposal (P09 and P06, direction per D03) and the signed audit record (P06 to P16); each schema has contract tests with positive, negative and boundary payloads",
+        "The justitia-interceptor unit stays a declarative contract (IPAddressDeny=any) and is not installed or executed",
+        "Uses the Rust toolchain admitted in M02; no new toolchain; `make verify-all` passes"
+      ],
+      "cheapest_exit": "Write the three schemas as typed Rust structs with serde round-trip tests. No transport is implemented.",
+      "epics": [
+        {
+          "id": "E14-1",
+          "title": "Action-gate direction decision and action proposal contract",
+          "requirement_ids": [
+            "REQ-P09-03",
+            "REQ-P09-05",
+            "REQ-GRAPH-04",
+            "REQ-GRAPH-02"
+          ],
+          "acceptance": "Positive: a signed, well-formed proposal round-trips. Negative: an unsigned or malformed proposal is rejected. Boundary: a proposal at the maximum field lengths is accepted, and one byte over is rejected."
+        },
+        {
+          "id": "E14-2",
+          "title": "DecisionRequest and audit record contracts",
+          "requirement_ids": [
+            "REQ-GOV-03",
+            "REQ-P06-08",
+            "REQ-P06-10",
+            "REQ-P16-03"
+          ],
+          "acceptance": "Positive: both schemas round-trip. Negative: an unknown schema version is rejected. Boundary: an audit record whose previous hash is the all-zero genesis value is accepted only as the first record. The PLD effective date is tracked as an external deadline."
+        },
+        {
+          "id": "E14-3",
+          "title": "Hardened unit contract",
+          "requirement_ids": [
+            "REQ-P06-02"
+          ],
+          "acceptance": "Positive: the unit file declares IPAddressDeny=any. Negative: a review check fails if the directive is removed. Boundary: the unit is not installed or started in this milestone."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M03",
+      "title": "P01/P02 partition and transfer definitions validated offline with the host systemd",
+      "rank": 4,
+      "state": "blocked",
+      "blocked_by": [
+        "M02"
+      ],
+      "unblocks": [
+        "M18",
+        "M15"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P01",
+        "P02"
+      ],
+      "exit_criteria": [
+        "build/ holds the repart definitions (00-esp, 10-root-a/b, 11-root-verity, 20-var) and the sysupdate transfer as reviewed files with source hashes",
+        "Toolchain admission: a systemd version floor is selected through the template matrix (the host observed at revision time runs systemd 261); the Rust toolchain from M02 is reused for the parser; mkosi is not used in this milestone",
+        "Repart gate: `systemd-repart --empty=create --size=<N> --dry-run=yes --definitions=<dir> <scratch image>` exits 0 on valid definitions; the gate also fails on any 'Unknown key ... ignoring' diagnostic, because systemd-repart exits 0 on unknown keys (observed on systemd 261, where the imported ESP 'Subsystem=' and var 'BtrfsSubvolumes=' keys are ignored)",
+        "Negative and boundary cases observed on systemd 261: a definition without Type= exits 1; SizeMinBytes greater than SizeMaxBytes exits 1; SizeMinBytes equal to SizeMaxBytes is accepted",
+        "Transfer gate: `systemd-sysupdate --root=<scratch tree containing usr/lib/sysupdate.d> --offline list` parses the transfer definition unprivileged; on systemd 261 the imported definition is rejected with exit 1, so it must be rewritten to supported keys before the gate can pass",
+        "The Rust definition parser crate (location per D15) has its manifest, lock and positive/negative/boundary tests; no `|| true` anywhere in the gate"
+      ],
+      "cheapest_exit": "Run the two systemd commands against scratch images and trees, plus the parser tests. No image build and no mkosi.",
+      "epics": [
+        {
+          "id": "E03-1",
+          "title": "Repart analyzer gate",
+          "requirement_ids": [
+            "REQ-P01-02",
+            "REQ-P01-03",
+            "REQ-P02-03",
+            "REQ-P02-07",
+            "REQ-P01-10",
+            "REQ-CI-01"
+          ],
+          "acceptance": "Positive: the dry run exits 0 with no ignored-key diagnostics. Negative: a missing Type= exits non-zero, and an unknown key fails the gate. Boundary: ESP min equal to max is accepted, and inverted min greater than max is rejected."
+        },
+        {
+          "id": "E03-2",
+          "title": "Sysupdate transfer gate",
+          "requirement_ids": [
+            "REQ-P01-04",
+            "REQ-P02-04",
+            "REQ-P02-06"
+          ],
+          "acceptance": "Positive: the rewritten transfer lists without error offline. Negative: the imported transfer is rejected (exit 1). Boundary: a transfer with both root slots and no writable target parses, and one with a single slot is flagged against the A/B requirement."
+        },
+        {
+          "id": "E03-3",
+          "title": "Definition parser crate",
+          "requirement_ids": [
+            "REQ-P01-02",
+            "REQ-P01-10",
+            "REQ-WS-01"
+          ],
+          "acceptance": "Positive: the definitions round-trip through the parser. Negative: a duplicate section or malformed size is rejected. Boundary: 512M and 1G parse exactly, and 511M below the minimum is flagged."
+        },
+        {
+          "id": "E03-4",
+          "title": "PCR measurement acceptance target",
+          "requirement_ids": [
+            "REQ-P01-05"
+          ],
+          "acceptance": "The PCR 0/4/7/11 strategy is documented as the acceptance target for M11 boot evidence. It is not claimed here."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M18",
+      "title": "Aegis-side product input manifest and kernel requirement schemas (local)",
+      "rank": 5,
+      "state": "blocked",
+      "blocked_by": [
+        "M03"
+      ],
+      "unblocks": [
+        "M09"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P01",
+        "P02"
+      ],
+      "exit_criteria": [
+        "The Aegis product input manifest schema (repart, sysupdate and mkosi configuration references, correlation id, exact revision, bounded retries) validates the M03 files; a malformed manifest is rejected",
+        "The kernel requirement schema (required BPF LSM, sched_ext, BTF, RAPL, VFIO/IOMMU and KVM features; ABI; accepted architectures; artifact digest and signature fields) is written as a payload, not a fixed symbol list",
+        "D07 (boot kernel identity) and D18 (distribution release and package pinning) are recorded",
+        "Toolchain admission: if D14 keeps mkosi validation in Aegis, mkosi is selected through the template matrix at or above the v24 floor before `mkosi summary` runs; otherwise mkosi validation is deferred to the Imago result",
+        "No producer repository is contacted; the schemas are Aegis-owned files with positive, negative and boundary tests"
+      ],
+      "cheapest_exit": "Author the two schemas and validate them against the M03 files with the Rust toolchain from M02.",
+      "epics": [
+        {
+          "id": "E18-1",
+          "title": "Product input manifest schema",
+          "requirement_ids": [
+            "REQ-P01-01",
+            "REQ-P01-06",
+            "REQ-P01-08",
+            "REQ-GOV-02"
+          ],
+          "acceptance": "Positive: the manifest built from the M03 files validates. Negative: a manifest without a correlation id or exact revision is rejected. Boundary: a retry count at the bound is accepted, and one above is rejected."
+        },
+        {
+          "id": "E18-2",
+          "title": "Kernel requirement schema and kernel identity decision",
+          "requirement_ids": [
+            "REQ-P01-09",
+            "REQ-P07-01",
+            "REQ-P06-05",
+            "REQ-P13-02",
+            "REQ-P07-06"
+          ],
+          "acceptance": "Positive: the payload lists the kernel features required by P06, P07 and P13. Negative: an unknown architecture is rejected. Boundary: an empty requirement list is rejected explicitly, not accepted as 'no requirements'."
+        },
+        {
+          "id": "E18-3",
+          "title": "mkosi admission decision",
+          "requirement_ids": [
+            "REQ-P01-08",
+            "REQ-P02-06"
+          ],
+          "acceptance": "Positive: if admitted, `mkosi summary` parses the Output stanza. Negative: a version below the floor is refused. Boundary: the floor version itself is accepted."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M15",
+      "title": "P02 A/B candidate lifecycle state machine",
+      "rank": 6,
+      "state": "blocked",
+      "blocked_by": [
+        "M03"
+      ],
+      "unblocks": [
+        "M11"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P02"
+      ],
+      "exit_criteria": [
+        "The A/B lifecycle (candidate, signature check, delta acquisition, slot swap, watchdog, bless or rollback) is a Rust library with manifest, lock (location per D15) and positive, negative and boundary tests",
+        "D13 (reversible consolidation versus permanent hardening) is recorded against the dm-verity requirement",
+        "Uses the Rust toolchain admitted in M02; systemd and sysupdate calls are stubbed"
+      ],
+      "cheapest_exit": "Model the lifecycle as a pure state machine with a stubbed clock and stubbed sysupdate.",
+      "epics": [
+        {
+          "id": "E15-1",
+          "title": "A/B lifecycle state machine",
+          "requirement_ids": [
+            "REQ-P02-08",
+            "REQ-P02-01",
+            "REQ-P02-02"
+          ],
+          "acceptance": "Positive: the happy path reaches Bless. Negative: a signature failure reaches Discard. Boundary: watchdog expiry exactly at the timeout takes Rollback, and one tick before does not."
+        },
+        {
+          "id": "E15-2",
+          "title": "Reversible consolidation decision",
+          "requirement_ids": [
+            "REQ-P02-05",
+            "REQ-P16-05"
+          ],
+          "acceptance": "The decision is recorded, and a test shows that a reopened slot still requires a verity match before Bless."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M05",
+      "title": "Evolution loop logic: P13 Tellus SCI engine and P16 Athena lifecycle, Pareto gate and ledger",
+      "rank": 7,
+      "state": "blocked",
+      "blocked_by": [
+        "M14"
+      ],
+      "unblocks": [
+        "M19",
+        "M21"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P13",
+        "P16"
+      ],
+      "exit_criteria": [
+        "crates/aegis-tellus and crates/aegis-athena have manifests, lock entries and positive/negative/boundary tests passing under cargo test and clippy; the Rust toolchain from M02 is reused and no new toolchain is admitted",
+        "The SCI formula, defer threshold and slice bound are tested; RAPL and eBPF access are stubbed",
+        "The Athena 7-stage state machine and Pareto predicate are tested at exact thresholds; the ledger is ported to Rust with the D02 algorithm",
+        "Edge contracts are typed with negative tests for malformed payloads: P16 to P13 candidate SCI query, P16 to P02 promotion trigger, and consumption of the M14 audit record"
+      ],
+      "cheapest_exit": "Extract the arithmetic and state machines into lib targets and mock all I/O.",
+      "epics": [
+        {
+          "id": "E05-1",
+          "title": "Tellus SCI arithmetic",
+          "requirement_ids": [
+            "REQ-P13-01",
+            "REQ-P13-06",
+            "REQ-P13-07",
+            "REQ-P13-08"
+          ],
+          "acceptance": "Positive: a hand-computed SCI matches. Negative: functional_units <= 0 falls back without NaN. Boundary: 300.0 is not deferred, 300.001 is deferred, and slices never exceed 16."
+        },
+        {
+          "id": "E05-2",
+          "title": "Athena lifecycle and Pareto gate",
+          "requirement_ids": [
+            "REQ-P16-01",
+            "REQ-P16-02",
+            "REQ-P16-05",
+            "REQ-P16-10",
+            "REQ-P15-04"
+          ],
+          "acceptance": "Positive: a passing candidate reaches Publish. Negative: exceeding any single bound reaches Invalidate with a ledger entry, and an empty id is rejected. Boundary: latency 1.5 and retention 0.99 are exercised exactly."
+        },
+        {
+          "id": "E05-3",
+          "title": "Hash-chained ledger in Rust",
+          "requirement_ids": [
+            "REQ-P16-03",
+            "REQ-P16-09",
+            "REQ-P06-09"
+          ],
+          "acceptance": "Positive: a chain re-walk verifies. Negative: a tampered record is detected. Boundary: the genesis record is verified, and the algorithm matches D02."
+        },
+        {
+          "id": "E05-4",
+          "title": "Evolution-loop edge contracts",
+          "requirement_ids": [
+            "REQ-P13-05",
+            "REQ-P13-03",
+            "REQ-P16-06",
+            "REQ-P01-04"
+          ],
+          "acceptance": "Positive: typed request and response round-trip for each edge. Negative: malformed payloads are rejected. Boundary: the sysupdate call is stubbed, and an empty candidate list is handled explicitly."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M06",
+      "title": "Agent execution chain logic: P09 Minerva router/replay/solver and P10 Vesta bounded controllers",
+      "rank": 8,
+      "state": "blocked",
+      "blocked_by": [
+        "M14"
+      ],
+      "unblocks": [
+        "M08",
+        "M21"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P09",
+        "P10"
+      ],
+      "exit_criteria": [
+        "crates/aegis-minerva and crates/aegis-vesta have manifests, lock entries and positive/negative/boundary tests; no GPU, D-Bus, Z3 FFI, KVM or Wasm engine is used; the Rust toolchain from M02 is reused",
+        "The Wasm runtime language-boundary decision (D06) is recorded: a Rust-native runtime, or a protocol/FFI adapter with contract tests; no Go crate dependency",
+        "The P06 action proposal contract from M14 is consumed; the P09 to P10 capsule request and the P09/P14 verification direction are typed with negative tests"
+      ],
+      "cheapest_exit": "Compile only the in-memory logic layers of the P09 and P10 candidates with cargo test.",
+      "epics": [
+        {
+          "id": "E06-1",
+          "title": "Minerva router, replay and solver logic",
+          "requirement_ids": [
+            "REQ-P09-01",
+            "REQ-P09-02",
+            "REQ-P09-06",
+            "REQ-P09-07",
+            "REQ-P09-08"
+          ],
+          "acceptance": "Positive: expert registration and routing succeed. Negative: route returns None when no expert matches. Boundary: the 32nd expert is accepted and the 33rd rejected; the 128th trajectory step is accepted and the 129th rejected; relabelling flips only negative rewards."
+        },
+        {
+          "id": "E06-2",
+          "title": "Vesta bounded controllers",
+          "requirement_ids": [
+            "REQ-P10-01",
+            "REQ-P10-04",
+            "REQ-P10-05",
+            "REQ-P10-06",
+            "REQ-P10-07"
+          ],
+          "acceptance": "Positive: 64 microVMs and 128 capsules are accepted. Negative: terminating an unknown id returns false. Boundary: the 65th microVM and 129th capsule fail. The boot-time literal is marked unmeasured."
+        },
+        {
+          "id": "E06-3",
+          "title": "Wasm runtime boundary decision",
+          "requirement_ids": [
+            "REQ-P10-08",
+            "REQ-P10-02",
+            "REQ-P10-03"
+          ],
+          "acceptance": "The decision is recorded. Venus and AF_VSOCK pricing stay deferred hardware-backed requirements (M21)."
+        },
+        {
+          "id": "E06-4",
+          "title": "Agent-chain edge contracts",
+          "requirement_ids": [
+            "REQ-P09-03",
+            "REQ-GRAPH-05",
+            "REQ-P14-05",
+            "REQ-P16-04"
+          ],
+          "acceptance": "Positive: typed contracts round-trip. Negative: unsigned or malformed proposals are rejected. Boundary: a capsule request at the capsule bound is accepted, and one over is rejected."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M17",
+      "title": "Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates",
+      "rank": 9,
+      "state": "blocked",
+      "blocked_by": [
+        "M02"
+      ],
+      "unblocks": [
+        "M12"
+      ],
+      "cost": "trivial",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P03",
+        "P15"
+      ],
+      "exit_criteria": [
+        "aegis-vulcan and aegis-hestia are added as workspace members (they are absent from the proposal workspace) with manifests, lock entries and positive/negative/boundary tests; the Rust toolchain from M02 is reused",
+        "Scaffold assertions are refactored to Result per HISS-07 so that negative cases are ordinary tests",
+        "The Hestia location decision (D09) is applied from the M01 inventory",
+        "Interface contracts are typed for P03 to P09 (weight streaming descriptor), P03 to P15 (media ingest descriptor) and P15 to P04 (overlay registration), each with a negative test for a malformed payload; the transports stay stubbed until M12"
+      ],
+      "cheapest_exit": "Extract the validation arithmetic and bounds checks. No VFIO, GPU or PGlite runtime.",
+      "epics": [
+        {
+          "id": "E17-1",
+          "title": "Vulcan validation crate",
+          "requirement_ids": [
+            "REQ-P03-04",
+            "REQ-P03-05",
+            "REQ-P03-08",
+            "REQ-P03-06",
+            "REQ-WS-01",
+            "REQ-P03-01",
+            "REQ-P03-02"
+          ],
+          "acceptance": "Positive: an aligned BAR is accepted. Negative: a misaligned BAR is rejected. Boundary: block_count 0 and 8193 are rejected, 8192 is accepted, and the ring index wraps."
+        },
+        {
+          "id": "E17-2",
+          "title": "Hestia vector-store state machine",
+          "requirement_ids": [
+            "REQ-P15-01",
+            "REQ-P15-05",
+            "REQ-P15-06",
+            "REQ-P15-08",
+            "REQ-GRAPH-03"
+          ],
+          "acceptance": "Positive: an initialized store answers queries. Negative: a query before init fails. Boundary: limits 0 and 101 fail, and 1 and 100 pass."
+        },
+        {
+          "id": "E17-3",
+          "title": "P03 and P15 interface contracts",
+          "requirement_ids": [
+            "REQ-P03-07",
+            "REQ-P09-04",
+            "REQ-P15-07"
+          ],
+          "acceptance": "Positive: the descriptors round-trip. Negative: a malformed descriptor is rejected. Boundary: a descriptor at the maximum block count is accepted, and one over is rejected."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M07",
+      "title": "Real-time control-plane logic: P04 compositor registry/IPC, P07 Lictor classifier/broker, P08 Calliope plugin lifecycle",
+      "rank": 10,
+      "state": "blocked",
+      "blocked_by": [
+        "M02"
+      ],
+      "unblocks": [
+        "M19"
+      ],
+      "cost": "medium",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P04",
+        "P07",
+        "P08"
+      ],
+      "exit_criteria": [
+        "crates/aegis-compositor, aegis-lictor and aegis-calliope have manifests, lock entries and positive/negative/boundary tests; no wlroots, GPU, PipeWire, cgroups or BPF attach; the Rust toolchain from M02 is reused",
+        "The Zenoh crate version, if needed, is selected and locked at activation after checking current upstream; the export-006 pin is not inherited",
+        "The surface registry (256) and IPC client (64) bounds, EWMA tier thresholds, plugin slots (32) and DMA-BUF buffers (64) are tested at their edges",
+        "The wlroots-in-C mandate versus the Rust scaffold is recorded (D08), and the frame-pacing constant is pinned",
+        "BPF C compilation is not part of this milestone (moved to M19)"
+      ],
+      "cheapest_exit": "Unit-test the pure state machines only.",
+      "epics": [
+        {
+          "id": "E07-1",
+          "title": "Compositor registry and Tier-1 socket bounds",
+          "requirement_ids": [
+            "REQ-P04-04",
+            "REQ-P04-05",
+            "REQ-P04-07",
+            "REQ-P04-08"
+          ],
+          "acceptance": "Positive: 256 surfaces and 64 clients are accepted. Negative: the 257th surface is rejected and the 65th client is not admitted. Boundary: a pacing-constant test pins the chosen value."
+        },
+        {
+          "id": "E07-2",
+          "title": "wlroots and mesh design decision",
+          "requirement_ids": [
+            "REQ-P04-01",
+            "REQ-P04-02",
+            "REQ-P04-03",
+            "REQ-P04-06"
+          ],
+          "acceptance": "The decision is recorded. The Zenoh version is selected at activation after checking current upstream, with a mocked transport test: a publish round-trips, a subscriber cannot write back, and an empty key expression is rejected."
+        },
+        {
+          "id": "E07-3",
+          "title": "Lictor EWMA tiers and broker",
+          "requirement_ids": [
+            "REQ-P07-01",
+            "REQ-P07-02",
+            "REQ-P07-03",
+            "REQ-P07-04",
+            "REQ-P07-05",
+            "REQ-P01-07"
+          ],
+          "acceptance": "Positive: bursts below each threshold classify per the source comparisons. Negative: an unregistered focus PID throttles nothing. Boundary: bursts exactly at each threshold classify per the strict comparison."
+        },
+        {
+          "id": "E07-4",
+          "title": "Calliope plugin lifecycle and DMA-BUF descriptors",
+          "requirement_ids": [
+            "REQ-P08-01",
+            "REQ-P08-02",
+            "REQ-P08-03",
+            "REQ-P08-06",
+            "REQ-P08-07",
+            "REQ-P08-08"
+          ],
+          "acceptance": "Positive: 32 slots are accepted. Negative: the 33rd slot and an illegal transition are rejected. Boundary: stride arithmetic is checked at 0 and at u32::MAX/4."
+        },
+        {
+          "id": "E07-5",
+          "title": "Real-time edge contracts",
+          "requirement_ids": [
+            "REQ-P08-04",
+            "REQ-P08-05",
+            "REQ-P13-03"
+          ],
+          "acceptance": "Positive: typed focus-switch, RTPRIO grant and DMA-BUF stream descriptors round-trip. Negative: malformed descriptors are rejected. Boundary: an RTPRIO value at the source value is accepted, and one above is rejected."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M08",
+      "title": "Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus",
+      "rank": 11,
+      "state": "blocked",
+      "blocked_by": [
+        "M06"
+      ],
+      "unblocks": [
+        "M12"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P11",
+        "P14"
+      ],
+      "exit_criteria": [
+        "aegis-ludus and aegis-hephaestus have manifests, lock entries and positive/negative/boundary tests; the Rust toolchain from M02 is reused",
+        "Assertions are refactored to Result per HISS-07",
+        "The Steamworks proprietary-SDK licensing decision (D12) is recorded before any SDK is vendored",
+        "Interface contracts are typed for P09 to P14 (VERIFY_CODE_CAD, direction per the M01 register), P14 to P15 (geometry viewport descriptor), P11 to P02 (transaction receipt, TPM2 signing stubbed) and P11 to P04 (rich presence), each with a negative test for a malformed payload"
+      ],
+      "cheapest_exit": "Extract the bounds and validation logic. No Steam, CAD kernel or solver runtime.",
+      "epics": [
+        {
+          "id": "E08-1",
+          "title": "Ludus launch-argument validator",
+          "requirement_ids": [
+            "REQ-P11-02",
+            "REQ-P11-07",
+            "REQ-P11-01",
+            "REQ-P11-05"
+          ],
+          "acceptance": "Positive: 64 args are accepted. Negative: 65 args are rejected. Boundary: an empty argument list is handled explicitly and its authentication outcome is recorded."
+        },
+        {
+          "id": "E08-2",
+          "title": "Hephaestus bounded loops",
+          "requirement_ids": [
+            "REQ-P14-01",
+            "REQ-P14-02",
+            "REQ-P14-03",
+            "REQ-P14-04",
+            "REQ-P14-08"
+          ],
+          "acceptance": "Positive: a mesh under the bound is accepted. Negative: a missing STEP path errors. Boundary: 500000 elements are accepted and 500001 rejected, and the iteration bound is honoured. CAD and solver versions are recorded as unpinned."
+        },
+        {
+          "id": "E08-3",
+          "title": "P11 and P14 interface contracts",
+          "requirement_ids": [
+            "REQ-P14-05",
+            "REQ-P14-06",
+            "REQ-P11-06",
+            "REQ-P11-04"
+          ],
+          "acceptance": "Positive: the descriptors round-trip. Negative: a receipt without a signature field is rejected. Boundary: a viewport descriptor at the mesh bound is accepted."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M19",
+      "title": "eBPF objects compiled and loaded through the verifier on the host kernel (local fixture)",
+      "rank": 12,
+      "state": "blocked",
+      "blocked_by": [
+        "M05",
+        "M07"
+      ],
+      "unblocks": [
+        "M10"
+      ],
+      "cost": "medium",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P06",
+        "P07",
+        "P13"
+      ],
+      "exit_criteria": [
+        "Toolchain admission: clang (BPF target), bpftool and libbpf (or aya, per the M01 register) are selected through the template matrix with pinned versions before any compile",
+        "action_gate, scx_cake and kepler_power compile warning-free with clang -target bpf",
+        "The objects load through the BPF verifier on the host kernel with CAP_BPF; the host kernel version and config (BPF LSM, sched_ext, BTF) are recorded as observed facts, not assumed",
+        "Negative: removing the ringbuf NULL check or an unroll bound makes the verifier reject the object. Boundary: a struct_ops load with all handlers stubbed succeeds where the host exposes sched_ext",
+        "This is a non-qualifying local fixture: a host or stock kernel cannot close the Nucleus-kernel verification in M10"
+      ],
+      "cheapest_exit": "Compile the three objects and run a verifier load on the workstation kernel. No VM, image or Nucleus artifact.",
+      "epics": [
+        {
+          "id": "E19-1",
+          "title": "action_gate LSM object",
+          "requirement_ids": [
+            "REQ-P06-05",
+            "REQ-P07-06"
+          ],
+          "acceptance": "Positive: the program loads, and an exec event reaches a stub ringbuf consumer where BPF LSM is active. Negative: the unchecked-pointer variant is rejected. Boundary: if BPF LSM is not active on the host, attach is recorded as unavailable rather than passed."
+        },
+        {
+          "id": "E19-2",
+          "title": "scx_cake struct_ops object",
+          "requirement_ids": [
+            "REQ-P07-04",
+            "REQ-P07-01"
+          ],
+          "acceptance": "Positive: struct_ops loads where sched_ext is present. Negative: the unbounded-loop variant is rejected. Boundary: all-stub handlers load."
+        },
+        {
+          "id": "E19-3",
+          "title": "kepler_power probe object",
+          "requirement_ids": [
+            "REQ-P13-02"
+          ],
+          "acceptance": "Positive: the tracepoint program loads. Negative: an out-of-bounds map access variant is rejected. Boundary: the hardcoded TDP literal is recorded as a non-measurement."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M04",
+      "title": "UI accessibility harness: P12 Concordia tokens with Node/pnpm/Playwright admission",
+      "rank": 13,
+      "state": "blocked",
+      "blocked_by": [
+        "M02"
+      ],
+      "unblocks": [
+        "M16"
+      ],
+      "cost": "medium",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P12"
+      ],
+      "exit_criteria": [
+        "Toolchain admission: Node, pnpm, Playwright browsers and Svelte are selected through the template matrix with pinned versions (D10) before any UI gate runs; package manifests and lockfiles are committed for ui/concordia-tokens",
+        "The Playwright and axe-core suite runs headless in a container with zero violations on the default state; it fails when the focus outline is removed; the focus width and contrast boundary follows D16",
+        "D17 (Bootstrap fork versus no monolithic CSS) is recorded; no `|| true` in the accessibility gate"
+      ],
+      "cheapest_exit": "Build the token file plus one Svelte component and run the axe suite in a container. No compositor and no daemons.",
+      "epics": [
+        {
+          "id": "E04-1",
+          "title": "UI toolchain admission and lockfiles",
+          "requirement_ids": [
+            "REQ-UI-01",
+            "REQ-CI-03",
+            "REQ-P12-08",
+            "REQ-CI-02"
+          ],
+          "acceptance": "Positive: the pinned Node and pnpm versions install from the lockfile. Negative: a lockfile mismatch fails `pnpm install --frozen-lockfile`. Boundary: the gate fails on the first violation and is not suppressed."
+        },
+        {
+          "id": "E04-2",
+          "title": "Concordia tokens and axe-core harness",
+          "requirement_ids": [
+            "REQ-P12-01",
+            "REQ-P12-05",
+            "REQ-P12-06",
+            "REQ-P05-06",
+            "REQ-UI-02",
+            "REQ-P12-02",
+            "REQ-P12-03",
+            "REQ-P12-04",
+            "REQ-P12-07",
+            "REQ-P12-09"
+          ],
+          "acceptance": "Positive: zero violations on the default state. Negative: a stripped outline fails. Boundary: the focus width chosen by D16 passes, one pixel less fails; 3:1 contrast passes and 2.99:1 fails; 200% text scaling causes no overflow. The truncated container digest is recorded as non-pinnable."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M16",
+      "title": "P05 Forum shell state and lifecycle with stubbed IPC",
+      "rank": 14,
+      "state": "blocked",
+      "blocked_by": [
+        "M04",
+        "M14"
+      ],
+      "unblocks": [],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P05"
+      ],
+      "exit_criteria": [
+        "ui/forum-shell has its package manifest and lockfile on the toolchain admitted in M04",
+        "The shell state and typed process lifecycle are unit-tested with compositor, Justitia and Tellus inputs stubbed",
+        "The DecisionRequest consumer is typed against the M14 schema; the P05/P12 token-edge direction (D05) is recorded"
+      ],
+      "cheapest_exit": "Unit-test the Svelte store and lifecycle logic with mocked socket and D-Bus connections.",
+      "epics": [
+        {
+          "id": "E16-1",
+          "title": "Forum shell state and lifecycle with stubs",
+          "requirement_ids": [
+            "REQ-P05-01",
+            "REQ-P05-02",
+            "REQ-P05-03",
+            "REQ-P05-04",
+            "REQ-P05-05",
+            "REQ-P05-07",
+            "REQ-P05-08",
+            "REQ-P04-07"
+          ],
+          "acceptance": "Positive: each lifecycle transition in the source order succeeds. Negative: a transition from Deleted is rejected. Boundary: Rate-Limited to Quarantined at the limit is exercised exactly."
+        },
+        {
+          "id": "E16-2",
+          "title": "Consumer contracts and token-edge decision",
+          "requirement_ids": [
+            "REQ-GRAPH-01",
+            "REQ-P13-04",
+            "REQ-P06-08"
+          ],
+          "acceptance": "Positive: DecisionRequest and Tellus telemetry payloads parse. Negative: an unknown schema version is rejected. Boundary: a telemetry update with zero watts renders without error."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M09",
+      "title": "Cross-repository contract pin (stack.md step 2): one local Imago/Nucleus request/result pair",
+      "rank": 15,
+      "state": "blocked",
+      "blocked_by": [
+        "M18"
+      ],
+      "unblocks": [
+        "M11",
+        "M10"
+      ],
+      "cost": "small",
+      "needs_hardware": false,
+      "needs_external_contract": true,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P01",
+        "P02"
+      ],
+      "exit_criteria": [
+        "The M18 schemas are proposed to cordanaLLM/imago and cordanaLLM/nucleus; acceptance is recorded only when each producer consumes the payload, not a fixed symbol list",
+        "One request/result pair is executed locally against pinned local imago and nucleus checkouts, with a positive result, a negative result (rejected payload with a correlated error) and a boundary result (empty requirement list rejected explicitly)",
+        "Canonical producer identities are confirmed, or the unresolved GitHub identities (cordanaLLM/imago and cordanaLLM/nucleus did not resolve at revision time) and the non-canonical identities in builder workflows are recorded as the blocker",
+        "Simulated output is not accepted as a result; no hosted dispatch is claimed"
+      ],
+      "cheapest_exit": "Run the pair against the pinned local checkouts without any hosted dispatch.",
+      "epics": [
+        {
+          "id": "E09-1",
+          "title": "Imago consumption of the product input manifest",
+          "requirement_ids": [
+            "REQ-P01-01",
+            "REQ-P01-02",
+            "REQ-P01-03",
+            "REQ-P01-04",
+            "REQ-P01-06",
+            "REQ-P01-10"
+          ],
+          "acceptance": "Positive: an accepted request returns image digest, signature reference and boot-evidence fields. Negative: a malformed manifest is rejected with a correlated error. Boundary: a retry at the bound is recorded, and one above is refused."
+        },
+        {
+          "id": "E09-2",
+          "title": "Nucleus consumption of the kernel requirement payload",
+          "requirement_ids": [
+            "REQ-P01-09",
+            "REQ-P07-01",
+            "REQ-P06-05",
+            "REQ-P13-02"
+          ],
+          "acceptance": "Positive: a result returns kernel version/config digest, artifact digest and provenance. Negative: an unsatisfiable feature is rejected with a correlated error. Boundary: an empty requirement list is rejected explicitly."
+        },
+        {
+          "id": "E09-3",
+          "title": "Pair evidence and identity status",
+          "requirement_ids": [
+            "REQ-BOOT-02",
+            "REQ-GOV-02"
+          ],
+          "acceptance": "The retained pair shows correlation id and exact revisions. Simulated output is refused. Identity status is recorded."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M11",
+      "title": "Minimal image build with artifact, signature and boot evidence (stack.md step 4)",
+      "rank": 16,
+      "state": "blocked",
+      "blocked_by": [
+        "M09",
+        "M15"
+      ],
+      "unblocks": [
+        "M13",
+        "M20",
+        "M12"
+      ],
+      "cost": "large",
+      "needs_hardware": true,
+      "needs_external_contract": true,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P01",
+        "P02"
+      ],
+      "exit_criteria": [
+        "BLOCKED until: Imago accepts the M09 manifest and returns an image/UKI with digest and signature; Nucleus supplies the pinned kernel artifact; D07 is closed",
+        "Toolchain admission: QEMU, OVMF, swtpm and the signing tools (cosign or sbsign) are selected through the template matrix with pinned versions before any boot or signing gate",
+        "Unblocking evidence: retained image output digest, signature verification log, and a QEMU/OVMF/swtpm boot log on a KVM-capable host with real PCR 0/4/7/11 readback and dm-verity/LUKS2 unlock records",
+        "Scope: the minimal image carries no UI and no kernel-attached eBPF programs (D20); the accessibility gate attaches when the UI enters an image, and eBPF objects enter through M10 and M12",
+        "The A/B sysupdate transfer is exercised once between root-a and root-b, and observed transitions are compared with the M15 state machine"
+      ],
+      "cheapest_exit": "No cheaper exit exists: this is the first real artifact. Keep it to one image and one boot, and retain every log.",
+      "epics": [
+        {
+          "id": "E11-1",
+          "title": "Imago result consumed and verified",
+          "requirement_ids": [
+            "REQ-P01-01",
+            "REQ-P01-06",
+            "REQ-P01-08"
+          ],
+          "acceptance": "Positive: digest and signature verify locally. Negative: a tampered image digest or bad signature is rejected. Boundary: a producer version exactly at the floor is accepted, and one below is rejected."
+        },
+        {
+          "id": "E11-2",
+          "title": "Real boot evidence replaces the simulated script",
+          "requirement_ids": [
+            "REQ-BOOT-01",
+            "REQ-BOOT-02",
+            "REQ-P01-05",
+            "REQ-P02-02",
+            "REQ-P02-01"
+          ],
+          "acceptance": "Positive: PCR values are read back from swtpm, and the verity root hash matches. Negative: a modified root image fails verity and does not boot to the established state. Boundary: a PCR policy that omits PCR 11 fails to unseal /var. The imported script is not used."
+        },
+        {
+          "id": "E11-3",
+          "title": "Analyzer gate without suppression in the image path",
+          "requirement_ids": [
+            "REQ-CI-01"
+          ],
+          "acceptance": "Positive: the M03 gate passes on the image inputs. Negative: an ignored-key diagnostic fails the image acceptance. Boundary: no step carries failure suppression."
+        },
+        {
+          "id": "E11-4",
+          "title": "A/B transfer exercised",
+          "requirement_ids": [
+            "REQ-P01-04",
+            "REQ-P02-04",
+            "REQ-P02-08"
+          ],
+          "acceptance": "Positive: the second slot is written read-only and boots. Negative: a transfer with a bad signature is discarded. Boundary: watchdog expiry before bless rolls back once."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M10",
+      "title": "eBPF objects re-verified against the Nucleus-pinned kernel in a VM",
+      "rank": 17,
+      "state": "blocked",
+      "blocked_by": [
+        "M09",
+        "M19"
+      ],
+      "unblocks": [
+        "M12"
+      ],
+      "cost": "medium",
+      "needs_hardware": true,
+      "needs_external_contract": true,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P06",
+        "P07",
+        "P13"
+      ],
+      "exit_criteria": [
+        "BLOCKED until: the M09 pair delivers a Nucleus kernel whose version/config digest is recorded",
+        "Hardware: a KVM-capable host is required to boot the Nucleus kernel in a VM (KVM was present on the workstation at revision time; that is not qualifying evidence by itself)",
+        "Toolchain admission: QEMU is selected through the template matrix with a pinned version (shared with M11 if M11 lands first)",
+        "action_gate, scx_cake and kepler_power from M19 load through the verifier on that kernel; sched_ext, BPF LSM and BTF availability are read from its config"
+      ],
+      "cheapest_exit": "Boot the Nucleus kernel directly in QEMU/KVM with a minimal initramfs and repeat the M19 loads. The M19 host-kernel fixture does not close this milestone.",
+      "epics": [
+        {
+          "id": "E10-1",
+          "title": "action_gate on the Nucleus kernel",
+          "requirement_ids": [
+            "REQ-P06-05",
+            "REQ-P07-06"
+          ],
+          "acceptance": "Positive: the program loads and attaches. Negative: the unchecked-pointer variant is rejected. Boundary: BPF LSM absent from the kernel config fails the milestone with a recorded reason."
+        },
+        {
+          "id": "E10-2",
+          "title": "scx_cake on the Nucleus kernel",
+          "requirement_ids": [
+            "REQ-P07-04",
+            "REQ-P07-01"
+          ],
+          "acceptance": "Positive: struct_ops attaches. Negative: the unbounded variant is rejected. Boundary: a kernel without sched_ext is recorded as a Nucleus requirement defect."
+        },
+        {
+          "id": "E10-3",
+          "title": "kepler_power on the Nucleus kernel",
+          "requirement_ids": [
+            "REQ-P13-02"
+          ],
+          "acceptance": "Positive: the tracepoint attaches. Negative: a missing tracepoint is reported, not ignored. Boundary: zero energy delta over an idle interval is recorded as a value, not an error."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M21",
+      "title": "Workstation hardware slices: RAPL energy counters and KVM/Firecracker sandboxing",
+      "rank": 18,
+      "state": "blocked",
+      "blocked_by": [
+        "M05",
+        "M06"
+      ],
+      "unblocks": [],
+      "cost": "medium",
+      "needs_hardware": true,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P10",
+        "P13",
+        "P16"
+      ],
+      "exit_criteria": [
+        "Hardware: a host with readable RAPL counters and KVM; the host model and kernel are recorded",
+        "Toolchain admission: Firecracker (and the jailer, if used) is selected through the template matrix with a pinned version before any microVM run",
+        "Unblocking evidence: measured RAPL energy deltas replace the simulated wattage in the M05 engine; a measured microVM boot time and memory footprint replace the scaffold literals; one AF_VSOCK candidate evaluation round-trips",
+        "Scope: these are host-fixture measurements; re-measurement inside an Aegis image is a later acceptance and is not claimed"
+      ],
+      "cheapest_exit": "Read powercap counters and boot one Firecracker microVM on the workstation. No Aegis image and no GPU.",
+      "epics": [
+        {
+          "id": "E21-1",
+          "title": "RAPL-backed carbon telemetry",
+          "requirement_ids": [
+            "REQ-P13-02",
+            "REQ-P13-01"
+          ],
+          "acceptance": "Positive: SCI is computed from measured energy. Negative: unreadable counters fail closed with an error, not a default value. Boundary: counter wraparound between two samples yields a correct positive delta."
+        },
+        {
+          "id": "E21-2",
+          "title": "Firecracker and AF_VSOCK sandboxing",
+          "requirement_ids": [
+            "REQ-P10-01",
+            "REQ-P10-03",
+            "REQ-P16-04"
+          ],
+          "acceptance": "Positive: a microVM boots and the candidate evaluation round-trips over AF_VSOCK. Negative: a microVM request above the memory limit is refused. Boundary: the 64th microVM on real KVM is accepted and the 65th refused."
+        },
+        {
+          "id": "E21-3",
+          "title": "Venus GPU pricing deferred",
+          "requirement_ids": [
+            "REQ-P10-02"
+          ],
+          "acceptance": "Recorded as deferred to M12. It is not claimed here."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M13",
+      "title": "Release signing and remote delivery (stack.md step 5)",
+      "rank": 19,
+      "state": "blocked",
+      "blocked_by": [
+        "M11"
+      ],
+      "unblocks": [],
+      "cost": "medium",
+      "needs_hardware": false,
+      "needs_external_contract": true,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P01"
+      ],
+      "exit_criteria": [
+        "BLOCKED until: an M11 artifact exists, hosted ruleset/label readback for origin is retained (D11), publication settings and at least one consumer are recorded, and the hosted acceptance checks (sign-off and linear history on historical commits, recorded in the private readiness matrix) are resolved or explicitly waived",
+        "Toolchain admission: the release signing tool and the release workflow's actions are selected and pinned; the unverified toolchain action reference is replaced",
+        "Unblocking evidence: a verified release workflow run, a signature and provenance for the real M11 artifact, and remote ruleset/label readback"
+      ],
+      "cheapest_exit": "Record hosted ruleset/label readback for the existing origin first, and keep the release workflow inactive until an artifact exists.",
+      "epics": [
+        {
+          "id": "E13-1",
+          "title": "Hosted ruleset/label and identity readback",
+          "requirement_ids": [
+            "REQ-GOV-02"
+          ],
+          "acceptance": "Positive: rulesets and labels read back from the hosted side match .github/rulesets and .config/labels.yaml. Negative: a missing required check is reported as drift. Boundary: the proposal identity case difference is resolved or recorded."
+        },
+        {
+          "id": "E13-2",
+          "title": "Signing and provenance for a real artifact",
+          "requirement_ids": [
+            "REQ-REL-01",
+            "REQ-REL-02"
+          ],
+          "acceptance": "Positive: the signature verifies against the M11 artifact. Negative: verification fails against a modified artifact, and an unverified action reference fails workflow lint. Boundary: signing an absent artifact fails rather than producing an empty signature."
+        },
+        {
+          "id": "E13-3",
+          "title": "Publication settings and consumers",
+          "requirement_ids": [
+            "REQ-P01-06"
+          ],
+          "acceptance": "Positive: one recorded consumer enables delivery. Negative: delivery is refused with zero recorded consumers. Boundary: a consumer without a pinned version is not counted."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M20",
+      "title": "TPM2 attestation slice on swtpm: audit-record signing and /var unseal",
+      "rank": 20,
+      "state": "blocked",
+      "blocked_by": [
+        "M11",
+        "M14"
+      ],
+      "unblocks": [],
+      "cost": "medium",
+      "needs_hardware": true,
+      "needs_external_contract": true,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P02",
+        "P06"
+      ],
+      "exit_criteria": [
+        "BLOCKED until: an M11 image boots under QEMU with swtpm",
+        "Hardware: a KVM-capable host with swtpm; a physical TPM2 is optional and recorded separately if used",
+        "Toolchain admission: tpm2-tools (or the chosen TSS library) is selected through the template matrix with a pinned version",
+        "Unblocking evidence: a real PCR quote from swtpm signs one M14 audit record, and /var unseals only under the enrolled PCR policy"
+      ],
+      "cheapest_exit": "Use the M11 VM with swtpm. No physical TPM is required for this milestone.",
+      "epics": [
+        {
+          "id": "E20-1",
+          "title": "PCR quote signs an audit record",
+          "requirement_ids": [
+            "REQ-P06-06",
+            "REQ-P06-01",
+            "REQ-GOV-03"
+          ],
+          "acceptance": "Positive: an audit record signed with the quote verifies. Negative: a record signed under a different PCR state fails verification. Boundary: a quote over exactly PCR 0/4/7/11 is accepted, and a quote missing PCR 11 is rejected."
+        },
+        {
+          "id": "E20-2",
+          "title": "PCR-sealed /var unseal",
+          "requirement_ids": [
+            "REQ-P02-02",
+            "REQ-P02-03"
+          ],
+          "acceptance": "Positive: /var unseals under the enrolled policy. Negative: a wrong PCR policy fails to unseal. Boundary: changing only PCR 7 is enough to prevent unseal."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "M12",
+      "title": "GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths",
+      "rank": 21,
+      "state": "blocked",
+      "blocked_by": [
+        "M08",
+        "M10",
+        "M11",
+        "M17"
+      ],
+      "unblocks": [],
+      "cost": "large",
+      "needs_hardware": true,
+      "needs_external_contract": true,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P03",
+        "P07",
+        "P08",
+        "P09",
+        "P11",
+        "P15"
+      ],
+      "exit_criteria": [
+        "BLOCKED until: a booted M11 image exists, the M10 kernel exposes VFIO/IOMMU, and a DMA-BUF-capable GPU with IOMMU groups is available on a recorded host",
+        "Toolchain admission: the GPU driver stack and, if selected, the template-native-gpu boundary are pinned through the template matrix with an ABI mapping and one backend fixture, or recorded as not needed",
+        "Unblocking evidence: per-path logs with measured values (DMA transfer, preemption and VRAM residency) replacing every hardcoded literal in the scaffolds"
+      ],
+      "cheapest_exit": "Order the paths by hardware availability: DMA-BUF sharing first, then VFIO BAR mapping, then P2PDMA.",
+      "epics": [
+        {
+          "id": "E12-1",
+          "title": "DMA-BUF sharing paths",
+          "requirement_ids": [
+            "REQ-P08-01",
+            "REQ-P11-03",
+            "REQ-P15-02",
+            "REQ-P15-03",
+            "REQ-P08-04"
+          ],
+          "acceptance": "Positive: one measured zero-copy transfer per path. Negative: an invalid DMA-BUF fd is rejected without a CPU copy fallback being counted as success. Boundary: the 64th buffer is accepted and the 65th refused on real hardware."
+        },
+        {
+          "id": "E12-2",
+          "title": "VFIO and P2PDMA paths",
+          "requirement_ids": [
+            "REQ-P03-03",
+            "REQ-P03-06",
+            "REQ-P03-07",
+            "REQ-P09-04"
+          ],
+          "acceptance": "Positive: one measured NVMe-to-GPU transfer. Negative: a device outside its IOMMU group is refused. Boundary: a transfer of exactly 8192 blocks succeeds, and 8193 is refused before dispatch."
+        },
+        {
+          "id": "E12-3",
+          "title": "GPU template boundary",
+          "requirement_ids": [
+            "REQ-P10-02",
+            "REQ-P03-02"
+          ],
+          "acceptance": "Positive: one backend fixture result is retained, or a not-needed decision is recorded. Negative: a Go library as a direct Rust dependency is rejected. Boundary: an ABI mapping with zero functions is not accepted as a boundary."
+        }
+      ],
+      "evidence": []
+    }
+  ]
+}
