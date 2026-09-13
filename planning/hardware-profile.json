@@ -95,8 +95,9 @@
     },
     "secure_boot_enrolment": {
       "present": false,
-      "evidence_command": "bootctl status | grep -i 'secure boot'",
-      "note": "disabled in the running firmware; the maintainer can enable it and enrol keys in UEFI setup, and OVMF with Secure Boot support is installed for virtual machine tests; this is an operator action, not a missing capability"
+      "evidence_command": "virt-fw-vars --input /usr/share/edk2/x64/OVMF_VARS.4m.fd --output vars.secboot.fd --set-pk <guid> pk.crt --add-kek <guid> pk.crt --add-db <guid> pk.crt --secure-boot",
+      "note": "disabled in the running firmware, and the host carries vendor keys with SetupMode off, so host enrolment needs a firmware-setup visit. That does not gate guest work: a variable store with platform key, KEK and db enrolled and SecureBootEnable set was generated here from the shipped OVMF_VARS with virt-fw-vars, and OVMF_CODE.secboot is installed",
+      "guest_enrolment_proven": true
     },
     "resizable_bar": {
       "present": true,
