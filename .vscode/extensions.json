@@ -1,8 +1,19 @@
 {
   "recommendations": [
-    "cordanaLLM.standards-vscode",
-    "github.copilot",
+    "rust-lang.rust-analyzer",
+    "tamasfe.even-better-toml",
+    "llvm-vs-code-extensions.vscode-clangd",
+    "svelte.svelte-vscode",
+    "ms-python.python",
+    "redhat.vscode-yaml",
+    "DavidAnson.vscode-markdownlint",
+    "bierner.markdown-mermaid",
+    "timonwong.shellcheck",
+    "ms-vscode.makefile-tools",
     "eamodio.gitlens",
+    "github.copilot"
+  ],
+  "unwantedRecommendations": [
     "golang.go"
   ]
 }

@@ -1,41 +1,54 @@
 {
+  "version": "2.0.0",
   "tasks": [
     {
+      "label": "Aegis: preparation gate",
+      "detail": "make verify-all — planning structure, privacy, licence digests, roadmap states and governance",
+      "type": "shell",
       "command": "make verify-all",
-      "group": {
-        "isDefault": true,
-        "kind": "test"
-      },
-      "label": "Standards: Verify All",
-      "problemMatcher": [
-        "$go"
-      ],
-      "type": "shell"
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
     },
     {
-      "command": "make build",
-      "group": {
-        "isDefault": true,
-        "kind": "build"
-      },
-      "label": "Standards: Build Binaries",
-      "problemMatcher": [
-        "$go"
-      ],
-      "type": "shell"
+      "label": "Aegis: readiness",
+      "detail": "make readiness — component blockers and the ready roadmap milestones",
+      "type": "shell",
+      "command": "make readiness",
+      "problemMatcher": []
     },
     {
-      "command": "standardsctl compile-context",
-      "label": "Standards: Compile Context",
-      "problemMatcher": [],
-      "type": "shell"
+      "label": "Aegis: REUSE lint",
+      "detail": "make verify-reuse — licence coverage for every tracked file",
+      "type": "shell",
+      "command": "make verify-reuse",
+      "problemMatcher": []
     },
     {
-      "command": "standardsctl audit",
-      "label": "Standards: Audit Invariants",
-      "problemMatcher": [],
-      "type": "shell"
+      "label": "Praetor: compile agent contexts",
+      "detail": "Regenerate the client projections from the canonical AGENTS.md",
+      "type": "shell",
+      "command": "praetorctl compile-context",
+      "problemMatcher": []
+    },
+    {
+      "label": "Praetor: audit invariants",
+      "type": "shell",
+      "command": "praetorctl audit",
+      "problemMatcher": []
+    },
+    {
+      "label": "Praetor: regenerate local devcontainer",
+      "detail": "The bootstrap bundle is local only; .devcontainer/ is gitignored",
+      "type": "shell",
+      "command": "praetorctl devcontainer -source-root ../praetor",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docs: serve the portal",
+      "detail": "Needs the pinned documentation dependencies: pip install -r docs/requirements.txt",
+      "type": "shell",
+      "command": "mkdocs serve",
+      "problemMatcher": []
     }
-  ],
-  "version": "2.0.0"
+  ]
 }

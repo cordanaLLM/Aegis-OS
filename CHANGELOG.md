@@ -18,6 +18,7 @@ version and is never released.
 - MkDocs documentation portal published to GitHub Pages, with the `docs:seo-portal` facet and pinned documentation dependencies.
 
 ### Changed (2026-09-13, later)
+- Replaced the Go-shaped VS Code configuration with one that matches this repository: Rust, eBPF/C, Svelte, Python, YAML and Markdown extensions verified to exist on Open VSX, tasks that only run commands this repository actually provides, and search exclusions for the private working directory. `praetorctl editors verify` reports drift from Praetor's generated template by design; it gates nothing.
 - The Praetor devcontainer bootstrap bundle is local-only and no longer tracked; CI builds praetorctl from a pinned published Praetor commit instead of the bundle.
 
 ### Added
