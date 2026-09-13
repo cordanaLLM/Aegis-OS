@@ -37,7 +37,7 @@ class PreparationTests(unittest.TestCase):
         self.addCleanup(self.patch.stop)
         (self.root / "planning").mkdir()
         self.data = {
-            "stage": "planning",
+            "stage": "activation",
             "components": [
                 {
                     "id": f"P{i:02}",
@@ -59,6 +59,32 @@ class PreparationTests(unittest.TestCase):
     def test_exact_inventory_passes(self):
         self.write_components()
         self.assertEqual(len(check.verify_components()), 16)
+
+    def test_the_tracked_inventory_declares_the_required_stage(self):
+        """Positive: the literal this gate requires is the literal the tracked
+        planning/components.json declares, so the repository's machine-readable
+        self-description and the check that enforces it cannot drift apart."""
+        repo = Path(check.__file__).resolve().parent.parent
+        tracked = json.loads((repo / "planning/components.json").read_text())
+        self.assertEqual(tracked["stage"], check.DECLARED_STAGE)
+
+    def test_a_stale_or_overclaiming_stage_fails(self):
+        """Negative: the superseded token, an invented one, and any token that
+        would claim a product are all refused rather than quietly accepted."""
+        for stage in ("planning", "construction", "shipping", "released", ""):
+            self.data["stage"] = stage
+            self.write_components()
+            with self.assertRaises(ValueError):
+                check.verify_components()
+
+    def test_a_near_miss_stage_fails(self):
+        """Boundary: only the exact literal passes - not a case variant, not a
+        surrounding space, and not the adjacent component-status word."""
+        for stage in ("Activation", "ACTIVATION", " activation", "activation ", "activated"):
+            self.data["stage"] = stage
+            self.write_components()
+            with self.assertRaises(ValueError):
+                check.verify_components()
 
     def test_missing_and_duplicate_subsystems_fail(self):
         for rows in [self.data["components"][:-1], [self.data["components"][0]] * 16]:

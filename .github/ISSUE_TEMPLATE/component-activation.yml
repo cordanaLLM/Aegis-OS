@@ -1,16 +1,21 @@
 ---
 name: "Component Activation Request"
-description: "Propose promoting one component from proposal to active implementation"
+description: >-
+  Propose promoting one component from proposal to activated against recorded evidence
 title: "[ACTIVATE]: P"
 labels: ["component-activation", "triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        Activation requires the four preconditions from `GOVERNANCE.md`:
-        component manifest, dependency lock, interface contract, and
-        positive, negative and boundary tests. Reference the milestone in
-        `planning/roadmap.json` that this request unblocks.
+        Activation requires an `activation_evidence` block the gate accepts
+        (see `GOVERNANCE.md` and `tools/verify_preparation.py`): a component
+        directory named after the component, a git-tracked manifest inside it
+        whose `[package] name` matches, a git-tracked dependency lock, a test
+        command naming the component, and the milestone in
+        `planning/roadmap.json` this request closes. The component's remaining
+        activation blockers stay recorded. Read `planning/components.json` for
+        the recorded precedent before filing.
   - type: input
     id: component
     attributes:
@@ -22,7 +27,7 @@ body:
     id: milestone
     attributes:
       label: "Roadmap milestone"
-      placeholder: "M03"
+      placeholder: "Mnn"
     validations:
       required: true
   - type: textarea
@@ -53,5 +58,14 @@ body:
       label: "Evidence limits"
       description: >-
         State what the tests do NOT prove (no build, boot, hardware, or release claims).
+    validations:
+      required: true
+  - type: textarea
+    id: blockers
+    attributes:
+      label: "Remaining activation blockers"
+      description: >-
+        The blockers that stay open after activation; the gate requires this list to remain
+        non-empty.
     validations:
       required: true

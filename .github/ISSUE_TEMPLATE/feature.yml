@@ -1,6 +1,8 @@
 ---
 name: "Feature Request"
-description: "Propose a change to the roadmap, a planning artifact, or governance tooling"
+description: >-
+  Propose a change to a crate, a build or image definition, the roadmap, a planning artifact,
+  the documentation, or governance tooling
 title: "[FEATURE]: "
 labels: ["enhancement", "triage"]
 body:
@@ -24,6 +26,8 @@ body:
       options:
         - "Roadmap and milestones"
         - "Planning inventory (planning/components.json)"
+        - "Rust workspace and crates (crates/)"
+        - "Image, partition and update definitions (build/)"
         - "Integration contracts (Imago, Nucleus, Golusoris)"
         - "Governance and verification tooling"
         - "Documentation"

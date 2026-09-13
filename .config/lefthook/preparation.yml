@@ -1,6 +1,7 @@
 # Project preparation gate layered over Praetor's generated governance hooks.
 # compile-context --verify and audit are supplied by the generated context-check
-# and hiss-audit jobs; this job runs only the repository's own checks.
+# and hiss-audit jobs; this job runs the repository's Python checks only. The
+# rest of the gate is what `make verify-all` runs.
 pre-commit:
   commands:
     preparation:

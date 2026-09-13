@@ -3,8 +3,8 @@ repository:
     owner: cordanaLLM
     name: Aegis-OS
     visibility: public
-    description: "Aegis OS: sovereign, image-based Linux with sixteen proposed subsystems; Praetor-governed planning repository"
-    homepage: "https://github.com/cordanaLLM/Aegis-OS"
+    description: "Aegis OS: sovereign, image-based Linux; components are activated one at a time against recorded evidence; Praetor-governed. No product image, hardware boot or release yet."
+    homepage: "https://cordanallm.github.io/Aegis-OS/"
     topics:
       - linux
       - operating-system

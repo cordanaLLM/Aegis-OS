@@ -4,9 +4,9 @@ Status: reviewed planning data
 
 ## Purpose and limits
 
-This register reconciles the sixteen proposed subsystems against the imported
-planning sources and records what is missing before any of them can be
-activated. It is planning data only.
+This register reconciles the sixteen subsystems against the imported planning
+sources and records what each one was missing before it could be activated. It
+is planning data only.
 
 - It records **no** build, boot, image, hardware, accessibility or release
   evidence, and its existence closes none of those gates. They remain blocked

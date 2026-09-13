@@ -1,14 +1,15 @@
 <!-- markdownlint-disable MD013 -->
 # Support
 
-Aegis OS is a planning repository; there is no runnable OS, image, or release
-yet (see `README.md` and `docs/roadmap/`).
+There is no runnable Aegis OS, image, or release yet; `make readiness` prints
+the current component and milestone state (see also `README.md` and
+`docs/roadmap/`).
 
 - **Documentation**: start with `README.md`, `docs/integration/stack.md`, and
   `docs/roadmap/`.
 - **Questions**: open a [GitHub
   Discussion](https://github.com/cordanaLLM/Aegis-OS/discussions).
-- **Bugs in planning artifacts or governance tooling**: open a [Bug
+- **Bugs**: open a [Bug
   Report](https://github.com/cordanaLLM/Aegis-OS/issues/new?template=bug.yml).
 - **Component activation**: open a [Component Activation
   Request](https://github.com/cordanaLLM/Aegis-OS/issues/new?template=component-activation.yml).

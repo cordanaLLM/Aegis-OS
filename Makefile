@@ -21,17 +21,18 @@ verify-all:
 	$(PRAETORCTL) audit
 	@if [ -f Cargo.toml ]; then \
 		printf '%s\n' 'Workspace manifest present: running the crate gate.'; \
-		$(MAKE) --no-print-directory verify-rust; \
+		$(MAKE) --no-print-directory verify-rust || exit 1; \
 	else \
 		printf '%s\n' 'SKIP: no Cargo.toml at the repository root; no crate gate to run.'; \
 	fi
-	@printf '%s\n' 'PASS: preparation/governance only; OS build, boot and release remain blocked.'
+	@printf '%s\n' 'PASS: every gate above reported its own scope; a SKIP line means that gate did not run here. Image build, boot, hardware, accessibility and release remain blocked.'
 
-# The crate gate for every activated workspace member, and the direct entry
-# point when only the Rust half needs re-running. It requires the
-# rustup-installed toolchain that rust-toolchain.toml pins (D61); the toolchain
-# is reported before the gates run, so the evidence names the rustc that
-# actually executed rather than a version string.
+# The crate gate for every workspace member listed in Cargo.toml, including
+# crates whose component planning/components.json still records as a proposal,
+# and the direct entry point when only the Rust half needs re-running. It
+# requires the rustup-installed toolchain that rust-toolchain.toml pins (D61);
+# the toolchain is reported before the gates run, so the evidence names the
+# rustc that actually executed rather than a version string.
 verify-rust:
 	rustup show active-toolchain
 	rustup which rustc
@@ -115,5 +116,5 @@ readiness:
 test: verify-all
 
 build boot release:
-	@printf '%s\n' '$@ blocked: this is a planning repository. See docs/integration/stack.md and make readiness.' >&2
+	@printf '%s\n' '$@ blocked: no image build, boot or release gate is open in this repository. See docs/integration/stack.md and make readiness.' >&2
 	@exit 1

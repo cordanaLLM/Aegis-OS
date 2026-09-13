@@ -34,9 +34,12 @@ Text provenance: the enclosed text is the canonical English text published by
 the [SPDX License List](https://spdx.org/licenses/EUPL-1.2), which links the
 [European Commission
 source](https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12).
-`make verify-all` fails if the enclosed text differs from the pinned digest;
-`make verify-reuse` runs the REUSE 3.3 linter when the `reuse` tool is
-installed.
+`make verify-all` fails if the enclosed text differs from the pinned digest.
+`make verify-reuse` runs the REUSE linter (`reuse lint`) over the allocation in
+`REUSE.toml`, which follows REUSE specification 3.3. It is a separate target:
+`make verify-all` does not run it, and it needs the `reuse` tool installed
+locally. The admitted version is recorded in
+`docs/roadmap/toolchain-admission.md`.
 
 Kernel-loaded eBPF programs must additionally declare the licence string the
 kernel requires to load GPL-only helpers. The EUPL v1.2 Appendix lists GPL v2

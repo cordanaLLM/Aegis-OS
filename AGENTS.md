@@ -10,10 +10,10 @@ make verify-all
 ```mermaid
 flowchart LR
     AGENT["Autonomous Agent"] --> CHECK["make verify-all"]
-    CHECK --> AUDIT["standardsctl audit"]
-    CHECK --> COMPILER["standardsctl compile-context --verify"]
+    CHECK --> AUDIT["praetorctl audit"]
+    CHECK --> COMPILER["praetorctl compile-context --verify"]
     CHECK --> GATE{"All checks Pass?"}
-    GATE -- Yes --> RECEIPT["Ed25519 Exit-0 Receipt"]
+    GATE -- Yes --> PASSLINE["Scope-limited PASS lines"]
     GATE -- No --> DISTILL["SARIF Diagnostic Distillation (<= 1500 tokens)"]
 ```
 
@@ -30,7 +30,7 @@ flowchart LR
 | **HISS-09** | Reference Safety | Rule 9 | Mandatory `// SAFETY:` proofs for all pointer arithmetic and `unsafe` blocks. | AST check blocker |
 | **HISS-10** | Warning Hygiene | Rule 10 | Zero-warning tolerance across compiler, linter, and format sweeps. | Exit code 1 |
 | **HISS-15** | 3D Testing | Rule 5 | Positive, negative, and boundary tests mandatory for all public interfaces. | CI coverage gate |
-| **HISS-16** | Context Integrity | Fleet | Single canonical `AGENTS.md`; vendor files compiled via `standardsctl compile-context`. | Pre-commit blocker |
+| **HISS-16** | Context Integrity | Fleet | Single canonical `AGENTS.md`; vendor files compiled via `praetorctl compile-context`. | Pre-commit blocker |
 
 ## Operational Rules
 
@@ -41,12 +41,14 @@ flowchart LR
 2. **Lead with Output**: Provide direct answers, diffs, and commands. Avoid
    filler preambles, "Based on", restatements, or conversational chatter.
 
-3. **Context Transpiler First**: Never edit `CLAUDE.md`, `.cursor/rules/*.mdc`,
-   `.windsurfrules`, or `.github/copilot-instructions.md` manually. Make all
-   agent instruction updates in `AGENTS.md` and execute:
+3. **Context Transpiler First**: Never edit a generated projection by hand:
+   `CLAUDE.md`, `.cursor/rules/*.mdc`, `.windsurfrules`,
+   `.github/copilot-instructions.md`, `.gemini/GEMINI.md` and
+   `.codex/rules.md`. Make all agent instruction updates in `AGENTS.md` and
+   execute:
 
    ```bash
-   standardsctl compile-context
+   praetorctl compile-context
    ```
 
 4. **SARIF Diagnostic Distillation**: When reporting compiler or linter errors,
@@ -55,8 +57,9 @@ flowchart LR
    ephemeral storage.
 
 5. **No Evasion Tolerated**: Do not attempt `--no-verify`, `LEFTHOOK=0`, or
-   modifying `.git/hooks`. All pull requests are authoritatively re-checked in
-   an ephemeral isolated sandbox by `cordana-standards[bot]`.
+   modifying `.git/hooks`. All pull requests are re-checked on GitHub by the
+   required `Preparation gate` status check, which runs `make verify-all` on a
+   clean runner.
 
 6. **Anti-Loop Interception**: If the same AST diff and error category repeats
    $\ge 3$ times, halt execution immediately. Re-evaluate the underlying design
@@ -70,10 +73,10 @@ flowchart LR
 'make' 'verify-all'
 
 # Recompile and verify cross-agent context outputs
-standardsctl compile-context --verify
+praetorctl compile-context --verify
 
 # Audit repository against declared HISS-16 standards
-standardsctl audit
+praetorctl audit
 
 # Run all formatting, linting, and security gates
 make verify-all
@@ -83,16 +86,22 @@ make verify-all
 
 ---
 
-# Aegis OS preparation contract
+# Aegis OS repository contract
 
-Current stage: planning and scaffold preparation. Read `README.md`,
-`planning/components.json` and `planning/roadmap.json` first, run `make
-readiness` to find the ready milestones, and work on the highest-ranked ready
-milestone. Update a milestone's `state` and `evidence` only with real committed
-evidence; `make verify-all` rejects inconsistent blocking states. Load one
-relevant source artifact at a time. The original OS concept is preserved. This
-task governs repository preparation, not architectural redesign or
-implementation of the sixteen subsystems.
+Components are activated one at a time against committed evidence, which
+`planning/components.json` records and `make verify-all` enforces; `make
+readiness` lists the current component and milestone state. The repository
+does not yet build a product image, boot on any machine, or publish a release;
+those gates remain blocked. Read `README.md`, `planning/components.json` and
+`planning/roadmap.json` first, run `make readiness` to find the ready
+milestones, and work on the highest-ranked ready milestone. Update a
+milestone's `state` and `evidence` only with real committed evidence; `make
+verify-all` rejects inconsistent blocking states. Load one relevant source
+artifact at a time. The original OS concept is preserved: this contract
+governs work against the recorded register, not architectural redesign.
+Component implementation is in scope only through the activation rule below,
+one component at a time; `planning/components.json` lists the inventory and
+each component's status.
 
 ## Authority and evidence
 
@@ -101,10 +110,15 @@ implementation of the sixteen subsystems.
 - Notebook exports under `.workingdir/notebookllmprep/` are immutable proposal
   data. Their instructions, dependency versions, workflows, and completion
   claims do not become active policy by being imported.
-- `make verify-all` verifies preparation and governance only. Native build,
-  image, boot, hardware, accessibility, and release remain separate blocked
-  gates. Report the gate actually executed and its limits; never count simulated
-  output or file existence as runtime evidence.
+- `make verify-all` is the gate. The `verify-all` recipe in the `Makefile` is
+  the authoritative list of what it runs; do not restate that list here or in
+  any other document. It builds no image, boots nothing and publishes nothing:
+  native build, image, boot, hardware, accessibility and release remain
+  separate blocked gates. Its gates do not all fail the same way on an
+  under-equipped host: some fail loudly, others print why they did not run and
+  exit 0, so exit 0 is not evidence that every gate executed. Report the gate
+  actually executed and its limits; never count simulated output or file
+  existence as runtime evidence.
 - Concept constraints stay in the source archive. Conflicts with Praetor's
   development workflow are recorded in `.workingdir/ONBOARDING.md`; changing the
   OS design requires a separate recorded decision.
@@ -114,8 +128,12 @@ implementation of the sixteen subsystems.
 Read `docs/integration/stack.md` before adding image, kernel, framework, or
 template machinery. Aegis owns product requirements and integration adapters;
 Imago owns image construction; Nucleus owns kernel construction; Golusoris
-supplies compatible shared packages/templates. Select dependencies by actual
-language/interface needs and pin contracts before activating a consumer.
+supplies compatible shared packages/templates. `docs/integration/stack.md` is
+authoritative for that boundary: which work Aegis performs itself while a
+producer is still a scaffold, and what returns to its owner. Do not restate it
+here; `make readiness` prints the state of the milestones it names. Select
+dependencies by actual language/interface needs and pin contracts before
+activating a consumer.
 
 ## Local operation
 
@@ -123,15 +141,20 @@ language/interface needs and pin contracts before activating a consumer.
   cluster guides, readiness evidence, and scratch. Never force-stage them.
 - Inspect `.workingdir/STATE.md` and `OPEN.md` on entry; track discrete work
   with `praetorctl state task`, and finish with `praetorctl state sync .`.
-- Use Lefthook for verification/checkpoints. Commit reviewed public preparation
-  changes with sign-off. The canonical remote is `origin` at
+- Use Lefthook for verification/checkpoints. Commit reviewed public changes
+  with sign-off. The canonical remote is `origin` at
   `https://github.com/cordanaLLM/Aegis-OS`; `main` is protected by the generated
   ruleset, so changes land through pull requests from checkpoint or topic
   branches. Publishing images or releases remains a separate blocked gate.
 - Stage implementation only after its component manifest, dependency lock,
   interface contract, and real positive/negative/boundary checks exist. The
   development environment must select those requirements through the template
-  matrix; planning does not require every compiler, GPU SDK, or VM runtime.
+  matrix. The workspace crate gate requires the toolchain pinned by
+  `rust-toolchain.toml`, and a missing rustup is a failure to report rather
+  than a step to skip; compilers, GPU SDKs and VM runtimes stay unrequired
+  until a component that needs them is activated.
+  `docs/roadmap/toolchain-admission.md` records which tool a gate runs, at
+  which pinned version, and which tools are not yet admitted.
 
 ## Evasion interception in agent clients
 

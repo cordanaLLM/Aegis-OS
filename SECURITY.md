@@ -3,14 +3,18 @@
 
 ## Supported Versions
 
-This is a planning repository with no releases; only the current default branch
-is maintained. Vulnerability reports about imported proposal data are handled as
-documentation corrections.
+Only the current default branch is maintained; there is no released version to
+support. Reports about imported proposal data are handled as documentation
+corrections. Reports against tracked code, the declarative definitions in
+`build/`, or the verification tooling are handled as code fixes on the default
+branch.
 
 ## Scope
 
-This repository contains planning artifacts and governance tooling only; no OS
-images or binaries are released.
+This repository contains planning artifacts, governance and verification
+tooling, the declarative image, partition and update definitions, and library
+crates. It builds no OS image, ships no binaries, and publishes no releases;
+the image, boot, hardware, accessibility and release gates remain blocked.
 
 ## Reporting a Vulnerability
 

@@ -1,6 +1,9 @@
 ---
-# Preparation gate: governance, planning structure, licence texts and REUSE only.
-# It builds nothing from the OS concept and never enables image, boot or release.
+# Preparation gate: the status check .github/rulesets/main.json requires on
+# pull requests. It runs `make verify-all`, so it carries whatever gates that
+# target carries, plus the licence, lint and sign-off steps listed below. It
+# builds no product image, boots nothing and publishes no release: the image,
+# boot, hardware, accessibility and release gates stay blocked.
 name: Preparation gate
 
 on:

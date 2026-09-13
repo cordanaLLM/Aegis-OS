@@ -36,6 +36,17 @@ ROADMAP_STATES = {"done", "ready", "blocked"}
 # command must name the component too.
 COMPONENT_STATUSES = {"proposal", "activated"}
 ACTIVATED_STATUS = "activated"
+# The repository's own machine-readable self-description, required as an exact
+# literal so it cannot drift. "activation" names the process the inventory is
+# in: components leave "proposal" one at a time under the evidence rule above,
+# and at least one already carries that evidence, which is what stopped
+# "planning" from being true. It is NOT a runtime or product claim - native
+# build, image, boot, hardware, accessibility and release stay separate blocked
+# gates, so a token such as "shipping" or "released" still fails closed - and it
+# stays true while components are still being activated, so landing the next
+# milestone does not require editing it. `make readiness` prints which
+# components and milestones are where; this field records no count.
+DECLARED_STAGE = "activation"
 ACTIVATION_EVIDENCE = (
     "component_path",
     "manifest_path",
@@ -165,8 +176,8 @@ def read_json(path):
 def verify_components():
     data = read_json(ROOT / "planning/components.json")
     components = data["components"]
-    if data["stage"] != "planning" or len(components) != 16:
-        raise ValueError("Expected explicitly declared planning stage and 16 components")
+    if data["stage"] != DECLARED_STAGE or len(components) != 16:
+        raise ValueError(f"Expected stage declared exactly as {DECLARED_STAGE!r} and 16 components")
     expected = {f"P{i:02}" for i in range(1, 17)}
     if {row["id"] for row in components} != expected:
         raise ValueError("Missing or duplicate subsystem IDs")
@@ -509,8 +520,10 @@ def main():
                 f"{row['title']}; blocked by {blockers}"
             )
     print(
-        "PASS: planning structure, privacy, licence texts and roadmap states; "
-        "native build/boot/release unverified"
+        "PASS: the tracked register under planning/ - inventory, privacy, licence "
+        "digests, source citations, hardware profile, roadmap states and ranking - "
+        "and the roadmap document against it. No build, image, boot, hardware, "
+        "accessibility or release evidence is checked here."
     )
 
 
