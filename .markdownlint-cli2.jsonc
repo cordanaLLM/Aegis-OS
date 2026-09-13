@@ -1,0 +1,19 @@
+// Markdown lint policy for this repository (editor extension and CLI read this file).
+// MD013 (line length) is off: generated planning tables and cited requirement rows
+// exceed any fixed width. MD060 (table column style) is off for the same reason.
+{
+  "config": {
+    "default": true,
+    "MD013": false,
+    "MD060": false
+  },
+  "globs": ["**/*.md"],
+  "ignores": [
+    ".workingdir/**",
+    ".workingdir2/**",
+    "site/**",
+    "LICENSES/**",
+    // Generated verbatim by praetorctl paperclip; fix upstream, not here.
+    ".paperclip/rules.md"
+  ]
+}
