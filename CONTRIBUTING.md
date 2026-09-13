@@ -50,6 +50,12 @@ audit .` and the pre-push gate's Flavor Conformance stage find the state
 ledgers. `make verify-sources` additionally needs the private source archive
 and is expected to fail on a clone without it.
 
+The `.vscode/` configuration is maintained here for this repository's actual
+stack and deliberately differs from Praetor's generated editor template, so
+`praetorctl editors verify` reports drift. That command gates nothing; do not
+run `praetorctl editors` in this repository, because it would restore the
+Go-oriented template. Configurations for other editors stay as generated.
+
 ## Licensing
 
 Read [`LICENSING.md`](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSING.md) before contributing: technical material is
