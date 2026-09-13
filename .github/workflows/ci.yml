@@ -18,6 +18,7 @@ env:
   LEFTHOOK_VERSION: "2.1.12"
   LEFTHOOK_SHA256: "22ff1ad48d1a0f4dca8d6b7e920056c6a9015f9204e5b693858ed9c2db759a16"
   REUSE_VERSION: "6.2.0"
+  MARKDOWNLINT_VERSION: "0.23.2"
   # Published Praetor commit that builds the praetorctl this gate pins.
   PRAETOR_COMMIT: "8d617bddf08042ad828d8a5c3c7852c4f000ce5d"
 
@@ -84,6 +85,12 @@ jobs:
 
       - name: REUSE compliance
         run: pipx run "reuse==${REUSE_VERSION}" lint
+
+      - name: Markdown lint
+        run: npx --yes "markdownlint-cli2@${MARKDOWNLINT_VERSION}"
+
+      - name: Shell lint
+        run: git ls-files '*.sh' | xargs -r shellcheck -x
 
       - name: DCO sign-off on pull request commits
         if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')

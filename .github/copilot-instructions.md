@@ -130,7 +130,6 @@ language/interface needs and pin contracts before activating a consumer.
   development environment must select those requirements through the template
   matrix; planning does not require every compiler, GPU SDK, or VM runtime.
 
-
 ## Evasion interception in agent clients
 
 `AGENTS.md` rule 5 is enforced mechanically, not only by instruction. The

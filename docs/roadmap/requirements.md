@@ -238,7 +238,7 @@ Each requirement cites a source id and the first 12 hex characters of its sha256
 | ID | Requirement | Source |
 | --- | --- | --- |
 | REQ-GOV-01 | The proposed Cargo workspace (export-006) declares EUPL-1.2 as the workspace package licence. | export-006 6e694e01e136 |
-| REQ-GOV-02 | The proposed Cargo workspace declares repository https://github.com/cordanaLLM/aegis-os, which differs in letter case from the configured origin cordanaLLM/Aegis-OS; the identity must be reconciled. | export-006 6e694e01e136 |
+| REQ-GOV-02 | The proposed Cargo workspace declares repository <https://github.com/cordanaLLM/aegis-os>, which differs in letter case from the configured origin cordanaLLM/Aegis-OS; the identity must be reconciled. | export-006 6e694e01e136 |
 | REQ-GOV-03 | The exported agent instructions require every agent execution path with side effects (file mutation, network transmission, configuration change, financial transaction) to pass through aegis-justitia pre-execution approval gates. | export-001 f32a74743af5 |
 
 ### Graph contradictions

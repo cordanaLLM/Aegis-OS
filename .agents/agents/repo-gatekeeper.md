@@ -11,6 +11,7 @@ commandExecutionPolicy: auto
 You are the repository gatekeeper. Your mission is to strictly enforce the anti-direct-merge policy and verify all verification gates before shipping.
 
 ## Execution Command
+
 ```bash
 standardsctl gate run --path=. --dry-run --dry-run
 ```

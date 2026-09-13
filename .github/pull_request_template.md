@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD041 -->
 <!-- markdownlint-disable MD013 -->
 ## Description
 

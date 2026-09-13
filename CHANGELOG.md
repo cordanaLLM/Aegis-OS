@@ -13,15 +13,19 @@ version and is never released.
 ## 0.0.0 (preparation history, never released)
 
 ### Added (2026-09-13, later)
+
 - Registered the anti-evasion interceptor as committed client settings for Claude Code, Codex CLI, Gemini CLI, Copilot, Cursor and Windsurf, with eleven payload-shape tests.
 - `VERSION` and a release train (release-please) that keeps the changelog and version current in a release pull request which stays blocked until roadmap milestone M13. The train itself runs only when the repository variable `RELEASE_TRAIN_ENABLED` is `true`, because the organization currently forbids Actions from opening pull requests.
 - MkDocs documentation portal published to GitHub Pages, with the `docs:seo-portal` facet and pinned documentation dependencies.
 
 ### Changed (2026-09-13, later)
+
+- Markdown and shell lint are clean and enforced in CI: a repository markdownlint policy (line-length and generated-table rules off, generated Paperclip rules ignored), blank-line and bare-URL fixes across the tracked documents, and a shellcheck fix in the setup script.
 - Replaced the Go-shaped VS Code configuration with one that matches this repository: Rust, eBPF/C, Svelte, Python, YAML and Markdown extensions verified to exist on Open VSX, tasks that only run commands this repository actually provides, and search exclusions for the private working directory. `praetorctl editors verify` reports drift from Praetor's generated template by design; it gates nothing.
 - The Praetor devcontainer bootstrap bundle is local-only and no longer tracked; CI builds praetorctl from a pinned published Praetor commit instead of the bundle.
 
 ### Added
+
 - Split licensing: EUPL-1.2 for technical material and CC BY-SA 4.0 for original prose, with REUSE metadata, pinned canonical licence texts, and a fail-closed digest check in `make verify-all`.
 - Community and governance scaffold: code of conduct, governance, maintainers, support, code owners, issue templates, and Renovate configuration.
 - Source-cited roadmap under `docs/roadmap/` with machine-readable milestone blocking states in `planning/roadmap.json`, validated by `make verify-all` and listed by `make readiness`.
@@ -30,10 +34,12 @@ version and is never released.
 - `CONTEXT.md` domain glossary and `make verify-reuse`.
 
 ### Changed
+
 - Recorded maintainer decisions D01-D20 in the roadmap and component inventory; ADR-0001 (pure Rust compositor) and ADR-0002 (no Steamworks in the image) supersede the corresponding blueprint requirements.
 - Governance documents now state the Rust-neutral I/O timeout rule, the DCO sign-off requirement, the planning-stage security scope, and the ADR numbering convention consistently.
 - The pre-push gate runs Praetor's pipeline in dry-run mode while the repository has no Go module; Go-only hook jobs were removed.
 - Reserved implementation directories name the components they will host and their activation preconditions.
 
 ### Fixed
+
 - Duplicate `.gitignore` rule, stale `standardsctl` reference in the pull request template, and the gatekeeper persona's invalid `--target` flag.
