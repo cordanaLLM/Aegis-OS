@@ -98,3 +98,31 @@ pub fn reviewed_repart_set() -> Result<Vec<(String, String)>, Box<dyn std::error
 pub fn reviewed_transfer_set() -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
     reviewed_directory("sysupdate.d", "transfer")
 }
+
+/// Reads one reviewed payload from `build/`, returning its text.
+///
+/// # Errors
+///
+/// Returns the I/O error when the reviewed payload cannot be read, so a
+/// renamed or deleted payload fails the suite instead of silently skipping it.
+pub fn reviewed_payload(relative: &str) -> Result<String, Box<dyn std::error::Error>> {
+    Ok(std::fs::read_to_string(
+        repository_root().join("build").join(relative),
+    )?)
+}
+
+/// Reads the recorded reference profile document.
+///
+/// The tests that use it are checking a schema against a measured machine, so
+/// a missing profile is a failure rather than a skipped case.
+///
+/// # Errors
+///
+/// Returns the I/O error when `planning/hardware-profile.json` cannot be read.
+pub fn reference_profile_text() -> Result<String, Box<dyn std::error::Error>> {
+    Ok(std::fs::read_to_string(
+        repository_root()
+            .join("planning")
+            .join("hardware-profile.json"),
+    )?)
+}

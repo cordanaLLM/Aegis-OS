@@ -1,8 +1,8 @@
 SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
-.PHONY: verify-all verify-rust verify-systemd verify-sources verify-reuse readiness test \
-	build boot release
+.PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-sources verify-reuse \
+	readiness test build boot release
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
 # too: a repository whose instructions say "run make verify-all" must not have a
@@ -16,6 +16,7 @@ verify-all:
 	python3 -B -m unittest discover -s tools -p 'test_*.py'
 	python3 tools/verify_preparation.py
 	$(MAKE) --no-print-directory verify-systemd
+	$(MAKE) --no-print-directory verify-mkosi
 	$(PRAETORCTL) compile-context --verify
 	$(PRAETORCTL) audit
 	@if [ -f Cargo.toml ]; then \
@@ -48,6 +49,15 @@ verify-rust:
 # it did not run instead of reporting a pass. It never suppresses a failure.
 verify-systemd:
 	python3 tools/verify_systemd_definitions.py
+
+# The P01 image-definition gate (M18): build/mkosi.conf is parsed by the host's
+# own mkosi, with the floor cases run from scratch copies. It guards itself the
+# same way verify-systemd does: a host without mkosi, or one below the admitted
+# floor, prints why it did not run instead of reporting a pass. `mkosi summary`
+# resolves configuration and prints it; it downloads nothing and builds nothing,
+# so this gate validates a definition and constructs no image (D56).
+verify-mkosi:
+	python3 tools/verify_mkosi_definitions.py
 
 verify-sources:
 	python3 tools/verify_preparation.py --sources

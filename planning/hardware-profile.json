@@ -5,6 +5,7 @@
   "evidence_class": "Development evidence only. A check that passes on this profile does not qualify hardware, does not close a blocked gate, and is not release evidence. Hardware qualification needs more than one machine and the acceptance recorded in the milestone.",
   "cpu": {
     "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+    "architecture": "x86-64",
     "cores": 16,
     "threads": 32,
     "isa_levels": [
@@ -12,7 +13,8 @@
       "x86-64-v3",
       "x86-64-v4"
     ],
-    "evidence_command": "lscpu; /lib/ld-linux-x86-64.so.2 --help | grep supported"
+    "evidence_command": "lscpu; uname -m; /lib/ld-linux-x86-64.so.2 --help | grep supported",
+    "architecture_note": "architecture is recorded in the mkosi Architecture= spelling x86-64, which is what the product input manifest and the kernel requirement carry; uname -m prints the same machine as x86_64"
   },
   "memory_bytes": 64910954496,
   "kernel": {
@@ -33,9 +35,21 @@
       "CONFIG_BTRFS_FS": "y",
       "CONFIG_TCG_TPM": "y",
       "CONFIG_KVM_AMD": "m",
-      "CONFIG_KVM_INTEL": "m"
+      "CONFIG_KVM_INTEL": "m",
+      "CONFIG_PREEMPT": "y",
+      "CONFIG_HZ_1000": "y",
+      "CONFIG_BPF_SYSCALL": "y",
+      "CONFIG_CGROUP_BPF": "y",
+      "CONFIG_DEBUG_INFO_BTF_MODULES": "y",
+      "CONFIG_POWERCAP": "y",
+      "CONFIG_INTEL_RAPL": "m",
+      "CONFIG_X86_MSR": "y",
+      "CONFIG_IOMMU_API": "y",
+      "CONFIG_AMD_IOMMU": "y",
+      "CONFIG_VFIO_IOMMU_TYPE1": "m",
+      "CONFIG_KVM": "m"
     },
-    "evidence_command": "uname -r; zgrep -E '^CONFIG_(PREEMPT|SCHED_CLASS_EXT|BPF_LSM)' /proc/config.gz"
+    "evidence_command": "uname -r; zgrep -E '^(# )?(CONFIG_PREEMPT|CONFIG_HZ_1000|CONFIG_SCHED_CLASS_EXT|CONFIG_BPF_|CONFIG_CGROUP_BPF|CONFIG_DEBUG_INFO_BTF|CONFIG_POWERCAP|CONFIG_INTEL_RAPL|CONFIG_X86_MSR|CONFIG_IOMMU_API|CONFIG_AMD_IOMMU|CONFIG_VFIO|CONFIG_KVM|CONFIG_EROFS_FS|CONFIG_DM_VERITY|CONFIG_BTRFS_FS|CONFIG_TCG_TPM|CONFIG_PCI_P2PDMA)' /proc/config.gz"
   },
   "firmware": {
     "efi": true,
@@ -55,12 +69,12 @@
     },
     "iommu": {
       "present": true,
-      "evidence_command": "ls /sys/class/iommu/",
+      "evidence_command": "ls /sys/class/iommu/; ls /sys/kernel/iommu_groups",
       "note": "AMD-Vi (ivhd0); VFIO is available as a module"
     },
     "rapl_energy_counters": {
       "present": true,
-      "evidence_command": "cat /sys/class/powercap/intel-rapl:0/energy_uj",
+      "evidence_command": "ls /sys/class/powercap; cat /sys/class/powercap/intel-rapl:0/energy_uj",
       "note": "package counters exist; /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 and root-readable only, so P13 telemetry needs a privileged daemon or a root test"
     },
     "sched_ext": {

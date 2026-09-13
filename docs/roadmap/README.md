@@ -138,26 +138,26 @@ score.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 0 | M00 | Governance gate, split licence and remote declaration | done | trivial | no | no | not-hardware | - | M01 |
 | 1 | M01 | Component inventory reconciliation and decision register | done | small | no | no | not-hardware | M00 | M02 |
-| 2 | M02 | First component promoted end-to-end: P06 aegis-justitia decision engine | ready | small | no | no | not-hardware | M01 | M14, M03, M17, M07, M04 |
-| 3 | M03 | P01/P02 definitions validated offline with host systemd | blocked | small | no | no | not-hardware | M02 | M18, M15 |
-| 4 | M14 | P06 consumer interface contracts and hardened unit contract | blocked | small | no | no | not-hardware | M02 | M05, M06, M16, M20 |
-| 5 | M18 | Aegis-side product input manifest and kernel requirement schemas (local) | blocked | small | no | no | not-hardware | M03 | M09, M26 |
-| 6 | M15 | P02 A/B candidate lifecycle state machine | blocked | small | no | no | not-hardware | M03 | M24 |
-| 7 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | blocked | trivial | no | no | not-hardware | M02 | M25 |
-| 8 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | blocked | small | no | no | not-hardware | M14 | M19, M21 |
-| 9 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | blocked | small | no | no | not-hardware | M14 | M08, M22 |
+| 2 | M02 | First component promoted end-to-end: P06 aegis-justitia decision engine | done | small | no | no | not-hardware | M01 | M14, M03, M17, M07, M04 |
+| 3 | M14 | P06 consumer interface contracts and hardened unit contract | done | small | no | no | not-hardware | M02 | M05, M06, M16, M20 |
+| 4 | M03 | P01/P02 definitions validated offline with host systemd | done | small | no | no | not-hardware | M02 | M18, M15 |
+| 5 | M18 | Aegis-side product input manifest and kernel requirement schemas (local) | done | small | no | no | not-hardware | M03 | M09, M26 |
+| 6 | M15 | P02 A/B candidate lifecycle state machine | ready | small | no | no | not-hardware | M03 | M24 |
+| 7 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | ready | trivial | no | no | not-hardware | M02 | M25 |
+| 8 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | ready | small | no | no | not-hardware | M14 | M19, M21 |
+| 9 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | ready | small | no | no | not-hardware | M14 | M08, M22 |
 | 10 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | blocked | small | no | no | not-hardware | M06 | M25 |
-| 11 | M07 | Real-time control plane: P04, P07 and P08 logic | blocked | medium | no | no | not-hardware | M02 | M19, M23 |
-| 12 | M26 | Aegis-built kernel with the pinned configuration | blocked | medium | no | no | full | M18 | M23 |
+| 11 | M07 | Real-time control plane: P04, P07 and P08 logic | ready | medium | no | no | not-hardware | M02 | M19, M23 |
+| 12 | M26 | Aegis-built kernel with the pinned configuration | ready | medium | no | no | full | M18 | M23 |
 | 13 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | full | M05, M07 | M10 |
 | 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | full | M07, M26 | M10 |
 | 15 | M24 | Local boot harness over an externally supplied artifact | blocked | large | yes | no | full | M15 | M11 |
-| 16 | M04 | UI accessibility harness: P12 Concordia tokens | blocked | medium | no | no | not-hardware | M02 | M16 |
+| 16 | M04 | UI accessibility harness: P12 Concordia tokens | ready | medium | no | no | not-hardware | M02 | M16 |
 | 17 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
 | 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | blocked | small | yes | no | full (privileged read) | M05 | - |
 | 19 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | blocked | medium | yes | no | full | M08, M17 | M12 |
 | 20 | M22 | P10 microVM sandbox measurements on KVM | blocked | medium | yes | no | full | M06 | - |
-| 21 | M09 | Cross-repository contract pin: one local request/result pair | blocked | small | no | yes | partial | M18 | M11, M10 |
+| 21 | M09 | Cross-repository contract pin: one local request/result pair | ready | small | no | yes | partial | M18 | M11, M10 |
 | 22 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | medium | yes | yes | partial | M09, M24 | M13, M20, M12 |
 | 23 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | blocked | medium | yes | yes | partial | M09, M19, M23 | M12 |
 | 24 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
@@ -430,7 +430,7 @@ Epics:
 
 ### M03 - P01/P02 definitions validated offline with host systemd
 
-Rank 4. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 4. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M18, M15.
 
@@ -489,9 +489,9 @@ Epics:
 
 ### M18 - Aegis-side product input manifest and kernel requirement schemas (local)
 
-Rank 5. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 5. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
-not-hardware. Blocked by: M03. Unblocks: M09.
+not-hardware. Blocked by: M03. Unblocks: M09, M26.
 
 Exit criteria:
 
@@ -503,33 +503,184 @@ Exit criteria:
   signature fields) is written as a payload, not a fixed symbol list
 - D07 (boot kernel identity) and D18 (distribution release and package pinning)
   are recorded
-- Toolchain admission: if D14 keeps mkosi validation in Aegis, mkosi is selected
-  through the template matrix at or above the v24 floor before `mkosi summary`
-  runs; otherwise mkosi validation is deferred to the Imago result
+- Toolchain admission: D56 keeps mkosi validation in Aegis, so mkosi is
+  selected through the template matrix before `mkosi summary` runs. The
+  admission is the exact pin `mkosi 27` (distribution package `extra/mkosi
+  27-1`), read back from the reference profile with `mkosi --version` and
+  `pacman -Qi mkosi`, and it supersedes the register's inherited `mkosi v24+`
+  floor. `build/mkosi.conf` carries `MinimumVersion=27`, so the floor is
+  enforced by mkosi itself rather than by a version string in a document
 - No producer repository is contacted; the schemas are Aegis-owned files with
   positive, negative and boundary tests
 - The kernel requirement schema is validated positively against
-  planning/hardware-profile.json as a real reference payload, with each asserted
-  feature traceable to its probe command (zgrep /proc/config.gz,
+  planning/hardware-profile.json as a real reference payload, with each
+  asserted feature traceable to its probe command (zgrep /proc/config.gz,
   /sys/kernel/security/lsm, /sys/kernel/btf/vmlinux, /sys/class/powercap,
   /sys/kernel/iommu_groups).
 - Negative case bound to a measured absence: a requirement payload demanding
   CONFIG_PREEMPT_RT is rejected against the reference profile, whose running
-  kernel reports '# CONFIG_PREEMPT_RT is not set' with CONFIG_PREEMPT_DYNAMIC=y.
+  kernel reports '# CONFIG_PREEMPT_RT is not set' with
+  CONFIG_PREEMPT_DYNAMIC=y.
 - Boundary case: a requirement payload demanding only CONFIG_HZ_1000 is
   accepted, since the reference profile sets CONFIG_HZ_1000=y while still
   failing the PREEMPT_RT requirement — proving the schema discriminates per
   feature and not per kernel flavour.
-- D56 is recorded: mkosi is not installed and M18 takes D14's 'validate through
-  the Imago result' branch, or mkosi is pinned at extra/mkosi 27-1 which
-  supersedes the register's inherited 'mkosi v24+' row with an exact pin.
+- D56 is recorded, and the branch taken is the Aegis-side one: mkosi is
+  installed on the reference profile and pinned at `extra/mkosi 27-1`, which
+  supersedes the register's inherited 'mkosi v24+' row with an exact pin. The
+  Imago-result branch is not taken, because Imago is a scaffold and cannot
+  return a result to defer to.
 - mkosi 27 is installed on the reference profile and validates the image
   definitions locally while Imago remains a scaffold (D56); the validation is
-  Aegis-side and constructs no product image, and it moves to consuming an Imago
-  result once Imago returns real artifacts
+  Aegis-side and constructs no product image, and it moves to consuming an
+  Imago result once Imago returns real artifacts
+- The kernel requirement schema expresses the realtime and scheduler options
+  P07 and P08 need (preemption model, timer frequency, sched_ext, BPF LSM,
+  BTF), and renders them as a Kconfig fragment: one `CONFIG_X=y`, `CONFIG_X=m`
+  or `# CONFIG_X is not set` line per required feature, with the recorded
+  requirement identifier above it and nothing that is neither a comment nor an
+  assignment. That is the form milestone M26 applies to a base configuration,
+  because D70 as amended builds the kernel in this repository while Nucleus is
+  a scaffold and a distribution package is only an interim fixture source
 
 Cheapest exit: Author the two schemas and validate them against the M03 files
 with the Rust toolchain from M02.
+
+Evidence:
+
+- Disclosure, because a milestone that edits its own bar must say so where the
+  bar is judged: three of this milestone's eleven exit criteria were rewritten
+  in planning/roadmap.json during this delivery and before the state moved to
+  done. None is a relaxation. Criterion 4 read 'Toolchain admission: if D14
+  keeps mkosi validation in Aegis, mkosi is selected through the template matrix
+  at or above the v24 floor before `mkosi summary` runs; otherwise mkosi
+  validation is deferred to the Imago result'; an either/or cannot be judged
+  done, so it now records the branch that was actually taken and the exact pin
+  `mkosi 27` that supersedes the inherited 'mkosi v24+' floor. Criterion 9 read
+  'D56 is recorded: mkosi is not installed and M18 takes D14's "validate through
+  the Imago result" branch, or mkosi is pinned at extra/mkosi 27-1 which
+  supersedes the register's inherited "mkosi v24+" row with an exact pin'; its
+  first half is false on the reference profile -- mkosi 27 is installed -- and
+  the Imago-result branch has no result to defer to while Imago is a scaffold,
+  so the criterion now names the Aegis-side branch and why the other is
+  unavailable. Criterion 11 read 'The kernel requirement schema expresses the
+  realtime and scheduler options P07 and P08 need (preemption model, timer
+  frequency, sched_ext, BPF LSM, BTF), because Nucleus builds the kernel and a
+  distribution package is only an interim fixture source (D70)'; it is strictly
+  strengthened by adding the Kconfig-fragment requirement that D70 as amended
+  (PR #93) makes M26's input. No other criterion changed: 1-3, 5-8 and 10 are
+  judged exactly as they were written.
+- crates/aegis-fabrica-defs carries both M18 schemas: src/manifest.rs
+  (ProductInputManifest: correlation id, exact 40-character revision, pinned
+  distribution snapshot, repart/sysupdate/mkosi/kernel-requirement references,
+  package set, boot kernel identity, bounded retries) and src/kernel.rs
+  (KernelRequirement: feature rows, ABI bounds, accepted architectures, artifact
+  digest and signature), both built on the ten bounded field types in
+  src/field.rs that validate during decoding through #[serde(try_from =
+  "String")]; `cargo build --locked` exits 0
+- The reviewed manifest build/product-input.json validates the M03 files:
+  crates/aegis-fabrica-defs/tests/product_input_manifest.rs reads the five
+  drop-ins in build/repart.d and the transfer in build/sysupdate.d and runs them
+  through the same RepartDefinition and TransferDefinition parsers the M03 gate
+  uses. A set that does not parse is DefinitionRefused, a set that parses but
+  drops the alternate root slot is RequirementNotMet with
+  MissingAlternateRootSlot{slots:1}, and a manifest without a correlation id,
+  without a 40-character revision, or with snapshot "latest" does not decode at
+  all. Verified by `cargo test --locked --all-features`
+- The kernel requirement is a payload rather than a fixed symbol list:
+  build/kernel-requirement.json carries thirteen {symbol, state, probe,
+  required-by} rows and the crate names no Kconfig symbol in code. `grep -rn
+  'CONFIG_[A-Z]' crates/aegis-fabrica-defs/src` returns four hits, all inside
+  documentation comments (three `CONFIG_X` placeholders and one `CONFIG_BPF_LSM`
+  example)
+- D07 (boot kernel identity) and D18 (distribution release and package pinning)
+  are recorded in docs/roadmap/README.md and are carried by the schema rather
+  than only by prose: the manifest's kernel block can spell all three D07
+  sources (distribution-package, built-here, producer-artifact) and records the
+  pinned default package linux-rt alongside the source in force, and D18's pin
+  is the SnapshotId field type, which refuses "latest" and "rolling" during
+  decoding
+- mkosi is admitted with an exact pin read back from the reference profile:
+  `mkosi --version` prints `mkosi 27` and `pacman -Qi mkosi` reports Version
+  27-1 installed from repository extra. docs/roadmap/toolchain-admission.md
+  replaces M03's 'installed and not admitted' paragraph with the row,
+  superseding the M01 register's inherited 'mkosi v24+' floor with the exact pin
+- `mkosi summary` parses the Output stanza of the reviewed build/mkosi.conf:
+  `python3 tools/verify_mkosi_definitions.py` exits 0 with mkosi/positive exit 0
+  (Output Format disk, Output aegis-os.raw, Image ID aegis-os, Snapshot
+  2026/09/13, and Repart Directories resolving to the reviewed build/repart.d),
+  mkosi/negative-below-floor exit 1 with `mkosi 28 or newer is required by this
+  configuration (found 27)`, and mkosi/boundary-at-floor exit 0 at
+  MinimumVersion=27. The gate is wired into `make verify-all` as `make
+  verify-mkosi` and skips with a reason on a host without mkosi or below the
+  floor. The gate also asserts the absence of an unreviewed partition-definition
+  set rather than only the presence of the reviewed one: exactly one resolved
+  `RepartDirectories=` row must be the reviewed directory, compared as a
+  resolved path rather than by the tail of the path, and any other row holding a
+  `.conf` fails the case by name. Reproduced before and after: a
+  `build/mkosi.conf.d/99-stowaway.conf` drop-in adding a second
+  `RepartDirectories=` row that points at another directory ending
+  `build/repart.d` was accepted with exit 0 by the suffix test, and is refused
+  with exit 1 by the resolved-path test, while the reviewed definition with no
+  drop-in still exits 0. This matters because git cannot track an empty
+  directory, so a `mkosi.repart/` or `mkosi.conf.d/` tree can exist in a
+  checkout, be read by mkosi as a default path, and never appear in `git status`
+  or any diff
+- Each asserted feature is traceable to its probe command, and the probe's path
+  is asserted against the same capability's evidence command in
+  planning/hardware-profile.json. Read back on the reference profile: `zgrep
+  CONFIG_PREEMPT_RT /proc/config.gz` prints `# CONFIG_PREEMPT_RT is not set`;
+  `zgrep CONFIG_PREEMPT_DYNAMIC /proc/config.gz` prints
+  `CONFIG_PREEMPT_DYNAMIC=y`; `zgrep CONFIG_HZ_1000 /proc/config.gz` prints
+  `CONFIG_HZ_1000=y`; `cat /sys/kernel/security/lsm` prints
+  `capability,landlock,lockdown,yama,bpf`; `ls /sys/kernel/btf/vmlinux` lists
+  the blob; `ls /sys/class/powercap` lists intel-rapl, intel-rapl:0 and
+  intel-rapl:0:0; `ls /sys/kernel/iommu_groups | wc -l` prints 38
+- Positive against a real reference payload:
+  build/kernel-requirement.reference.json is satisfied by
+  planning/hardware-profile.json with no unmet row -- architecture x86-64,
+  kernel release 7.2.4-1-cachyos, the module ABI, thirteen Kconfig symbol states
+  and the four runtime capabilities the probes read
+- Negative bound to a measured absence: build/kernel-requirement.json, the
+  product requirement, is refused against the same profile with exactly one
+  unmet row, StateMismatch for CONFIG_PREEMPT_RT (required built-in, observed
+  not set). The reference kernel is PREEMPT_DYNAMIC, so this workstation is not
+  a kernel the product requirement admits
+- Boundary: a payload demanding only CONFIG_HZ_1000 is accepted against the same
+  profile that refuses the product requirement, and relaxing only the
+  CONFIG_PREEMPT_RT row makes the product requirement pass with no other change.
+  The schema therefore discriminates per feature and not per kernel flavour
+- The payload is expressible as the kernel configuration fragment M26 consumes:
+  KernelRequirement::config_fragment renders CONFIG_PREEMPT_RT=y,
+  CONFIG_HZ_1000=y, CONFIG_SCHED_CLASS_EXT=y, CONFIG_BPF_LSM=y,
+  CONFIG_DEBUG_INFO_BTF=y and CONFIG_VFIO=m -- one assignment per feature row
+  with its requirement identifier on the line above, and no line that is neither
+  a comment nor an assignment. The renderer validates before it writes a line
+  and returns the refusal otherwise, because every field of the payload is
+  public: a caller that assembled a requirement without decoding it would
+  otherwise receive a fragment silently short of the rows past the feature
+  bound, and M26 applies this fragment to a base configuration. A payload at
+  MAX_FEATURES renders 64 assignments; one row past it is refused with
+  TooMany{what: "features"} instead of rendering 64
+- No producer repository is contacted and no gate here needs a network: `unshare
+  -rn cargo test --locked --all-features --offline` exits 0 over 29 test
+  binaries and two doc-test groups, 275 cases with no failure, and `unshare -rn
+  mkosi --no-pager --directory build summary` exits 0
+- Gates re-run on the reference profile, each exit 0: `cargo fmt --check`,
+  `cargo build --locked`, `cargo test --locked --all-features` (275 cases over
+  29 test binaries and two doc-test groups), `cargo clippy --locked
+  --all-targets --all-features -- -D warnings`, `RUSTDOCFLAGS='-D warnings'
+  cargo doc --locked --no-deps`, `python3 tools/verify_preparation.py`, `python3
+  tools/rank_roadmap.py`, `python3 -B -m unittest discover -s tools -p
+  'test_*.py'` (113 tests), `make verify-all`, `make verify-mkosi`, `npx
+  markdownlint-cli2`, `yamllint .`, `flake8 .` and `black --check --line-length
+  100`
+- Scope: development evidence on the reference profile recorded in
+  planning/hardware-profile.json. What was produced is two schemas, three
+  reviewed payload files, one reviewed image definition and a configuration
+  parse. No image, UKI, kernel, artefact, signature or boot evidence is produced
+  or claimed, no producer repository is contacted, and the image, kernel, boot,
+  hardware and release gates remain blocked
 
 Epics:
 
@@ -550,7 +701,7 @@ Epics:
 
 ### M15 - P02 A/B candidate lifecycle state machine
 
-Rank 6. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 6. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M03. Unblocks: M24.
 
@@ -1166,7 +1317,7 @@ Epics:
 
 ### M26 - Aegis-built kernel with the pinned configuration
 
-Rank 12. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 12. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile: full.
 Blocked by: M18. Unblocks: M23.
 
@@ -1215,8 +1366,8 @@ Epics:
 ### M23 - P07 and P08 latency fixtures on a realtime kernel guest
 
 Rank 14. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: yes. Needs external contract: no. Reference profile: partial.
-Blocked by: M07. Unblocks: M10.
+Needs hardware: yes. Needs external contract: no. Reference profile: full.
+Blocked by: M07, M26. Unblocks: M10.
 
 Split from M07 after the reference profile was recorded, so a locally verifiable
 slice no longer waits behind one that is not.
@@ -1225,12 +1376,14 @@ Exit criteria:
 
 - Toolchain admission: QEMU 11.1.1 and the realtime kernel package are selected
   through the template matrix with pinned versions
+- D70 is applied: the guest kernel is an interim source for the latency fixture
+  only. the guest kernel is the one this repository builds in M26 while Nucleus
+  is a scaffold, with its configuration read back from inside the guest; the
+  kernel the product ships is built by Nucleus against the M18 schema once
+  Nucleus is real
 - D57 is recorded with the realtime kernel obtained without modifying the
   reference host: the distribution package is downloaded only (no installation,
   no bootloader entry) and its kernel image and modules are passed to the guest
-- That the packaged realtime kernel sets CONFIG_PREEMPT_RT is verified from the
-  package itself before the milestone starts; until verified it is recorded as
-  an unmeasured assumption
 - The guest kernel's configuration is read back from inside the virtual machine
   and confirms CONFIG_PREEMPT_RT, while the same probe on the reference host
   confirms it is not set there
@@ -1259,7 +1412,7 @@ Epics:
 
 ### M09 - Cross-repository contract pin: one local request/result pair
 
-Rank 21. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 21. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: yes. Reference profile: partial.
 Blocked by: M18. Unblocks: M11, M10.
 
@@ -1282,7 +1435,7 @@ Exit criteria:
   is published to cordanaLLM/imago or cordanaLLM/nucleus from here
 - The unresolved producer identities are recorded as the blocker with the
   verifying command and its output retained verbatim: `git ls-remote --heads
-  <https://github.com/cordanaLLM/imago.gi>t` and the same for nucleus, both
+  https://github.com/cordanaLLM/imago.git` and the same for nucleus, both
   returning 'Repository not found' at the reference-profile probe date.
 - The local checkout commits actually exercised are pinned in the evidence
   (imago 4f116fc, nucleus 78ca8f2 as observed), so the dogfooding run is
@@ -1724,7 +1877,14 @@ Open decisions:
   production to Nucleus. **Decision (2026-09-13):** Both: the image boots a
   pinned distribution linux-rt kernel by default, and a Nucleus kernel artifact
   overrides it once the M09 contract delivers one. The Nucleus half of M09 no
-  longer gates the first image.
+  longer gates the first image. **Recorded (M18):** the identity is a field of
+  the product input manifest rather than prose. `build/product-input.json`
+  carries `kernel.source` with the three sources D07 admits --
+  `distribution-package`, `producer-artifact`, and `built-here` for the kernel
+  D70 as amended builds in this repository (M26) -- alongside
+  `kernel.default-package`, which stays `linux-rt` whichever source is in
+  force. The version that name resolves to is fixed by the dated snapshot, not
+  by a second pin that could disagree with it.
 - **D08** Is the compositor a C wlroots implementation or the pure-Rust
   scaffold? Options: C wlroots core with a Rust control daemon (export-013
   mandate); Pure Rust scaffold (export-027 as written); Rust control daemon now,
@@ -1814,6 +1974,18 @@ Open decisions:
   Release=latest, and REQ-P01-09 lists packages without versions, so the image
   inputs are not reproducible. **Decision (2026-09-13):** The distribution
   snapshot and package versions are pinned in the M18 product input manifest.
+  **Recorded (M18):** the pin is `Snapshot=2026/09/13` in `build/mkosi.conf`
+  and the matching `distribution.snapshot` field of
+  `build/product-input.json`. mkosi 27 resolves an Arch snapshot against
+  `https://archive.archlinux.org/repos/<snapshot>/$repo/os/$arch`, and its
+  snapshot identifier is formatted `%Y/%m/%d`; both were read from the
+  installed version's own source rather than from memory, and no mirror was
+  contacted. A dated snapshot fixes every package version at once, so the
+  manifest's package set carries names and no versions: pacman has no
+  version-pinned install syntax, and a second per-package pin could only
+  disagree with the snapshot. The manifest's `SnapshotId` field type refuses
+  `latest` and `rolling` while decoding, so the unpinned spelling REQ-P01-01
+  records is not representable.
 - **D19** Should docs/integration/stack.md's activation order defer to this
   roadmap? Options: Keep stack.md order: schema pin (step 2) before first
   component (step 3); Defer to the roadmap: Aegis-side schema authoring (M18)
@@ -1862,7 +2034,14 @@ Open decisions:
   validation for as long as Imago is a scaffold: this repository cannot defer
   validation to a producer that cannot yet produce. The validation is Aegis-side
   only and constructs no product image; when Imago returns real artifacts, the
-  check moves to consuming that result.
+  check moves to consuming that result. **Recorded (M18):** mkosi is admitted
+  at the exact pin `mkosi 27` (distribution package `extra/mkosi 27-1`), read
+  back with `mkosi --version` and `pacman -Qi mkosi`, superseding the M01
+  register's inherited `mkosi v24+` row. `make verify-mkosi` parses
+  `build/mkosi.conf` with the host's own mkosi and requires the Output stanza
+  of the main image; the floor is enforced by mkosi itself through
+  `MinimumVersion=27`, which makes an older mkosi refuse the configuration
+  rather than silently accept it.
 - **D57** Where does the PREEMPT_RT kernel for P07/P08 latency work come from: a
   distribution linux-rt package booted as a QEMU guest kernel, a distribution
   linux-rt package installed as a host boot entry, or a request to Nucleus?

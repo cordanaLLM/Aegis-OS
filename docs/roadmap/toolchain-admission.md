@@ -42,6 +42,7 @@ Two rules follow from the clause and are applied below:
 | flake8 | 7.3.0 | `.github/workflows/ci.yml`, `FLAKE8_VERSION`, run through `pipx run` | nothing | M00 |
 | black | 26.5.1 | `.github/workflows/ci.yml`, `BLACK_VERSION`, run through `pipx run` | nothing | M00 |
 | systemd (`systemd-repart`, `systemd-sysupdate`) | floor 261; reference profile `systemd 261 (261.3-1-arch)` | `tools/verify_systemd_definitions.py`, `SYSTEMD_FLOOR = 261` and `REFERENCE_PROFILE_SYSTEMD`, read back from `systemctl --version` before the gate runs | nothing | M03 |
+| mkosi | 27; distribution package `extra/mkosi 27-1` on the reference profile | `build/mkosi.conf`, `MinimumVersion=27`, which mkosi itself enforces, and `tools/verify_mkosi_definitions.py`, `MKOSI_FLOOR = 27` and `REFERENCE_PROFILE_MKOSI`, read back from `mkosi --version` before the gate runs | the M01 register's inherited `mkosi v24+` floor from export-007, which was a range rather than a pin and which no gate enforced | M18 (D14, D56) |
 
 The pinned Rust toolchain is materialised explicitly before the first cargo
 gate, because a runner image that ships rustup does not thereby ship the pinned
@@ -107,9 +108,37 @@ an older systemd, so the gate skips there and says so; the definition parser
 `crates/aegis-fabrica-defs` runs everywhere and covers the same files without
 systemd.
 
-mkosi is installed on the reference profile and is **not** admitted by this
-milestone: M03's own exit criteria say mkosi is not used here, and no gate in
-this repository runs it.
+## The mkosi pin, and why its floor enforces itself
+
+mkosi is a distribution package like systemd, so it cannot be materialised from
+a file in this repository the way `rust-toolchain.toml` materialises a Rust
+toolchain. Its admission is therefore the same shape as the systemd one -- a
+floor plus a recorded reference value -- with one addition that systemd has no
+equivalent for:
+
+- `MinimumVersion=27` in `build/mkosi.conf`. mkosi reads it and refuses a
+  configuration that asks for a newer mkosi than the one running, so the floor
+  is enforced by the tool rather than by a document. Raising the `MinimumVersion`
+  above the installed version was observed to print `mkosi 28 or newer is
+  required by this configuration (found 27)` and exit 1 on the reference
+  profile; setting it to the floor itself exits 0. Both outcomes are cases in
+  `tools/verify_mkosi_definitions.py`.
+- `MKOSI_FLOOR = 27` and `REFERENCE_PROFILE_MKOSI = "mkosi 27"` in that gate.
+  Below the floor the gate prints why it did not run, naming the host version,
+  the floor and the recorded package, and does not report a pass.
+  `tools/test_mkosi_definitions.py` asserts that the floor and the recorded
+  reference value agree.
+
+What the pin replaces is recorded in the register: export-007 carried a floor of
+"version 24 or later", a range that nothing enforced and that no gate read. M03
+recorded mkosi as installed and deliberately **not** admitted, because no gate
+there ran it. M18 admits it, because decision D56 keeps image-definition
+validation in Aegis while Imago is a scaffold, and `make verify-mkosi` now runs
+`mkosi summary` over `build/mkosi.conf`.
+
+What the row does **not** claim: that an image was built. `mkosi summary`
+resolves configuration and prints it; it downloads nothing, writes nothing into
+the repository and constructs no image. The image gate stays blocked.
 
 ## Not yet admitted
 
@@ -142,3 +171,7 @@ taken, no milestone may cite them as admitted toolchain.
 - The systemd row is checked by `tools/test_systemd_definitions.py`, which reads
   the floor and the reference banner back through the same parser the gate uses,
   and by the gate itself, which refuses to run below the floor.
+- The mkosi row is checked by `tools/test_mkosi_definitions.py` the same way,
+  and additionally by mkosi itself: `MinimumVersion=` in `build/mkosi.conf` is
+  read by the tool, so the floor cannot drift away from what the tool accepts
+  without the gate failing.

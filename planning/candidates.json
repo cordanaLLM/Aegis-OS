@@ -17,8 +17,9 @@
       "language": "declarative-config + proposed Rust crate",
       "proposed_paths": [
         "build/repart.d and build/sysupdate.d (reviewed repart drop-ins and the A/B transfer, M03)",
-        "build/ (mkosi and UKI synthesis inputs, not reviewed)",
-        "crates/aegis-fabrica-defs/ definition parser (D15, created in M03)"
+        "build/mkosi.conf (the reviewed image definition, parsed by mkosi summary, M18)",
+        "build/product-input.json and build/kernel-requirement.json (the Aegis-owned input schemas, M18)",
+        "crates/aegis-fabrica-defs/ definition parser and input schemas (D15, created in M03, widened in M18)"
       ],
       "in_proposed_workspace": false,
       "manifest_present": false,
@@ -62,13 +63,13 @@
         }
       ],
       "missing": [
-        "mkosi and UKI synthesis inputs",
-        "a P01 component crate; aegis-fabrica-defs parses the declarative inputs and is not the daemon",
-        "Imago request and artefact contracts",
-        "pinned image and kernel inputs",
+        "UKI synthesis: no ukify run and no UKI is produced by any gate here",
+        "a P01 component crate; aegis-fabrica-defs owns the declarative inputs and is not the daemon",
+        "Imago request and artefact contracts, which M09 proposes",
+        "a built image against the pinned snapshot; the pin is a configuration pin only",
         "real artefact and boot evidence"
       ],
-      "note": "The D15 parser path is decided and created (crates/aegis-fabrica-defs, M03); manifest_present stays false because P01 itself has no component manifest."
+      "note": "The D15 parser path is decided and created (crates/aegis-fabrica-defs, M03) and widened at M18 to carry the product input manifest and the kernel requirement schemas; manifest_present stays false because P01 itself has no component manifest."
     },
     {
       "candidate_id": "C02",
@@ -1310,9 +1311,9 @@
       "proposed_pin": "a floor of version 24 or later",
       "source_id": "export-007",
       "sha256": "84f43472c5369d00a40ba9ded70915b4e4e18d28e4fa383f8ac73b71ed611ce8",
-      "current_upstream": "version 27, released 2026-08-27; the distribution package is at the same major",
-      "drift": "outdated floor and unpinned; the tool is not installed on this workstation",
-      "milestone": "M18, conditionally (D14)"
+      "current_upstream": "version 27, released 2026-08-27; the reference profile runs mkosi 27 from the distribution package extra/mkosi 27-1, read back with `mkosi --version` and `pacman -Qi mkosi`",
+      "drift": "resolved at M18: the inherited v24 floor is superseded by the exact pin mkosi 27 (extra/mkosi 27-1) recorded in docs/roadmap/toolchain-admission.md, and build/mkosi.conf carries MinimumVersion=27 so mkosi itself refuses an older mkosi",
+      "milestone": "M18 (D14 and D56); admitted"
     },
     {
       "item": "image distribution and release",
@@ -1320,8 +1321,8 @@
       "source_id": "export-049",
       "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
       "current_upstream": "the named distribution is rolling and publishes no numbered release; latest resolves to whatever a mirror serves at build time",
-      "drift": "unpinned by construction: a non-reproducible image input that contradicts the determinism flags in the imported Makefile",
-      "milestone": "M18 (D18)"
+      "drift": "resolved at M18 for the definition: build/mkosi.conf pins Snapshot=2026/09/13, which mkosi 27 resolves against the Arch archive, and the product input manifest refuses an unpinned snapshot at decode time. A snapshot fixes every package version at once, so no per-package version syntax is needed; whether the pinned snapshot builds is M11 work",
+      "milestone": "M18 (D18); build proof at M11"
     },
     {
       "item": "image output version string",
@@ -1338,8 +1339,8 @@
       "source_id": "export-049",
       "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
       "current_upstream": "the distribution package resolves to a rolling real-time kernel; upstream publishes separate stable, mainline and longterm lines",
-      "drift": "unpinned: a bare package name against a rolling repository resolves to a different kernel on every build",
-      "milestone": "M18 (D07 and D18); re-verified at M10"
+      "drift": "resolved at M18 for the identity: the product input manifest records the boot kernel source and the pinned default package linux-rt, and the dated snapshot fixes which linux-rt build that name resolves to. D70 as amended makes M26 the current producer; the artefact itself is M26 and M10 work",
+      "milestone": "M18 (D07 and D18); re-verified at M26 and M10"
     },
     {
       "item": "target kernel floor",
@@ -1347,8 +1348,8 @@
       "source_id": "export-016",
       "sha256": "cfa58b5b23b8a0f75651be6fc0a68b410aefd66111b98b08d0f3c1fd3a85ada7",
       "current_upstream": "the named target version is not released; upstream lists it only as a release candidate, with an earlier stable and longterm line available",
-      "drift": "partly unknowable: the floor is satisfied by current lines, but the named target does not exist as a release",
-      "milestone": "M18 (feature payload, not a version list)"
+      "drift": "replaced at M18 by a feature payload: build/kernel-requirement.json states the Kconfig symbols, states and probes a conforming kernel must satisfy, with a checked minimum release of 6.12 and the unreleased target release recorded but never checked against a profile, because a check against a version that does not exist would refuse every kernel that does",
+      "milestone": "M18 (feature payload, not a version list); consumed by M26"
     },
     {
       "item": "Node.js runtime",
