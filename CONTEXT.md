@@ -45,7 +45,7 @@ consistently in `planning/`, `docs/`, and the governance files.
 - **Epic**: a group of tasks inside one milestone that cites requirement IDs.
 - **Requirement**: a statement cited to a source ID, its SHA-256, and a verbatim
   quote, validated by `praetorctl notebook validate`.
-- **Preparation gate**: `make verify-all`, and the GitHub status check of the
+- **Verification gate**: `make verify-all`, and the GitHub status check of the
   same name that runs it on a pull request. The `verify-all` recipe in the
   `Makefile` is the authoritative list of what the local target runs, and
   `.github/workflows/ci.yml` of what the check adds around it. Neither run

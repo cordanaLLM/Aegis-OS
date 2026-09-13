@@ -58,7 +58,7 @@ flowchart LR
 
 5. **No Evasion Tolerated**: Do not attempt `--no-verify`, `LEFTHOOK=0`, or
    modifying `.git/hooks`. All pull requests are re-checked on GitHub by the
-   required `Preparation gate` status check, which runs `make verify-all` on a
+   required `Verification gate` status check, which runs `make verify-all` on a
    clean runner.
 
 6. **Anti-Loop Interception**: If the same AST diff and error category repeats

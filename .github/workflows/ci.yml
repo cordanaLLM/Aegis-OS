@@ -1,10 +1,10 @@
 ---
-# Preparation gate: the status check .github/rulesets/main.json requires on
+# Verification gate: the status check .github/rulesets/main.json requires on
 # pull requests. It runs `make verify-all`, so it carries whatever gates that
 # target carries, plus the licence, lint and sign-off steps listed below. It
 # builds no product image, boots nothing and publishes no release: the image,
 # boot, hardware, accessibility and release gates stay blocked.
-name: Preparation gate
+name: Verification gate
 
 on:
   pull_request:
@@ -31,7 +31,7 @@ env:
 
 jobs:
   verify:
-    name: Preparation gate
+    name: Verification gate
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -105,9 +105,9 @@ jobs:
 
       # make verify-all runs the crate gate itself once a workspace manifest is
       # present, so the cargo evidence sits inside this one job. That is
-      # deliberate: the branch ruleset requires exactly the "Preparation gate"
+      # deliberate: the branch ruleset requires exactly the "Verification gate"
       # check, and a separate job would not be required and could be skipped.
-      - name: Preparation gate
+      - name: Verification gate
         run: make verify-all
 
       - name: REUSE compliance
