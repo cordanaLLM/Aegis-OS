@@ -200,6 +200,97 @@ version and is never released.
   `Firecracker v1.17.0`, and the package is `firecracker 1.17.0-1.1` rather than
   the recorded `extra/firecracker 1.17.0-1`. The decision itself is unchanged.
 
+### Added (P11 Ludus and P14 Hephaestus leaf slices, milestone M08)
+
+- `crates/aegis-ludus` and `crates/aegis-hephaestus` join the workspace as the
+  P11 and P14 validation slices. Both imported scaffolds announce work they do
+  not do: P11 names a proprietary platform SDK it never links and builds a
+  "hardware non-repudiation signature" with `format!`, and P14 declares two
+  bounds and holds neither against anything, walking an evaluation loop with an
+  empty body and comparing a hard-coded element count with its own limit. What
+  is extracted here is the part that can be checked without a platform SDK, a
+  `TPM2`, a `CAD` kernel, a mesher or a solver -- the bounds, the outcomes, the
+  admissions and the payloads -- with every refusal built from a string literal
+  turned into a variant carrying the bound it hit (HISS-07). Both are libraries
+  on the toolchain M02 admitted, and the lock gains two workspace packages and
+  no third-party crate.
+- The launch validator answers with a value rather than a boolean. The
+  scaffold's `token_found || !args.is_empty()` calls a line carrying no token
+  authenticated because it carried some argument, and answers the empty line
+  correctly for the wrong reason. `AuthenticationOutcome` has one variant per
+  case, `is_authenticated` is true for exactly one of them, and
+  `scaffold_verdict` keeps the old rule beside it: a test enumerates all three
+  outcomes and finds the disagreement on exactly one, `NoLaunchToken`.
+- Both P14 bounds are held against input that can cross them. The evaluator
+  walks a caller-supplied face count and meshes a caller-supplied element count,
+  so the 500,000th element is accepted, the 500,001st refused, and a walk past
+  the iteration bound stops and says so instead of reporting a completion it did
+  not reach. Every length is an integer count of micrometres rather than the
+  scaffold's `f64` millimetres, because a boundary test on a binary float is a
+  test on rounding.
+- Five constants were written entirely in terms of themselves, so
+  `MAX_LAUNCH_ARGS` could have held any number and "sixty-four arguments are
+  accepted" would still have passed at it. `MAX_LAUNCH_ARGS`,
+  `MAX_ARGUMENT_BYTES`, `MAX_AMOUNT_CENTS`, `MAX_TOLERANCE_MICROMETRES` and
+  `MAX_STEP_PATH_LEN` now each carry a literal assertion inside the boundary
+  test that already exercises them, the way `aegis-hephaestus` already pinned
+  its two recorded bounds, and shifting any one of the five by one fails exactly
+  that test. The three figures no source states -- both ends of the tolerance
+  range and the source-path length -- also say in place that they were chosen
+  here, so a reader cannot mistake one for the recorded element bound sitting
+  beside it.
+- Three contracts stand at this milestone's edges, and the one that already
+  existed is consumed rather than redefined. The P09-to-P14 verification
+  request is `aegis_minerva::CadVerificationRequest`,
+  decoded through the producer's own decoder, so the shape M06 pinned stays the
+  one shape and an unknown version, an unknown field and the other reading of
+  open decision D27 all come back as the producer's refusal unchanged. What the
+  intake cannot do is reach a verdict: no solver is admitted, so its outcome has
+  one variant and it is not "verified". The P14-to-P15 viewport and the
+  P11-to-P02 receipt are typed in their producers' crates, each carrying its
+  graph edge as a single-variant identifier and its element or amount bound as
+  the producer's own type. The interchange protocol on the viewport has one
+  variant too, which has a consequence worth stating rather than leaving to be
+  discovered: the polyhedral half of REQ-P14-01's recorded dual-engine approach
+  has no representable viewport at this milestone at all, rather than one that
+  is refused in some combinations.
+- Receipt signing is stubbed and says so on the wire. `ReceiptSigning` has one
+  variant, whose tag is `stubbed-unsigned-no-tpm2-binding`, so a payload
+  claiming a hardware signature does not decode: no `TPM2` key is bound anywhere
+  in this repository, and the claim is unspellable rather than discouraged. The
+  two register numbers the scaffold's `format!` string names are kept as data
+  and the string is not.
+- The two P11 credentials are not in the same situation, and the register keeps
+  them apart. Three commands run by hand on the reference profile found `tpm0`,
+  read a major version of 2, and found no FIDO2 authenticator among the 17
+  connected devices. So the `TPM2` half is a deferred hardware requirement --
+  the chip is present and unbound -- and the FIDO2 half is a procurement
+  dependency, because there is nothing here to bind to and no work in this
+  repository changes that. One status covering both would read as coverage for a
+  device nobody has. The crate runs none of the three commands, and a host with
+  neither device passes every test in it.
+- Decision D12 is applied to the crate and not to the image. `aegis-ludus`
+  declares no platform SDK and no binding generator and names no such symbol,
+  which two sweeps over named lists check and neither proves for the category;
+  what narrows them is the dependency set, which the manifest test now pins
+  closed at four declarations, so a dependency renamed past both lists fails it
+  too. ADR-0002 also excludes the SDK from the Aegis image, and this repository
+  builds no image: that obligation is now recorded against M11, where an image
+  is first built, rather than resting on an M08 criterion that was amended out
+  from under it.
+- The E08-2 acceptance says what is actually checked. It read "a missing STEP
+  path errors", while the crate reads no filesystem and refuses a request that
+  named no source at all; whether a well-formed name resolves to a file is the
+  loader's question. The acceptance now says so, so the one surface left
+  untouched when the exit criteria were amended no longer disagrees with the
+  places that disclose the difference.
+- P11 and P14 stay proposals in `planning/components.json`, for the reason M03,
+  M15, M17, M05 and M06 gave for theirs. Neither crate is the component it is
+  named after: `aegis-ludus` links no SDK, opens no socket, exports no buffer
+  and binds no key, and `aegis-hephaestus` loads no kernel, parses no `STEP`
+  file, runs no mesher and starts no solver, and those effects are what the two
+  subsystems are.
+
 ### Added (library abort sweep)
 
 - `make verify-all` now refuses an abort in any activated crate's library code.

@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "aegis-hephaestus"
+description = "Aegis OS P14 validation slice: the bounded geometry and meshing limits of export-029, the solver slice declaration that starts no solver, the P09 verification request consumed through aegis-minerva rather than redefined, and the versioned geometry viewport descriptor P14 hands to P15. No CAD kernel, no mesher, no Z3, no solver process, no cgroup."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+aegis-justitia = { path = "../aegis-justitia" }
+aegis-minerva = { path = "../aegis-minerva" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

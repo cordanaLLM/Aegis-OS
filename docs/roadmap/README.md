@@ -142,7 +142,7 @@ score.
 | 8 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | done | trivial | no | no | not-hardware | M02 | M25 |
 | 9 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | done | small | no | no | not-hardware | M14 | M19, M21 |
 | 10 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | done | small | no | no | not-hardware | M14 | M08, M22 |
-| 11 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | ready | small | no | no | not-hardware | M06 | M25 |
+| 11 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | done | small | no | no | not-hardware | M06 | M25 |
 | 12 | M07 | Real-time control plane: P04, P07 and P08 logic | ready | medium | no | no | not-hardware | M02 | M19, M23 |
 | 13 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | full | M05, M07 | M10 |
 | 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | full | M07, M26 | M10 |
@@ -150,7 +150,7 @@ score.
 | 16 | M04 | UI accessibility harness: P12 Concordia tokens | ready | medium | no | no | not-hardware | M02 | M16 |
 | 17 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
 | 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
-| 19 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | blocked | medium | yes | no | full | M08, M17 | M12 |
+| 19 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
 | 20 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
 | 21 | M09 | Cross-repository contract pin: one local request/result pair | ready | small | no | yes | partial | M18 | M11, M10 |
 | 22 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | medium | yes | yes | partial | M09, M24 | M13, M20, M12 |
@@ -867,7 +867,7 @@ Epics:
 
 ### M08 - Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus
 
-Rank 11. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 11. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M06. Unblocks: M25.
 
@@ -877,11 +877,16 @@ Exit criteria:
   positive/negative/boundary tests; the Rust toolchain from M02 is reused
 - Assertions are refactored to Result per HISS-07
 - P11 Ludus integrates no Steamworks SDK (D12, ADR-0002); a negative test proves
-  the image and the crate build without it
+  the crate builds without it. The image half of ADR-0002 is not claimed here:
+  this repository builds no image and that gate stays blocked, so a crate test
+  asserting an image property would be an unqualified readiness claim
 - Interface contracts are typed for P09 to P14 (VERIFY_CODE_CAD, direction per
-  the M01 register), P14 to P15 (geometry viewport descriptor), P11 to P02
-  (transaction receipt, TPM2 signing stubbed) and P11 to P04 (rich presence),
-  each with a negative test for a malformed payload
+  the M01 register), P14 to P15 (geometry viewport descriptor) and P11 to P02
+  (transaction receipt, TPM2 signing stubbed), each with a negative test for a
+  malformed payload. The P11 to P04 rich-presence contract is deliberately not
+  typed: decision D48 is open on whether that integration survives ADR-0002's
+  reasoning at all, and the sources name no library to build a schema against,
+  so typing one would argue for one reading of an open decision
 - The P11-to-P02 transaction-receipt contract records that the reference profile
   has a TPM2 (tpm0 version 2) but NO FIDO2 authenticator (`lsusb | grep -iE
   'yubi|fido|solo|token|nitro'` empty), so the FIDO2 half of P11 is an explicit
@@ -898,9 +903,11 @@ Epics:
   handled explicitly and its authentication outcome is recorded.
 - **E08-2 Hephaestus bounded loops**. Requirements: REQ-P14-01, REQ-P14-02,
   REQ-P14-03, REQ-P14-04, REQ-P14-08. Acceptance: Positive: a mesh under the
-  bound is accepted. Negative: a missing STEP path errors. Boundary: 500000
-  elements are accepted and 500001 rejected, and the iteration bound is
-  honoured. CAD and solver versions are recorded as unpinned.
+  bound is accepted. Negative: a request naming no STEP source errors; whether a
+  named path resolves to a file is the loader's question and is not asked here,
+  because this crate reads no filesystem. Boundary: 500000 elements are accepted
+  and 500001 rejected, and the iteration bound is honoured. CAD and solver
+  versions are recorded as unpinned.
 - **E08-3 P11 and P14 interface contracts**. Requirements: REQ-P14-05,
   REQ-P14-06, REQ-P11-06, REQ-P11-04. Acceptance: Positive: the descriptors
   round-trip. Negative: a receipt without a signature field is rejected.
@@ -1218,7 +1225,7 @@ Epics:
 
 ### M25 - GPU DMA-BUF sharing and VFIO passthrough slices
 
-Rank 19. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 19. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M08, M17. Unblocks: M12.
 
@@ -1667,6 +1674,12 @@ Exit criteria:
 - One criterion states that one boot on one developer workstation is development
   evidence only: it does not qualify hardware, does not close the hardware or
   release gate, and the retained logs must say so on their face.
+- The image half of ADR-0002 is checked here, because M08 could not check it:
+  that milestone proved the crate builds without the Steamworks SDK and this
+  repository built no image (DSP-26). A negative test sweeps the image content
+  list and the built image for the SDK package, its shared library and a
+  vendored copy of its source, and fails on any of them. It is a check over
+  those names and not a proof that no proprietary component is present.
 
 Cheapest exit: No cheaper exit exists: this is the first real artifact. Keep it
 to one image and one boot, and retain every log.

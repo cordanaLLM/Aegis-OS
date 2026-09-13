@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "aegis-ludus"
+description = "Aegis OS P11 validation slice: the bounded launch-command-line validator whose authentication outcome is a three-way answer rather than a boolean, the PCR selection and amount bounds of a microtransaction receipt, and the versioned receipt P11 hands to P02 with its signing stubbed and unsigned on the wire. No Steamworks SDK, no chat-platform socket, no TPM2, no FIDO2, no compositor."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+aegis-justitia = { path = "../aegis-justitia" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
