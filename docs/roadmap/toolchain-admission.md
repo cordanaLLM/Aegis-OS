@@ -43,6 +43,8 @@ Two rules follow from the clause and are applied below:
 | black | 26.5.1 | `.github/workflows/ci.yml`, `BLACK_VERSION`, run through `pipx run` | nothing | M00 |
 | systemd (`systemd-repart`, `systemd-sysupdate`) | floor 261; reference profile `systemd 261 (261.3-1-arch)` | `tools/verify_systemd_definitions.py`, `SYSTEMD_FLOOR = 261` and `REFERENCE_PROFILE_SYSTEMD`, read back from `systemctl --version` before the gate runs | nothing | M03 |
 | mkosi | 27; distribution package `extra/mkosi 27-1` on the reference profile | `build/mkosi.conf`, `MinimumVersion=27`, which mkosi itself enforces, and `tools/verify_mkosi_definitions.py`, `MKOSI_FLOOR = 27` and `REFERENCE_PROFILE_MKOSI`, read back from `mkosi --version` before the gate runs | the M01 register's inherited `mkosi v24+` floor from export-007, which was a range rather than a pin and which no gate enforced | M18 (D14, D56) |
+| Linux source | `linux-7.2.5`, sha256 `55ddf0df8325d9dad96fcff7bd93977d22e3f50af06527572af59b77c7632b78` | `build/kernel/source.pin.json`; the digest is re-checked on every run and the detached signature is verified against key `647F28654894E3BD457199BE38DBBDC86092693E` | nothing; no kernel source was pinned before | M26 (D70) |
+| Kernel base configuration | `x86_64_defconfig` of the pinned source, plus two tracked fragments | `build/kernel/source.pin.json`; the requirement fragment is byte-identical to `KernelRequirement::config_fragment` and no full `.config` is tracked | nothing | M26 (D70) |
 
 The pinned Rust toolchain is materialised explicitly before the first cargo
 gate, because a runner image that ships rustup does not thereby ship the pinned
@@ -140,6 +142,85 @@ What the row does **not** claim: that an image was built. `mkosi summary`
 resolves configuration and prints it; it downloads nothing, writes nothing into
 the repository and constructs no image. The image gate stays blocked.
 
+## The kernel build toolchain, and the source it builds (M26)
+
+Every row below is a tool `tools/verify_kernel_build.py` runs. Its floor is the
+floor the **pinned source itself declares** -- `scripts/min-tool-version.sh` and
+`Documentation/process/changes.rst` of `linux-7.2.5` -- not a number chosen
+here, and its reference value was read back from the tool on the reference
+profile on 2026-09-13. The gate reads each one again before it builds anything
+and refuses to run below a floor, so the table cannot drift away from what
+actually compiled.
+
+`tools/test_kernel_build.py` reads this table back and requires it to state the
+same admission as the gate's own `TOOLCHAIN` list. The tool names are compared
+as **sets**, so neither side can carry a row the other does not, and each row's
+reference value and its Floor cell must be the ones the gate actually enforces.
+A row added here for a tool the gate never runs, or a floor edited on this page
+alone, fails `make verify-all`.
+
+| Tool | Reference-profile version | Floor declared by the pinned source | Role |
+| :--- | :--- | :--- | :--- |
+| gcc | 16.2.1 | 8.1.0 (`scripts/min-tool-version.sh gcc`) | the compiler |
+| ld (binutils) | 2.47 | 2.30 (`scripts/min-tool-version.sh binutils`) | link |
+| make | 4.4.1 | 4.0 | the build driver |
+| bc | 1.08.2 | 1.06.95 | timeconst generation |
+| flex | 2.6.4 | 2.5.35 | kconfig lexer |
+| bison | 3.8.2 | 2.0 | kconfig parser |
+| pahole | 1.31 | 1.26 | DWARF to BTF, for `CONFIG_DEBUG_INFO_BTF` |
+| tar | 1.35 | 1.28 | source extraction |
+| perl | 5.42.2 | none declared | kbuild scripts |
+| cpio | 2.15 | none declared | the read-back initramfs |
+| xz | 5.8.3 | none declared | tarball decompression, and signature verification |
+| gzip | 1.14 | none declared | the guest reads `/proc/config.gz` with it |
+| bash | 5.3.15 | 4.2 | `merge_config.sh`, and the guest's `/init` |
+| mount (util-linux) | 2.42.3 | 2.10 | the guest mounts its own `/proc` |
+| gpg | 2.4.9 | none declared | the pinned tarball's signature |
+| qemu-system-x86_64 | 11.1.1 | none declared | the read-back guest |
+
+clang 22.1.8 is installed on the reference profile and is **not** admitted: the
+gate builds with gcc and nothing in this repository runs clang. It is recorded
+here so that a later `LLVM=1` build is a visible admission rather than an
+inherited one.
+
+### How the pinned source was verified
+
+Two independent checks, both re-run by the gate on every invocation, and neither
+of them a claim that the digest in this page is trustworthy because it is
+written here:
+
+- **Signature over the source.** `linux-7.2.5.tar.sign` is a detached signature
+  over the *uncompressed* tar, so verification streams `xz --decompress
+  --stdout` into `gpg --verify`. It reports `Good signature from "Greg
+  Kroah-Hartman <gregkh@linuxfoundation.org>"`, primary key fingerprint
+  `647F 2865 4894 E3BD 4571 99BE 38DB BDC8 6092 693E`. The gate refuses the
+  source if that fingerprint is not the one that signed it, so a good signature
+  by some other key is still a refusal.
+- **Digest against the published, signed checksum list.**
+  `sha256sums.asc` for `v7.x` is signed by
+  `B886 8C80 BA62 A1FF FAF5 FDA9 632D 3A06 589D A6B1`,
+  `Kernel.org checksum autosigner <autosigner@kernel.org>`, and lists
+  `55ddf0df8325d9dad96fcff7bd93977d22e3f50af06527572af59b77c7632b78` for
+  `linux-7.2.5.tar.xz`. That is the value `build/kernel/source.pin.json`
+  carries and the value `sha256sum` prints for the downloaded file.
+
+Both keys are fetched once into a keyring under the build directory, never into
+the developer's own keyring. Neither key is certified by a local trust path, so
+gpg prints its usual "not certified with a trusted signature" warning; what the
+pin asserts is the fingerprint, not a web of trust.
+
+The configuration is a **fragment applied to a named base**, never a copied
+`.config`. The base is `x86_64_defconfig` of the pinned source. The two
+fragments are applied in order by the kernel's own
+`scripts/kconfig/merge_config.sh`, followed by `make olddefconfig`:
+
+1. `build/kernel/10-base-support.config` -- Kconfig prerequisites and guest-boot
+   options only. It states no product requirement, and a crate test fails if it
+   ever assigns a symbol the payload demands.
+2. `build/kernel/50-aegis-requirement.config` -- byte-identical to what
+   `KernelRequirement::config_fragment` renders from
+   `build/kernel-requirement.json`. It is generated, not written.
+
 ## Not yet admitted
 
 These are run by a gate but pinned by nothing, so they are gaps recorded here
@@ -175,3 +256,10 @@ taken, no milestone may cite them as admitted toolchain.
   and additionally by mkosi itself: `MinimumVersion=` in `build/mkosi.conf` is
   read by the tool, so the floor cannot drift away from what the tool accepts
   without the gate failing.
+- The kernel rows are checked by `tools/test_kernel_build.py`, which asserts
+  that every tool name and reference version in the M26 table also appears in
+  the gate's `TOOLCHAIN` list, that the pinned digest, base configuration and
+  signing-key fingerprint appear on this page, and that every recorded
+  reference version is at or above its floor. `make verify-kernel` then reads
+  each version back from the tool itself before it builds anything, so the
+  evidence names the compiler that actually ran.

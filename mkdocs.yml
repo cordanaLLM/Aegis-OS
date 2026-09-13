@@ -102,6 +102,7 @@ nav:
       - P01/P02 definitions and systemd evidence: build/definitions.md
       - Product input and kernel requirement schemas: build/product-input.md
       - P02 A/B lifecycle and transition trace: build/ab-lifecycle.md
+      - Aegis-built kernel and guest read-back: build/kernel.md
   - Integration:
       - Shared ownership and contracts: integration/stack.md
   - Decisions:

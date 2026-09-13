@@ -143,12 +143,12 @@ score.
 | 4 | M03 | P01/P02 definitions validated offline with host systemd | done | small | no | no | not-hardware | M02 | M18, M15 |
 | 5 | M18 | Aegis-side product input manifest and kernel requirement schemas (local) | done | small | no | no | not-hardware | M03 | M09, M26 |
 | 6 | M15 | P02 A/B candidate lifecycle state machine | done | small | no | no | not-hardware | M03 | M24 |
-| 7 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | ready | trivial | no | no | not-hardware | M02 | M25 |
-| 8 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | ready | small | no | no | not-hardware | M14 | M19, M21 |
-| 9 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | ready | small | no | no | not-hardware | M14 | M08, M22 |
-| 10 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | blocked | small | no | no | not-hardware | M06 | M25 |
-| 11 | M07 | Real-time control plane: P04, P07 and P08 logic | ready | medium | no | no | not-hardware | M02 | M19, M23 |
-| 12 | M26 | Aegis-built kernel with the pinned configuration | ready | medium | no | no | full | M18 | M23 |
+| 7 | M26 | Aegis-built kernel with the pinned configuration | done | medium | no | no | full | M18 | M23 |
+| 8 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | ready | trivial | no | no | not-hardware | M02 | M25 |
+| 9 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | ready | small | no | no | not-hardware | M14 | M19, M21 |
+| 10 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | ready | small | no | no | not-hardware | M14 | M08, M22 |
+| 11 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | blocked | small | no | no | not-hardware | M06 | M25 |
+| 12 | M07 | Real-time control plane: P04, P07 and P08 logic | ready | medium | no | no | not-hardware | M02 | M19, M23 |
 | 13 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | full | M05, M07 | M10 |
 | 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | full | M07, M26 | M10 |
 | 15 | M24 | Local boot harness over an externally supplied artifact | ready | large | yes | no | full | M15 | M11 |
@@ -733,7 +733,7 @@ Epics:
 
 ### M17 - Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates
 
-Rank 7. State: ready. Cost: trivial. Owner repository: cordanaLLM/Aegis-OS.
+Rank 8. State: ready. Cost: trivial. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M25.
 
@@ -775,7 +775,7 @@ Epics:
 
 ### M05 - Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle
 
-Rank 8. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 9. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M14. Unblocks: M19, M21.
 
@@ -824,7 +824,7 @@ Epics:
 
 ### M06 - Agent execution chain logic: P09 Minerva and P10 Vesta
 
-Rank 9. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 10. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M14. Unblocks: M08, M22.
 
@@ -868,7 +868,7 @@ Epics:
 
 ### M08 - Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus
 
-Rank 10. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 11. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M06. Unblocks: M25.
 
@@ -909,7 +909,7 @@ Epics:
 
 ### M07 - Real-time control plane: P04, P07 and P08 logic
 
-Rank 11. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 12. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M19, M23.
 
@@ -1317,7 +1317,7 @@ Epics:
 
 ### M26 - Aegis-built kernel with the pinned configuration
 
-Rank 12. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 7. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile: full.
 Blocked by: M18. Unblocks: M23.
 
@@ -1349,6 +1349,179 @@ Exit criteria:
 Cheapest exit: Apply a configuration fragment to a pinned upstream source,
 build, and read the produced configuration back from inside a guest. No
 packaging, no signing, no release.
+
+Evidence:
+
+- D70 applied, and the limit stated where the claim is made: this milestone
+  builds a kernel in Aegis because Nucleus is a scaffold, exactly as D56 keeps
+  image-definition validation here while Imago is a scaffold. What was produced
+  is a bzImage and 19 modules in a build tree outside the repository, plus a
+  guest that read the configuration back. Nothing was packaged, signed,
+  installed, written to a device or published; no bootloader entry exists; no
+  module was loaded on the host. Construction returns to Nucleus, which owns it
+  under docs/integration/stack.md, once Nucleus returns real artifacts against
+  the M09 contract
+- The source is pinned by version and digest and verified two ways on every
+  run, not once by hand: build/kernel/source.pin.json pins linux-7.2.5 with
+  sha256 55ddf0df8325d9dad96fcff7bd93977d22e3f50af06527572af59b77c7632b78,
+  which is the value the published sha256sums.asc for v7.x lists and the value
+  sha256sum prints for the downloaded tarball; sha256sums.asc itself verifies
+  as 'Good signature' from key B8868C80BA62A1FFFAF5FDA9632D3A06589DA6B1
+  (Kernel.org checksum autosigner); and `xz -dc linux-7.2.5.tar.xz | gpg
+  --verify linux-7.2.5.tar.sign -` verifies as 'Good signature from "Greg
+  Kroah-Hartman <gregkh@linuxfoundation.org>"', primary key
+  647F28654894E3BD457199BE38DBBDC86092693E. The gate refuses a source whose
+  signature is good but made by a key other than the pinned fingerprint.
+  Neither key is certified by a local trust path, so gpg also prints its usual
+  untrusted-key warning: the pin asserts the fingerprint, not a web of trust
+- The configuration is a fragment on a named base, never a copied .config. The
+  base is x86_64_defconfig of the pinned source;
+  build/kernel/10-base-support.config and
+  build/kernel/50-aegis-requirement.config are applied in that order by the
+  kernel's own scripts/kconfig/merge_config.sh -m, then resolved with `make
+  olddefconfig`. The produced .config is 5,520 lines and is not tracked
+- The requirement fragment is generated by the M18 producer rather than
+  written: build/kernel/50-aegis-requirement.config is byte-identical to what
+  KernelRequirement::config_fragment renders from
+  build/kernel-requirement.json, and
+  crates/aegis-fabrica-defs/tests/kernel_fragment.rs fails on a one-byte
+  difference. Two further bindings keep that honest: the fragment assigns
+  exactly the thirteen payload symbols and no others, and
+  10-base-support.config assigns none of them, so a hand-written file cannot
+  satisfy a schema row while the generated fragment says nothing. Every line of
+  the support fragment names the Kconfig dependency it satisfies, read out of
+  the pinned source: PREEMPT_RT 'depends on EXPERT && ARCH_SUPPORTS_RT &&
+  !COMPILE_TEST' in kernel/Kconfig.preempt with ARCH_SUPPORTS_RT selected by
+  arch/x86/Kconfig, so no out-of-tree realtime patch is involved
+- Build, on the reference profile's 32 threads: `make O=<build>/out/positive
+  -j32 bzImage modules` exits 0 in 69 s from a freshly configured tree and
+  prints 'Kernel: arch/x86/boot/bzImage is ready  (#1)'. The artifacts are a
+  16,438,272-byte bzImage and 19 modules including vfio.ko, vfio-pci.ko,
+  vfio_iommu_type1.ko, intel_rapl_common.ko and intel_rapl_msr.ko, so the
+  payload's module-state rows are compiled and not only configured. One row is
+  honest about a limit: CONFIG_KVM=m is carried by the produced configuration,
+  which is what the row asks about, but no kvm.ko is built because
+  arch/x86/kvm/Kconfig makes the built module KVM_X86, 'def_tristate KVM if
+  (KVM_INTEL != n || KVM_AMD != n)', and x86_64_defconfig selects neither
+  vendor module
+- Positive read-back, from inside the guest and not from the build tree:
+  `qemu-system-x86_64 -enable-kvm -cpu max -kernel <bzImage> -initrd <cpio>`
+  boots, and the guest's /init mounts its own /proc and prints
+  'AEGIS-M26-UNAME-R 7.2.5-aegis-m26', 'AEGIS-M26-UNAME-V #1 SMP PREEMPT_RT Sun
+  Sep 13 18:32:20 CEST 2026' (the build timestamp moves with every rebuild; the
+  release string does not) and the whole of its own /proc/config.gz, which
+  exists because CONFIG_IKCONFIG_PROC is set. Read out of that dump:
+  CONFIG_PREEMPT_RT=y, CONFIG_HZ_1000=y with CONFIG_HZ=1000,
+  CONFIG_SCHED_CLASS_EXT=y, CONFIG_BPF_LSM=y, CONFIG_BPF_SYSCALL=y,
+  CONFIG_DEBUG_INFO_BTF=y, CONFIG_CGROUP_BPF=y, CONFIG_POWERCAP=y,
+  CONFIG_IOMMU_API=y, CONFIG_INTEL_RAPL=m, CONFIG_VFIO=m, CONFIG_VFIO_PCI=m and
+  CONFIG_KVM=m -- all thirteen rows. The guest reports on a second serial line
+  so a kernel printk cannot splice itself into the dump, and then powers itself
+  off through magic SysRq ('reboot: Power down'), so the gate's 180 s deadline
+  is a failure signal rather than the normal exit path
+- The read-back demonstrably runs on the built artifact. Three claims are
+  checked together: the release the guest reports equals the one this build
+  produced (include/config/kernel.release, 7.2.5-aegis-m26, from
+  CONFIG_LOCALVERSION="-aegis-m26" with LOCALVERSION_AUTO off) and is not the
+  host's 7.2.4-1-cachyos; every requirement row holds in the text the guest
+  printed; and that text is the produced .config byte for byte, all 5,520
+  lines. Negative: the same check over the reference host's own /proc/config.gz
+  is refused with 'CONFIG_PREEMPT_RT: REQ-P07-01 requires built-in, observed
+  'n''. Boundary: the host's release through the identity check is refused
+  twice, 'not the built release' and 'the guest reports the host's own
+  release', so a read-back cannot be satisfied by the machine the gate is
+  running on. The two host-side cases are independent units: the boundary one
+  reads only os.uname(), so it runs and is counted even on a kernel that
+  publishes no /proc/config.gz, where the negative one alone is skipped by
+  name, and a run that failed both counts two failures rather than one
+- Negative and boundary on the configuration itself, each a real kconfig round
+  trip in its own object tree. Appending '# CONFIG_PREEMPT_RT is not set' is
+  refused with 'CONFIG_PREEMPT_RT: REQ-P07-01 requires built-in, observed 'n''.
+  Appending 'CONFIG_VFIO=y' where the schema demands a module is refused with
+  'CONFIG_VFIO: REQ-P03-06 requires module, observed 'y''. Appending
+  'CONFIG_BPF_SYSCALL=m' where the schema demands built-in produced the finding
+  this gate exists for: every symbol the payload demands built-in is a bool in
+  the pinned source, so =m is unreachable, and kconfig neither honours the line
+  nor complains -- it resolves the symbol to n. The fragment therefore yields a
+  kernel without the feature rather than one carrying it as a module, and
+  CONFIG_BPF_LSM and CONFIG_SCHED_CLASS_EXT fall with it. All three are refused
+  by name; nothing in the build itself says so
+- Toolchain admission, every version read back from the tool rather than from
+  memory and every floor taken from the pinned source's own
+  scripts/min-tool-version.sh and Documentation/process/changes.rst: gcc 16.2.1
+  (floor 8.1.0), ld 2.47 (2.30), make 4.4.1 (4.0), bc 1.08.2 (1.06.95), flex
+  2.6.4 (2.5.35), bison 3.8.2 (2.0), pahole 1.31 (1.26), tar 1.35 (1.28), bash
+  5.3.15 (4.2), mount 2.42.3 (2.10), and perl 5.42.2, cpio 2.15, xz 5.8.3, gzip
+  1.14, gpg 2.4.9 and qemu-system-x86_64 11.1.1 with no floor declared by the
+  source. docs/roadmap/toolchain-admission.md carries the rows and
+  tools/test_kernel_build.py reads that table back: the tool names are compared
+  as sets, and each row's reference value and its Floor cell are compared
+  against the gate's own TOOLCHAIN entry. A row present on one side only, or a
+  floor edited on the page alone, fails make verify-all; both holes were
+  probed, with a phantom ccache row for a tool the gate never runs and with the
+  gcc floor rewritten to 99.0.0 while TOOLCHAIN still said 8.1.0, and each is
+  now a failure. clang 22.1.8 is installed and deliberately not admitted: the
+  gate builds with gcc
+- Gate placement, stated rather than assumed: the gate is `make verify-kernel`
+  (tools/verify_kernel_build.py, seven cases, no '|| true' anywhere) and make
+  verify-all does NOT invoke it. Reasons recorded on the target itself: a full
+  run downloads 160 MB, extracts 1.4 GB and compiles a kernel (91 s wall on
+  this profile with the source already present), and the CI runner has no
+  kernel toolchain, no /dev/kvm and no emulator, so wiring it in would add a
+  step that can only skip. CI therefore never compiles a kernel and never boots
+  one. What CI does re-run is the binding that matters everywhere:
+  crates/aegis-fabrica-defs/tests/kernel_fragment.rs (7 cases) fails if the
+  tracked fragment stops being what the M18 schema renders, and
+  tools/test_kernel_build.py (30 cases) fails if the pin, the fragments or the
+  recorded toolchain drift apart. A host that cannot run the gate has two
+  outcomes and they are not the same claim. A tool that is missing or below the
+  floor the pinned source declares prints a 'SKIP: ...; the kernel build gate
+  did not run.' line and exits 0 -- observed with pahole off PATH, where make
+  verify-kernel also exits 0 -- so an exit 0 from this target is evidence only
+  when the case lines are above it; that SKIP-exits-0 idiom is the repository's
+  existing convention, shared with verify-systemd and verify-mkosi. A host that
+  has the toolchain but cannot obtain the pinned source, with no network and no
+  cached tarball, instead prints 'FAIL: the gate could not run: ... could not
+  be downloaded' and exits 1 -- observed with a curl that cannot resolve
+  cdn.kernel.org -- because an unverifiable source is a refusal rather than a
+  skip
+- HISS-02 on the gate's own external commands, counted rather than asserted: an
+  AST sweep over tools/verify_kernel_build.py finds 15 external call sites and
+  15 of them carry a deadline. Fourteen are run(argv, deadline) or
+  subprocess.run(timeout=...); the fifteenth is the `xz --decompress --stdout`
+  that feeds gpg during signature verification, a subprocess.Popen, which has
+  no timeout parameter at all, so its bound is structural -- a try/finally
+  kills the child on every path out of the body. Without that finally a gpg
+  that exceeds EXTRACT_TIMEOUT raises past the kill and the Popen context
+  manager's own exit waits on the still-running decompressor with no bound.
+  Reproduced with a PATH shim (xz ignoring SIGPIPE and holding for 120 s, gpg
+  replaced by sleep, EXTRACT_TIMEOUT patched to 3 s): the gate's own deadline
+  fired at 3 s, the GateError never surfaced, and the process was still blocked
+  in that context-manager exit, inside an unbounded wait, when an outer timeout
+  killed it 42 s later at exit 124. With the finally in place the same shim
+  fails closed in 3.0 s with 'gpg exceeded its 3s deadline' and leaves no child
+  behind. tools/test_kernel_build.py covers the good-signature,
+  refused-signature and expired-deadline paths
+- Gates re-run on the reference profile, each exit 0: `cargo fmt --check`,
+  `cargo build --locked`, `cargo test --locked --all-features`, `cargo clippy
+  --locked --all-targets --all-features -- -D warnings`, `RUSTDOCFLAGS='-D
+  warnings' cargo doc --locked --no-deps`, `make verify-all`, `make
+  verify-kernel`, `python3 tools/rank_roadmap.py`, `python3 -B -m unittest
+  discover -s tools -p 'test_*.py'`, `npx markdownlint-cli2@0.23.2`, `yamllint
+  .`, `flake8 .`, `black --check --line-length 100 tools .config/agent/hooks`,
+  and `git status --porcelain Cargo.lock` empty
+- Scope: development evidence on the reference profile recorded in
+  planning/hardware-profile.json. It is not a substitute for the Nucleus
+  contract in M09, which pins one request/result pair against a real producer.
+  No boot gate is closed: the guest boot is a configuration read-back, not a
+  measured boot, with no UKI, no Secure Boot, no TPM measurement and no bootctl
+  evidence. No latency, jitter or determinism figure is claimed --
+  CONFIG_PREEMPT_RT is confirmed as a configuration state and uname -v reports
+  PREEMPT_RT, and measuring what that buys is M23, which stays blocked because
+  its other blocker M07 is ready rather than done. The guest's userspace is the
+  host's own bash, mount, uname, gzip and sleep with their library closure;
+  only the kernel under test is built here. The image, kernel-artifact, boot,
+  hardware and release gates remain blocked
 
 Epics:
 
