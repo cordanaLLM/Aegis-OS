@@ -13,6 +13,112 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (real-time control plane: P04, P07 and P08 logic, milestone M07)
+
+- Three more reserved directories become crates, and none of them is a daemon.
+  `crates/aegis-compositor` holds the bounded surface registry, the Tier-1
+  client table and a mocked Tier-2 mesh; `crates/aegis-lictor` holds the
+  `scx_cake` burst classifier, the bounded broker table and the fragility-probe
+  lifecycle; `crates/aegis-calliope` holds the sandboxed-plugin lifecycle, the
+  DMA-BUF descriptor table and the real-time grant. All three are libraries,
+  all three reuse the toolchain milestone M02 admitted, and **no new
+  third-party crate is resolved**: the lock file gains 31 lines across the
+  three crates and removes none.
+- **No latency, jitter, throughput, determinism or frame-time figure is
+  produced.** That is the whole point of the scope limit, and it is unusually
+  load-bearing here, because all three subsystems are about timing. The
+  reference kernel is `PREEMPT_DYNAMIC` and not `PREEMPT_RT`, so a number taken
+  on it would describe a machine the requirements do not target; milestone M23
+  runs the P07 and P08 fixtures on a realtime guest. Milestone M26 already
+  builds such a kernel and boots it, and that does not change this: the host
+  still runs `PREEMPT_DYNAMIC`. Every recorded target is wrapped in a type
+  whose `Display` says it is declared and unmeasured, and a test fails to
+  compile if one becomes a bare integer.
+- The frame-pacing constant is pinned, and the pin says why. REQ-P04-08 records
+  three figures that cannot all describe one loop: the scaffold sleeps 100
+  microseconds, its own comment on the line above says 144 Hz, and the graph of
+  record gives the node a `<1.5ms (Render/IPC)` budget. The pinned value is the
+  refresh-rate reading, 6944 microseconds, because only two of the three are
+  periods at all and the 100 microsecond literal would wake the loop
+  sixty-nine times per frame. The per-frame work budget fitting inside the
+  period is the consistency check, and a test shows that check can fail.
+- The Zenoh crate was checked and **deliberately not admitted**. The imported
+  manifest proposes `zenoh = "1.0"`; current upstream reports 1.10.1, released
+  2026-09-07, which is two minor series on and is exactly why an imported
+  version is proposal data rather than a pin. The acceptance this milestone has
+  to meet is a *mocked* transport test, and 1.10.1 declares 44 normal-kind
+  direct dependencies, 42 of them required, `tokio` among those, and the gate
+  would execute none of them. The same check was run for the Rust compositor
+  library ADR-0001 asks for: smithay 0.7.0, released 2025-06-24, 44 normal-kind
+  direct dependencies -- a total rather than a required count, because only 19
+  are required and 25 optional, with `drm`, `gbm`, `input` and `libseat` among
+  the optional ones but all four inside the `default` feature closure. Each
+  check is recorded with its date and **two** commands, one per figure: the
+  version endpoint carries no dependency data, and crates.io answers a request
+  with no `User-Agent` with HTTP 403 and an empty body, so a record behind a
+  single header-less command would reproduce neither number. A test asserts as
+  booleans that neither requirement is inherited and neither crate is admitted,
+  and rejects a recorded command that omits the header.
+- Decision D08 is applied rather than merely cited: the compositor is pure
+  Rust, the C `wlroots` mandate is superseded, and `AdmittedBackend` has one
+  variant, so nothing in the crate can spell the superseded mandate. Both
+  rejected readings stay representable in the register, which is where a choice
+  between three options belongs.
+- The scheduler's comparisons are carried across strictly. `scx_cake.bpf.c`
+  writes `<` and not `<=`, so a running average of exactly 100000 nanoseconds
+  is interactive and **not** critical. All three edges are pinned in both
+  directions, and the integer recurrence `(old * 3 + new) / 4` seeds on its
+  first sample rather than folding, which is what stops a genuinely bulk task
+  being classified as critical the moment it is first seen.
+- Two defects in the imported descriptors are carried as refusals instead of
+  being reconciled. The P08 scaffold fills every DMA-BUF descriptor with
+  `stride: width * 4` and `fourcc: 0x34325641` under a comment naming both
+  `NV12` and `ARGB`: that code spells `AV24`, which is neither, and a packed
+  stride cannot describe a planar format. The crate admits the two formats the
+  comment names, each with its own bytes per pixel, and refuses the literal.
+  The stride arithmetic is checked, so a width above `u32::MAX / 4` is a typed
+  overflow rather than the wrapped product the scaffold would produce.
+- The two resource limits P08 calls non-negotiable are **measured**, not
+  assumed. `ulimit -r` printed 99 and `ulimit -l` printed 8192 on the reference
+  profile on 2026-09-13. The first clears the 95 the report requires; the
+  second is not the "infinity" it also requires, and a finite ceiling is never
+  rounded up to unlimited however large it is, so the gap is reported as a
+  privileged-configuration action rather than disappearing into prose.
+- The register records P08's requirement as `RLIMIT_RTPRIO=95,
+  CPUSchedulingPolicy=rr at priority 80`, and those are two figures of
+  different kinds. `RLIMIT_RTPRIO` is a ceiling on the priority a process may
+  *request*, so 95 authorises 1 to 95 and refuses 96 -- which is what bounds a
+  grant, and why 96 is refused even on the reference account whose own ceiling
+  reads 99. The setting is the other figure, 80, which the crate now records
+  beside the ceiling; a test asserts the one relation that has to hold between
+  them, that the ceiling admits the setting.
+- The "no recursion" invariant the three crates assert is marked as **checked
+  by review rather than by a gate**. Every other invariant in those lists has a
+  falsifier behind it; this one does not, because planted direct and mutual
+  recursion both pass `cargo clippy -- -D warnings` and `praetorctl audit`
+  while planted controls for the other rules fail as they should. A
+  repository-level check for it is a separate change.
+- The three effect sweeps watch the same five socket identifiers -- `std::net`,
+  `UnixListener`, `UnixStream`, `TcpListener` and `TcpStream` -- because they
+  did not. The lists disagreed with each other about sockets and none of them
+  watched `std::net` or a listener on it, so a real
+  `std::net::TcpListener::bind` planted in library code passed all three
+  sweeps, the formatter, clippy and the whole suite while the crates claimed to
+  hold no file descriptor. Each list now catches that line, each sweep's
+  falsifier plants it, and the recorded lengths move to 28, 27 and 27. This is
+  still a check over an enumeration, not a proof over a category.
+- Every message crossing these three subsystems has exactly one definition. The
+  focus-switch report lives with its consumer in P07's crate and is built by
+  P04; the real-time grant lives with its consumer in P08's crate and is built
+  by P07; the P13 task-shift directive is not redeclared at all but decoded
+  through the type M05 already wrote. The DMA-BUF stream descriptor is the one
+  exception and the exception is structural: P04's crate already depends on
+  P08's, so declaring it in the consumer would close a cycle Cargo refuses
+  outright.
+- P04, P07 and P08 stay proposals. No crate here is the component it is named
+  after: nothing composites, schedules, loads, attaches, plays or captures, and
+  those effects are what the three subsystems are.
+
 ### Added (P13 Tellus SCI and P16 Athena lifecycle, milestone M05)
 
 - The evolution loop stops being two scaffolds that print what they would do.

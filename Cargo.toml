@@ -5,11 +5,14 @@
 resolver = "3"
 members = [
     "crates/aegis-athena",
+    "crates/aegis-calliope",
+    "crates/aegis-compositor",
     "crates/aegis-fabrica-defs",
     "crates/aegis-hephaestus",
     "crates/aegis-hestia",
     "crates/aegis-janus-lifecycle",
     "crates/aegis-justitia",
+    "crates/aegis-lictor",
     "crates/aegis-ludus",
     "crates/aegis-minerva",
     "crates/aegis-tellus",

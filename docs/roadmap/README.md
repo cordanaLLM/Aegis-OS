@@ -143,9 +143,9 @@ score.
 | 9 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | done | small | no | no | not-hardware | M14 | M19, M21 |
 | 10 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | done | small | no | no | not-hardware | M14 | M08, M22 |
 | 11 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | done | small | no | no | not-hardware | M06 | M25 |
-| 12 | M07 | Real-time control plane: P04, P07 and P08 logic | ready | medium | no | no | not-hardware | M02 | M19, M23 |
-| 13 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | full | M05, M07 | M10 |
-| 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | full | M07, M26 | M10 |
+| 12 | M07 | Real-time control plane: P04, P07 and P08 logic | done | medium | no | no | not-hardware | M02 | M19, M23 |
+| 13 | M19 | eBPF objects loaded through the verifier on the host kernel | ready | medium | no | no | full | M05, M07 | M10 |
+| 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | ready | medium | yes | no | full | M07, M26 | M10 |
 | 15 | M24 | Local boot harness over an externally supplied artifact | ready | large | yes | no | full | M15 | M11 |
 | 16 | M04 | UI accessibility harness: P12 Concordia tokens | ready | medium | no | no | not-hardware | M02 | M16 |
 | 17 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
@@ -915,7 +915,7 @@ Epics:
 
 ### M07 - Real-time control plane: P04, P07 and P08 logic
 
-Rank 12. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 12. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M19, M23.
 
@@ -971,7 +971,7 @@ Epics:
 
 ### M19 - eBPF objects loaded through the verifier on the host kernel
 
-Rank 13. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 13. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile: full.
 Blocked by: M05, M07. Unblocks: M10.
 
@@ -1544,7 +1544,7 @@ Epics:
 
 ### M23 - P07 and P08 latency fixtures on a realtime kernel guest
 
-Rank 14. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 14. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M07, M26. Unblocks: M10.
 

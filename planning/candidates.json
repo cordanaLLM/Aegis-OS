@@ -187,13 +187,13 @@
         }
       ],
       "missing": [
-        "crates/aegis-compositor/Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
-        "positive, negative and boundary tests",
-        "compositor dependency pins (D08 and ADR-0001 select pure Rust; export-007 still says wlroots)",
-        "frame-pacing constant (M07)"
+        "a P04 component daemon (aegis-compositor holds the registry, the bounds, the key expressions and the pinned pacing constant and opens no display)",
+        "a compositor library, a Wayland connection and a DRM output, all absent by design at M07: D08 selects pure Rust as a language boundary and admits no package, and M12 is where a display path would be demonstrated",
+        "a Tier-2 mesh transport: the zenoh crate's current upstream version was read at activation and deliberately not admitted, because the M07 acceptance is a mocked transport test",
+        "a Tier-3 sidecar dispatcher, whose owner dispute DSP-21 leaves unsettled",
+        "real hardware or emulator evidence: no latency, jitter, throughput or frame-time figure is produced at M07, and the P04 to P05 endpoint and budget stay open as decision D32"
       ],
-      "note": "Member 1 of the ten-entry export-006 members array."
+      "note": "Member 1 of the ten-entry export-006 members array. The crate exists from M07 as a written-out member of the workspace root Cargo.toml, with a Cargo.lock entry and positive, negative and boundary tests; D08 is recorded and applied there and the frame-pacing constant is pinned. manifest_present stays false because verify_candidates() reads it as a component-activation claim rather than as a filesystem fact, and P04 is still a proposal."
     },
     {
       "candidate_id": "C05",
@@ -312,13 +312,13 @@
         }
       ],
       "missing": [
-        "crates/aegis-lictor/Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
-        "eBPF toolchain admission (M19; open decision D40)",
-        "positive, negative and boundary tests",
-        "kernel sched_ext evidence (D20 keeps eBPF out of the first image)"
+        "a P07 component daemon (aegis-lictor holds the burst classifier, the process table, the locality mask and the probe lifecycle and loads no program)",
+        "an eBPF toolchain admission and a verifier pass (M19; open decision D40); the imported aya 0.12 and aya-bpf 0.1 requirements are proposal data and are recorded as not inherited",
+        "a kernel arbitration path: no sched_ext attachment, no drm_sched priority, no cgroups v2 write and no affinity call, all absent by design at M07",
+        "kernel sched_ext evidence (D20 keeps eBPF out of the first image)",
+        "real hardware or emulator evidence: no latency or determinism figure is produced at M07, because the reference profile runs PREEMPT_DYNAMIC rather than PREEMPT_RT, and M23 is where the fixtures run"
       ],
-      "note": "Member 2 of the export-006 members array; export-007 maps crates/aegis-lictor and bpf/ jointly to P07."
+      "note": "Member 2 of the export-006 members array; export-007 maps crates/aegis-lictor and bpf/ jointly to P07. The crate exists from M07 as a written-out member of the workspace root Cargo.toml, with a Cargo.lock entry and positive, negative and boundary tests; the scx_cake tier arithmetic is modelled with the source's own strict comparisons and no object is compiled or loaded. manifest_present stays false because verify_candidates() reads it as a component-activation claim rather than as a filesystem fact, and P07 is still a proposal."
     },
     {
       "candidate_id": "C08",
@@ -345,13 +345,13 @@
         }
       ],
       "missing": [
-        "crates/aegis-calliope/Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
-        "PipeWire dependency pin (none is declared in export-006)",
-        "positive, negative and boundary tests",
-        "PipeWire and DMA-BUF runtime evidence"
+        "a P08 component daemon (aegis-calliope holds the plugin table, the descriptor table, the grant type and the drift estimator and starts no graph)",
+        "a PipeWire dependency pin (none is declared in export-006) and a running graph, both absent by design at M07",
+        "a DMA-BUF export: no buffer is allocated and no file descriptor is opened or passed",
+        "a privileged limits configuration: the reference profile reads ulimit -r 99, above the required 95, and ulimit -l 8192 KiB, below the report's infinity, so the memlock gap is an operator action rather than an assumption",
+        "real hardware or emulator evidence: no latency figure is produced at M07, and decision D29 on the P08/P11 capture direction stays unresolved"
       ],
-      "note": "Member 4 of the export-006 members array."
+      "note": "Member 4 of the export-006 members array. The crate exists from M07 as a written-out member of the workspace root Cargo.toml, with a Cargo.lock entry and positive, negative and boundary tests; the plugin lifecycle enforces REQ-P08-03's Quarantine-before-Activation ordering and the stride arithmetic is checked. manifest_present stays false because verify_candidates() reads it as a component-activation claim rather than as a filesystem fact, and P08 is still a proposal."
     },
     {
       "candidate_id": "C09",

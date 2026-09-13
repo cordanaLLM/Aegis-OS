@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "aegis-calliope"
+description = "Aegis OS P08 validation slice: the bounded sandboxed-plugin lifecycle, the DMA-BUF descriptor table and its stride arithmetic, the SCHED_RR grant P07 hands P08, and the local phase-and-drift synchronisation rule. No PipeWire, no plugin host, no DMA-BUF file descriptor, no realtime thread and no timing measurement."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

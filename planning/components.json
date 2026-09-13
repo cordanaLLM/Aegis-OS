@@ -224,11 +224,11 @@
         "scaffold/crates/aegis-compositor/src/main.rs"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent",
-        "real hardware or emulator evidence for each listed hardware requirement"
+        "a P04 component daemon; crates/aegis-compositor holds the surface registry, the Tier-1 client table, a mocked Tier-2 mesh and the pinned pacing constant, and opens no display and no transport",
+        "a compositor backend: no Wayland connection, no libinput device, no XKB map, no layer-shell binding and no DRM output, all absent by design at M07; D08 selects pure Rust at M07 and admits no library, and M12 is where a display path would be demonstrated",
+        "a Tier-2 transport: MockedMesh is an in-process retained-sample table, and the zenoh crate version was read from current upstream at M07 and deliberately not admitted",
+        "a Tier-3 sidecar dispatcher: dispute DSP-21 leaves the owner of sidecar dispatch unsettled, so nothing here dispatches one",
+        "real hardware or emulator evidence for each listed hardware requirement; no latency, jitter, throughput or frame-time figure is produced at M07, because the reference profile runs PREEMPT_DYNAMIC rather than PREEMPT_RT"
       ],
       "cheapest_first_slice": {
         "description": "Build a Rust crate under crates/aegis-compositor (the existing scaffold at .workingdir source export-027 is a demonstration `main.rs`, not a compiled crate in-repo) that implements only the WaylandSurface registry, SurfaceLayer enum, and Tier-1 af_unix mesh as a unit-testable state machine, decoupled from wlroots/GPU r",
@@ -238,7 +238,8 @@
         "verification": "cargo test --workspace (or scoped -p aegis-compositor) run locally; asserts on Result::Err for the two boundary-overflow cases and Result::Ok/state mutation for the positive case. No wlroots, no mkosi, no QEMU, no TPM2 involved \u2014 this is ex"
       },
       "decisions": [
-        "D08 / ADR-0001: pure Rust compositor"
+        "D08 / ADR-0001: pure Rust compositor, recorded and applied at M07; the C wlroots mandate is superseded and no compositor library is admitted",
+        "D32: the P04 to P05 endpoint and budget stay open; M07 declares no P04 to P05 schema and binds no socket"
       ]
     },
     {
@@ -424,12 +425,11 @@
         "scaffold/crates/aegis-lictor/src/main.rs"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent",
-        "kernel ABI pin and eBPF verifier evidence absent",
-        "real hardware or emulator evidence for each listed hardware requirement"
+        "a P07 component daemon; crates/aegis-lictor holds the burst classifier, the tracked-process table, the locality mask and the probe lifecycle, and loads no program and writes no control group",
+        "an eBPF toolchain and a loaded object: no aya or libbpf dependency, no compile and no verifier pass, all deferred to M19 with open decision D40; the imported aya 0.12 requirement is proposal data and is recorded as not inherited",
+        "a kernel arbitration path: no sched_ext attachment, no drm_sched priority, no cgroups v2 write and no sched_setaffinity, all absent by design at M07",
+        "a transport for the focus-switch report and the task-shift directive, both typed and neither carried",
+        "real hardware or emulator evidence for each listed hardware requirement; no latency or determinism figure is produced at M07, because the reference profile runs PREEMPT_DYNAMIC rather than PREEMPT_RT, and M23 is where the fixtures run"
       ],
       "cheapest_first_slice": {
         "description": "Build the scx_cake.bpf.c struct_ops skeleton (select_cpu/enqueue/dispatch/running/stopping tier-classification logic) with clang -target bpf as declared in the repo Makefile's `bpf` target, verified purely by the in-tree BPF verifier (no GPU, no real kernel boot, no external contract) via `bpftool prog load` or libbpf ",
@@ -437,7 +437,11 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "Positive: EWMA converges to TIER_CRITICAL for a sequence of <100us bursts and to TIER_BULK for >=8ms bursts, matching BURST_CRITICAL_NS/BURST_INTERACTIVE_NS/BURST_FRAME_NS constants in scx_cake.bpf.c; register_process + on_window_focus_chan"
-      }
+      },
+      "decisions": [
+        "D40: the eBPF toolchain stays unadmitted; REQ-P07-03 and REQ-P07-05 are recorded as deferred to M19",
+        "REQ-P01-07: the imported aya and aya-bpf versions are recorded as proposal data and are not inherited"
+      ]
     },
     {
       "id": "P08",
@@ -479,11 +483,11 @@
         "scaffold/crates/aegis-calliope/src/main.rs"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent",
-        "real hardware or emulator evidence for each listed hardware requirement"
+        "a P08 component daemon; crates/aegis-calliope holds the plugin table, the DMA-BUF descriptor table, the grant type and the drift estimator, and starts no graph and loads no plugin",
+        "a PipeWire graph and a plugin sandbox: no connection, no SPA buffer, no bridge process and no rate limiting, all absent by design at M07; the ordering half of REQ-P08-03 is enforced by the lifecycle transition table and only that half",
+        "a DMA-BUF export: no buffer is allocated and no file descriptor is opened or passed; the descriptor carries an opaque table-local handle and says so",
+        "a privileged limits configuration: the reference profile reads ulimit -r 99, which clears the required 95, and ulimit -l 8192 KiB, which does not meet the report's infinity, so the memlock gap is recorded as an operator action",
+        "real hardware or emulator evidence for each listed hardware requirement; no latency figure is produced at M07, because the reference profile runs PREEMPT_DYNAMIC rather than PREEMPT_RT, and M23 is where the fixtures run"
       ],
       "cheapest_first_slice": {
         "description": "Build only the `crates/aegis-calliope` Rust crate (already a workspace member per Cargo.toml) as a library-first state machine with no live PipeWire/DMA-BUF I/O: model `PipeWirePipelineManager` (RTPRIO/quantum config), `PluginSandboxSlot` bounded-array plugin table (MAX_PLUGIN_SLOTS=32), and the plugin lifecycle (Recog",
@@ -491,7 +495,11 @@
         "needs_hardware": false,
         "needs_external_contract": false,
         "verification": "cargo test --package aegis-calliope (workstation/container, no special hardware): positive -- load_sandboxed_plugin succeeds up to MAX_PLUGIN_SLOTS and returns increasing slot_id; state machine transitions Recognition->Quarantine->Activatio"
-      }
+      },
+      "decisions": [
+        "D29: the P08/P11 capture direction stays unresolved; settling it means owning an encode budget, and M07 measures no time",
+        "REQ-P08-06: the scaffold's four-character code, its stride and its comment cannot all hold; M07 admits the two formats the comment names and refuses the literal"
+      ]
     },
     {
       "id": "P09",

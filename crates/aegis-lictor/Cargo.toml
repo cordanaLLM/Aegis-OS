@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "aegis-lictor"
+description = "Aegis OS P07 validation slice: the scx_cake four-tier EWMA burst classifier, the bounded resource-broker table and its focus arbitration, the locality mask, the fragility-probe state machine, and the two inbound edges P07 consumes. No eBPF, no aya, no cgroups, no D-Bus, no GPU and no timing measurement."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+aegis-calliope = { path = "../aegis-calliope" }
+aegis-tellus = { path = "../aegis-tellus" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
