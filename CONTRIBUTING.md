@@ -52,5 +52,5 @@ and is expected to fail on a clone without it.
 
 ## Licensing
 
-Read [`LICENSING.md`](LICENSING.md) before contributing: technical material is
+Read [`LICENSING.md`](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSING.md) before contributing: technical material is
 accepted under EUPL-1.2 (or later), original prose under CC BY-SA 4.0.

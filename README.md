@@ -1,8 +1,8 @@
 # Aegis OS
 
-[![HISS-16 Compliant](https://img.shields.io/badge/Standards-HISS--16%20Compliant-brightgreen)](AGENTS.md)
-[![Code: EUPL 1.2](https://img.shields.io/badge/code-EUPL--1.2-315c9b.svg)](LICENSING.md)
-[![Original content: CC BY-SA 4.0](https://img.shields.io/badge/original%20content-CC%20BY--SA%204.0-b85c00.svg)](LICENSING.md)
+[![HISS-16 Compliant](https://img.shields.io/badge/Standards-HISS--16%20Compliant-brightgreen)](https://github.com/cordanaLLM/Aegis-OS/blob/main/AGENTS.md)
+[![Code: EUPL 1.2](https://img.shields.io/badge/code-EUPL--1.2-315c9b.svg)](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSING.md)
+[![Original content: CC BY-SA 4.0](https://img.shields.io/badge/original%20content-CC%20BY--SA%204.0-b85c00.svg)](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSING.md)
 
 Planning repository for an image-based Linux OS with sixteen proposed
 subsystems. The original concept is preserved; this repository currently
