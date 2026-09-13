@@ -194,7 +194,7 @@
       "id": "M02",
       "title": "First component promoted end-to-end: P06 aegis-justitia decision engine",
       "rank": 2,
-      "state": "ready",
+      "state": "done",
       "blocked_by": [
         "M01"
       ],
@@ -255,7 +255,16 @@
           "acceptance": "Positive: one algorithm is recorded and a chain re-walk verifies. Negative: a single flipped byte is detected, and a missing signer returns an error. Boundary: an empty ledger verifies as the genesis state. MD5 is removed."
         }
       ],
-      "evidence": [],
+      "evidence": [
+        "crates/aegis-justitia: the P06 decision engine as library code (risk tiers, maker-checker, Annex III, approval timeout, killswitch latch, pending registry with reclamation) on a new workspace root with a committed Cargo.lock and rust-toolchain.toml",
+        "96 Rust tests pass under cargo test --locked --all-features, with cargo fmt --check, cargo clippy --all-targets --all-features -D warnings and RUSTDOCFLAGS=-D warnings cargo doc all clean on the pinned toolchain",
+        "Audit ledger hashing sits behind a trait with a SHA-256 implementation and a fixed-width digest; MD5 is excluded and no md-5 crate is pinned (D02)",
+        "Every decision arm writes exactly one audit record: allow, refuse, halt and the human adjudication path; an unrecordable decision engages the halt latch and releases the hold",
+        "tools/verify_preparation.py: a component may advance to the activated status only with evidence git tracks, bound to the component by path and by the crate name its manifest declares, and named by its test command; 53 Python tests cover the positive, negative and boundary cases",
+        "docs/roadmap/toolchain-admission.md records the admitted toolchain: Rust 1.98.1 pinned by rust-toolchain.toml and materialised by rustup 1.29.1, replacing the removed distribution package, with clippy 0.1.98 and rustfmt 1.9.0 as pinned components (D61)",
+        "make verify-all carries the crate gate, so the repository's own instruction to run it before concluding a turn covers the Rust evidence; CI materialises the pinned toolchain first",
+        "Scope limit: no TPM2 signing, no eBPF, no D-Bus and no consumer contracts. M14, M19, M10 and M20 remain blocked and this milestone claims none of their evidence"
+      ],
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
@@ -266,7 +275,7 @@
       "id": "M14",
       "title": "P06 consumer interface contracts and hardened unit contract",
       "rank": 3,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M02"
       ],
@@ -336,7 +345,7 @@
       "id": "M03",
       "title": "P01/P02 definitions validated offline with host systemd",
       "rank": 4,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M02"
       ],
@@ -543,7 +552,7 @@
       "id": "M17",
       "title": "Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates",
       "rank": 7,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M02"
       ],
@@ -848,7 +857,7 @@
       "id": "M07",
       "title": "Real-time control plane: P04, P07 and P08 logic",
       "rank": 11,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M02"
       ],
@@ -1149,7 +1158,7 @@
       "id": "M04",
       "title": "UI accessibility harness: P12 Concordia tokens",
       "rank": 15,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M02"
       ],

@@ -86,6 +86,24 @@ jobs:
           chmod 0755 "$RUNNER_TEMP/bin/lefthook"
           lefthook install
 
+      # The runner image ships rustup and a Rust toolchain, but neither is the
+      # pin: the image's toolchain is not named 1.98.1 and carries no clippy, so
+      # a cargo gate run without this step would test whatever the image happens
+      # to ship. `rustup toolchain install` with no toolchain argument installs
+      # the active toolchain, which rust-toolchain.toml overrides to the pinned
+      # channel, and -c materialises the components that same file names.
+      - name: Materialise the pinned Rust toolchain
+        run: |
+          rustup toolchain install --no-self-update --profile minimal \
+            -c rustfmt,clippy
+          rustup show active-toolchain
+          rustup which rustc
+          rustup which cargo-clippy
+
+      # make verify-all runs the crate gate itself once a workspace manifest is
+      # present, so the cargo evidence sits inside this one job. That is
+      # deliberate: the branch ruleset requires exactly the "Preparation gate"
+      # check, and a separate job would not be required and could be skipped.
       - name: Preparation gate
         run: make verify-all
 

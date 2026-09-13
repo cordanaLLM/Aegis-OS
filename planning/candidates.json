@@ -239,12 +239,12 @@
       "component": "P06",
       "language": "rust",
       "proposed_paths": [
-        "crates/aegis-justitia/src/main.rs",
+        "crates/aegis-justitia/src/",
         "crates/aegis-justitia/tests/"
       ],
       "in_proposed_workspace": true,
-      "manifest_present": false,
-      "lockfile_present": false,
+      "manifest_present": true,
+      "lockfile_present": true,
       "sources": [
         {
           "id": "export-015",
@@ -272,13 +272,13 @@
         }
       ],
       "missing": [
-        "crates/aegis-justitia/Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
-        "library code outside #[cfg(test)] (export-047 defines its engine inside the test module)",
-        "hash-algorithm trait boundary (D02)",
-        "eBPF compile and verifier evidence for action_gate (M19, M10)"
+        "consumer contract schemas and their version gate (M14)",
+        "eBPF compile and verifier evidence for action_gate (M19, M10)",
+        "TPM2 record signing; the signer boundary ships unbound and fails closed (M20)",
+        "the D-Bus transport",
+        "a durable ledger sink; M02 ships the bounded in-memory sink only"
       ],
-      "note": "Member 3 of the export-006 members array; first component promoted end-to-end (D01, M02)."
+      "note": "Member 3 of the export-006 members array; first component promoted end-to-end (D01, M02). Activated at M02 with a tracked crate manifest, the workspace lock and the `cargo test --locked --all-features -p aegis-justitia` gate that `make verify-rust` and `make verify-all` both run; the sketch's in-test engine was replaced by library code and the MD5 ledger by the D02 SHA-256 trait boundary."
     },
     {
       "candidate_id": "C07",

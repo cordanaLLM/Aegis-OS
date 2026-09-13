@@ -306,7 +306,7 @@
       "name": "aegis-justitia",
       "proposed_domain": "EU AI Act Compliance & Action Interceptor",
       "layer": "Governance & Regulatory Gate",
-      "status": "proposal",
+      "status": "activated",
       "owner": "aegis",
       "external_producers": [
         "Golusoris",
@@ -345,11 +345,9 @@
         "scaffold/crates/aegis-justitia/src/main.rs"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "per-crate Cargo manifest and workspace lock absent",
-        "kernel ABI pin and eBPF verifier evidence absent",
+        "pinned shared integration contract (consumer and hardened-unit schemas, M14)",
+        "kernel ABI pin and eBPF verifier evidence absent (M19, M10)",
+        "TPM2 record signing absent; the signer boundary fails closed (M20)",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],
       "cheapest_first_slice": {
@@ -363,7 +361,18 @@
         "D01: first component promoted end-to-end",
         "D02: SHA-256 ledger behind a trait",
         "D03: intercepts actions proposed by P09"
-      ]
+      ],
+      "milestone": "M02",
+      "activation_evidence": {
+        "component_path": "crates/aegis-justitia",
+        "manifest_path": "crates/aegis-justitia/Cargo.toml",
+        "lockfile_path": "Cargo.lock",
+        "workspace_manifest_path": "Cargo.toml",
+        "toolchain_pin_path": "rust-toolchain.toml",
+        "toolchain_admission_path": "docs/roadmap/toolchain-admission.md",
+        "test_command": "cargo test --locked --all-features -p aegis-justitia",
+        "scope": "Library crate only: risk tiers, maker-checker oversight, Annex III escalation, approval windows, a one-way killswitch and a hash-linked audit ledger behind the D02 hashing trait. No native build, image, boot, hardware or release evidence is claimed."
+      }
     },
     {
       "id": "P07",
