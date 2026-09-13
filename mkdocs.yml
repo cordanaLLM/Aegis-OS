@@ -2,9 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
 # SPDX-License-Identifier: EUPL-1.2
 #
-# Documentation portal for the Aegis OS planning repository. It publishes the
-# tracked planning and governance prose only. It builds no image, kernel, or
-# release artefact, and its success is not evidence for any blocked gate.
+# Documentation portal for Aegis OS, an image-based Linux operating system. It
+# publishes the tracked documentation prose only. It
+# builds no image, kernel, or release artefact, and its success is not evidence
+# for any blocked gate.
 #
 # Build from the repository root: the Snippets base path is the repository
 # root, which is how the root-level governance files reach pages under docs/.
@@ -12,8 +13,9 @@
 site_name: Aegis OS
 site_url: https://cordanallm.github.io/Aegis-OS/
 site_description: >-
-  Planning repository for an image-based Linux OS with sixteen proposed
-  subsystems: preparation, governance, and a source-cited roadmap.
+  Image-based Linux OS whose subsystems are activated one at a time against
+  recorded evidence. No product image, hardware boot, or
+  release yet.
 site_author: Lusoris
 repo_url: https://github.com/cordanaLLM/Aegis-OS
 repo_name: cordanaLLM/Aegis-OS

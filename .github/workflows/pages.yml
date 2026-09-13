@@ -1,8 +1,8 @@
 ---
-# Documentation portal: builds the tracked planning and governance prose with
-# MkDocs and publishes it to GitHub Pages. It is documentation only. It builds
-# no image, kernel, or release artefact, and a green run is not evidence for
-# the blocked build, boot, hardware, or release gates.
+# Documentation portal: builds the tracked documentation prose with MkDocs and
+# publishes it to GitHub Pages, matching the self-description in mkdocs.yml. It
+# is documentation only. It builds no image, kernel, or release artefact, and a
+# green run is not evidence for any blocked gate.
 name: Documentation portal
 
 on:

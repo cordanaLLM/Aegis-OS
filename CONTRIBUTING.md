@@ -13,6 +13,24 @@ All changes must pass local verification before submitting:
 make verify-all
 ```
 
+The `verify-all` recipe in the `Makefile` is the authoritative list of what that
+command runs; read it there rather than from this page. It verifies definitions
+and library code only. It closes no image, boot, hardware, accessibility or
+release gate; those remain separately blocked, and `make build`, `make boot` and
+`make release` exit non-zero by design. `make readiness` prints the current
+component and milestone state; never restate that state here.
+
+That is not the whole gate a pull request faces, so a green local run is not yet
+a green pull request. The `Makefile` also declares verification targets that
+`verify-all` never invokes, and beyond `make verify-all` the `Preparation gate`
+status check runs further licence, Markdown, YAML, Python and shell linting and
+checks the Developer Certificate of Origin sign-off on the pull request's
+commits.
+[`.github/workflows/ci.yml`](https://github.com/cordanaLLM/Aegis-OS/blob/main/.github/workflows/ci.yml)
+is the authority on that set and on the version each tool is pinned to; run the
+ones that cover the files you touched before opening a pull request, rather than
+listing them again here.
+
 ### Modernized NASA JPL Power-of-10 Rules
 
 1. **Simple Control Flow (HISS-01)**: Recursion is strictly banned; call graph
@@ -64,11 +82,33 @@ audit .` and the pre-push gate's Flavor Conformance stage find the state
 ledgers. `make verify-sources` additionally needs the private source archive and
 is expected to fail on a clone without it.
 
+The gates inside `make verify-all` do not all fail the same way on an
+under-equipped host: some fail loudly on a missing tool, others print why they
+did not run and exit 0, so a green local run is not proof that all of them
+executed. Read each gate's own output.
+[`docs/roadmap/toolchain-admission.md`](https://github.com/cordanaLLM/Aegis-OS/blob/main/docs/roadmap/toolchain-admission.md)
+is the authority on which tool a gate runs, at which pinned version, and which
+tools are not yet admitted — read the versions there rather than from this page.
+
 The `.vscode/` configuration is maintained here for this repository's actual
 stack and deliberately differs from Praetor's generated editor template, so
 `praetorctl editors verify` reports drift. That command gates nothing; do not
 run `praetorctl editors` in this repository, because it would restore the
 Go-oriented template. Configurations for other editors stay as generated.
+
+## Files that are machine-checked
+
+Some tracked prose is verified, not just linted.
+
+- `AGENTS.md` is canonical and its per-client projections are generated. Edit
+  `AGENTS.md` and run `praetorctl compile-context`; hand-editing a projection
+  fails the gate and the pre-commit hook.
+- `docs/integration/stack.md` is pinned by digest from
+  `planning/candidates.json`, so any edit to it must update both citations in
+  the same commit.
+- `docs/roadmap/README.md` is parsed against `planning/roadmap.json` and must
+  carry each milestone's rank and state exactly as the register records them, in
+  both the ranked table and the section preambles.
 
 ## Licensing
 

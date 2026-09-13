@@ -5,7 +5,7 @@ Status: reviewed draft; decisions D01-D20 recorded by the maintainer on
 
 ## Outcome and scope
 
-Aegis OS is a proposed image-based Linux OS with sixteen subsystems (P01-P16):
+Aegis OS is an image-based Linux OS with sixteen subsystems (P01-P16):
 Rust host daemons, kernel-space eBPF programs,
 mkosi/systemd-repart/systemd-sysupdate image definitions, and Svelte UI
 packages. The concept is preserved unchanged. This roadmap orders repository
@@ -15,10 +15,9 @@ evidence at the lowest cost.
 Outcome: a ranked, dependency-explicit path from the current state to a first
 real image with retained artifact, signature and boot evidence, then to
 hardware-backed slices and release. The current state is: governance gate green,
-licence scaffold committed, remote declared and resolving, and all sixteen
-components in `proposal` status. Every milestone states what unblocks it. No
-milestone claims build, boot, hardware or release evidence before the real
-inputs and checks exist.
+licence scaffold committed, and remote declared and resolving. Every milestone
+states what unblocks it. No milestone claims build, boot, hardware or release
+evidence before the real inputs and checks exist.
 
 Scope inclusions: component inventory reconciliation; one component promoted
 end-to-end; workstation-testable slices for the remaining components; the
@@ -44,10 +43,6 @@ Current verified state at revision time:
   history, pull requests, and the required `Preparation gate` status check.
 - Every milestone and epic is mirrored as a GitHub milestone and a `roadmap`
   issue; `planning/roadmap.json` stays the source of truth.
-- No Cargo.toml is tracked, and the crates/*/ directories contain no crate
-  files.
-- planning/components.json lists all sixteen components as `proposal`, with
-  activation blockers and cheapest first slices.
 - The private readiness matrix records the Imago/Nucleus edges as declared but
   unverified, and the configured producer origins as not resolving.
 

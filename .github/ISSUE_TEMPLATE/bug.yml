@@ -1,6 +1,8 @@
 ---
 name: "Bug Report"
-description: "Report a defect in planning artifacts, governance tooling, or a verification gate"
+description: >-
+  Report a defect in a crate, a build or image definition, a planning artifact, governance
+  tooling, or a verification gate
 title: "[BUG]: "
 labels: ["bug", "triage"]
 body:
@@ -9,6 +11,11 @@ body:
       value: |
         Please verify the failure against the current default branch with
         `make verify-all` before filing.
+
+        `make verify-all` runs several gates and some of them guard
+        themselves, printing why they did not run on a host that cannot run
+        them. Paste the gate's own output so it is clear which gates executed
+        on your host.
   - type: textarea
     id: summary
     attributes:

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "planning",
+  "stage": "activation",
   "concept_source_sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
   "components": [
     {

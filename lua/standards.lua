@@ -23,12 +23,23 @@ end
 
 lspconfig.standards_lsp.setup({})
 
+-- praetorctl first, the vendored Praetor source tree second, an explicit
+-- failure third. Same fallback chain the lefthook governance hooks use, so an
+-- editor command and a commit hook cannot disagree about which binary runs.
+local function governance_shell(subcommand)
+  return "if command -v praetorctl >/dev/null 2>&1; then praetorctl "
+    .. subcommand
+    .. "; elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl "
+    .. subcommand
+    .. "; else echo HISS-16 governance command cannot run because praetorctl is not installed >&2; exit 1; fi"
+end
+
 vim.api.nvim_create_user_command("StandardsAudit", function()
-  vim.cmd("!standardsctl audit")
+  vim.cmd("!" .. governance_shell("audit"))
 end, { desc = "Audit repository against declared HISS invariants" })
 
 vim.api.nvim_create_user_command("StandardsCompileContext", function()
-  vim.cmd("!standardsctl compile-context")
+  vim.cmd("!" .. governance_shell("compile-context"))
 end, { desc = "Compile AGENTS.md cross-agent contexts" })
 
 vim.api.nvim_create_user_command("StandardsVerifyAll", function()

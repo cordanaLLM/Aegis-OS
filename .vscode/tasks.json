@@ -3,7 +3,7 @@
   "tasks": [
     {
       "label": "Aegis: preparation gate",
-      "detail": "make verify-all — planning structure, privacy, licence digests, roadmap states and governance",
+      "detail": "make verify-all — the repository gate; the Makefile recipe is the authoritative list of what it runs. Image, boot, hardware, accessibility and release stay blocked",
       "type": "shell",
       "command": "make verify-all",
       "group": { "kind": "test", "isDefault": true },
@@ -11,7 +11,7 @@
     },
     {
       "label": "Aegis: readiness",
-      "detail": "make readiness — component blockers and the ready roadmap milestones",
+      "detail": "make readiness — the live component and milestone state",
       "type": "shell",
       "command": "make readiness",
       "problemMatcher": []

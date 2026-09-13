@@ -3,10 +3,13 @@
 
 ## Overview
 
-Aegis OS is a planning-stage open project maintained under Praetor governance.
-This document describes how decisions are made, how components are activated,
-and how maintainership is earned. It does not claim any runtime, build, boot, or
-release capability.
+Aegis OS is an open project maintained under Praetor governance. This document
+describes how decisions are made, how components are activated, and how
+maintainership is earned. It describes governance only. This repository does
+not build a product image, does not boot on any machine, and has never
+published a release; those gates, along with hardware and accessibility, remain
+separately blocked. `make readiness` prints the current component and milestone
+state.
 
 ## Decision Making & Architecture Decision Records
 
@@ -20,10 +23,20 @@ release capability.
 
 ## Component Activation
 
-A component listed in `planning/components.json` moves from proposal to active
-only when all of the following exist: its component manifest, a dependency lock,
-its interface contract, and positive, negative, and boundary tests. Shared
-ownership with Imago, Nucleus, and Golusoris is defined in
+A component listed in `planning/components.json` moves from `proposal` to
+`activated` — the only advanced status the gate admits — only when it records an
+`activation_evidence` block that `tools/verify_preparation.py` accepts: a
+component directory named after the component, a git-tracked manifest inside
+that directory whose `[package] name` is the component's name, a git-tracked
+dependency lock, a test command that names the component, and the milestone the
+activation closes. The component's remaining `activation_blockers` stay recorded
+and non-empty: activation certifies tracked code and tests, never a build, boot,
+hardware or release claim. A pinned interface contract and positive, negative
+and boundary tests are required by `AGENTS.md` and checked in review.
+`tools/verify_preparation.py` is the authority on the machine-checked half; read
+`planning/components.json` for the recorded precedent.
+
+Shared ownership with Imago, Nucleus, and Golusoris is defined in
 `docs/integration/stack.md`. The ordered path is kept in `docs/roadmap/` and
 `planning/roadmap.json`.
 

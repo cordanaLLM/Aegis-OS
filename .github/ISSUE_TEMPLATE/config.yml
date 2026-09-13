@@ -4,7 +4,8 @@ contact_links:
   - name: "Aegis OS Discussions"
     url: "https://github.com/cordanaLLM/Aegis-OS/discussions"
     about: >-
-      Ask about the concept, the roadmap, or shared ownership with Imago, Nucleus, and Golusoris
+      Ask about the concept, the roadmap, the verification gates, or shared ownership with Imago,
+      Nucleus, and Golusoris
   - name: "Security Vulnerability Advisory"
     url: "https://github.com/cordanaLLM/Aegis-OS/security/advisories/new"
     about: "Report sensitive security issues privately"
