@@ -1838,7 +1838,7 @@
         "Hardware: a KVM-capable host with swtpm; a physical TPM2 is optional and recorded separately if used",
         "Toolchain admission: tpm2-tools (or the chosen TSS library) is selected through the template matrix with a pinned version",
         "Unblocking evidence: a real PCR quote from swtpm signs one M14 audit record, and /var unseals only under the enrolled PCR policy",
-        "tpm2-tools 5.8 (or the chosen TSS library, e.g. a Rust tss-esapi binding) is pinned through the template matrix before any quote is taken; the reference profile has neither installed today.",
+        "tpm2-tools 5.8 (or the chosen TSS library, e.g. a Rust tss-esapi binding) is pinned through the template matrix before any quote is taken. Both are present on the reference profile -- swtpm 0.10.2-1.1 and tpm2-tools 5.8-1.1, read back from `swtpm --version` and `tpm2_pcrread --version` -- so what this criterion still requires is the pin, not the installation.",
         "The swtpm quote path is recorded as pre-proven on the M24 harness, so this milestone exercises it against the real M11 image rather than debugging the mechanism for the first time.",
         "The PCR binding is chosen honestly and justified in the evidence: PCR 11 (the UKI) and PCR 0/4 are the defensible local subset, because on the reference profile Secure Boot is disabled and no guest keys are enrolled, so a PCR 7 policy would attest to an unsigned configuration rather than a trusted boot policy.",
         "The emulated and the physical TPM2 are recorded as two distinct measurements and never conflated: a swtpm quote proves the code path, not a hardware root of trust.",
