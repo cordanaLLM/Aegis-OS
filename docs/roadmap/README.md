@@ -61,8 +61,11 @@ and hardware needs. Milestones are bounded, verifiable states. Each is costed
 transitively unblocks, and flagged for hardware or unverified cross-repository
 contracts. Ranking takes the available milestone (all blockers ranked) with the
 highest (1 + transitive unblocks) / cost, under hard rules: (1) done or purely
-local work ranks before anything needing hardware or an unverified
-cross-repository contract; (2) the first cross-repository milestone is stack.md
+local work ranks first, and from 2026-09-13 (D68) hardware
+work whose capability is present and measured on the recorded reference profile
+in planning/hardware-profile.json ranks with it, while work needing an absent
+capability or an unverified cross-repository contract still ranks last; (2) the
+first cross-repository milestone is stack.md
 step 2 (M09: pin Imago/Nucleus schemas and test one request/result pair
 locally), preceded by the Aegis-owned schema authoring (M18); (3) exactly one
 first component (P06, M02) is promoted end-to-end before any second component;
@@ -119,51 +122,46 @@ First-component justification (rule 3): P06 aegis-justitia is promoted first
 
 ## Ranked milestones
 
-| Rank | ID | Milestone | State | Cost | HW | Ext. contract | Blocked by | Unblocks | Exit criteria (summary) |
+| Rank | ID | Milestone | State | Cost | HW | Ext. contract | Reference profile | Blocked by | Unblocks |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0 | M00 | Governance gate, split licence and remote declaration | done | trivial | no | no | - | M01 | `make verify-all` passes and reports preparation/governance scope only (reported by this session's preparation run and recorded in the private verification ... |
-| 1 | M01 | Component inventory reconciliation and decision register | ready | small | no | no | M00 | M02 | Entry condition: `make verify-all` is re-run at the committed tip (42a23c8 or later) and passes |
-| 2 | M02 | First component promoted end-to-end: P06 aegis-justitia decision engine | blocked | small | no | no | M01 | M14, M03, M17, M07, M04 | A workspace root Cargo.toml is created (the repository has none; export-006 is proposal data) with crates/aegis-justitia as its only activated member; the ... |
-| 3 | M14 | P06 consumer interface contracts and hardened unit contract | blocked | small | no | no | M02 | M05, M06, M16, M20 | D03 (direction and transport of the P06/P09 action gate) is closed and D04 (P06 to P10 syscall intercept) is recorded |
-| 4 | M03 | P01/P02 definitions validated offline with host systemd | blocked | small | no | no | M02 | M18, M15 | build/ holds the repart definitions (00-esp, 10-root-a/b, 11-root-verity, 20-var) and the sysupdate transfer as reviewed files with source hashes |
-| 5 | M18 | Aegis-side product input manifest and kernel requirement schemas (local) | blocked | small | no | no | M03 | M09 | The Aegis product input manifest schema (repart, sysupdate and mkosi configuration references, correlation id, exact revision, bounded retries) validates ... |
-| 6 | M15 | P02 A/B candidate lifecycle state machine | blocked | small | no | no | M03 | M11 | The A/B lifecycle (candidate, signature check, delta acquisition, slot swap, watchdog, bless or rollback) is a Rust library with manifest, lock (location ... |
-| 7 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | blocked | small | no | no | M14 | M19, M21 | crates/aegis-tellus and crates/aegis-athena have manifests, lock entries and positive/negative/boundary tests passing under cargo test and clippy; the Rust ... |
-| 8 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | blocked | small | no | no | M14 | M08, M21 | crates/aegis-minerva and crates/aegis-vesta have manifests, lock entries and positive/negative/boundary tests; no GPU, D-Bus, Z3 FFI, KVM or Wasm engine is ... |
-| 9 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | blocked | trivial | no | no | M02 | M12 | aegis-vulcan and aegis-hestia are added as workspace members (they are absent from the proposal workspace) with manifests, lock entries and ... |
-| 10 | M07 | Real-time control plane: P04, P07 and P08 logic | blocked | medium | no | no | M02 | M19 | crates/aegis-compositor, aegis-lictor and aegis-calliope have manifests, lock entries and positive/negative/boundary tests; no wlroots, GPU, PipeWire, ... |
-| 11 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | blocked | small | no | no | M06 | M12 | aegis-ludus and aegis-hephaestus have manifests, lock entries and positive/negative/boundary tests; the Rust toolchain from M02 is reused |
-| 12 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | M05, M07 | M10 | Toolchain admission: clang (BPF target), bpftool and libbpf (or aya, per the M01 register) are selected through the template matrix with pinned versions ... |
-| 13 | M04 | UI accessibility harness: P12 Concordia tokens | blocked | medium | no | no | M02 | M16 | Toolchain admission: Node, pnpm, Playwright browsers and Svelte are selected through the template matrix with pinned versions (D10) before any UI gate runs; ... |
-| 14 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | M04, M14 | - | ui/forum-shell has its package manifest and lockfile on the toolchain admitted in M04 |
-| 15 | M09 | Cross-repository contract pin: one local request/result pair | blocked | small | no | yes | M18 | M11, M10 | The M18 schemas are proposed to cordanaLLM/imago and cordanaLLM/nucleus; acceptance is recorded only when each producer consumes the payload, not a fixed ... |
-| 16 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | large | yes | yes | M09, M15 | M13, M20, M12 | BLOCKED until: Imago accepts the M09 manifest and returns an image/UKI with digest and signature; Nucleus supplies the pinned kernel artifact; D07 is closed |
-| 17 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | blocked | medium | yes | yes | M09, M19 | M12 | BLOCKED until: the M09 pair delivers a Nucleus kernel whose version/config digest is recorded |
-| 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | blocked | medium | yes | no | M05, M06 | - | Hardware: a host with readable RAPL counters and KVM; the host model and kernel are recorded |
-| 19 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | M11 | - | BLOCKED until: an M11 artifact exists, hosted ruleset/label readback for origin is retained (D11), publication settings and at least one consumer are ... |
-| 20 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | M11, M14 | - | BLOCKED until: an M11 image boots under QEMU with swtpm |
-| 21 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | M08, M10, M11, M17 | - | BLOCKED until: a booted M11 image exists, the M10 kernel exposes VFIO/IOMMU, and a DMA-BUF-capable GPU with IOMMU groups is available on a recorded host |
+| 0 | M00 | Governance gate, split licence and remote declaration | done | trivial | no | no | not-hardware | - | M01 |
+| 1 | M01 | Component inventory reconciliation and decision register | done | small | no | no | not-hardware | M00 | M02 |
+| 2 | M02 | First component promoted end-to-end: P06 aegis-justitia decision engine | ready | small | no | no | not-hardware | M01 | M14, M03, M17, M07, M04 |
+| 3 | M14 | P06 consumer interface contracts and hardened unit contract | blocked | small | no | no | not-hardware | M02 | M05, M06, M16, M20 |
+| 4 | M03 | P01/P02 definitions validated offline with host systemd | blocked | small | no | no | not-hardware | M02 | M18, M15 |
+| 5 | M18 | Aegis-side product input manifest and kernel requirement schemas (local) | blocked | small | no | no | not-hardware | M03 | M09 |
+| 6 | M15 | P02 A/B candidate lifecycle state machine | blocked | small | no | no | not-hardware | M03 | M24 |
+| 7 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | blocked | trivial | no | no | not-hardware | M02 | M25 |
+| 8 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | blocked | small | no | no | not-hardware | M14 | M19, M21 |
+| 9 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | blocked | small | no | no | not-hardware | M14 | M08, M22 |
+| 10 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | blocked | small | no | no | not-hardware | M06 | M25 |
+| 11 | M07 | Real-time control plane: P04, P07 and P08 logic | blocked | medium | no | no | not-hardware | M02 | M19, M23 |
+| 12 | M19 | eBPF objects loaded through the verifier on the host kernel | blocked | medium | no | no | full | M05, M07 | M10 |
+| 13 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | blocked | small | yes | no | full (privileged read) | M05 | - |
+| 14 | M24 | Local boot harness over an externally supplied artifact | blocked | large | yes | no | partial | M15 | M11 |
+| 15 | M04 | UI accessibility harness: P12 Concordia tokens | blocked | medium | no | no | not-hardware | M02 | M16 |
+| 16 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
+| 17 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | blocked | medium | yes | no | full | M08, M17 | M12 |
+| 18 | M22 | P10 microVM sandbox measurements on KVM | blocked | medium | yes | no | full | M06 | - |
+| 19 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | blocked | medium | yes | no | partial | M07 | M10 |
+| 20 | M09 | Cross-repository contract pin: one local request/result pair | blocked | small | no | yes | partial | M18 | M11, M10 |
+| 21 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | medium | yes | yes | partial | M09, M24 | M13, M20, M12 |
+| 22 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | blocked | medium | yes | yes | partial | M09, M19, M23 | M12 |
+| 23 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | partial | M11, M14 | - |
+| 24 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | partial | M25, M10, M11 | - |
+| 25 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
 
-Ready set (every blocked_by done): M01. Done: M00. All other milestones are
-blocked. M09, M10, M11, M12, M13, M20 and M21 also require evidence or hardware
-that does not exist yet in qualifying form, and they must not be claimed.
-
-Critical path to the first artifact: M00 -> M01 -> M02 -> M03 -> M18 -> M09 ->
-M11 (with M15). Ranks express priority, not strict sequencing. M09 becomes ready
-as soon as M18 is done and can run in parallel with the local component
-milestones.
+The reference profile column records what the machine in
+`planning/hardware-profile.json` can evidence for that milestone. A pass there
+is development evidence only; see `docs/roadmap/hardware.md`.
 
 ## Milestone exit criteria and epics
 
 ### M00 - Governance gate, split licence and remote declaration
 
 Rank 0. State: done. Cost: trivial. Owner repository: cordanaLLM/Aegis-OS. Needs
-hardware: no. Needs external contract: no. Blocked by: -. Unblocks: M01.
-
-Evidence: commit a2c9626 (licence scaffold); commit 4d0d798 (canonical remote
-declared); commit 42a23c8 (component inventory enrichment and governance-only CI
-gate); git ls-remote --heads origin: refs/heads/main 42a23c8; private
-preparation verification log: PASS, preparation/governance only.
+hardware: no. Needs external contract: no. Reference profile: not-hardware.
+Blocked by: nothing. Unblocks: M01.
 
 Exit criteria:
 
@@ -203,10 +201,23 @@ Epics:
   (export-006) differs in letter case and is carried into the M01 register;
   hosted readback is not claimed.
 
+Evidence:
+
+- commit a2c9626 (licence scaffold)
+- commit 4d0d798 (canonical remote declared)
+- commit 42a23c8 (component inventory enrichment and governance-only CI gate)
+- git ls-remote --heads origin: refs/heads/main 42a23c8
+- private preparation verification log: PASS, preparation/governance only
+- 34cdaee (roadmap)
+- hosted ruleset praetor-main-protection active with required check Preparation
+  gate
+- Preparation gate CI green on main
+
 ### M01 - Component inventory reconciliation and decision register
 
-Rank 1. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS. Needs
-hardware: no. Needs external contract: no. Blocked by: M00. Unblocks: M02.
+Rank 1. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS. Needs
+hardware: no. Needs external contract: no. Reference profile: not-hardware.
+Blocked by: M00. Unblocks: M02.
 
 Exit criteria:
 
@@ -255,11 +266,33 @@ Epics:
   integration scripts stay inactive. Their failure-suppressing and
   simulated-output steps are listed as defects to fix before any activation.
 
+Evidence:
+
+- planning/candidates.json: 17 candidate rows covering all sixteen components,
+  27 contradictions (15 open), 56 toolchain drift rows, 8 quarantined imported
+  artefacts
+- docs/roadmap/inventory.md: the public register, recording that no Cargo.toml,
+  Cargo.lock or package manifest is committed and that crates/ and ui/ hold only
+  README.md
+- tools/verify_preparation.py verify_candidates(): validates schema, the pinned
+  source bundle, component coverage, digest form, row bounds, contradiction
+  sides and status, and quarantine invariants; it recomputes the digest of every
+  public repository citation and fails closed on a manifest claim while the
+  component is still a proposal
+- tools/test_preparation.py: ten register tests covering positive, negative and
+  boundary cases, including the public-citation mismatch and the summary length
+  boundary
+- make verify-all at this commit: 35 tests OK, praetorctl audit and
+  compile-context --verify pass, licence digests and roadmap blocking states
+  verified
+- Scope limit: planning evidence only. No manifest, lock, build, image, boot,
+  hardware, accessibility or release gate is closed or claimed by this milestone
+
 ### M02 - First component promoted end-to-end: P06 aegis-justitia decision engine
 
-Rank 2. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M01. Unblocks: M14,
-M03, M17, M07, M04.
+Rank 2. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS. Needs
+hardware: no. Needs external contract: no. Reference profile: not-hardware.
+Blocked by: M01. Unblocks: M14, M03, M17, M07, M04.
 
 Exit criteria:
 
@@ -280,6 +313,11 @@ Exit criteria:
   signing (M20)
 - planning/components.json P06 status is advanced with the evidence path; `make
   verify-all` passes
+- The pinned Rust toolchain is installed through rustup (extra/rustup 1.29.1)
+  and recorded in a committed rust-toolchain.toml; `rustc --version` inside the
+  workspace reports the pinned version and NOT the distribution rustc 1.98.1
+  observed on the reference profile, and the template matrix row cites both
+  values so the substitution is auditable.
 
 Cheapest exit: Promote the drafted P06 test module into a library crate with a
 trait boundary for hashing and signing. No TPM2, D-Bus or eBPF.
@@ -306,8 +344,8 @@ Epics:
 ### M14 - P06 consumer interface contracts and hardened unit contract
 
 Rank 3. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M02. Unblocks: M05,
-M06, M16, M20.
+Needs hardware: no. Needs external contract: no. Reference profile:
+not-hardware. Blocked by: M02. Unblocks: M05, M06, M16, M20.
 
 Exit criteria:
 
@@ -346,8 +384,8 @@ Epics:
 ### M03 - P01/P02 definitions validated offline with host systemd
 
 Rank 4. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M02. Unblocks: M18,
-M15.
+Needs hardware: no. Needs external contract: no. Reference profile:
+not-hardware. Blocked by: M02. Unblocks: M18, M15.
 
 Exit criteria:
 
@@ -371,6 +409,13 @@ Exit criteria:
   so it must be rewritten to supported keys before the gate can pass
 - The Rust definition parser crate (location per D15) has its manifest, lock and
   positive/negative/boundary tests; no `|| true` anywhere in the gate
+- The systemd version floor admitted through the template matrix records the
+  exact reference-profile value `systemd 261 (261.3-1-arch)` from `systemctl
+  --version`, so a future floor change is a visible diff rather than an
+  inherited assumption.
+- The repart and sysupdate gates are re-run and their exit codes and diagnostics
+  retained; a pass here is development evidence on the reference profile only
+  and does not close the image or boot gate.
 
 Cheapest exit: Run the two systemd commands against scratch images and trees,
 plus the parser tests. No image build and no mkosi.
@@ -398,7 +443,8 @@ Epics:
 ### M18 - Aegis-side product input manifest and kernel requirement schemas (local)
 
 Rank 5. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M03. Unblocks: M09.
+Needs hardware: no. Needs external contract: no. Reference profile:
+not-hardware. Blocked by: M03. Unblocks: M09.
 
 Exit criteria:
 
@@ -415,6 +461,21 @@ Exit criteria:
   runs; otherwise mkosi validation is deferred to the Imago result
 - No producer repository is contacted; the schemas are Aegis-owned files with
   positive, negative and boundary tests
+- The kernel requirement schema is validated positively against
+  planning/hardware-profile.json as a real reference payload, with each asserted
+  feature traceable to its probe command (zgrep /proc/config.gz,
+  /sys/kernel/security/lsm, /sys/kernel/btf/vmlinux, /sys/class/powercap,
+  /sys/kernel/iommu_groups).
+- Negative case bound to a measured absence: a requirement payload demanding
+  CONFIG_PREEMPT_RT is rejected against the reference profile, whose running
+  kernel reports '# CONFIG_PREEMPT_RT is not set' with CONFIG_PREEMPT_DYNAMIC=y.
+- Boundary case: a requirement payload demanding only CONFIG_HZ_1000 is
+  accepted, since the reference profile sets CONFIG_HZ_1000=y while still
+  failing the PREEMPT_RT requirement — proving the schema discriminates per
+  feature and not per kernel flavour.
+- D56 is recorded: mkosi is not installed and M18 takes D14's 'validate through
+  the Imago result' branch, or mkosi is pinned at extra/mkosi 27-1 which
+  supersedes the register's inherited 'mkosi v24+' row with an exact pin.
 
 Cheapest exit: Author the two schemas and validate them against the M03 files
 with the Rust toolchain from M02.
@@ -439,7 +500,8 @@ Epics:
 ### M15 - P02 A/B candidate lifecycle state machine
 
 Rank 6. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M03. Unblocks: M11.
+Needs hardware: no. Needs external contract: no. Reference profile:
+not-hardware. Blocked by: M03. Unblocks: M24.
 
 Exit criteria:
 
@@ -450,6 +512,9 @@ Exit criteria:
   the dm-verity requirement
 - Uses the Rust toolchain admitted in M02; systemd and sysupdate calls are
   stubbed
+- The state machine exposes a machine-readable transition trace so that M24 can
+  diff a real QEMU A/B sysupdate transfer against it byte-for-byte rather than
+  by narrative comparison.
 
 Cheapest exit: Model the lifecycle as a pure state machine with a stubbed clock
 and stubbed sysupdate.
@@ -464,11 +529,53 @@ Epics:
   REQ-P16-05. Acceptance: The decision is recorded, and a test shows that a
   reopened slot still requires a verity match before Bless.
 
+### M17 - Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates
+
+Rank 7. State: blocked. Cost: trivial. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: no. Needs external contract: no. Reference profile:
+not-hardware. Blocked by: M02. Unblocks: M25.
+
+Exit criteria:
+
+- aegis-vulcan and aegis-hestia are added as workspace members (they are absent
+  from the proposal workspace) with manifests, lock entries and
+  positive/negative/boundary tests; the Rust toolchain from M02 is reused
+- Scaffold assertions are refactored to Result per HISS-07 so that negative
+  cases are ordinary tests
+- The Hestia location decision (D09) is applied from the M01 inventory
+- Interface contracts are typed for P03 to P09 (weight streaming descriptor),
+  P03 to P15 (media ingest descriptor) and P15 to P04 (overlay registration),
+  each with a negative test for a malformed payload; the transports stay stubbed
+  until M12
+- The P03-to-P09 weight-streaming descriptor and the P03-to-P15 media-ingest
+  descriptor are typed so that the reference profile's actual DMA-BUF export
+  path (i915 renderD129, amdgpu renderD130, nvidia_drm modeset=Y) can be bound
+  at M25 without reshaping the descriptor.
+
+Cheapest exit: Extract the validation arithmetic and bounds checks. No VFIO, GPU
+or PGlite runtime.
+
+Epics:
+
+- **E17-1 Vulcan validation crate**. Requirements: REQ-P03-04, REQ-P03-05,
+  REQ-P03-08, REQ-P03-06, REQ-WS-01, REQ-P03-01, REQ-P03-02. Acceptance:
+  Positive: an aligned BAR is accepted. Negative: a misaligned BAR is rejected.
+  Boundary: block_count 0 and 8193 are rejected, 8192 is accepted, and the ring
+  index wraps.
+- **E17-2 Hestia vector-store state machine**. Requirements: REQ-P15-01,
+  REQ-P15-05, REQ-P15-06, REQ-P15-08, REQ-GRAPH-03. Acceptance: Positive: an
+  initialized store answers queries. Negative: a query before init fails.
+  Boundary: limits 0 and 101 fail, and 1 and 100 pass.
+- **E17-3 P03 and P15 interface contracts**. Requirements: REQ-P03-07,
+  REQ-P09-04, REQ-P15-07. Acceptance: Positive: the descriptors round-trip.
+  Negative: a malformed descriptor is rejected. Boundary: a descriptor at the
+  maximum block count is accepted, and one over is rejected.
+
 ### M05 - Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle
 
-Rank 7. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M14. Unblocks: M19,
-M21.
+Rank 8. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: no. Needs external contract: no. Reference profile:
+not-hardware. Blocked by: M14. Unblocks: M19, M21.
 
 Exit criteria:
 
@@ -482,6 +589,12 @@ Exit criteria:
 - Edge contracts are typed with negative tests for malformed payloads: P16 to
   P13 candidate SCI query, P16 to P02 promotion trigger, and consumption of the
   M14 audit record
+- The SCI engine's wattage input is behind a seam with a recorded simulated
+  constant, so that M21 can substitute a measured RAPL delta without touching
+  the arithmetic under test.
+- The seam accepts a zone list, because the reference profile exposes only
+  package-0 and core and has no dram or psys zone — the engine must not assume a
+  DRAM domain exists (D60).
 
 Cheapest exit: Extract the arithmetic and state machines into lib targets and
 mock all I/O.
@@ -509,9 +622,9 @@ Epics:
 
 ### M06 - Agent execution chain logic: P09 Minerva and P10 Vesta
 
-Rank 8. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M14. Unblocks: M08,
-M21.
+Rank 9. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: no. Needs external contract: no. Reference profile:
+not-hardware. Blocked by: M14. Unblocks: M08, M22.
 
 Exit criteria:
 
@@ -522,6 +635,10 @@ Exit criteria:
   runtime, or a protocol/FFI adapter with contract tests; no Go crate dependency
 - The P06 action proposal contract from M14 is consumed; the P09 to P10 capsule
   request and the P09/P14 verification direction are typed with negative tests
+- The P10 capsule request type carries a VMM identity field, because the
+  reference profile can supply either Firecracker 1.17.0 (packaged, absent) or
+  QEMU 11.1.1 microvm (installed), and D58 requires every measurement to record
+  which VMM produced it.
 
 Cheapest exit: Compile only the in-memory logic layers of the P09 and P10
 candidates with cargo test.
@@ -547,47 +664,52 @@ Epics:
   Negative: unsigned or malformed proposals are rejected. Boundary: a capsule
   request at the capsule bound is accepted, and one over is rejected.
 
-### M17 - Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates
+### M08 - Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus
 
-Rank 9. State: blocked. Cost: trivial. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M02. Unblocks: M12.
+Rank 10. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: no. Needs external contract: no. Reference profile:
+not-hardware. Blocked by: M06. Unblocks: M25.
 
 Exit criteria:
 
-- aegis-vulcan and aegis-hestia are added as workspace members (they are absent
-  from the proposal workspace) with manifests, lock entries and
+- aegis-ludus and aegis-hephaestus have manifests, lock entries and
   positive/negative/boundary tests; the Rust toolchain from M02 is reused
-- Scaffold assertions are refactored to Result per HISS-07 so that negative
-  cases are ordinary tests
-- The Hestia location decision (D09) is applied from the M01 inventory
-- Interface contracts are typed for P03 to P09 (weight streaming descriptor),
-  P03 to P15 (media ingest descriptor) and P15 to P04 (overlay registration),
-  each with a negative test for a malformed payload; the transports stay stubbed
-  until M12
+- Assertions are refactored to Result per HISS-07
+- P11 Ludus integrates no Steamworks SDK (D12, ADR-0002); a negative test proves
+  the image and the crate build without it
+- Interface contracts are typed for P09 to P14 (VERIFY_CODE_CAD, direction per
+  the M01 register), P14 to P15 (geometry viewport descriptor), P11 to P02
+  (transaction receipt, TPM2 signing stubbed) and P11 to P04 (rich presence),
+  each with a negative test for a malformed payload
+- The P11-to-P02 transaction-receipt contract records that the reference profile
+  has a TPM2 (tpm0 version 2) but NO FIDO2 authenticator (`lsusb | grep -iE
+  'yubi|fido|solo|token|nitro'` empty), so the FIDO2 half of P11 is an explicit
+  procurement dependency and not a stub that could be mistaken for coverage.
 
-Cheapest exit: Extract the validation arithmetic and bounds checks. No VFIO, GPU
-or PGlite runtime.
+Cheapest exit: Extract the bounds and validation logic. No Steam, CAD kernel or
+solver runtime.
 
 Epics:
 
-- **E17-1 Vulcan validation crate**. Requirements: REQ-P03-04, REQ-P03-05,
-  REQ-P03-08, REQ-P03-06, REQ-WS-01, REQ-P03-01, REQ-P03-02. Acceptance:
-  Positive: an aligned BAR is accepted. Negative: a misaligned BAR is rejected.
-  Boundary: block_count 0 and 8193 are rejected, 8192 is accepted, and the ring
-  index wraps.
-- **E17-2 Hestia vector-store state machine**. Requirements: REQ-P15-01,
-  REQ-P15-05, REQ-P15-06, REQ-P15-08, REQ-GRAPH-03. Acceptance: Positive: an
-  initialized store answers queries. Negative: a query before init fails.
-  Boundary: limits 0 and 101 fail, and 1 and 100 pass.
-- **E17-3 P03 and P15 interface contracts**. Requirements: REQ-P03-07,
-  REQ-P09-04, REQ-P15-07. Acceptance: Positive: the descriptors round-trip.
-  Negative: a malformed descriptor is rejected. Boundary: a descriptor at the
-  maximum block count is accepted, and one over is rejected.
+- **E08-1 Ludus launch-argument validator**. Requirements: REQ-P11-02,
+  REQ-P11-07, REQ-P11-01, REQ-P11-05. Acceptance: Positive: 64 args are
+  accepted. Negative: 65 args are rejected. Boundary: an empty argument list is
+  handled explicitly and its authentication outcome is recorded.
+- **E08-2 Hephaestus bounded loops**. Requirements: REQ-P14-01, REQ-P14-02,
+  REQ-P14-03, REQ-P14-04, REQ-P14-08. Acceptance: Positive: a mesh under the
+  bound is accepted. Negative: a missing STEP path errors. Boundary: 500000
+  elements are accepted and 500001 rejected, and the iteration bound is
+  honoured. CAD and solver versions are recorded as unpinned.
+- **E08-3 P11 and P14 interface contracts**. Requirements: REQ-P14-05,
+  REQ-P14-06, REQ-P11-06, REQ-P11-04. Acceptance: Positive: the descriptors
+  round-trip. Negative: a receipt without a signature field is rejected.
+  Boundary: a viewport descriptor at the mesh bound is accepted.
 
 ### M07 - Real-time control plane: P04, P07 and P08 logic
 
-Rank 10. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M02. Unblocks: M19.
+Rank 11. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: no. Needs external contract: no. Reference profile:
+not-hardware. Blocked by: M02. Unblocks: M19, M23.
 
 Exit criteria:
 
@@ -601,6 +723,13 @@ Exit criteria:
 - P04 is implemented as a pure Rust compositor (D08, ADR-0001); no C wlroots
   toolchain is admitted, and the frame-pacing constant is pinned
 - BPF C compilation is not part of this milestone (moved to M19)
+- One criterion states that no latency or determinism figure is produced by this
+  milestone, because the reference profile runs PREEMPT_DYNAMIC and not
+  PREEMPT_RT; every timing claim for P07/P08 is deferred to M23.
+- The RLIMIT_MEMLOCK and SCHED_RR assumptions are recorded as measured on the
+  reference profile (`ulimit -r` -> 99, above the required 95; `ulimit -l` ->
+  8192 KB, below the 'infinity' P08 expects), so the memlock gap is visible as a
+  privileged-configuration action rather than silently assumed.
 
 Cheapest exit: Unit-test the pure state machines only.
 
@@ -632,47 +761,11 @@ Epics:
   Boundary: an RTPRIO value at the source value is accepted, and one above is
   rejected.
 
-### M08 - Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus
-
-Rank 11. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M06. Unblocks: M12.
-
-Exit criteria:
-
-- aegis-ludus and aegis-hephaestus have manifests, lock entries and
-  positive/negative/boundary tests; the Rust toolchain from M02 is reused
-- Assertions are refactored to Result per HISS-07
-- P11 Ludus integrates no Steamworks SDK (D12, ADR-0002); a negative test proves
-  the image and the crate build without it
-- Interface contracts are typed for P09 to P14 (VERIFY_CODE_CAD, direction per
-  the M01 register), P14 to P15 (geometry viewport descriptor), P11 to P02
-  (transaction receipt, TPM2 signing stubbed) and P11 to P04 (rich presence),
-  each with a negative test for a malformed payload
-
-Cheapest exit: Extract the bounds and validation logic. No Steam, CAD kernel or
-solver runtime.
-
-Epics:
-
-- **E08-1 Ludus launch-argument validator**. Requirements: REQ-P11-02,
-  REQ-P11-07, REQ-P11-01, REQ-P11-05. Acceptance: Positive: 64 args are
-  accepted. Negative: 65 args are rejected. Boundary: an empty argument list is
-  handled explicitly and its authentication outcome is recorded.
-- **E08-2 Hephaestus bounded loops**. Requirements: REQ-P14-01, REQ-P14-02,
-  REQ-P14-03, REQ-P14-04, REQ-P14-08. Acceptance: Positive: a mesh under the
-  bound is accepted. Negative: a missing STEP path errors. Boundary: 500000
-  elements are accepted and 500001 rejected, and the iteration bound is
-  honoured. CAD and solver versions are recorded as unpinned.
-- **E08-3 P11 and P14 interface contracts**. Requirements: REQ-P14-05,
-  REQ-P14-06, REQ-P11-06, REQ-P11-04. Acceptance: Positive: the descriptors
-  round-trip. Negative: a receipt without a signature field is rejected.
-  Boundary: a viewport descriptor at the mesh bound is accepted.
-
 ### M19 - eBPF objects loaded through the verifier on the host kernel
 
 Rank 12. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M05, M07. Unblocks:
-M10.
+Needs hardware: no. Needs external contract: no. Reference profile: full.
+Blocked by: M05, M07. Unblocks: M10.
 
 Exit criteria:
 
@@ -689,6 +782,29 @@ Exit criteria:
   stubbed succeeds where the host exposes sched_ext
 - This is a non-qualifying local fixture: a host or stock kernel cannot close
   the Nucleus-kernel verification in M10
+- The three pinned tool versions are recorded from the reference profile before
+  the first compile: clang 22.1.8 (`clang -print-targets` listing bpf, bpfeb,
+  bpfel), bpftool v7.8.0 and libbpf v1.8.
+- The verifier log is retained for every load, positive and negative, and the
+  negative case is proven by the log rejecting the object — not by a non-zero
+  exit code alone: removing the ringbuf NULL check or an unroll bound must
+  produce a named verifier rejection in the log.
+- The scx_cake struct_ops boundary load explicitly attaches AND detaches on the
+  host kernel, and the pre-existing scheduler is recorded and restored:
+  /sys/kernel/sched_ext/root/ops reads `ghostbrew` before the test, the stubbed
+  scheduler during it, and `ghostbrew` again after, with nr_rejected and
+  switch_all captured at each point. Only one scx scheduler can hold root/ops,
+  so this is a deliberate disruptive step, not a background one (D67).
+- The host kernel identity and config are recorded as observed facts:
+  7.2.4-1-cachyos PREEMPT_DYNAMIC, CONFIG_SCHED_CLASS_EXT=y, CONFIG_BPF_LSM=y,
+  CONFIG_DEBUG_INFO_BTF=y, with the probe command beside each.
+- The provenance of bpf/scx_cake.bpf.c is recorded against extra/scx-scheds
+  1.1.3-2, which already installs /usr/bin/scx_cake on the reference profile:
+  either an upstream fork with its commit pinned, or an Aegis original (D66).
+- One criterion restates that this is a non-qualifying local fixture: a pass on
+  the reference profile is development evidence only, it does not close M10's
+  Nucleus-kernel verification, and it does not close any hardware or release
+  gate.
 
 Cheapest exit: Compile the three objects and run a verifier load on the
 workstation kernel. No VM, image or Nucleus artifact.
@@ -708,21 +824,146 @@ Epics:
   variant is rejected. Boundary: the hardcoded TDP literal is recorded as a
   non-measurement.
 
+### M21 - Workstation hardware slices: RAPL counters and KVM sandboxing
+
+Rank 13. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: full
+(privileged read). Blocked by: M05. Unblocks: nothing.
+
+Exit criteria:
+
+- Hardware: a host with readable RAPL counters and KVM; the host model and
+  kernel are recorded
+- Toolchain admission: Firecracker (and the jailer, if used) is selected through
+  the template matrix with a pinned version before any microVM run
+- Unblocking evidence: measured RAPL energy deltas replace the simulated wattage
+  in the M05 engine; a measured microVM boot time and memory footprint replace
+  the scaffold literals; one AF_VSOCK candidate evaluation round-trips
+- Scope: these are host-fixture measurements; re-measurement inside an Aegis
+  image is a later acceptance and is not claimed
+- Measured RAPL energy deltas from the sysfs energy counter replace the
+  simulated wattage constant in the M05 engine: at least two reads of
+  /sys/class/powercap/intel-rapl:0/energy_uj separated by a recorded interval,
+  with the host model (AMD Ryzen 9 9950X3D) and kernel (7.2.4-1-cachyos)
+  recorded beside them.
+- The reader handles counter rollover explicitly, with a boundary test against
+  the measured max_energy_range_uj of 65532610987 uJ; a wrap must produce a
+  correct positive delta and not a negative or absurd one.
+- The zone enumeration is recorded as measured, not assumed: `ls -d
+  /sys/class/powercap/*` on the reference profile yields only intel-rapl,
+  intel-rapl:0 (package-0) and intel-rapl:0:0 (core). A negative test asserts
+  that a request for a dram or psys zone fails explicitly rather than silently
+  returning zero (D60).
+- The privileged-read path is recorded: energy_uj is mode 0400 (CVE-2020-8694
+  mitigation), so the criterion names whether the reader runs as root, holds
+  CAP_DAC_OVERRIDE, or uses a privileged daemon — and an unprivileged read is a
+  negative test that must fail.
+- Accuracy is stated honestly in the retained evidence: AMD RAPL is a
+  model-based estimate derived from activity counters, not a measured power
+  rail, so only same-zone deltas are treated as trustworthy and absolute watts
+  carry vendor-defined error.
+- One criterion states that a pass on the reference profile is development
+  evidence only: it does not qualify hardware, does not close the hardware gate,
+  and is not release evidence; re-measurement inside an Aegis image remains a
+  later acceptance.
+- The energy counter read is privileged:
+  /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 on the reference
+  profile, so the measurement runs as root and the unprivileged gate records
+  only that the counter exists
+
+Cheapest exit: Read powercap counters and boot one Firecracker microVM on the
+workstation. No Aegis image and no GPU.
+
+Epics:
+
+- **E21-1 RAPL-backed carbon telemetry**. Requirements: REQ-P13-02, REQ-P13-01.
+  Acceptance: Positive: SCI is computed from measured energy. Negative:
+  unreadable counters fail closed with an error, not a default value. Boundary:
+  counter wraparound between two samples yields a correct positive delta.
+- **E21-2 Firecracker and AF_VSOCK sandboxing**. Requirements: REQ-P10-01,
+  REQ-P10-03, REQ-P16-04. Acceptance: Positive: a microVM boots and the
+  candidate evaluation round-trips over AF_VSOCK. Negative: a microVM request
+  above the memory limit is refused. Boundary: the 64th microVM on real KVM is
+  accepted and the 65th refused.
+- **E21-3 Venus GPU pricing deferred**. Requirements: REQ-P10-02. Acceptance:
+  Recorded as deferred to M12. It is not claimed here.
+
+### M24 - Local boot harness over an externally supplied artifact
+
+Rank 14. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: partial.
+Blocked by: M15. Unblocks: M11.
+
+Split from M11 after the reference profile was recorded, so a locally verifiable
+slice no longer waits behind one that is not.
+
+Exit criteria:
+
+- Toolchain admission before any boot: QEMU 11.1.1, the edk2 OVMF images present
+  on the reference profile (OVMF_CODE.4m.fd, OVMF_VARS.4m.fd,
+  OVMF_CODE.secboot.4m.fd) and swtpm 0.10.2 are selected through the template
+  matrix with pinned versions
+- The harness is parameterised over an externally supplied bootable artifact: a
+  pinned upstream distribution image or an Imago return. Aegis constructs no
+  image here; image construction stays with cordanaLLM/imago per
+  docs/integration/stack.md
+- A swtpm instance is attached to the guest and PCR 0, 4, 7 and 11 are read back
+  from inside the booted guest and retained; the reading records that host
+  Secure Boot is disabled, so PCR 7 documents the firmware state rather than
+  attesting a trusted chain
+- Positive: the supplied artifact boots headless under QEMU with KVM and the
+  harness captures the console log, the PCR values and the exit status
+- Negative: an artifact whose digest does not match the pinned value is refused
+  before boot, and a guest that fails to reach the login prompt within the
+  recorded timeout fails the harness
+- Boundary: the harness is exercised at its timeout, one second under and one
+  second over, and reports the two outcomes differently
+- A pass here is development evidence on the reference profile. It closes no
+  image, boot, hardware or release gate, and it is not evidence for M11
+
+Cheapest exit: Boot a pinned upstream image headless under QEMU with OVMF and
+swtpm, and retain the console log and PCR readback. No image is constructed.
+
+Epics:
+
+- **E24-1 Imago result consumed and verified**. Requirements: REQ-P01-01,
+  REQ-P01-06, REQ-P01-08. Acceptance: Positive: digest and signature verify
+  locally. Negative: a tampered image digest or bad signature is rejected.
+  Boundary: a producer version exactly at the floor is accepted, and one below
+  is rejected.
+- **E24-2 Real boot evidence replaces the simulated script**. Requirements:
+  REQ-BOOT-01, REQ-BOOT-02, REQ-P01-05, REQ-P02-02, REQ-P02-01. Acceptance:
+  Positive: PCR values are read back from swtpm, and the verity root hash
+  matches. Negative: a modified root image fails verity and does not boot to the
+  established state. Boundary: a PCR policy that omits PCR 11 fails to unseal
+  /var. The imported script is not used.
+
 ### M04 - UI accessibility harness: P12 Concordia tokens
 
-Rank 13. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M02. Unblocks: M16.
+Rank 15. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: no. Needs external contract: no. Reference profile:
+not-hardware. Blocked by: M02. Unblocks: M16.
 
 Exit criteria:
 
 - Toolchain admission: Node, pnpm, Playwright browsers and Svelte are selected
-  through the template matrix with pinned versions (D10) before any UI gate
-  runs; package manifests and lockfiles are committed for ui/concordia-tokens
+  through the template matrix with pinned versions (D10: latest stable versions
+  at activation, fast adoption through Renovate, sveltesentio adopted once
+  mature) before any UI gate runs; package manifests and lockfiles are committed
+  for ui/concordia-tokens
 - The Playwright and axe-core suite runs headless in a container with zero
   violations on the default state; it fails when the focus outline is removed;
   the focus width and contrast boundary follows D16
 - D17 (Bootstrap fork versus no monolithic CSS) is recorded; no `|| true` in the
   accessibility gate
+- The admitted Node, pnpm, Playwright and Svelte versions are committed as
+  lockfiles and the admission explicitly resolves the M01 drift-register row:
+  the reference profile runs Node v26.8.2 and pnpm 10.29.3, neither of which is
+  the register's Node 20 or Node 22, so the row is closed with an exact pin and
+  not inherited (D65).
+- The Playwright browser revision is pinned to the version actually exercised;
+  the reference profile has chromium-1228 cached, and the gate must fail rather
+  than silently download a different revision.
 
 Cheapest exit: Build the token file plus one Svelte component and run the axe
 suite in a container. No compositor and no daemons.
@@ -744,9 +985,9 @@ Epics:
 
 ### M16 - P05 Forum shell state and lifecycle with stubbed IPC
 
-Rank 14. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: no. Blocked by: M04, M14. Unblocks:
--.
+Rank 16. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: no. Needs external contract: no. Reference profile:
+not-hardware. Blocked by: M04, M14. Unblocks: nothing.
 
 Exit criteria:
 
@@ -772,11 +1013,150 @@ Epics:
   and Tellus telemetry payloads parse. Negative: an unknown schema version is
   rejected. Boundary: a telemetry update with zero watts renders without error.
 
+### M25 - GPU DMA-BUF sharing and VFIO passthrough slices
+
+Rank 17. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: full.
+Blocked by: M08, M17. Unblocks: M12.
+
+Split from M12 after the reference profile was recorded, so a locally verifiable
+slice no longer waits behind one that is not.
+
+Exit criteria:
+
+- Toolchain admission: QEMU 11.1.1 and the vfio-pci and vfio_iommu_type1 modules
+  are selected through the template matrix with pinned versions before any
+  passthrough run
+- DMA-BUF export and import is demonstrated end-to-end with measured transfer
+  values replacing the scaffold literals, across at least two of the three
+  vendor drivers, using the unprivileged path: /dev/udmabuf and PRIME export and
+  import through the render nodes
+- The privileged DMA-BUF heap path (/dev/dma_heap/system, root-only on the
+  reference profile) is recorded separately and never gates an unprivileged run
+- drm_sched is recorded as measured, not assumed: amdgpu is the drm_sched
+  provider on the reference profile, i915 is not, and the Intel card serves
+  drm_sched only if it is rebound to the xe driver, which is recorded as a
+  decision before it is relied upon
+- VFIO BAR mapping is demonstrated by binding a GPU that is the sole occupant of
+  its IOMMU group and that has no connected display output at bind time, both
+  verified and recorded
+- Resizable BAR state is recorded as measured (BAR1 current size on the discrete
+  card) rather than assumed
+- A pass here is development evidence on the reference profile and closes no
+  hardware gate
+
+Cheapest exit: Demonstrate DMA-BUF export and import across two of the three
+vendor drivers and bind one GPU through VFIO, replacing scaffold literals with
+measured values.
+
+Epics:
+
+- **E25-1 VFIO passthrough of a single-occupant IOMMU group**. Requirements:
+  REQ-P03-03, REQ-P03-06. Acceptance: Positive: the BARs of the group-isolated
+  device map into a guest. Negative: a device sharing an IOMMU group with
+  another function is refused. Boundary: a device with a connected display
+  output is refused at bind time.
+- **E25-2 DMA-BUF sharing across vendor drivers**. Requirements: REQ-P08-02,
+  REQ-P04-06. Acceptance: Positive: a buffer exported by one driver imports into
+  another and the measured transfer replaces the scaffold literal. Negative: an
+  import with a mismatched modifier is rejected. Boundary: the smallest and the
+  largest supported allocation both round-trip.
+
+### M22 - P10 microVM sandbox measurements on KVM
+
+Rank 18. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: full.
+Blocked by: M06. Unblocks: nothing.
+
+Split from M21 after the reference profile was recorded, so a locally verifiable
+slice no longer waits behind one that is not.
+
+Exit criteria:
+
+- D58 is recorded and the chosen VMM is pinned through the template matrix
+  before any microVM run: Firecracker 1.17.0 (extra/firecracker 1.17.0-1,
+  currently absent) or QEMU 11.1.1 with the microvm machine type and
+  MICROVM.4m.fd (already present).
+- Every measured boot time and memory footprint that replaces a scaffold literal
+  records which VMM produced it; Firecracker and QEMU microvm numbers are never
+  presented as interchangeable.
+- One AF_VSOCK candidate evaluation round-trips over the measured transport,
+  with /dev/vhost-vsock and the CONFIG_VHOST_VSOCK=m module recorded as the
+  mechanism.
+- Verify against the pinned release before relying on it: the sandbox VMM's
+  device passthrough limits are read from the pinned release documentation
+  rather than assumed
+- One criterion states that a pass on the reference profile is development
+  evidence only: it does not qualify hardware, does not close the hardware gate,
+  and is not release evidence.
+- A pass here is development evidence on the reference profile and closes no
+  hardware gate
+
+Cheapest exit: Run the candidate evaluation sandbox on the admitted VMM and
+record measured boot time, footprint and one AF_VSOCK round trip.
+
+Epics:
+
+- **E22-1 RAPL-backed carbon telemetry**. Requirements: REQ-P13-02, REQ-P13-01.
+  Acceptance: Positive: SCI is computed from measured energy. Negative:
+  unreadable counters fail closed with an error, not a default value. Boundary:
+  counter wraparound between two samples yields a correct positive delta.
+- **E22-2 Firecracker and AF_VSOCK sandboxing**. Requirements: REQ-P10-01,
+  REQ-P10-03, REQ-P16-04. Acceptance: Positive: a microVM boots and the
+  candidate evaluation round-trips over AF_VSOCK. Negative: a microVM request
+  above the memory limit is refused. Boundary: the 64th microVM on real KVM is
+  accepted and the 65th refused.
+
+### M23 - P07 and P08 latency fixtures on a realtime kernel guest
+
+Rank 19. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: partial.
+Blocked by: M07. Unblocks: M10.
+
+Split from M07 after the reference profile was recorded, so a locally verifiable
+slice no longer waits behind one that is not.
+
+Exit criteria:
+
+- Toolchain admission: QEMU 11.1.1 and the realtime kernel package are selected
+  through the template matrix with pinned versions
+- D57 is recorded with the realtime kernel obtained without modifying the
+  reference host: the distribution package is downloaded only (no installation,
+  no bootloader entry) and its kernel image and modules are passed to the guest
+- That the packaged realtime kernel sets CONFIG_PREEMPT_RT is verified from the
+  package itself before the milestone starts; until verified it is recorded as
+  an unmeasured assumption
+- The guest kernel's configuration is read back from inside the virtual machine
+  and confirms CONFIG_PREEMPT_RT, while the same probe on the reference host
+  confirms it is not set there
+- Positive: the latency fixture produces measured figures for the tier
+  thresholds on the guest. Negative: the same fixture on the non-realtime host
+  is recorded as not satisfying the determinism claim. Boundary: a run at the
+  threshold and one step beyond it are reported differently
+- A pass here is development evidence on the reference profile and closes no
+  hardware gate
+
+Cheapest exit: Boot the distribution realtime kernel in a guest and run the
+latency fixture there, recording that the reference host itself is not realtime.
+
+Epics:
+
+- **E23-1 Compositor registry and Tier-1 socket bounds**. Requirements:
+  REQ-P04-04, REQ-P04-05, REQ-P04-07, REQ-P04-08. Acceptance: Positive: 256
+  surfaces and 64 clients are accepted. Negative: the 257th surface is rejected
+  and the 65th client is not admitted. Boundary: a pacing-constant test pins the
+  chosen value.
+- **E23-2 wlroots and mesh design decision**. Requirements: REQ-P04-01,
+  REQ-P04-02, REQ-P04-03, REQ-P04-06. Acceptance: The decision is recorded. The
+  Zenoh version is selected at activation after checking current upstream, with
+  a mocked transport test: a publish round-trips, a subscriber cannot write
+  back, and an empty key expression is rejected.
+
 ### M09 - Cross-repository contract pin: one local request/result pair
 
-Rank 15. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: yes. Blocked by: M18. Unblocks:
-M11, M10.
+Rank 20. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: no. Needs external contract: yes. Reference profile: partial.
+Blocked by: M18. Unblocks: M11, M10.
 
 Exit criteria:
 
@@ -792,6 +1172,16 @@ Exit criteria:
   revision time) and the non-canonical identities in builder workflows are
   recorded as the blocker
 - Simulated output is not accepted as a result; no hosted dispatch is claimed
+- Until the producer repositories exist, the producer-side schemas, fixtures and
+  results stay tracked in Aegis as dogfooding input for creating them; nothing
+  is published to cordanaLLM/imago or cordanaLLM/nucleus from here
+- The unresolved producer identities are recorded as the blocker with the
+  verifying command and its output retained verbatim: `git ls-remote --heads
+  <https://github.com/cordanaLLM/imago.gi>t` and the same for nucleus, both
+  returning 'Repository not found' at the reference-profile probe date.
+- The local checkout commits actually exercised are pinned in the evidence
+  (imago 4f116fc, nucleus 78ca8f2 as observed), so the dogfooding run is
+  reproducible and is never mistaken for hosted acceptance.
 
 Cheapest exit: Run the pair against the pinned local checkouts without any
 hosted dispatch.
@@ -815,15 +1205,15 @@ Epics:
 
 ### M11 - Minimal image build with artifact, signature and boot evidence
 
-Rank 16. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: yes. Needs external contract: yes. Blocked by: M09, M15.
-Unblocks: M13, M20, M12.
+Rank 21. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
+Blocked by: M09, M24. Unblocks: M13, M20, M12.
 
 Exit criteria:
 
 - BLOCKED until: Imago accepts the M09 manifest and returns an image/UKI with
-  digest and signature; Nucleus supplies the pinned kernel artifact; D07 is
-  closed
+  digest and signature. The kernel is the pinned distribution linux-rt package
+  from the M18 manifest unless a Nucleus artifact is already available (D07)
 - Toolchain admission: QEMU, OVMF, swtpm and the signing tools (cosign or
   sbsign) are selected through the template matrix with pinned versions before
   any boot or signing gate
@@ -835,6 +1225,18 @@ Exit criteria:
   objects enter through M10 and M12
 - The A/B sysupdate transfer is exercised once between root-a and root-b, and
   observed transitions are compared with the M15 state machine
+- The M24 harness is reused unchanged and the only new input is the Imago
+  artifact; a criterion states that no second boot apparatus is built here.
+- The artifact's digest and signature are verified with the pinned cosign (2.6.3
+  on the reference profile) before the boot runs, and a tampered-digest negative
+  case is exercised.
+- The Secure Boot position is restated explicitly so it cannot be lost between
+  milestones: a QEMU/OVMF boot proves the image boots, not that it boots signed,
+  unless the guest VARS store was enrolled per D62; the reference profile's host
+  firmware cannot verify it (SecureBoot 0, SetupMode 0).
+- One criterion states that one boot on one developer workstation is development
+  evidence only: it does not qualify hardware, does not close the hardware or
+  release gate, and the retained logs must say so on their face.
 
 Cheapest exit: No cheaper exit exists: this is the first real artifact. Keep it
 to one image and one boot, and retain every log.
@@ -863,9 +1265,9 @@ Epics:
 
 ### M10 - eBPF objects re-verified against the Nucleus-pinned kernel in a VM
 
-Rank 17. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: yes. Needs external contract: yes. Blocked by: M09, M19.
-Unblocks: M12.
+Rank 22. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
+Blocked by: M09, M19, M23. Unblocks: M12.
 
 Exit criteria:
 
@@ -878,6 +1280,16 @@ Exit criteria:
   pinned version (shared with M11 if M11 lands first)
 - action_gate, scx_cake and kepler_power from M19 load through the verifier on
   that kernel; sched_ext, BPF LSM and BTF availability are read from its config
+- The M23 direct-kernel-boot harness is reused with only the kernel image and
+  initramfs substituted; no second harness is built.
+- sched_ext, BPF LSM and BTF availability are read from the Nucleus kernel's own
+  config inside the VM, and each value is diffed against the reference profile's
+  host value (CONFIG_SCHED_CLASS_EXT=y, bpf in the active LSM list,
+  /sys/kernel/btf/vmlinux present) so that a capability the host happened to
+  supply cannot be silently assumed of the kernel under test.
+- One criterion restates that the M19 host-kernel fixture does not close this
+  milestone and that a pass here on the reference profile's VM is development
+  evidence only, closing neither the hardware nor the release gate.
 
 Cheapest exit: Boot the Nucleus kernel directly in QEMU/KVM with a minimal
 initramfs and repeat the M19 loads. The M19 host-kernel fixture does not close
@@ -898,84 +1310,11 @@ Epics:
   is reported, not ignored. Boundary: zero energy delta over an idle interval is
   recorded as a value, not an error.
 
-### M21 - Workstation hardware slices: RAPL counters and KVM sandboxing
-
-Rank 18. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: yes. Needs external contract: no. Blocked by: M05, M06.
-Unblocks: -.
-
-Exit criteria:
-
-- Hardware: a host with readable RAPL counters and KVM; the host model and
-  kernel are recorded
-- Toolchain admission: Firecracker (and the jailer, if used) is selected through
-  the template matrix with a pinned version before any microVM run
-- Unblocking evidence: measured RAPL energy deltas replace the simulated wattage
-  in the M05 engine; a measured microVM boot time and memory footprint replace
-  the scaffold literals; one AF_VSOCK candidate evaluation round-trips
-- Scope: these are host-fixture measurements; re-measurement inside an Aegis
-  image is a later acceptance and is not claimed
-
-Cheapest exit: Read powercap counters and boot one Firecracker microVM on the
-workstation. No Aegis image and no GPU.
-
-Epics:
-
-- **E21-1 RAPL-backed carbon telemetry**. Requirements: REQ-P13-02, REQ-P13-01.
-  Acceptance: Positive: SCI is computed from measured energy. Negative:
-  unreadable counters fail closed with an error, not a default value. Boundary:
-  counter wraparound between two samples yields a correct positive delta.
-- **E21-2 Firecracker and AF_VSOCK sandboxing**. Requirements: REQ-P10-01,
-  REQ-P10-03, REQ-P16-04. Acceptance: Positive: a microVM boots and the
-  candidate evaluation round-trips over AF_VSOCK. Negative: a microVM request
-  above the memory limit is refused. Boundary: the 64th microVM on real KVM is
-  accepted and the 65th refused.
-- **E21-3 Venus GPU pricing deferred**. Requirements: REQ-P10-02. Acceptance:
-  Recorded as deferred to M12. It is not claimed here.
-
-### M13 - Release signing and remote delivery (stack.md step 5)
-
-Rank 19. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: no. Needs external contract: yes. Blocked by: M11. Unblocks: -.
-
-Exit criteria:
-
-- BLOCKED until: an M11 artifact exists, hosted ruleset/label readback for
-  origin is retained (D11), publication settings and at least one consumer are
-  recorded, and the hosted acceptance checks (sign-off and linear history on
-  historical commits, recorded in the private readiness matrix) are resolved or
-  explicitly waived
-- Toolchain admission: the release signing tool and the release workflow's
-  actions are selected and pinned; the unverified toolchain action reference is
-  replaced
-- Unblocking evidence: a verified release workflow run, a signature and
-  provenance for the real M11 artifact, and remote ruleset/label readback
-
-Cheapest exit: Record hosted ruleset/label readback for the existing origin
-first, and keep the release workflow inactive until an artifact exists.
-
-Epics:
-
-- **E13-1 Hosted ruleset/label and identity readback**. Requirements:
-  REQ-GOV-02. Acceptance: Positive: rulesets and labels read back from the
-  hosted side match .github/rulesets and .config/labels.yaml. Negative: a
-  missing required check is reported as drift. Boundary: the proposal identity
-  case difference is resolved or recorded.
-- **E13-2 Signing and provenance for a real artifact**. Requirements:
-  REQ-REL-01, REQ-REL-02. Acceptance: Positive: the signature verifies against
-  the M11 artifact. Negative: verification fails against a modified artifact,
-  and an unverified action reference fails workflow lint. Boundary: signing an
-  absent artifact fails rather than producing an empty signature.
-- **E13-3 Publication settings and consumers**. Requirements: REQ-P01-06.
-  Acceptance: Positive: one recorded consumer enables delivery. Negative:
-  delivery is refused with zero recorded consumers. Boundary: a consumer without
-  a pinned version is not counted.
-
 ### M20 - TPM2 attestation slice on swtpm: audit-record signing and /var unseal
 
-Rank 20. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: yes. Needs external contract: yes. Blocked by: M11, M14.
-Unblocks: -.
+Rank 23. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
+Blocked by: M11, M14. Unblocks: nothing.
 
 Exit criteria:
 
@@ -986,6 +1325,27 @@ Exit criteria:
   through the template matrix with a pinned version
 - Unblocking evidence: a real PCR quote from swtpm signs one M14 audit record,
   and /var unseals only under the enrolled PCR policy
+- tpm2-tools 5.8 (or the chosen TSS library, e.g. a Rust tss-esapi binding) is
+  pinned through the template matrix before any quote is taken; the reference
+  profile has neither installed today.
+- The swtpm quote path is recorded as pre-proven on the M24 harness, so this
+  milestone exercises it against the real M11 image rather than debugging the
+  mechanism for the first time.
+- The PCR binding is chosen honestly and justified in the evidence: PCR 11 (the
+  UKI) and PCR 0/4 are the defensible local subset, because on the reference
+  profile Secure Boot is disabled and no guest keys are enrolled, so a PCR 7
+  policy would attest to an unsigned configuration rather than a trusted boot
+  policy.
+- The emulated and the physical TPM2 are recorded as two distinct measurements
+  and never conflated: a swtpm quote proves the code path, not a hardware root
+  of trust.
+- One criterion states that a pass on the reference profile is development
+  evidence only: it does not qualify hardware, does not close the hardware or
+  release gate, and attestation rooted in a firmware-verified boot chain is not
+  claimed.
+- The quote covers PCR 0, 4, 7 and 11, while the unseal policy binds PCR 0, 4
+  and 11 only: on the reference profile Secure Boot is disabled, so a PCR 7
+  policy would attest to that state rather than to a trusted chain (D63)
 
 Cheapest exit: Use the M11 VM with swtpm. No physical TPM is required for this
 milestone.
@@ -999,14 +1359,14 @@ Epics:
   quote missing PCR 11 is rejected.
 - **E20-2 PCR-sealed /var unseal**. Requirements: REQ-P02-02, REQ-P02-03.
   Acceptance: Positive: /var unseals under the enrolled policy. Negative: a
-  wrong PCR policy fails to unseal. Boundary: changing only PCR 7 is enough to
-  prevent unseal.
+  wrong PCR policy fails to unseal. Boundary: changing only PCR 7 (recorded in
+  the quote, excluded from the unseal policy) is enough to prevent unseal.
 
 ### M12 - GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths
 
-Rank 21. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
-Needs hardware: yes. Needs external contract: yes. Blocked by: M08, M10, M11,
-M17. Unblocks: -.
+Rank 24. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
+Blocked by: M25, M10, M11. Unblocks: nothing.
 
 Exit criteria:
 
@@ -1018,6 +1378,24 @@ Exit criteria:
 - Unblocking evidence: per-path logs with measured values (DMA transfer,
   preemption and VRAM residency) replacing every hardcoded literal in the
   scaffolds
+- The P2PDMA precondition is stated as a measured absence with its probe: `ls -d
+  /sys/bus/pci/devices/*/p2pdma` returns no matches on the reference profile, so
+  no p2pmem provider exists and this path cannot be evidenced here at any cost
+  in effort.
+- The hardware dependency is named concretely rather than as 'a suitable GPU': a
+  CMB-capable enterprise NVMe controller or a datacentre-class GPU, recorded as
+  a procurement item with the reason (GPUDirect Storage and RDMA are not offered
+  on GeForce AD102).
+- Per D59, every P03/P09 exit criterion phrased as 'CUDA GPUDirect' is either
+  reframed to DMA-BUF plus host-mediated BAR transfer — which M25 evidences on
+  this profile — or explicitly deferred to real datacentre hardware; no
+  criterion is allowed to read as satisfied by the RTX 4090.
+- The DMA-BUF and VFIO results from M25 are consumed as inputs and explicitly
+  not re-derived; what this milestone adds is re-measurement inside a booted
+  Aegis image plus the P2P path.
+- One criterion states that any pass obtained on the reference profile is
+  development evidence only and that the P2P scaffold literals stay literals
+  until the named hardware exists.
 
 Cheapest exit: Order the paths by hardware availability: DMA-BUF sharing first,
 then VFIO BAR mapping, then P2PDMA.
@@ -1038,6 +1416,48 @@ Epics:
   decision is recorded. Negative: a Go library as a direct Rust dependency is
   rejected. Boundary: an ABI mapping with zero functions is not accepted as a
   boundary.
+
+### M13 - Release signing and remote delivery (stack.md step 5)
+
+Rank 25. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: no. Needs external contract: yes. Reference profile: partial.
+Blocked by: M11. Unblocks: nothing.
+
+Exit criteria:
+
+- BLOCKED until: an M11 artifact exists, hosted ruleset/label readback for
+  origin is retained (D11), publication settings and at least one consumer are
+  recorded, and the hosted acceptance checks (sign-off and linear history on
+  historical commits, recorded in the private readiness matrix) are resolved or
+  explicitly waived
+- Toolchain admission: the release signing tool and the release workflow's
+  actions are selected and pinned; the unverified toolchain action reference is
+  replaced
+- Unblocking evidence: a verified release workflow run, a signature and
+  provenance for the real M11 artifact, and remote ruleset/label readback
+- One criterion states that no measurement taken on the reference development
+  machine is admissible as release evidence, and that the retained release
+  evidence must come from the hosted workflow run and the remote readback only.
+
+Cheapest exit: Record hosted ruleset/label readback for the existing origin
+first, and keep the release workflow inactive until an artifact exists.
+
+Epics:
+
+- **E13-1 Hosted ruleset/label and identity readback**. Requirements:
+  REQ-GOV-02. Acceptance: Positive: rulesets and labels read back from the
+  hosted side match .github/rulesets and .config/labels.yaml. Negative: a
+  missing required check is reported as drift. Boundary: the proposal identity
+  case difference is resolved or recorded.
+- **E13-2 Signing and provenance for a real artifact**. Requirements:
+  REQ-REL-01, REQ-REL-02. Acceptance: Positive: the signature verifies against
+  the M11 artifact. Negative: verification fails against a modified artifact,
+  and an unverified action reference fails workflow lint. Boundary: signing an
+  absent artifact fails rather than producing an empty signature.
+- **E13-3 Publication settings and consumers**. Requirements: REQ-P01-06.
+  Acceptance: Positive: one recorded consumer enables delivery. Negative:
+  delivery is refused with zero recorded consumers. Boundary: a consumer without
+  a pinned version is not counted.
 
 ## Risks and decisions
 
@@ -1303,6 +1723,186 @@ Open decisions:
   the first-artifact path, justified only by an imported CI gate that stays
   inactive. **Decision (2026-09-13):** The first image boots only: no UI and no
   kernel-attached eBPF programs.
+
+### Decisions from the reference profile (2026-09-13)
+
+- **D68** Does the ranking rule count measured local hardware as local work?
+  Decision: yes. A milestone whose hardware capability is present and measured
+  on the recorded reference profile ranks with local work; a pass there stays
+  development evidence and closes no gate.
+- **D56** Is mkosi installed locally for Aegis-side validation, or does M18 rely
+  on the Imago result? (D14 relates.) Recommended: Do not install. Take D14's
+  recorded 'validate through the Imago result' branch. If M18 later needs local
+  validation, pin extra/mkosi 27-1 and use that exact pin to close the M01 drift
+  register's inherited 'mkosi v24+' row. Why: `command -v mkosi` exits 1 on the
+  reference profile while `pacman -Ss '^mkosi$'` shows extra/mkosi 27-1
+  available, so this is a free choice rather than a blocker. D14 already decided
+  mkosi is admitted only if M18 needs local validation, M03's own criteria say
+  mkosi is not used there, and stack.md assigns image construction to Imago. The
+  absence of mkosi is therefore an argument for the Imago-result branch, and
+  installing it would edge Aegis toward work it does not own. Version 27-1
+  clears the v24+ floor, so if the branch is taken later the register row is
+  resolved by an exact pin instead of an inherited range.
+- **D57** Where does the PREEMPT_RT kernel for P07/P08 latency work come from: a
+  distribution linux-rt package booted as a QEMU guest kernel, a distribution
+  linux-rt package installed as a host boot entry, or a request to Nucleus?
+  Recommended: Distribution linux-rt 7.2.5.rt3.arch1-1 booted as a QEMU/KVM
+  guest kernel at the new M23. Do not add a host boot entry and do not block on
+  Nucleus. Why: The reference host runs '# CONFIG_PREEMPT_RT is not set' with
+  CONFIG_PREEMPT_DYNAMIC=y, so the capability is genuinely absent — but `pacman
+  -Ss` confirms extra/linux-rt 7.2.5.rt3.arch1-1 and extra/linux-rt-lts
+  6.18.51.rt6.arch1-1 are packaged, and D07 has already decided the image boots
+  a pinned distribution linux-rt kernel by default. A guest kernel needs no
+  reboot, no firmware change and no change to the host's running scx scheduler,
+  and the resulting direct-kernel-boot harness is reusable verbatim by M10 for
+  the Nucleus kernel. This converts P07's determinism work from 'unprovable
+  until Nucleus exists' into category-3 work available now, and it feeds D55
+  (kernel version floor) with a measured value instead of an estimate.
+- **D58** Is Firecracker or QEMU microvm the sandbox VMM for P10 and the new
+  M22? Recommended: Pin Firecracker 1.17.0 (extra/firecracker 1.17.0-1) for the
+  headline boot-time and footprint numbers, with QEMU 11.1.1 microvm as a
+  recorded fallback. Every measurement must record which VMM produced it, and
+  the two sets are never presented as interchangeable. Why: `command -v
+  firecracker` exits 1 but the package exists; QEMU 11.1.1 is already installed
+  and /usr/share/edk2/x64/MICROVM.4m.fd is already on disk, so a comparable
+  measurement is available today at zero install cost. The numbers are not
+  equivalent, and M21's original criterion says measured boot time and footprint
+  replace the scaffold literals — so which VMM produced a literal is
+  load-bearing. A second fact forces the decision rather than deferring it:
+  Firecracker has no PCI passthrough, so a MicroVmInstance with is_gpu_enabled
+  set needs a different VMM regardless of the three GPUs and clean IOMMU groups
+  present on this profile.
+- **D59** Do consumer GPU limits change P03's (and P09's) acceptance, given that
+  the reference profile cannot demonstrate PCIe P2PDMA or CUDA GPUDirect at all?
+  Recommended: Yes. Reframe P03/P09 acceptance to DMA-BUF plus host-mediated BAR
+  transfer, which the profile evidences fully at the new M25, and move every
+  'CUDA GPUDirect' criterion behind an explicit named procurement dependency in
+  M12 (a CMB-capable enterprise NVMe controller or a datacentre-class GPU). Why:
+  CONFIG_PCI_P2PDMA=y expresses only the kernel's willingness: `ls -d
+  /sys/bus/pci/devices/*/p2pdma` returns no matches, so not one device on this
+  machine publishes a p2pmem pool, none of the three Samsung consumer NVMe
+  drives exposes a Controller Memory Buffer, and GPUDirect Storage/RDMA are
+  gated to datacentre SKUs so the RTX 4090 cannot serve them (nvidia_fs not
+  found, no /dev/nvidia-fs; installing a gds package would not change this).
+  Leaving the criteria phrased as GPUDirect invites a future reader to assume a
+  4090 covers them. Saying so plainly also lets the two paths that DO work —
+  DMA-BUF across three vendors, and VFIO BAR mapping with the Arc A380 alone in
+  IOMMU group 17 — proceed at rank 17 instead of waiting behind an impossible
+  sibling.
+- **D60** What energy scope does P13 accept, given that the reference profile
+  exposes only package-0 and core RAPL zones with no dram and no psys zone,
+  root-only access, and a model-based AMD estimate? Recommended: P13 measures
+  the package and core zones only. DRAM energy is modelled and labelled as
+  modelled, never reported as measured. The reader requires root or
+  CAP_DAC_OVERRIDE, handles rollover at the measured max_energy_range_uj of
+  65532610987 uJ, and treats only same-zone deltas as trustworthy. Why: P13's
+  stated requirement is 'pkg/DRAM energy accumulation' and the DRAM half does
+  not exist on this platform: `ls -d /sys/class/powercap/*` returns only
+  intel-rapl, intel-rapl:0 (package-0) and intel-rapl:0:0 (core). There is no
+  ACPI power_meter (ACPI000D) fallback either; the only alternatives are
+  device-scoped (amdgpu power1_input, i915 energy1_input). energy_uj is mode
+  0400 under the CVE-2020-8694 mitigation, so an unprivileged Tellus daemon
+  cannot read it and the perf power/energy-pkg route is blocked by
+  perf_event_paranoid too. Deciding this now keeps M21 from either silently
+  returning zero for a missing zone or quietly reporting a modelled number as a
+  measurement. It also follows that the P05/P09 20 W per-agent cap is
+  apportioned from a socket-level counter, never measured per process.
+- **D61** Is rustup installed to satisfy the template matrix's pinned-toolchain
+  admission, or is the distribution rustc accepted? Recommended: Install
+  extra/rustup 1.29.1 and commit a rust-toolchain.toml pinning the exact stable
+  version, before M02's first cargo gate runs. Why: This is the most
+  widely-needed gap on the profile: every Rust milestone from M02 onward carries
+  the clause that the stable toolchain is selected through the template matrix
+  with a pinned version before any cargo gate. `command -v rustup` exits 1 and
+  only the distribution rustc/cargo 1.98.1 is installed, which moves with system
+  updates and therefore cannot satisfy a pinned admission at all. M02 is the
+  single ready milestone, so this is the first thing that blocks real work — and
+  it is the reason M02 is category 2 rather than category 1.
+- **D62** How is Secure Boot evidenced, given that the reference host's firmware
+  has Secure Boot disabled AND is not in Setup Mode? Recommended: Guest-side
+  only, scoped to the new M24: generate a custom-key OVMF VARS store with
+  virt-firmware 26.9-1 or sbctl 0.18-2, sign the UKI with sbsigntools 0.9.5, and
+  boot against OVMF_CODE.secboot.4m.fd. Host firmware enrolment stays an
+  operator action recorded in planning/hardware-profile.json and is never a
+  roadmap milestone. Why: `od` on both `SecureBoot-*` and `SetupMode-*` returns
+  6 0 0 0 0: Secure Boot is off and the vendor PK/KEK/db/dbx are enrolled, so
+  custom host enrolment would require a physical firmware-setup visit and a
+  reboot. The guest path is nearly ready but has a specific hole —
+  /usr/share/edk2/x64 ships OVMF_CODE.secboot.4m.fd but NO pre-enrolled
+  OVMF_VARS.secboot, so the secboot firmware code is present and useless without
+  a generated variable store. This one item is exactly what separates 'the UKI
+  booted under QEMU' from 'the UKI's signature was verified', and both tools
+  that close it are packaged. It also determines that PCR 7 on this profile
+  attests to an unsigned configuration, which is why D63 exists.
+- **D63** Does M20's swtpm attestation slice re-blocker onto the new M24 harness
+  instead of M11, and which PCRs does the unseal policy bind? Recommended: Keep
+  M20 blocked on M11 as its own BLOCKED-until clause states, but pre-prove the
+  swtpm and tpm2-tools quote path on the M24 harness so M20 executes rather than
+  debugs when M11 lands. Bind the unseal policy to PCR 11 (the UKI) and PCR 0/4,
+  not PCR 7. Why: The quote half would genuinely run on an M24 scratch fixture,
+  but the /var unseal half needs the real image and M20's clause names it, so
+  moving the blocker would change the milestone's meaning to buy one rank. The
+  PCR choice is forced by measurement rather than preference: with host Secure
+  Boot disabled and no guest keys enrolled, a policy bound to PCR 7 would attest
+  to 'Secure Boot off' — a policy that passes while proving nothing. PCR 11 and
+  0/4 are the honest local subset. tpm2-tools 5.8 must be pinned either way;
+  neither tpm2_pcrread nor tpm2 is installed today.
+- **D64** Does planning/hardware-profile.json become a normative gate input that
+  milestones cite, and what is required before any needs_hardware milestone may
+  claim qualification rather than development evidence? Recommended: Yes:
+  milestones cite the profile by its recorded_on date and per-capability
+  evidence_command, and no needs_hardware milestone may flip to a qualification
+  claim until a second, differently-configured machine is recorded and the
+  milestone's own acceptance is met. The profile's existing evidence_class
+  string is the binding text. Why: This re-rank promotes six milestones on the
+  strength of one machine's capabilities, which is exactly the situation where
+  'it passed here' erodes into 'it is qualified'. The profile file already
+  carries the right language — role 'reference development machine' and an
+  evidence_class stating that a passing check does not qualify hardware, does
+  not close a blocked gate and is not release evidence — but nothing currently
+  obliges a milestone to cite it. Making the citation explicit is what keeps the
+  promotion honest, and it is why every hardware milestone above carries a
+  development-evidence-only criterion in its own exit_criteria_additions rather
+  than relying on a rule stated once elsewhere.
+- **D65** Which Node major does the UI toolchain admit at M04, given that the
+  reference profile runs Node v26.8.2 while the M01 drift register records 'Node
+  20 vs 22'? (D42 relates.) Recommended: Resolve D42 with an exact pin against a
+  current LTS decision; do not inherit either register value and do not silently
+  adopt v26.8.2 because it happens to be installed. Record the reference-profile
+  values (Node v26.8.2, pnpm 10.29.3, Playwright chromium-1228 cached) in the
+  template matrix beside the chosen pin. Why: The machine runs a third version
+  that appears nowhere in the register, so the row cannot be closed by picking a
+  side — the evidence has moved past both options. M01's register explicitly
+  marks these as proposal data to be resolved rather than inherited, and M04's
+  gate would otherwise pass on whatever the workstation happens to have. The
+  Playwright browser cache is already populated at chromium-1228, which makes it
+  particularly easy for an unpinned gate to look green for the wrong reason.
+- **D66** Is bpf/scx_cake.bpf.c an Aegis original or a fork of upstream
+  scx-scheds, given that the distribution already ships the binary? Recommended:
+  Record the provenance explicitly in M19: either pin the upstream scx-scheds
+  commit the object derives from, or state that it is an Aegis original that
+  merely shares a name. (D40 relates.) Why: `command -v scx_cake` returns
+  /usr/bin/scx_cake from extra/scx-scheds 1.1.3-2, already installed on the
+  reference profile — the scheduler P07 proposes ships as a distribution
+  package. M01's drift register already carries an unresolvable kernel-space
+  eBPF dependency question (D40) and flags unpinned upstream projects. Compiling
+  an object with the same name as an installed distribution binary, without
+  recording which one M19 is actually verifying, is the kind of ambiguity the
+  register exists to prevent; it would also make the M19 verifier log impossible
+  to attribute.
+- **D67** May M19's struct_ops boundary load displace the scheduler currently
+  holding /sys/kernel/sched_ext/root/ops on the reference host? Recommended:
+  Yes, as a deliberately scheduled disruptive step with recorded detach and
+  reattach, not as a background test. The pre-existing root/ops value must be
+  captured, the stubbed scheduler attached, then the original restored and
+  re-verified. Why: Only one scx scheduler can hold root/ops at a time, and the
+  reference host currently runs `ghostbrew` with switch_all=1 and nr_rejected=0
+  — so M19's boundary criterion ('a struct_ops load with all handlers stubbed
+  succeeds where the host exposes sched_ext') necessarily takes over CPU
+  scheduling on the maintainer's working machine for the duration. That is
+  executable and it is the right test, but it is not something to discover
+  mid-run. Deciding it in advance also produces the attach/detach evidence the
+  criterion should have carried all along.
 
 ## Evidence
 

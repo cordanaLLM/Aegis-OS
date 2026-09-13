@@ -90,13 +90,23 @@
     },
     "realtime_kernel": {
       "present": false,
-      "evidence_command": "zgrep CONFIG_PREEMPT_RT /proc/config.gz",
-      "note": "not set; a PREEMPT_RT kernel must come from a virtual machine or from Nucleus"
+      "evidence_command": "zgrep CONFIG_PREEMPT_RT /proc/config.gz; pacman -Ss linux-rt",
+      "note": "the running kernel is PREEMPT_DYNAMIC, but the distribution ships linux-rt 7.2.5.rt3.arch1-1; this is an operator action, not a missing capability"
     },
     "secure_boot_enrolment": {
       "present": false,
       "evidence_command": "bootctl status | grep -i 'secure boot'",
-      "note": "disabled on the host; OVMF with Secure Boot support is installed at /usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd, so enrolment is demonstrated inside QEMU"
+      "note": "disabled in the running firmware; the maintainer can enable it and enrol keys in UEFI setup, and OVMF with Secure Boot support is installed for virtual machine tests; this is an operator action, not a missing capability"
+    },
+    "resizable_bar": {
+      "present": true,
+      "evidence_command": "nvidia-smi -q | grep -A2 'BAR1 Memory Usage'; lspci -s 06:00.0 -vv | grep Region",
+      "note": "already enabled in firmware: 32 GiB BAR1 on the discrete NVIDIA card and an 8 GiB prefetchable region on the Intel card, which is the firmware prerequisite for peer DMA"
+    },
+    "gpu_dma_buf_and_peer_memory": {
+      "present": true,
+      "evidence_command": "modinfo nvidia | grep -E '^(version|license)'; modinfo -n nvidia_peermem",
+      "note": "NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.3.1 present; the Intel and AMD cards provide DMA-BUF through their in-tree drivers"
     }
   },
   "gpus": [
@@ -110,7 +120,8 @@
       "model": "GeForce RTX 4090 (AD102)",
       "pci_id": "10de:2684",
       "driver": "615.71.09",
-      "memory_mib": 24564
+      "memory_mib": 24564,
+      "driver_flavor": "open kernel modules (Dual MIT/GPL)"
     },
     {
       "vendor": "AMD",
@@ -149,7 +160,7 @@
     },
     "rustc": {
       "present": true,
-      "version": "rustc 1.98.1 (48a229cea 2026-09-01) (Arch Linux rust 1:1.98.1-1.1)"
+      "version": "rustc 1.98.1 (distribution package, no rustup)"
     },
     "cargo": {
       "present": true,
@@ -190,6 +201,86 @@
     "ovmf_secboot_firmware": {
       "present": true,
       "version": "/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd"
+    },
+    "cuda": {
+      "present": true,
+      "version": "13.3.1"
+    },
+    "nvidia_fs": {
+      "present": false,
+      "version": null
+    },
+    "qemu-img": {
+      "present": true,
+      "version": "installed"
+    },
+    "veritysetup": {
+      "present": true,
+      "version": "installed"
+    },
+    "cryptsetup": {
+      "present": true,
+      "version": "installed"
+    },
+    "dmsetup": {
+      "present": true,
+      "version": "installed"
+    },
+    "mkfs_erofs": {
+      "present": false,
+      "version": null
+    },
+    "ukify": {
+      "present": false,
+      "version": null
+    },
+    "rustup": {
+      "present": false,
+      "version": null
+    },
+    "sbctl": {
+      "present": false,
+      "version": null
+    },
+    "virt-firmware": {
+      "present": false,
+      "version": null
+    },
+    "systemd": {
+      "present": true,
+      "version": "261 (261.3-1-arch)"
     }
-  }
+  },
+  "operator_actions": [
+    {
+      "action": "Enable Secure Boot and enrol keys in UEFI setup",
+      "unblocks": "signature verification on real firmware for P01 and P02",
+      "kind": "firmware setting"
+    },
+    {
+      "action": "Install the distribution realtime kernel (extra/linux-rt 7.2.5.rt3.arch1-1)",
+      "unblocks": "P07 and P08 latency work on a PREEMPT_RT kernel without waiting for Nucleus",
+      "kind": "package install"
+    },
+    {
+      "action": "Install extra/mkosi 27, extra/erofs-utils 1.9.4, extra/sbsigntools 0.9.5 and extra/tpm2-tools 5.8, each pinned through the template matrix",
+      "unblocks": "image definition validation, EROFS and dm-verity images, unified kernel image signing and TPM policy checks for M03, M11, M13 and M20",
+      "kind": "package install"
+    },
+    {
+      "action": "Install Firecracker with its jailer, or use the already installed QEMU microvm machine type",
+      "unblocks": "P10 microVM sandboxing measurements in M21",
+      "kind": "package install"
+    },
+    {
+      "action": "Load vfio-pci to bind a GPU, and install the nvidia-fs module for GPUDirect Storage",
+      "unblocks": "P03 passthrough and peer DMA; DMA-BUF and peer memory already work with the installed open driver, so only the storage-to-GPU path needs nvidia-fs",
+      "kind": "module or package"
+    },
+    {
+      "action": "Pin the toolchain versions that are already installed (Rust 1.98.1, clang, bpftool, QEMU, swtpm, systemd 261, Node, pnpm, cosign) through the template matrix",
+      "unblocks": "every activation milestone, which must name a pinned toolchain before its gate runs",
+      "kind": "governance"
+    }
+  ]
 }

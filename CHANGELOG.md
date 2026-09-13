@@ -13,6 +13,38 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (reference profile)
+
+- `planning/hardware-profile.json`: the measured capabilities of the reference
+  development machine with the command that evidences each one, the packages and
+  firmware settings that are operator actions rather than missing hardware, and
+  the statement that a pass on this profile is development evidence only.
+  `docs/roadmap/hardware.md` publishes the same record with the per-milestone
+  and per-component capability tables.
+- `verify_hardware_profile()` validates the profile inside `make verify-all`:
+  the exact capability set with a boolean and an evidence command each, the
+  development-evidence statement, no machine identifiers, and no milestone
+  claiming full local support for a capability the machine lacks. Five tests
+  cover the positive, negative and boundary cases.
+
+### Changed (reference profile)
+
+- The roadmap is re-ranked against the reference profile and grows from 22 to 26
+  milestones. Four milestones split so a locally verifiable slice no longer
+  waits behind one that is not: a boot harness over an externally supplied
+  artifact, GPU DMA-BUF and VFIO slices, microVM measurements, and realtime
+  latency fixtures. Energy telemetry rose nine places because the counter is
+  live and measured on this machine.
+- Decision D68 amends the ranking rule: hardware work whose capability is
+  measured on the recorded reference profile ranks with local work, while work
+  needing an absent capability or an unverified cross-repository contract still
+  ranks last. Twelve further decisions record the toolchain, kernel and firmware
+  choices the profile forces.
+- Image construction stays with Imago: the boot harness is parameterised over a
+  pinned upstream image or an Imago return and constructs nothing. The realtime
+  kernel is obtained without modifying the reference host, and the Intel card is
+  recorded as not providing drm_sched under its current driver.
+
 ### Added (M01 register)
 
 - Component inventory and decision register for milestone M01:

@@ -94,6 +94,7 @@ nav:
   - Roadmap:
       - Overview: roadmap/README.md
       - Component inventory and decisions: roadmap/inventory.md
+      - Reference development profile: roadmap/hardware.md
       - Cited requirements: roadmap/requirements.md
       - Dependency-ordered tasks: roadmap/tasks.md
   - Integration:

@@ -37,6 +37,8 @@ PROFILE_CAPABILITIES = {
     "btf",
     "pci_p2pdma",
     "erofs_dm_verity",
+    "resizable_bar",
+    "gpu_dma_buf_and_peer_memory",
     "realtime_kernel",
     "secure_boot_enrolment",
 }
@@ -242,6 +244,9 @@ def verify_profile_capability(name, row):
 def verify_hardware_profile(milestones):
     """Validate the reference profile and every milestone claim made against it."""
     data = read_json(ROOT / "planning/hardware-profile.json")
+    for row in data.get("operator_actions", []):
+        if not row.get("action") or not row.get("unblocks"):
+            raise ValueError("Every operator action needs an action and what it unblocks")
     if data["schema_version"] != 1 or not data["evidence_class"]:
         raise ValueError("Profile must declare schema 1 and its evidence class")
     if "development evidence only" not in data["evidence_class"].lower():
