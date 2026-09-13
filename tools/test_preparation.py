@@ -421,6 +421,39 @@ class PreparationTests(unittest.TestCase):
         (self.root / "docs/roadmap").mkdir(parents=True, exist_ok=True)
         (self.root / "docs/roadmap/README.md").write_text(text)
 
+    def write_crate(self, name, body):
+        """A workspace member with one library source, as the sweep expects to find it."""
+        (self.root / "Cargo.toml").write_text('[workspace]\nmembers = ["crates/%s"]\n' % name)
+        source = self.root / "crates" / name / "src"
+        source.mkdir(parents=True, exist_ok=True)
+        (source / "lib.rs").write_text(body)
+
+    def test_library_without_aborts_passes(self):
+        self.write_crate("aegis-probe", "pub fn keep(n: usize) -> usize {\n    n\n}\n")
+        check.verify_library_aborts()
+
+    def test_an_abort_in_library_code_fails(self):
+        # Every construct is watched, not just assert!: clippy covers none of them.
+        for construct in check.ABORT_CONSTRUCTS:
+            self.write_crate("aegis-probe", "pub fn k() {\n    %s1, 1);\n}\n" % construct)
+            with self.assertRaises(ValueError):
+                check.verify_library_aborts()
+
+    def test_a_doc_comment_assertion_is_allowed_and_a_bare_one_is_not(self):
+        # The boundary is the comment marker: a doctest is a test, code is not.
+        for prefix in ("//! ", "/// ", "// ", "    // "):
+            self.write_crate("aegis-probe", "%sassert!(true);\npub fn k() {}\n" % prefix)
+            check.verify_library_aborts()
+        self.write_crate("aegis-probe", "pub fn k() {\n    assert!(true);\n}\n")
+        with self.assertRaises(ValueError):
+            check.verify_library_aborts()
+
+    def test_a_member_without_a_src_directory_fails(self):
+        (self.root / "Cargo.toml").write_text('[workspace]\nmembers = ["crates/aegis-probe"]\n')
+        (self.root / "crates" / "aegis-probe").mkdir(parents=True)
+        with self.assertRaises(ValueError):
+            check.verify_library_aborts()
+
     def test_roadmap_document_matching_both_surfaces_passes(self):
         rows = [
             self.milestone("M00", 0, "done", evidence=["a2c9626"]),

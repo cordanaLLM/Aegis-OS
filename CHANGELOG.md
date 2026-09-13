@@ -13,6 +13,21 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (library abort sweep)
+
+- `make verify-all` now refuses an abort in any activated crate's library code.
+  Clippy denies panic, todo, unimplemented, unwrap_used, expect_used,
+  unreachable and exit across the workspace, but no clippy lint covers the
+  assert family, so the only mechanism was a hand-written text sweep that two
+  of the five crates carried and the other three did not. A planted `assert!`
+  in any of those three passed every gate.
+- The sweep reads the workspace member list from the manifest rather than
+  globbing, so a crate cannot be activated and miss it, and it skips comment
+  lines because a doctest is a test. Both directions are held by its own tests
+  and were falsified against the real tree: a planted abort is caught in each
+  of the three previously uncovered crates, naming the file and line, and a
+  doc-comment assertion is not.
+
 ### Added (roadmap document drift gate)
 
 - `make verify-all` now checks the roadmap document against the register.

@@ -55,6 +55,19 @@ ACTIVATION_EVIDENCE = (
 )
 ACTIVATION_TRACKED_PATHS = ("manifest_path", "lockfile_path")
 ROADMAP_COSTS = {"trivial", "small", "medium", "large"}
+# Library code may not abort. Clippy denies panic, todo, unimplemented, unwrap_used,
+# expect_used, unreachable and exit across the workspace, but no clippy lint covers the
+# assert family, so this sweep is the only mechanism. Two crates carried their own text
+# sweep and the other three were covered by nothing; this one reads the workspace member
+# list, so a crate cannot be added and miss it.
+ABORT_CONSTRUCTS = (
+    "assert!(",
+    "assert_eq!(",
+    "assert_ne!(",
+    "debug_assert!(",
+    "debug_assert_eq!(",
+    "debug_assert_ne!(",
+)
 # docs/roadmap/README.md names planning/roadmap.json as its source but is written
 # by hand, and it repeats every rank and state twice: once in the ranked table and
 # once in each section preamble. Both drifted unnoticed until this check existed.
@@ -332,6 +345,37 @@ def verify_roadmap_document(rows):
                 )
 
 
+def workspace_members():
+    """The crates the workspace activates, read from the manifest rather than globbed."""
+    manifest = ROOT / "Cargo.toml"
+    if not manifest.is_file():
+        return []
+    members = tomllib.loads(manifest.read_text())["workspace"]["members"]
+    return [ROOT / member for member in members]
+
+
+def verify_library_aborts():
+    """No activated crate's library sources may abort.
+
+    A doc comment may carry an assertion: a doctest is a test. Code may not, because
+    an abort in a library is an unhandled error path by another name (HISS-07).
+    """
+    for member in workspace_members():
+        source = member / "src"
+        if not source.is_dir():
+            raise ValueError(f"Workspace member {member.name} has no src directory")
+        for path in sorted(source.rglob("*.rs")):
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if line.lstrip().startswith("//"):
+                    continue
+                for construct in ABORT_CONSTRUCTS:
+                    if construct in line:
+                        raise ValueError(
+                            f"{path.relative_to(ROOT)}:{number} aborts in library code: "
+                            f"{construct} -- return an error instead"
+                        )
+
+
 def verify_digest(value, label):
     """Accept only a full lowercase hexadecimal sha256 digest."""
     if not isinstance(value, str) or len(value) != 64 or value.strip(HEX) != "":
@@ -490,6 +534,7 @@ def main():
     register = verify_candidates(rows)
     milestones = verify_roadmap()
     verify_roadmap_document(milestones)
+    verify_library_aborts()
     profile = verify_hardware_profile(milestones)
     verify_ranking(milestones)
     if args.sources:
