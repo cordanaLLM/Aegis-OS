@@ -2480,6 +2480,26 @@ Open decisions:
   evidence and never a release artifact. Kernel construction returns to Nucleus,
   which owns it under docs/integration/stack.md, once Nucleus returns real
   artifacts against the M09 contract.
+- **D71** Which milestone owns the Firecracker and AF_VSOCK sandboxing epic,
+  M21 or M22? Options: M21, whose title already claims KVM sandboxing
+  alongside the RAPL counters; M22, whose title is the microVM measurement
+  itself; or both, with the epic split so each owns a half. Why: E21-2 and
+  E22-2 are byte-identical, including their acceptance text and their
+  REQ-P10-01/REQ-P10-03/REQ-P16-04 citations, so two milestones claim the same
+  work and whichever runs second would either duplicate it or silently skip
+  it. Found by sweeping the register for epics sharing an acceptance text.
+  Separately and not in question: E22-1 duplicates E21-1's RAPL telemetry epic
+  while M22's own criteria never mention RAPL, so that copy is simply wrong
+  and belongs to M21.
+- **D72** Which milestone owns the Imago-result and boot-evidence epics, M11
+  or M24? Options: M24, which builds the harness over an externally supplied
+  artifact and states that artifact may be a pinned distribution image or an
+  Imago return; M11, which supplies the Imago artifact and states that the M24
+  harness is reused unchanged and no second boot apparatus is built there; or
+  a split where M24 owns the harness half and M11 owns the artifact half. Why:
+  E11-1/E24-1 and E11-2/E24-2 are byte-identical pairs, so the two milestones
+  claim the same acceptance while their criteria describe a deliberate
+  division of labour. Found by the same sweep as D71.
 - export-001 f32a74743af5ab85c0682a5384cf01b71b0e9e2878d8f8ce09a6d592211e4ea5
 - export-002 7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91
 - export-003 13af15ffc31684e94023ae9aa84339b80b4dd6025332d9fefca743e83400500c
