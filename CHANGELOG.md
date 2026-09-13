@@ -76,6 +76,72 @@ version and is never released.
   admitted. The observations, the guest's own output and the scope limits are
   in `docs/build/kernel.md`.
 
+### Added (P03 Vulcan and P15 Hestia validation crates, milestone M17)
+
+- Two leaf slices of the imported scaffolds are now crates the workspace
+  builds. `crates/aegis-vulcan` holds the P03 validation arithmetic -- the
+  page-aligned BAR window, the `1..=8192` block count, the lock-less
+  submission-ring index and a bounded VFIO device table -- and
+  `crates/aegis-hestia` holds the P15 state machine: the vector-store
+  initialisation gate, the `1..=100` query bound and the picture-in-picture
+  overlay controller. Both are libraries, both take only the dependencies the
+  workspace already resolved, and the member list is written out to five
+  entries rather than globbed.
+- The scaffolds stated their rules as assertions, so a misaligned address, an
+  unmapped window, an out-of-range count, a query before initialisation or a
+  negative descriptor aborted the process. Each of those six rules is now a
+  constructor or a method returning `Result`, which is what HISS-07 asks for
+  and what turns every negative case into an ordinary test instead of one that
+  expects a panic. Each crate enumerates its three former assertions in
+  `tests/scaffold_assertions.rs` and sweeps its own sources for seven aborting
+  constructs: `assert!`, `assert_eq!`, `assert_ne!`, `panic!`, `unreachable!`,
+  `.unwrap()` and `.expect()`. Each of the seven is checked against planted
+  text to be one the sweep reports, because a watched list is a gate only where
+  its entries are reachable.
+- The workspace clippy set gained `unreachable` and `exit`, so the constructs
+  that state a rule by aborting are refused in every crate rather than in the
+  two that carry an enumerated sweep. A reachable `unreachable!` planted in
+  library code previously passed the sweep, the lint set and the whole suite;
+  it now fails both the lint and the sweep. `panic_in_result_fn` was measured
+  and left out: it fires 139 times, all of them on `#[test]` functions that
+  return a `Result` and report through an assertion, and none in library code.
+
+- Three interface contracts are typed and versioned: the weight-streaming
+  descriptor P03 hands to P09, the media-ingest descriptor P03 hands to P15,
+  and the overlay registration P15 hands to P04. Each carries an explicit
+  contract-version tag and its graph edge as enums with one admitted variant,
+  refuses unknown fields, and has a negative test for a malformed payload. No
+  transport is implemented and none is implied; they stay stubbed until M12.
+- The two P03 descriptors carry the DMA-BUF export path as a field, so binding
+  a real render node at M25 fills in values rather than reshaping a schema. The
+  reference profile was probed rather than quoted: `/dev/dri` publishes
+  `renderD128`, `renderD129` and `renderD130`, whose drivers resolve to
+  `nvidia`, `i915` and `amdgpu`, with `nvidia_drm`'s `modeset` reading `Y`,
+  `amdgpu`'s reading `-1` and `i915`'s readable only as root. The modeset field
+  is a tri-state because two of those three readings are a driver default
+  rather than an explicit yes, and all three paths are bound into both
+  descriptors and required to round-trip.
+- Decision D09 is applied. P15 lives in both a Rust crate and a Svelte package,
+  and this milestone delivers the Rust half and the boundary between them:
+  `HestiaView` is a versioned, bounded, `Copy` snapshot carrying no method,
+  handle or file descriptor, so neither half can reach into the other. No
+  Svelte package is added and none is claimed; D10 has still to pin the
+  toolchain that would build one.
+- Open decision D22 is settled by acting on it: both Rust candidates join the
+  workspace member list, which is what REQ-WS-01 recorded as missing. The
+  workspace-membership assertion in `aegis-justitia` was changed from a single
+  literal member line to a name-by-name check, because five entries no longer
+  fit on one line and a literal would assert the manifest's formatting rather
+  than its content.
+- P03 and P15 stay proposals in `planning/components.json`. Neither crate is
+  the component it is named after: the P03 subsystem is a direct-DMA driver and
+  this one maps nothing, and the P15 subsystem is a store behind a shell and
+  this one starts neither. P15 also cannot be activated while D09's second half
+  is absent, because the activation gate requires every candidate row of an
+  activated component to record a manifest and a lock. The candidate registers
+  now say this in place, and name the tracked workspace manifest and lock that
+  do exist.
+
 ### Added (product input and kernel requirement schemas, milestone M18)
 
 - The Aegis side of the builder boundary now has schemas instead of prose.

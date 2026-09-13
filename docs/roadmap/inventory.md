@@ -63,7 +63,7 @@ not a repository fact: that workspace is proposal data and is not committed.
 | --- | --- | --- | --- | --- | --- |
 | P01 aegis-fabrica | declarative-config + proposed Rust crate | `build/ (mkosi, repart and sysupdate definition inputs)`; `crates/<undecided>/ definition parser (D15; no source records a crate name)` | no (no crate proposed) | export-010 1748925bf81e; export-049 4d9043f4af30; export-053 d85a1f6ceb0e; export-054 41d6d121b142; export-055 c915f281532f; export-063 b284bb77c19f | crate name and path for the D15 definition parser; crate Cargo.toml; workspace Cargo.toml and Cargo.lock; positive, negative and boundary tests; Imago request and artefact contracts; pinned image and kernel inputs |
 | P02 aegis-janus-vallum | declarative-config + proposed Rust crate | `build/repart.d and build/sysupdate.d (reviewed, M03)`; `crates/aegis-janus-lifecycle/ A/B lifecycle (D15, created in M15)` | no (no component crate) | export-011 528da609dab7; export-053 d85a1f6ceb0e; export-054 41d6d121b142; export-055 c915f281532f; export-063 b284bb77c19f | a P02 component crate (aegis-janus-lifecycle models the lifecycle and is not the daemon); real signature, dm-verity and sysupdate effects, all stubbed in M15; TPM2 and secure-boot hardware or emulator evidence; real artefact and boot evidence |
-| P03 aegis-vulcan | rust | `crates/aegis-vulcan/src/main.rs` | no | export-012 9b502c76509b; export-038 fe2cb01cfd13 | crates/aegis-vulcan/Cargo.toml; workspace Cargo.toml and Cargo.lock; workspace membership decision (open decision D22); boundary tests for BAR alignment, block-count bounds and ring-buffer index; IOMMU, VFIO, NVMe and GPU peer-to-peer evidence |
+| P03 aegis-vulcan | rust | `crates/aegis-vulcan/src/` validation slice and P03 consumer descriptors (M17); `crates/aegis-vulcan/tests/` | no (joined the repository workspace at M17, settling D22) | export-012 9b502c76509b; export-038 fe2cb01cfd13 | a P03 component daemon (the crate validates the arithmetic and the bounds and is not the driver); real BAR mapping, VFIO container, IOMMU domain and NVMe or GPU peer-to-peer transfer; a transport for either consumer descriptor, stubbed until M12; IOMMU, VFIO, NVMe and GPU peer-to-peer evidence |
 | P04 aegis-compositor | rust | `crates/aegis-compositor/src/main.rs`; `build/mkosi.extra/usr/lib/systemd/system/aegis-compositor.service` | yes | export-013 7f4c22813332; export-027 f19640d7a7da; export-028 d74a93eac654 | crates/aegis-compositor/Cargo.toml; workspace Cargo.toml and Cargo.lock; positive, negative and boundary tests; compositor dependency pins (D08 and ADR-0001 select pure Rust; export-007 still says wlroots); frame-pacing constant (M07) |
 | P05 aegis-forum-shell | svelte | `ui/forum-shell/src/App.svelte` | not applicable | export-014 659691a2d7d0; export-043 e3dbfa226e54; export-023 a0d06b6b8e6c | ui/forum-shell/package.json; JavaScript lockfile; accessibility test wiring (export-023 is proposal data, quarantined); UI toolchain pin (D10; open decisions D42 and D43); Concordia token consumption contract (D05) |
 | P06 aegis-justitia | rust | `crates/aegis-justitia/src/main.rs`; `crates/aegis-justitia/tests/` | yes | export-015 fcbe2caed363; export-031 5ff683328148; export-047 971948673346; export-024 50a41ecd0b74 | crates/aegis-justitia/Cargo.toml; workspace Cargo.toml and Cargo.lock; library code outside #[cfg(test)] (export-047 defines its engine inside the test module); hash-algorithm trait boundary (D02); eBPF compile and verifier evidence for action_gate (M19, M10) |
@@ -75,8 +75,8 @@ not a repository fact: that workspace is proposal data and is not committed.
 | P12 aegis-concordia | css design tokens | `ui/concordia-tokens/concordia-tokens.css` | not applicable | export-020 1748f49bb7f8; export-042 411fb8c2d731; export-023 a0d06b6b8e6c | ui/concordia-tokens/package.json; JavaScript lockfile; accessibility test package (export-023 is quarantined proposal data); focus-ring width applied per D16 (3px token, 2px boundary minimum); confirmation that no monolithic CSS library is introduced (D17) |
 | P13 aegis-tellus | rust | `crates/aegis-tellus/src/main.rs`; `bpf/kepler_power.bpf.c` | yes | export-036 25813d240733; export-048 293357bac7d3 | crates/aegis-tellus/Cargo.toml; workspace Cargo.toml and Cargo.lock; blueprint-level requirement source: the bundle holds no P13 report; telemetry payload schema for the P16 consumer; positive, negative and boundary tests |
 | P14 aegis-hephaestus | rust | `crates/aegis-hephaestus/src/main.rs` | yes | export-021 6a3cda152e6c; export-029 427996186520 | crates/aegis-hephaestus/Cargo.toml; workspace Cargo.toml and Cargo.lock; CAD and solver dependency pins (absent from the export-006 dependency table); licence decision for GPL-licensed solver bindings; positive, negative and boundary tests |
-| P15 aegis-hestia | rust | `crates/aegis-hestia/src/main.rs` | no | export-022 46cea660df63; export-030 689d175667d6 | crates/aegis-hestia/Cargo.toml; workspace Cargo.toml and Cargo.lock; workspace membership decision (open decision D22); typed boundary to the Svelte package (D09, applied in M17); boundary test for the vector-store initialisation and the 1..=100 query limit |
-| P15 aegis-hestia | svelte | `ui/hestia-app/src/App.svelte` | not applicable | export-045 359466152a37; export-022 46cea660df63 | ui/hestia-app/package.json; JavaScript lockfile; accessibility test; typed boundary to the Rust crate (D09); UI toolchain pin (D10) |
+| P15 aegis-hestia | rust | `crates/aegis-hestia/src/` storage and vector logic, the D09 boundary payload and the P04 registration (M17); `crates/aegis-hestia/tests/` | no (joined the repository workspace at M17, settling D22) | export-022 46cea660df63; export-030 689d175667d6 | a P15 component daemon (the crate models the store and the overlay and is neither); a real PGlite instance, its WebAssembly runtime and the Btrfs @pglite subvolume; a Wayland connection and a wlr-layer-shell binding, stubbed until M12; real hardware or emulator evidence |
+| P15 aegis-hestia | svelte | `ui/hestia-app/src/App.svelte` | not applicable | export-045 359466152a37; export-022 46cea660df63 | ui/hestia-app/package.json; JavaScript lockfile; accessibility test; UI toolchain pin (D10). The Rust side of the D09 boundary exists from M17 (`aegis_hestia::HestiaView`); nothing on this side consumes it yet |
 | P16 aegis-athena | rust | `crates/aegis-athena/src/main.rs` | yes | export-025 6b23723ddb76 | crates/aegis-athena/Cargo.toml; workspace Cargo.toml and Cargo.lock; blueprint-level requirement source: the bundle holds no P16 report; hash-algorithm trait so that D02 supersedes the ledger named in export-007; signed audit-record schema (M14) |
 
 Boundary rows, stated explicitly because they are the ones a workspace-wide
@@ -85,7 +85,12 @@ build would silently skip:
 - **P03 `aegis-vulcan`** and the Rust half of **P15 `aegis-hestia`** are not
   members of the proposed workspace and appear in no imported directory map. A
   workspace-wide build invocation would not cover them (REQ-WS-01). Their
-  membership is open decision D22.
+  membership was open decision D22, **settled at M17 by acting on it**: both
+  are now written-out members of the repository's own workspace root
+  `Cargo.toml`, and `Cargo.lock` carries an entry for each, so a
+  workspace-wide `cargo` invocation reaches them. The statement about the
+  *proposed* workspace is unchanged: `export-006` still lists ten members and
+  neither of these is among them.
 - **P01** and **P02** have no proposed crate at any path: absent from the
   proposed workspace, absent from the imported directory map, and outside the
   P03-P16 range that `crates/README.md` reserves. Decision D15 authorises new
@@ -431,6 +436,11 @@ register, nine from the drift register, six from the quarantine register, and
 one version floor left open by D07. Each names both sides, the contract it
 affects and the milestone that must close it.
 
+One of the five inventory decisions, D22, has since been settled: milestone M17
+took the recommended option and the resolution is recorded in place below. The
+entry stays listed and the numbering is unchanged, so a reader who followed a
+D22 citation from elsewhere still lands on it.
+
 ### From the inventory (D21-D25)
 
 - **D21** What are the crate names and paths for the two crates D15 authorises,
@@ -450,7 +460,13 @@ affects and the milestone that must close it.
   neither. Affects REQ-WS-01, the workspace manifest M02 must create, and the
   typed boundary D09 gives P15. Recommended: extend to twelve. REQ-WS-01 records
   the omission as a defect, not as an intent, and D09 already commits P15 to
-  having a Rust crate.
+  having a Rust crate. **Settled at M17:** the recommendation was taken. The
+  repository's workspace member list is written out and now names
+  `crates/aegis-vulcan` and `crates/aegis-hestia` alongside the three crates
+  already activated, so `cargo build`, `cargo test` and `cargo clippy` at the
+  workspace root reach both. Twelve members remains the eventual shape; five
+  exist, because a directory joins the list when it has a manifest, a lock
+  entry and positive, negative and boundary tests, and not before.
 - **D23** Should `planning/components.json` candidate sources be extended to the
   declarative and eBPF artefacts that the same components already depend on?
   Options: extend, so that P01 and P02 cite the image and partition definitions,

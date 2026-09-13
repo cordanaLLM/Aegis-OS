@@ -144,7 +144,7 @@ score.
 | 5 | M18 | Aegis-side product input manifest and kernel requirement schemas (local) | done | small | no | no | not-hardware | M03 | M09, M26 |
 | 6 | M15 | P02 A/B candidate lifecycle state machine | done | small | no | no | not-hardware | M03 | M24 |
 | 7 | M26 | Aegis-built kernel with the pinned configuration | done | medium | no | no | full | M18 | M23 |
-| 8 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | ready | trivial | no | no | not-hardware | M02 | M25 |
+| 8 | M17 | Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates | done | trivial | no | no | not-hardware | M02 | M25 |
 | 9 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | ready | small | no | no | not-hardware | M14 | M19, M21 |
 | 10 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | ready | small | no | no | not-hardware | M14 | M08, M22 |
 | 11 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | blocked | small | no | no | not-hardware | M06 | M25 |
@@ -733,7 +733,7 @@ Epics:
 
 ### M17 - Trivial leaf slices: P03 Vulcan and P15 Hestia validation crates
 
-Rank 8. State: ready. Cost: trivial. Owner repository: cordanaLLM/Aegis-OS.
+Rank 8. State: done. Cost: trivial. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M25.
 
