@@ -44,6 +44,11 @@ ACTIVATION_EVIDENCE = (
 )
 ACTIVATION_TRACKED_PATHS = ("manifest_path", "lockfile_path")
 ROADMAP_COSTS = {"trivial", "small", "medium", "large"}
+# docs/roadmap/README.md names planning/roadmap.json as its source but is written
+# by hand, and it repeats every rank and state twice: once in the ranked table and
+# once in each section preamble. Both drifted unnoticed until this check existed.
+TABLE_ROW = re.compile(r"^\|\s*(\d+)\s*\|\s*(M\d\d)\s*\|[^|]*\|\s*(done|ready|blocked)\s*\|", re.M)
+SECTION_LINE = re.compile(r"^###\s+(M\d\d)\b[^\n]*\n\n?Rank\s+(\d+)\.\s+State:\s+(\w+)\.", re.M)
 REGISTER_BUNDLE = "8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6"
 REGISTER_LIMITS = {
     "candidates": 64,
@@ -286,6 +291,36 @@ def verify_roadmap():
     return rows
 
 
+def verify_roadmap_document(rows):
+    """Both rank-and-state surfaces of the roadmap document must match the register.
+
+    The document is not generated, so a milestone that changes state in
+    planning/roadmap.json leaves two places behind. Ten table rows and three
+    section preambles were stale when this check was written.
+    """
+    text = (ROOT / "docs/roadmap/README.md").read_text(encoding="utf-8")
+    surfaces = (
+        ("ranked table", {key: (int(r), s) for r, key, s in TABLE_ROW.findall(text)}),
+        ("milestone sections", {key: (int(r), s) for key, r, s in SECTION_LINE.findall(text)}),
+    )
+    for label, found in surfaces:
+        if len(found) != len(rows):
+            raise ValueError(
+                f"docs/roadmap/README.md lists {len(found)} milestones in its "
+                f"{label}, planning/roadmap.json has {len(rows)}"
+            )
+        for row in rows:
+            got = found.get(row["id"])
+            if got is None:
+                raise ValueError(f"docs/roadmap/README.md {label} omits {row['id']}")
+            if got != (row["rank"], row["state"]):
+                raise ValueError(
+                    f"docs/roadmap/README.md {label} for {row['id']} reads rank "
+                    f"{got[0]} state {got[1]}; planning/roadmap.json says rank "
+                    f"{row['rank']} state {row['state']}"
+                )
+
+
 def verify_digest(value, label):
     """Accept only a full lowercase hexadecimal sha256 digest."""
     if not isinstance(value, str) or len(value) != 64 or value.strip(HEX) != "":
@@ -443,6 +478,7 @@ def main():
     verify_licensing()
     register = verify_candidates(rows)
     milestones = verify_roadmap()
+    verify_roadmap_document(milestones)
     profile = verify_hardware_profile(milestones)
     verify_ranking(milestones)
     if args.sources:

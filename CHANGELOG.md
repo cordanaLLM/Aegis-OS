@@ -13,6 +13,21 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (roadmap document drift gate)
+
+- `make verify-all` now checks the roadmap document against the register.
+  `docs/roadmap/README.md` names `planning/roadmap.json` as its source but is
+  written by hand, and it repeats every milestone's rank and state twice --
+  once in the ranked table and once in each section preamble. The two drifted
+  independently and nothing noticed: when the check was written, ten table rows
+  and three preambles disagreed with the register, including three milestones
+  shown as ready or blocked that were done, and two whose ranks had swapped.
+- The check is verified from both sides. Its own tests cover a document that
+  agrees, one stale on either surface alone, a rank that disagrees, and a
+  milestone missing or extra on either surface; against the real document,
+  planting a single stale state in the table or in one preamble fails the gate
+  and names the milestone and both readings.
+
 ### Added (product input and kernel requirement schemas, milestone M18)
 
 - The Aegis side of the builder boundary now has schemas instead of prose.
