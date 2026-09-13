@@ -14,6 +14,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "aegis-calliope"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "aegis-compositor"
+version = "0.1.0"
+dependencies = [
+ "aegis-calliope",
+ "aegis-lictor",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "aegis-fabrica-defs"
 version = "0.1.0"
 dependencies = [
@@ -60,6 +80,17 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "aegis-lictor"
+version = "0.1.0"
+dependencies = [
+ "aegis-calliope",
+ "aegis-tellus",
+ "serde",
+ "serde_json",
  "thiserror",
 ]
 
