@@ -27,6 +27,22 @@ REGISTER_LIMITS = {
     "quarantined_artifacts": 64,
 }
 DISPUTE_STATES = {"resolved", "open"}
+PROFILE_CAPABILITIES = {
+    "kvm",
+    "tpm2",
+    "iommu",
+    "rapl_energy_counters",
+    "sched_ext",
+    "bpf_lsm",
+    "btf",
+    "pci_p2pdma",
+    "erofs_dm_verity",
+    "resizable_bar",
+    "gpu_dma_buf_and_peer_memory",
+    "realtime_kernel",
+    "secure_boot_enrolment",
+}
+PROFILE_IDENTIFIERS = ("hostname", "serial", "uuid", "macaddress", "ip_address")
 QUOTE_LIMIT = 200
 
 
@@ -220,6 +236,44 @@ def verify_candidates(components):
     return data
 
 
+def verify_profile_capability(name, row):
+    if not isinstance(row.get("present"), bool) or not row.get("evidence_command"):
+        raise ValueError(f"Capability {name} needs a boolean and an evidence command")
+
+
+def verify_hardware_profile(milestones):
+    """Validate the reference profile and every milestone claim made against it."""
+    data = read_json(ROOT / "planning/hardware-profile.json")
+    for row in data.get("operator_actions", []):
+        if not row.get("action") or not row.get("unblocks"):
+            raise ValueError("Every operator action needs an action and what it unblocks")
+    if data["schema_version"] != 1 or not data["evidence_class"]:
+        raise ValueError("Profile must declare schema 1 and its evidence class")
+    if "development evidence only" not in data["evidence_class"].lower():
+        raise ValueError("Profile must state that it is development evidence only")
+    capabilities = data["capabilities"]
+    if set(capabilities) != PROFILE_CAPABILITIES:
+        raise ValueError("Profile must record exactly the declared capability set")
+    for name, row in capabilities.items():
+        verify_profile_capability(name, row)
+    blob = json.dumps(data).lower()
+    leaked = [key for key in PROFILE_IDENTIFIERS if f'"{key}"' in blob]
+    if leaked:
+        raise ValueError(f"Profile must not record machine identifiers: {leaked}")
+    available = {name for name, row in capabilities.items() if row["present"]}
+    for row in milestones:
+        claimed = row.get("reference_profile", {}).get("requires", [])
+        unknown = set(claimed) - PROFILE_CAPABILITIES
+        if unknown:
+            raise ValueError(f"Milestone {row['id']} names unknown capabilities {sorted(unknown)}")
+        support = row.get("reference_profile", {}).get("support")
+        if support == "full" and not set(claimed) <= available:
+            raise ValueError(
+                f"Milestone {row['id']} claims full local support without the capability"
+            )
+    return data
+
+
 def verify_sources():
     data = read_json(ROOT / ".workingdir/source-inventory.json")
     source = ROOT / ".workingdir/notebookllmprep"
@@ -251,6 +305,7 @@ def main():
     verify_licensing()
     register = verify_candidates(rows)
     milestones = verify_roadmap()
+    profile = verify_hardware_profile(milestones)
     if args.sources:
         verify_sources()
     if args.readiness:
@@ -260,6 +315,11 @@ def main():
             f"{len(register['contradictions'])} contradictions ({open_disputes} open); "
             f"{len(register['toolchain_drift'])} drift rows; "
             f"{len(register['quarantined_artifacts'])} quarantined artefacts"
+        )
+        absent = [name for name, row in profile["capabilities"].items() if not row["present"]]
+        print(
+            f"Reference profile: {profile['cpu']['model']}; "
+            f"absent capabilities: {', '.join(absent) or 'none'}"
         )
         for row in rows:
             print(
