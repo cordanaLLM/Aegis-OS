@@ -51,17 +51,24 @@ const LINE_BOUND: usize = 4096;
 /// so that removing one item on purpose does not fail the gate, while dropping
 /// the field arm -- which would cost far more than that -- does. Removing
 /// public surface on purpose means lowering the floor on purpose.
-const MINIMUM_SURFACE: usize = 154;
+///
+/// It is a reading of this revision and not a fixed property of the crate. At
+/// this revision the walk collects 170 names of which a keyword-only sweep
+/// collects 144, so the floor sits at 170 less a margin of six. It was 154
+/// before milestone M23 added `src/determinism.rs`.
+const MINIMUM_SURFACE: usize = 164;
 
 /// How many of the collected names only the M15 arm reads.
 ///
 /// Measured on 2026-09-13 by running the same walk twice, once with the arm
-/// and once without. `the_field_arm_carries_the_floor` asserts the difference,
-/// so the figure cannot drift out of agreement with the code the way a number
-/// stated only in prose can. Every one of them is a public struct field; this
-/// crate declares no `pub static` today, so that half of the arm is coverage
-/// for a shape this `src/` does not yet use.
-const FIELD_ARM_NAMES: usize = 21;
+/// and once without, and re-read at M23, where it rose from 21 to 26:
+/// `TierDeterminism` is an all-public-field row and five of its field names
+/// were new to this crate. `the_field_arm_carries_the_floor` asserts the
+/// difference, so the figure cannot drift out of agreement with the code the
+/// way a number stated only in prose can. Every one of them is a public struct
+/// field; this crate declares no `pub static` today, so that half of the arm is
+/// coverage for a shape this `src/` does not yet use.
+const FIELD_ARM_NAMES: usize = 26;
 
 /// Which enclosing block makes an unmarked item public API.
 #[derive(Clone, Copy, PartialEq, Eq)]

@@ -2,7 +2,7 @@ SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
 .PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-kernel verify-bpf \
-	verify-sources verify-reuse readiness test build boot release
+	verify-latency verify-sources verify-reuse readiness test build boot release
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
 # too: a repository whose instructions say "run make verify-all" must not have a
@@ -145,6 +145,50 @@ verify-kernel:
 # configured here, so it cannot close M10's Nucleus-kernel verification.
 verify-bpf:
 	python3 tools/verify_bpf_objects.py
+
+# The latency fixture gate (M23, D57, D70): the kernel M26 built is booted in a
+# guest, cyclictest measures wakeup latency inside it and again on the reference
+# host with the identical argument vector, and every figure is reported against
+# the P07 tier edges and the P08 target with the kernel that produced it.
+#
+# It is deliberately NOT part of verify-all, for the reasons verify-kernel is
+# not, plus two of its own:
+#
+#   * it consumes verify-kernel's output. Without a built bzImage under
+#     AEGIS_KERNEL_BUILD_DIR there is nothing to boot, so on a checkout that has
+#     not run `make verify-kernel` this target can only stand down;
+#   * the CI runner has no /dev/kvm, no emulator and no rt-tests, so wiring it
+#     into verify-all would put a step into CI that can only skip. A gate that
+#     always skips is not a gate.
+#
+# What CI does re-run is the half that needs no guest: tools/test_latency_fixture.py
+# holds the verdict rule, the recorded admission, the thresholds the gate reads
+# out of the crates and the set of programs the gate may invoke at all, and
+# crates/aegis-calliope/tests/measured_figures.rs plus
+# crates/aegis-lictor/tests/determinism_fixture.rs hold what a measured figure
+# may and may not be read as. Both run inside verify-all.
+#
+# A host that cannot run it prints 'SKIP: <reason>; the latency fixture gate did
+# not run.' and exits 0, the convention verify-systemd, verify-mkosi,
+# verify-kernel and verify-bpf already use. An exit 0 from this target is
+# therefore evidence only when the case lines are above it. It never suppresses
+# a failure.
+#
+# It modifies neither machine. cyclictest runs with --default-system, so it does
+# not write the power-management latency target into /dev/cpu_dma_latency that it
+# otherwise would; nothing is installed, no module is loaded, no bootloader entry
+# is written and /boot is never read.
+#
+# The guest tree and the retained JSON go to AEGIS_LATENCY_BUILD_DIR, default
+# ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-latency. The kernel image comes from
+# AEGIS_KERNEL_BUILD_DIR. Nothing is written into the repository.
+#
+# A pass is development evidence on the reference profile. It closes no hardware
+# gate: the guest's virtual CPU is scheduled by a host that is not realtime, so
+# the guest figure is a composite rather than an isolated measurement of what
+# PREEMPT_RT buys. See docs/build/latency.md.
+verify-latency:
+	python3 tools/verify_latency_fixture.py
 
 verify-sources:
 	python3 tools/verify_preparation.py --sources

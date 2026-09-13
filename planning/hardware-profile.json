@@ -105,7 +105,7 @@
     "realtime_kernel": {
       "present": false,
       "evidence_command": "zgrep CONFIG_PREEMPT_RT /proc/config.gz; pacman -Ss linux-rt",
-      "note": "the running kernel is PREEMPT_DYNAMIC, but the distribution ships linux-rt 7.2.5.rt3.arch1-1; this is an operator action, not a missing capability"
+      "note": "the running kernel is PREEMPT_DYNAMIC, and this stays present:false because it is a reading of the HOST. The distribution ships linux-rt 7.2.5.rt3.arch1-1, which would be an operator action rather than a missing capability; milestone M23 did not take it. It boots the kernel this repository builds in M26 (CONFIG_PREEMPT_RT=y, release 7.2.5-aegis-m26) as a guest kernel instead, so a realtime measurement was obtained with no installation and no bootloader entry (D57, D70). The negative half of that fixture depends on this row staying false, and `make verify-latency` re-reads both kernels with one probe on every run"
     },
     "secure_boot_enrolment": {
       "present": false,

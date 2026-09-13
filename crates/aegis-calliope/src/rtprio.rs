@@ -43,9 +43,11 @@
 //! `pthread_setschedparam` appear nowhere in this crate; the two figures above
 //! are constants recorded from a shell reading, and
 //! `tests/stubbed_effects.rs` fails if the machinery to read them ever
-//! appears. **No latency or determinism figure is produced here**: the
-//! reference kernel is `PREEMPT_DYNAMIC`, not `PREEMPT_RT`, so every timing
-//! claim for P07 and P08 is deferred to milestone M23.
+//! appears. **No latency or determinism figure is produced here.** Milestone
+//! M23's fixture does use [`REQUIRED_RTPRIO`]: `cyclictest` runs its measuring
+//! thread at priority 95 on both machines, so the figures in
+//! [`crate::measured`] were taken at the priority this module records rather
+//! than at the tool's customary 99.
 
 use crate::error::CalliopeError;
 

@@ -49,6 +49,8 @@ Two rules follow from the clause and are applied below:
 | bpftool | floor 7.4.0; reference profile `bpftool v7.8.0`, distribution package `core/bpf 7.2.5-1` | `tools/verify_bpf_objects.py`, `BPFTOOL_FLOOR` and `REFERENCE_PROFILE_BPFTOOL`, read back from `bpftool version` | nothing | M19 |
 | libbpf (linked by the loader) | floor 1.5; reference profile `1.7.0`, distribution package `core/libbpf 1.7.0-1.1` | `tools/verify_bpf_objects.py`, `LIBBPF_FLOOR` and `REFERENCE_PROFILE_LIBBPF`, read back from `pkg-config --modversion libbpf` and again at runtime from `libbpf_version_string()` | the M01 register's `libbpf v1.8`, which was a reading of the wrong artefact (see below) | M19 |
 | llvm-strip | floor 19.0.0; reference profile LLVM 22.1.8, same `extra/clang 22.1.8-2` toolchain | `tools/verify_bpf_objects.py`, `LLVM_STRIP_FLOOR`, read back from `llvm-strip --version` | nothing | M19 |
+| rt-tests (`cyclictest`) | floor 2.10; reference profile `cyclictest V 2.10`, distribution package `rt-tests 2.10-1.1` from `cachyos-extra-znver4` | `tools/verify_latency_fixture.py`, `TOOLCHAIN`, read back from `cyclictest --help` before anything is measured | nothing; no latency tool was admitted before, and none was installed | M23 |
+| Realtime kernel source | the M26 pin reused unchanged: `linux-7.2.5` with `CONFIG_PREEMPT_RT=y` from `build/kernel/50-aegis-requirement.config` | `build/kernel/source.pin.json`; the guest reports the release and the option back from inside itself | the distribution `linux-rt` package D57 recommended, which is **not** downloaded, installed or booted here | M23 (D57, D70) |
 
 The pinned Rust toolchain is materialised explicitly before the first cargo
 gate, because a runner image that ships rustup does not thereby ship the pinned
@@ -221,6 +223,63 @@ repository controls accepted them. They were verified by the workstation's own
 running kernel, which is a non-qualifying local fixture -- see
 `docs/build/bpf.md`.
 
+## The latency fixture's toolchain, and the kernel it measures (M23)
+
+Every row below is a tool `tools/verify_latency_fixture.py` runs, read back from
+the tool before anything is measured, on the reference profile on 2026-09-13.
+`tools/test_latency_fixture.py` reads this table back and requires it to state
+the same admission as the gate's own `TOOLCHAIN` list: the tool names are
+compared as **sets**, and each row's reference value and its Floor cell are
+compared against the gate's entry, so a row added here for a tool the gate never
+runs, or a floor edited on this page alone, fails `make verify-all`.
+
+| Tool | Reference-profile version | Floor | Role |
+| :--- | :--- | :--- | :--- |
+| qemu-system-x86_64 | 11.1.1 | none declared | the guest that boots the kernel under test |
+| cyclictest | 2.10 | 2.10 | the measurement itself |
+| cpio | 2.15 | none declared | the guest initramfs |
+| ldd | 2.44 | none declared | the guest programs' shared-library closure |
+| bash | 5.3.15 | 4.2 | the guest's `/init`, and the host's interpreter for the shared probe |
+| mount | 2.42.3 | 2.10 | the guest mounts its own `/proc`, `/dev` and `/sys` |
+| coreutils | 9.11 | none declared | `cat`, `sleep` and `uname` in the guest |
+| grep | 3.12 | none declared | the probe's selector, and the nonce on `/proc/cmdline` |
+| gzip | 1.14 | none declared | the probe decompresses `/proc/config.gz` |
+| pacman | 7.1.0 | none declared | the D57 evidence, read-only package-ownership queries |
+
+Two rows are worth reading twice.
+
+**cyclictest's floor is its own version, and the reason is the output the gate
+parses.** The gate does not read the terminal summary; it reads `--json`, and it
+refuses a payload whose `resolution_in_ns` is not 1, which is what `--nsecs`
+sets. That output shape was observed on 2.10 and on nothing else, so a gate
+running below the floor would be parsing unobserved output. This is the same
+shape of admission M03 set for systemd: a floor plus a recorded reference value,
+because a distribution package cannot be materialised from a file in this
+repository. The exact installed package is `rt-tests 2.10-1.1`, read back with
+`pacman -Qi rt-tests`, and `cyclictest --help` prints `cyclictest V 2.10` --
+`--version` is not an option it accepts, which is why the gate reads the banner
+from `--help`.
+
+**The realtime kernel source row is a reuse, not a new pin, and it replaces a
+path this milestone deliberately did not take.** D57 recommended a distribution
+`linux-rt` package booted as a guest kernel. D70 then put kernel construction in
+this repository while Nucleus is a scaffold, and M26 built one with
+`CONFIG_PREEMPT_RT=y` from the pinned `linux-7.2.5` source. M23 consumes that
+image and nothing else: no `linux-rt` package is downloaded, installed or
+booted, and `pacman -Qq linux-rt` reports it is not installed, which the gate
+records. D57's actual constraint -- that the reference host is not modified --
+is therefore satisfied **by construction** rather than by a download-only
+procedure: the kernel is a file under `AEGIS_KERNEL_BUILD_DIR` that no package
+owns, no `/lib/modules` entry exists for, and nothing in this repository
+installs.
+
+What these rows do **not** claim: that a latency figure measured here qualifies
+hardware, that it bounds a worst case over anything but the run that produced
+it, or that the guest measurement isolates what `PREEMPT_RT` buys. The guest's
+virtual CPU is scheduled by a host that is not realtime, so the guest figure is
+a composite; `docs/build/latency.md` records that and the rest of the
+methodology.
+
 ### How the pinned source was verified
 
 Two independent checks, both re-run by the gate on every invocation, and neither
@@ -301,3 +360,9 @@ taken, no milestone may cite them as admitted toolchain.
   reference version is at or above its floor. `make verify-kernel` then reads
   each version back from the tool itself before it builds anything, so the
   evidence names the compiler that actually ran.
+- The M23 rows are checked by `tools/test_latency_fixture.py` the same way, and
+  that test additionally holds the set of programs the latency gate is allowed
+  to invoke at all. That set is the D57 statement in mechanical form: it
+  contains no installer, no bootloader tool and nothing that writes outside the
+  build directory, so adding one fails `make verify-all` rather than being
+  noticed in review.

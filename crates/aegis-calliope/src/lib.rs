@@ -33,15 +33,21 @@
 //!
 //! # What is deliberately not claimed
 //!
-//! **No latency or determinism figure is produced by this crate.** The
-//! reference kernel is `PREEMPT_DYNAMIC` and not `PREEMPT_RT`, so a number
-//! measured here would describe a machine the requirement does not target;
-//! milestone M23 is where the P07 and P08 latency fixtures run. Every recorded
-//! target -- the 5 ms round trip, the 48000 Hz rate, the 64-sample quantum --
-//! is a [`Declared`] value whose `Display` says so, and
+//! **This crate measures nothing.** It reads no clock, opens no file and
+//! schedules no thread; `tests/stubbed_effects.rs` is the sweep that keeps it
+//! so. Every recorded target -- the 5 ms round trip, the 48000 Hz rate, the
+//! 64-sample quantum -- is a [`Declared`] value whose `Display` says so, and
 //! `tests/declared_literals.rs` fails to compile if one becomes a bare
 //! integer. [`quantum_latency_micros`] is arithmetic on two declared constants
 //! and is not a latency anyone observed.
+//!
+//! What milestone M23 added is [`measured`], which carries figures the
+//! `make verify-latency` fixture observed **elsewhere** -- inside a guest and
+//! on the host -- each with the kernel and the tool that produced it. A
+//! [`Measured`] value and a [`Declared`] one are separate types with no
+//! conversion in either direction, so a target cannot become an observation and
+//! an observation cannot lose its kernel. No figure in this crate was produced
+//! by this crate.
 //!
 //! # Design invariants (see `AGENTS.md`)
 //!
@@ -119,6 +125,7 @@ pub mod dmabuf;
 pub mod error;
 pub mod id;
 pub mod latency;
+pub mod measured;
 pub mod plugin;
 pub mod register;
 pub mod rtprio;
@@ -143,6 +150,11 @@ pub use crate::latency::{
     ADMITTED_SAMPLE_RATES_HZ, DEFAULT_QUANTUM_SAMPLES, DEFAULT_SAMPLE_RATE_HZ, Declared,
     MAX_QUANTUM_SAMPLES, MIN_QUANTUM_SAMPLES, Quantum, SampleRate, TARGET_RTL_LATENCY_MS,
     quantum_latency_micros,
+};
+pub use crate::measured::{
+    AEGIS_M26_GUEST, DeterminismVerdict, GUEST_WORST_WAKEUP_NS, HOST_WORST_WAKEUP_NS,
+    KernelIdentity, MAX_KERNEL_RELEASE_LEN, Measured, MeasurementTool, NANOS_PER_MILLI,
+    PreemptionModel, REFERENCE_HOST, TARGET_RTL_LATENCY_NS, TierAttainment,
 };
 pub use crate::plugin::{
     MAX_PLUGIN_SLOTS, PluginFormat, PluginHost, PluginSandboxSlot, PluginSlotId, PluginStage,

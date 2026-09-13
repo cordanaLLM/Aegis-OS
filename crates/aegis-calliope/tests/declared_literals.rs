@@ -14,12 +14,21 @@
 //! does, and returns a bare `u32`, because what it computes is exact
 //! arithmetic on two declared constants rather than an observation. The
 //! distinction is the point, and the negative test below pins it.
+//!
+//! Milestone M23 added the opposite wrapper,
+//! [`Measured<T>`](aegis_calliope::Measured), for figures a fixture did
+//! observe. The two must not meet, so the last test here sweeps the crate's own
+//! sources for a conversion between them. That is a check over an enumeration
+//! of spellings, not a proof that no conversion could ever be written; what
+//! makes it hold in practice is that `Measured::new` demands a
+//! `KernelIdentity` and a `MeasurementTool`, neither of which a `Declared<T>`
+//! has anything to supply.
 
 mod common;
 
 use aegis_calliope::{
-    DEFAULT_QUANTUM_SAMPLES, DEFAULT_SAMPLE_RATE_HZ, Declared, Quantum, SampleRate,
-    TARGET_RTL_LATENCY_MS, quantum_latency_micros,
+    DEFAULT_QUANTUM_SAMPLES, DEFAULT_SAMPLE_RATE_HZ, Declared, GUEST_WORST_WAKEUP_NS, Quantum,
+    SampleRate, TARGET_RTL_LATENCY_MS, quantum_latency_micros,
 };
 
 use common::Fallible;
@@ -94,4 +103,37 @@ fn the_wrapper_is_transparent_at_the_extremes() {
     assert_eq!(Declared::new(0u32).to_string(), "0 (declared, unmeasured)");
     assert_eq!(Declared::new(7u32), Declared::new(7u32));
     assert_ne!(Declared::new(7u32), Declared::new(8u32));
+}
+
+/// Boundary: the declared wrapper and the measured wrapper render differently
+/// and are not convertible into one another anywhere in this crate.
+///
+/// The sweep is over six spellings of a conversion. A seventh would be
+/// invisible to it, which is why the rendering assertions sit beside it: a
+/// figure that lost its provenance on the way through a conversion would stop
+/// carrying either marker.
+#[test]
+fn a_declared_value_and_a_measured_one_do_not_convert() -> Fallible {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let watched = [
+        "impl From<Declared",
+        "impl From<Measured",
+        "> for Measured",
+        "> for Declared",
+        "fn into_measured",
+        "fn into_declared",
+    ];
+    let found = common::scan_sources(&root, &watched)?;
+    assert!(
+        found.is_empty(),
+        "a conversion between the two wrappers exists: {found:?}"
+    );
+    assert!(
+        TARGET_RTL_LATENCY_MS
+            .to_string()
+            .ends_with("(declared, unmeasured)")
+    );
+    assert!(GUEST_WORST_WAKEUP_NS.to_string().contains("measured by"));
+    assert!(!GUEST_WORST_WAKEUP_NS.to_string().contains("unmeasured"));
+    Ok(())
 }

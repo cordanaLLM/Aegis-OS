@@ -34,12 +34,18 @@
 //!
 //! # What is deliberately not claimed
 //!
-//! **No latency or determinism figure is produced by this crate.** REQ-P07-01
-//! asks for deterministic tier-0 response on a `CONFIG_PREEMPT_RT` kernel; the
-//! reference machine runs `PREEMPT_DYNAMIC`, so a number measured here would
-//! describe a kernel the requirement does not target. Milestone M23 is where
-//! the P07 and P08 latency fixtures run. A burst duration in this crate is a
-//! number a caller hands in, never a reading: nothing here touches a clock.
+//! **This crate measures nothing.** A burst duration here is a number a caller
+//! hands in, never a reading: nothing in it touches a clock, and
+//! `tests/stubbed_effects.rs` is the sweep that keeps it so.
+//!
+//! What changed at milestone M23 is not that, but what the crate may be handed.
+//! [`determinism`] evaluates a figure `make verify-latency` measured -- on a
+//! kernel that figure names -- against the tier edges [`tier`] declares. The
+//! evaluation refuses any figure from a kernel without `CONFIG_PREEMPT_RT`
+//! before it looks at its value, which matters on the reference profile because
+//! the `PREEMPT_DYNAMIC` host measured the **lower** worst case of the two.
+//! REQ-P07-01's deterministic tier-0 response is therefore still not claimed:
+//! the guest run exceeded the critical edge and is reported as exceeding it.
 //!
 //! # Design invariants (see `AGENTS.md`)
 //!
@@ -121,6 +127,7 @@
 pub mod broker;
 pub mod chain;
 pub mod contracts;
+pub mod determinism;
 pub mod error;
 pub mod id;
 pub mod locality;
@@ -137,6 +144,10 @@ pub use crate::contracts::focus_switch::{FocusSwitchReport, FocusSwitchVersion};
 pub use crate::contracts::graph::EdgeId;
 pub use crate::contracts::{
     ContractError, Correlation, MAX_CONTRACT_PAYLOAD_BYTES, PayloadBuffer, SchemaId,
+};
+pub use crate::determinism::{
+    BOUNDED_TIER_COUNT, TierDeterminism, satisfied_edge_count, strictest_satisfied_tier,
+    tier_determinism,
 };
 pub use crate::error::LictorError;
 pub use crate::id::{
