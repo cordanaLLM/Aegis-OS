@@ -1,0 +1,13 @@
+# Global repository owners
+* @lusoris
+
+# Canonical governance and configuration
+/AGENTS.md @lusoris
+/.standards.yaml @lusoris
+/.config/ @lusoris
+/.github/ @lusoris
+
+# Planning inventory, roadmap, and documentation
+/planning/ @lusoris
+/docs/ @lusoris
+/README.md @lusoris

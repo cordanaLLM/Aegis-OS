@@ -1,0 +1,34 @@
+name: "Feature Request"
+description: "Propose a change to the roadmap, a planning artifact, or governance tooling"
+title: "[FEATURE]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem Statement"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Proposed Change"
+      description: "Concept changes require an ADR in docs/adr/; say so if this is one."
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: "Area"
+      options:
+        - "Roadmap and milestones"
+        - "Planning inventory (planning/components.json)"
+        - "Integration contracts (Imago, Nucleus, Golusoris)"
+        - "Governance and verification tooling"
+        - "Documentation"
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives Considered"

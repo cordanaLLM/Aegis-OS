@@ -5,9 +5,16 @@ import argparse
 import hashlib
 import json
 import subprocess
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+LICENSE_TEXTS = {
+    "LICENSE": "57fb42fbcd0b037ce528ed8f72f1ec095d67bc6825ecf1448ff39be1fe68a4b4",
+    "LICENSES/EUPL-1.2.txt": "57fb42fbcd0b037ce528ed8f72f1ec095d67bc6825ecf1448ff39be1fe68a4b4",
+    "LICENSES/CC-BY-SA-4.0.txt": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5",
+}
+LICENSE_IDS = {"EUPL-1.2", "CC-BY-SA-4.0"}
 
 
 def read_json(path):
@@ -43,6 +50,21 @@ def verify_privacy():
     )
 
 
+def verify_licensing():
+    for name, digest in LICENSE_TEXTS.items():
+        path = ROOT / name
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > 1 << 20:
+            raise ValueError(f"Missing or invalid licence text: {name}")
+        if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            raise ValueError(f"Licence text differs from the pinned canonical text: {name}")
+    reuse = tomllib.loads((ROOT / "REUSE.toml").read_text())
+    declared = {row.get("SPDX-License-Identifier") for row in reuse.get("annotations", [])}
+    if reuse.get("version") != 1 or declared != LICENSE_IDS:
+        raise ValueError("REUSE.toml must declare version 1 with exactly the split-licence identifiers")
+    if not (ROOT / "LICENSING.md").is_file():
+        raise ValueError("LICENSING.md explains the split licence and must exist")
+
+
 def verify_sources():
     data = read_json(ROOT / ".workingdir/source-inventory.json")
     source = ROOT / ".workingdir/notebookllmprep"
@@ -71,12 +93,13 @@ def main():
     args = parser.parse_args()
     rows = verify_components()
     verify_privacy()
+    verify_licensing()
     if args.sources:
         verify_sources()
     if args.readiness:
         for row in rows:
             print(f"{row['id']} {row['name']}: {row['status']}; " + "; ".join(row["activation_blockers"]))
-    print("PASS: planning structure and privacy; native build/boot/release unverified")
+    print("PASS: planning structure, privacy and licence texts; native build/boot/release unverified")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,64 @@
+name: "Bug Report"
+description: "Report a defect in planning artifacts, governance tooling, or a verification gate"
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please verify the failure against the current default branch with `make verify-all` before filing.
+  - type: textarea
+    id: summary
+    attributes:
+      label: "Bug Summary"
+      description: "A clear and concise description of what is wrong."
+    validations:
+      required: true
+  - type: dropdown
+    id: hiss-invariant
+    attributes:
+      label: "Affected HISS Invariant"
+      options:
+        - "None / General"
+        - "HISS-01: Acyclic control flow"
+        - "HISS-02: Bounded loops and I/O timeouts"
+        - "HISS-03: No heap allocation in hot loops"
+        - "HISS-04: Complexity bounds (McCabe <= 10, LOC <= 60)"
+        - "HISS-07: Checked errors, zero unwrap"
+        - "HISS-08: Static determinism, banned functions"
+        - "HISS-09: Mandatory SAFETY proofs"
+        - "HISS-10: Zero-warning hygiene"
+        - "HISS-15: 3D test discipline"
+        - "HISS-16: Canonical AGENTS.md"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "Steps to Reproduce"
+      placeholder: |
+        1. Run `make verify-all`
+        2. Inspect output
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected vs Actual Behavior"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Terminal Logs"
+      description: "Paste relevant output (keep it under roughly 60 lines)."
+      render: shell
+  - type: checkboxes
+    id: affirmations
+    attributes:
+      label: "Integrity Checklist"
+      options:
+        - label: "I verified this against the current default branch using `make verify-all`."
+          required: true
+        - label: "No evasions (`--no-verify`, `LEFTHOOK=0`) were attempted."
+          required: true

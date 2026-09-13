@@ -3,9 +3,21 @@ repository:
     owner: cordanaLLM
     name: Aegis-OS
     visibility: public
-    description: ""
-    homepage: ""
-    topics: []
+    description: "Aegis OS: sovereign, image-based Linux with sixteen proposed subsystems; Praetor-governed planning repository"
+    homepage: "https://github.com/cordanaLLM/Aegis-OS"
+    topics:
+      - linux
+      - operating-system
+      - mkosi
+      - unified-kernel-image
+      - rust
+      - ebpf
+      - eu-ai-act
+      - accessibility
+      - hiss-16
+# Ed25519 Exit-0 receipt trust anchor (praetorctl gate keygen; private key outside the repository).
+receipt:
+    public_key: "213f9534a662075308e2087694985eff7590386760a19609b08437412b46e9d8"
 profiles:
     - planning-artifacts
 facets:

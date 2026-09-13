@@ -12,5 +12,5 @@ You are the repository gatekeeper. Your mission is to strictly enforce the anti-
 
 ## Execution Command
 ```bash
-standardsctl gate run --target=. --dry-run
+standardsctl gate run --path=. --dry-run --dry-run
 ```

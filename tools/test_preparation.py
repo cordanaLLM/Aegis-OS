@@ -1,8 +1,12 @@
 """Preparation guard regressions; no build, boot or notebook code is executed."""
 
+import contextlib
 import hashlib
+import io
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -20,9 +24,13 @@ class PreparationTests(unittest.TestCase):
         self.addCleanup(self.patch.stop)
         (self.root / "planning").mkdir()
         self.data = {"stage": "planning", "components": [
-            {"id": f"P{i:02}", "status": "proposal", "activation_blockers": ["real test"]}
+            {"id": f"P{i:02}", "name": f"sub-{i}", "status": "proposal", "activation_blockers": ["real test"]}
             for i in range(1, 17)
         ]}
+
+    def git_init(self):
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True, timeout=10)
+        (self.root / ".gitignore").write_text("/.workingdir/\n")
 
     def write_components(self):
         (self.root / "planning/components.json").write_text(json.dumps(self.data))
@@ -43,6 +51,68 @@ class PreparationTests(unittest.TestCase):
         self.write_components()
         with self.assertRaises(ValueError):
             check.verify_components()
+
+    def write_licensing(self, texts, identifiers=("EUPL-1.2", "CC-BY-SA-4.0")):
+        digests = {}
+        for name, body in texts.items():
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(body)
+            digests[name] = hashlib.sha256(body).hexdigest()
+        tables = "".join(
+            f'[[annotations]]\npath = ["**"]\nSPDX-License-Identifier = "{i}"\n' for i in identifiers
+        )
+        (self.root / "REUSE.toml").write_text("version = 1\n" + tables)
+        (self.root / "LICENSING.md").write_text("split licence")
+        return digests
+
+    def test_licence_texts_match_pinned_digests(self):
+        digests = self.write_licensing({"LICENSE": b"eupl", "LICENSES/CC-BY-SA-4.0.txt": b"cc"})
+        with patch.object(check, "LICENSE_TEXTS", digests):
+            check.verify_licensing()
+            (self.root / "LICENSE").write_bytes(b"eupl altered")
+            with self.assertRaises(ValueError):
+                check.verify_licensing()
+
+    def test_licence_metadata_is_exact(self):
+        digests = self.write_licensing({"LICENSE": b"eupl"}, identifiers=("EUPL-1.2",))
+        with patch.object(check, "LICENSE_TEXTS", digests):
+            with self.assertRaises(ValueError):
+                check.verify_licensing()
+        digests = self.write_licensing({"LICENSE": b""})
+        with patch.object(check, "LICENSE_TEXTS", digests):
+            check.verify_licensing()
+            (self.root / "LICENSING.md").unlink()
+            with self.assertRaises(ValueError):
+                check.verify_licensing()
+
+    def test_privacy_guard_rejects_tracked_working_data(self):
+        self.git_init()
+        check.verify_privacy()
+        private = self.root / ".workingdir"
+        private.mkdir()
+        (private / "note.md").write_text("private")
+        subprocess.run(["git", "-C", str(self.root), "add", "-f", ".workingdir/note.md"], check=True, timeout=10)
+        with self.assertRaises(ValueError):
+            check.verify_privacy()
+
+    def test_main_readiness_lists_every_component(self):
+        self.write_components()
+        self.git_init()
+        self.write_licensing({})
+        out = io.StringIO()
+        argv = ["verify_preparation.py", "--readiness"]
+        with patch.object(sys, "argv", argv), patch.object(check, "LICENSE_TEXTS", {}):
+            with contextlib.redirect_stdout(out):
+                check.main()
+        self.assertEqual(out.getvalue().count(": proposal; real test"), 16)
+
+    def test_blocked_targets_fail_closed(self):
+        root = Path(__file__).resolve().parent.parent
+        for target in ("build", "boot", "release"):
+            result = subprocess.run(["make", "-s", target], cwd=root, capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("blocked", result.stderr)
 
     def test_source_integrity_and_inventory_drift(self):
         source = self.root / ".workingdir/notebookllmprep"

@@ -1,5 +1,7 @@
 # Project preparation gate layered over Praetor's generated governance hooks.
+# compile-context --verify and audit are supplied by the generated context-check
+# and hiss-audit jobs; this job runs only the repository's own checks.
 pre-commit:
   commands:
     preparation:
-      run: make verify-all
+      run: python3 -B -m unittest discover -s tools -p 'test_*.py' && python3 tools/verify_preparation.py

@@ -25,7 +25,7 @@ flowchart LR
 | Invariant | Scope | NASA Rule | Enforcement Mechanism | Failure Action |
 | :--- | :--- | :--- | :--- | :--- |
 | **HISS-01** | Control Flow | Rule 1 | Recursion strictly prohibited; call graph must be DAG; zero `goto`. | Immediate build failure |
-| **HISS-02** | Loops & I/O | Rule 2 | Scalar upper bound on all loops; explicit `context.Context` timeout on all I/O. | Semgrep / AST error |
+| **HISS-02** | Loops & I/O | Rule 2 | Scalar upper bound on all loops; explicit deadline or timeout on all I/O (Rust: `tokio::time::timeout` or equivalent). | Semgrep / AST error |
 | **HISS-03** | Memory | Rule 3 | Zero dynamic heap allocation (`malloc` / `free`) in hot simulation/tick loops. | Allocation audit sweep |
 | **HISS-04** | Complexity | Rule 4 | Function length $\le 60$ LOC, McCabe Cyclomatic $\le 10$, Statements $\le 50$. | AST sweep blocker |
 | **HISS-07** | Error Handling | Rule 7 | Zero `.unwrap()` / `.expect()`; all errors handled or wrapped with context. | Linter / Compiler error |

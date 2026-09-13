@@ -16,6 +16,7 @@ verify-sources:
 readiness:
 	python3 tools/verify_preparation.py --readiness
 
+# test == preparation gate only; tests/ holds no executable suites yet
 test: verify-all
 
 build boot release:

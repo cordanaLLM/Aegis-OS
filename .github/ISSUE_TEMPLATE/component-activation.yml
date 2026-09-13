@@ -1,0 +1,50 @@
+name: "Component Activation Request"
+description: "Propose promoting one component from proposal to active implementation"
+title: "[ACTIVATE]: P"
+labels: ["component-activation", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Activation requires the four preconditions from `GOVERNANCE.md`: component manifest, dependency lock, interface contract, and positive/negative/boundary tests. Reference the milestone in `planning/roadmap.json` that this request unblocks.
+  - type: input
+    id: component
+    attributes:
+      label: "Component ID and name"
+      placeholder: "P07 aegis-lictor"
+    validations:
+      required: true
+  - type: input
+    id: milestone
+    attributes:
+      label: "Roadmap milestone"
+      placeholder: "M03"
+    validations:
+      required: true
+  - type: textarea
+    id: manifest
+    attributes:
+      label: "Component manifest and dependency lock"
+      description: "Paths and how the toolchain is admitted through the template matrix."
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: "Interface contract"
+      description: "Schemas, transports, correlation IDs, and owning repositories for every cross-component edge."
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: "Positive, negative, and boundary tests"
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: "Evidence limits"
+      description: "State what the tests do NOT prove (no build, boot, hardware, or release claims)."
+    validations:
+      required: true

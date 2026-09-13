@@ -1,6 +1,8 @@
 # Aegis OS
 
 [![HISS-16 Compliant](https://img.shields.io/badge/Standards-HISS--16%20Compliant-brightgreen)](AGENTS.md)
+[![Code: EUPL 1.2](https://img.shields.io/badge/code-EUPL--1.2-315c9b.svg)](LICENSING.md)
+[![Original content: CC BY-SA 4.0](https://img.shields.io/badge/original%20content-CC%20BY--SA%204.0-b85c00.svg)](LICENSING.md)
 
 Local planning repository for an image-based Linux OS with sixteen proposed
 subsystems. The NotebookLM concept is preserved; this checkout currently
@@ -14,6 +16,7 @@ release gates remain blocked until their real inputs and checks exist.
 | --- | --- |
 | `planning/components.json` | Component inventory and explicit readiness |
 | `docs/integration/stack.md` | Shared ownership and cross-repository contracts |
+| `LICENSING.md`, `REUSE.toml` | Split licence: EUPL-1.2 technical material, CC BY-SA 4.0 prose |
 | `build/`, `crates/`, `bpf/`, `ui/`, `tests/` | Reserved implementation locations |
 | `.workingdir/notebookllmprep/` | Original private export, preserved byte-for-byte |
 | `.workingdir/prepared/` | Organized, inactive candidate files with source hashes |

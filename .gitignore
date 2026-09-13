@@ -1,9 +1,10 @@
-# Private notebook exports, connection guides, evidence, and session state.
-/.workingdir/
-/.workingdir2/
+# Local test and coverage artifacts, Praetor receipts and gate worktrees.
 .standards-receipt.json
+/.standards/
 __pycache__/
 *.pyc
+.coverage
+htmlcov/
 /target/
 node_modules/
 /.cache/
@@ -13,5 +14,7 @@ node_modules/
 *.qcow2
 *.efi
 *.iso
-# Dependency lockfiles are versioned once implementation dependencies are selected.
+# Private notebook exports, connection guides, evidence, and session state.
+# Dependency lockfiles are tracked once implementation dependencies are selected.
+/.workingdir2/
 /.workingdir/

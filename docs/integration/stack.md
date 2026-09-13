@@ -17,7 +17,8 @@ and reproducible failures go back to the owning repository. Each direction
 needs a schema, correlation ID, exact revision, bounded retries, and a recorded
 result before it counts as connected.
 
-Fabrica's product requirements remain in Aegis while reusable builder logic is
+The proposed build subsystem (P01 aegis-fabrica, see `planning/components.json`)
+keeps its product requirements in Aegis while reusable builder logic is
 provided through Imago and Nucleus. Shared package reuse must respect language
 boundaries: a Go library is not a direct dependency of a Rust daemon. Use a
 compatible library or an explicit protocol/FFI adapter with contract tests.
