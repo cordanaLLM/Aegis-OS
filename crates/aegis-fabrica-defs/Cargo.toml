@@ -3,7 +3,7 @@
 
 [package]
 name = "aegis-fabrica-defs"
-description = "Aegis OS P01/P02 definition parser: repart drop-ins and sysupdate transfers, checked against what systemd refuses and what the A/B contract requires."
+description = "Aegis OS P01/P02 declarative inputs: the repart and sysupdate definition parser, the product input manifest schema and the kernel requirement schema."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -16,6 +16,8 @@ publish = false
 path = "src/lib.rs"
 
 [dependencies]
+serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 
 [lints]

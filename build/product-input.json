@@ -1,0 +1,28 @@
+{
+  "schema": "aegis.p01.product-input.v1",
+  "correlation-id": "aegis-m18-product-input-0001",
+  "revision": "61f2fe16bab7889e007b2fd1474b025023906e91",
+  "distribution": {
+    "id": "arch",
+    "snapshot": "2026/09/13"
+  },
+  "definitions": {
+    "repart": "build/repart.d",
+    "sysupdate": "build/sysupdate.d",
+    "mkosi": "build/mkosi.conf",
+    "kernel-requirement": "build/kernel-requirement.json"
+  },
+  "packages": [
+    "linux-rt",
+    "systemd",
+    "systemd-ukify"
+  ],
+  "kernel": {
+    "source": "built-here",
+    "default-package": "linux-rt"
+  },
+  "retries": {
+    "max-attempts": 3,
+    "backoff-seconds": 30
+  }
+}

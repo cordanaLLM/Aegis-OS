@@ -13,6 +13,84 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (product input and kernel requirement schemas, milestone M18)
+
+- The Aegis side of the builder boundary now has schemas instead of prose.
+  `crates/aegis-fabrica-defs` gains the product input manifest and the kernel
+  requirement payload, built on bounded field types that validate while a
+  payload is decoded rather than after it. The manifest carries what
+  `docs/integration/stack.md` asks of every crossing -- a schema, a correlation
+  identifier, an exact revision and bounded retries -- plus the pinned
+  distribution snapshot, the configuration references and the boot kernel
+  identity.
+- The manifest is validated against the real files. `build/product-input.json`
+  points at the M03 definitions and is checked by running them through the same
+  parsers the M03 gate uses, so a manifest referencing a set that does not
+  parse, or one that parses but is not A/B, is refused rather than accepted on
+  the strength of its paths.
+- The kernel requirement is a payload rather than a fixed symbol list: every
+  Kconfig symbol lives in a JSON row with the state it must be in, the probe
+  that checks it on a running system and the recorded requirement it comes
+  from. The crate names no Kconfig symbol in code. The payload renders as a
+  Kconfig fragment, which is the form milestone M26 applies to a base
+  configuration under decision D70. The renderer validates before it writes a
+  line: every field of the payload is public, so a requirement assembled
+  without decoding could otherwise be rendered short of the rows past the
+  feature bound, and a fragment M26 applies must not be silently incomplete.
+  The manifest's transfer half gained the same bound guard its repart half
+  already had, so a transfer past the bound is refused rather than left
+  unparsed.
+- The schema is checked against the measured reference profile, and the
+  negative case is bound to a measured absence. The reviewed reference payload
+  is satisfied with no unmet row; the product requirement is refused by the
+  same profile with exactly one, because the workstation kernel reports
+  `# CONFIG_PREEMPT_RT is not set` with `CONFIG_PREEMPT_DYNAMIC=y`. A payload
+  demanding only `CONFIG_HZ_1000` is accepted by that same profile, which is
+  what shows the schema discriminating per feature rather than per kernel
+  flavour.
+- mkosi is admitted at the exact pin `mkosi 27` (`extra/mkosi 27-1`), read back
+  from the reference profile, superseding the register's inherited `mkosi v24+`
+  floor. `make verify-mkosi` parses `build/mkosi.conf` with the host's own
+  mkosi and requires the Output stanza; the floor is enforced by mkosi itself
+  through `MinimumVersion=`, so an older mkosi refuses the configuration rather
+  than accepting it quietly. The gate validates a definition and constructs no
+  image, which is decision D56 applied while Imago is a scaffold.
+- The same gate asserts the absence of an unreviewed partition-definition set,
+  not only the presence of the reviewed one. It requires exactly one resolved
+  `RepartDirectories=` row to be the reviewed directory, compared as a resolved
+  path, and refuses any other row that holds a `.conf`. This matters because
+  git cannot track an empty directory: a `mkosi.repart/` or `mkosi.conf.d/`
+  tree can exist in a checkout, be read by mkosi and never appear in a diff.
+- Decisions D07 (boot kernel identity) and D18 (distribution release and
+  package pinning) are recorded, and both are carried by the schema rather than
+  only by prose: the manifest can spell all three boot kernel sources D07
+  admits, and the snapshot field type refuses the unpinned `latest` spelling
+  REQ-P01-01 records.
+- `planning/hardware-profile.json` gains the twelve further Kconfig symbols the
+  payloads read and the processor architecture, each transcribed from a
+  `zgrep`, `uname` or `ls` run on the reference profile, and two capability
+  evidence commands are extended with the probe paths the schema cites. The
+  kernel block's own evidence command is corrected: anchored on `CONFIG_` it
+  printed nothing at all for `CONFIG_PREEMPT_RT`, the row the negative case
+  rests on, because a symbol that is off is spelled `# CONFIG_X is not set`.
+  With the `(# )?` alternation the command reproduces all twenty-six recorded
+  values, `# CONFIG_PREEMPT_RT is not set` among them.
+
+### Fixed (roadmap documentation, milestone M18)
+
+- The ranked milestone table in `docs/roadmap/README.md` was stale: it carried
+  M03 and M14 in the wrong rank positions and eight states that no longer
+  matched `planning/roadmap.json`. All 27 table rows and all 27 milestone
+  preambles are now re-derived from the JSON, which stays the source of truth,
+  and M23's preamble in particular is corrected from "Reference profile:
+  partial. Blocked by: M07." to the recorded "full" and "M07, M26".
+- Not yet regenerated, and recorded here rather than left silent: the exit
+  criteria rendered in five other milestone sections still lag the JSON, all of
+  it drift that predates this milestone. M23's own criteria are brought into
+  line here; `M03` criterion 5, `M24` (two criteria unrendered), `M25`
+  criterion 4 and `M20` (two criteria unrendered) are not, because rewriting
+  another milestone's recorded criteria does not belong in this delivery.
+
 ### Added (P01/P02 definitions validated offline, milestone M03)
 
 - The P01 Fabrica and P02 Praesidium declarative inputs are now reviewed files

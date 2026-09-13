@@ -36,7 +36,11 @@ const LINE_BOUND: usize = 4096;
 
 /// The smallest public surface the scanner may report before it is assumed to
 /// be reading nothing rather than finding nothing.
-const MINIMUM_SURFACE: usize = 60;
+///
+/// Raised at M18 with the product input manifest, the kernel requirement and
+/// the bounded field types. It is a floor, not a count: it exists so that a
+/// scanner reading an empty directory fails loudly instead of passing.
+const MINIMUM_SURFACE: usize = 180;
 
 /// Which enclosing block makes an unmarked item public API.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -326,6 +330,13 @@ fn the_scanner_reads_public_surface_and_not_private_helpers() {
         "SingleSlotTransfer",
         "parse_size",
         "UnitFile",
+        "ProductInputManifest",
+        "KernelRequirement",
+        "ReferenceProfile",
+        "ConfigSymbol",
+        "MAX_FEATURES",
+        "StateMismatch",
+        "config_fragment",
     ] {
         assert!(
             names.iter().any(|name| name == expected),
@@ -340,6 +351,12 @@ fn the_scanner_reads_public_surface_and_not_private_helpers() {
         "verity_findings",
         "esp_findings",
         "section_header",
+        "numeric_components",
+        "declared_schema",
+        "check_retries",
+        "typed_symbols",
+        "unmet_feature",
+        "push_comment",
     ] {
         assert!(
             !names.iter().any(|name| name == private),
