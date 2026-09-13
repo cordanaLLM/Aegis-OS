@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+#
+# Exact pins for the documentation portal. Regenerate deliberately; the Pages
+# workflow installs this file and nothing else.
+mkdocs==1.6.1
+mkdocs-material==9.7.7
+pymdown-extensions==11.0.2

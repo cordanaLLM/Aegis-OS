@@ -1,0 +1,108 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+#
+# Documentation portal for the Aegis OS planning repository. It publishes the
+# tracked planning and governance prose only. It builds no image, kernel, or
+# release artefact, and its success is not evidence for any blocked gate.
+#
+# Build from the repository root: the Snippets base path is the repository
+# root, which is how the root-level governance files reach pages under docs/.
+
+site_name: Aegis OS
+site_url: https://cordanallm.github.io/Aegis-OS/
+site_description: >-
+  Planning repository for an image-based Linux OS with sixteen proposed
+  subsystems: preparation, governance, and a source-cited roadmap.
+site_author: Lusoris
+repo_url: https://github.com/cordanaLLM/Aegis-OS
+repo_name: cordanaLLM/Aegis-OS
+edit_uri: blob/main/
+copyright: >-
+  Copyright &copy; 2026 Lusoris &mdash; technical material EUPL-1.2,
+  original prose CC BY-SA 4.0
+
+docs_dir: docs
+site_dir: site
+
+# Build inputs that must not be published as site assets.
+exclude_docs: |
+  requirements.txt
+
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: slate
+      primary: blue grey
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: blue grey
+      accent: cyan
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.action.edit
+    - content.code.copy
+    - toc.follow
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path:
+        - .
+      check_paths: true
+      restrict_base_path: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/cordanaLLM/Aegis-OS
+      name: Aegis OS on GitHub
+
+nav:
+  - Home: index.md
+  - Roadmap:
+      - Overview: roadmap/README.md
+      - Cited requirements: roadmap/requirements.md
+      - Dependency-ordered tasks: roadmap/tasks.md
+  - Integration:
+      - Shared ownership and contracts: integration/stack.md
+  - Decisions:
+      - ADR index: adr/README.md
+      - ADR-0001 Pure-Rust compositor: adr/0001-pure-rust-compositor.md
+      - ADR-0002 Exclude the Steamworks SDK: adr/0002-exclude-steamworks-from-image.md
+      - ADR template: adr/0000-template.md
+  - Project:
+      - Domain glossary: context.md
+      - Governance: governance.md
+      - Contributing: contributing.md
+      - Licensing: licensing.md

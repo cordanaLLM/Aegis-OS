@@ -126,3 +126,47 @@ language/interface needs and pin contracts before activating a consumer.
   interface contract, and real positive/negative/boundary checks exist. The
   development environment must select those requirements through the template
   matrix; planning does not require every compiler, GPU SDK, or VM runtime.
+
+
+## Evasion interception in agent clients
+
+`AGENTS.md` rule 5 is enforced mechanically, not only by instruction. The
+pre-tool-use interceptor `.config/agent/hooks/block_evasion.py` reads the pending
+tool call as JSON on stdin, extracts the shell command from the field the calling
+client documents, and exits 2 with a `[BLOCKED BY HISS-16]` reason on stderr when
+the command matches `--no-verify`, `git commit -n`, `LEFTHOOK=0`, `SKIP=` for git,
+`core.hooksPath=/dev/null`, or removal of `.git/hooks`. A git hook cannot see
+`--no-verify`, so this interceptor is deliberately not part of `lefthook.yml`.
+
+It is registered as committed client settings in every agent client that supports
+a pre-tool-use hook:
+
+| Client | Registration file | Event and matcher | Command field |
+| :--- | :--- | :--- | :--- |
+| Claude Code | `.claude/settings.json` | `hooks.PreToolUse`, matcher `Bash` | `tool_input.command` |
+| Codex CLI | `.codex/hooks.json` | `hooks.PreToolUse`, matcher `^Bash$` | `tool_input.command` |
+| Gemini CLI | `.gemini/settings.json` | `hooks.BeforeTool`, matcher `^run_shell_command$` | `tool_input.command` |
+| Copilot cloud agent, Copilot CLI and VS Code | `.github/hooks/hiss-16-block-evasion.json` | `hooks.PreToolUse`, matcher `Bash` | `tool_input.command` |
+| Cursor | `.cursor/hooks.json` | `hooks.beforeShellExecution`, `failClosed` | `command` |
+| Windsurf Cascade | `.windsurf/hooks.json` | `hooks.pre_run_command` | `tool_info.command_line` |
+
+Registration rules:
+
+- These six files are hand-maintained client settings. `praetorctl
+  compile-context` does not generate or verify them; it owns only the instruction
+  projections (`CLAUDE.md`, `.cursor/rules/*.mdc`, `.windsurfrules`,
+  `.github/copilot-instructions.md`, `.gemini/GEMINI.md`, `.codex/rules.md`).
+- Codex requires the project `.codex/` layer to be trusted and the hook to be
+  reviewed with `/hooks`; Cursor requires a trusted workspace; the Copilot cloud
+  agent reads `.github/hooks/*.json` only from the default branch.
+- An empty or unparsable payload is allowed rather than blocked: the payload is
+  written by the harness, not by the model, so failing closed there would disable
+  every tool call without closing an evasion path. Text that fails JSON parsing is
+  still pattern-scanned verbatim.
+- Positive, negative and boundary coverage for each client payload shape lives in
+  `tools/test_block_evasion.py` and runs inside `make verify-all` (HISS-15).
+- The interceptor scans the whole command string, so any command that merely
+  contains one of the patterns is blocked, including greps and manual hook
+  tests. Exercise the patterns through `tools/test_block_evasion.py` (or build
+  the literal from concatenated fragments) instead of typing it into a shell
+  command.

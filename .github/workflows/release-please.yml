@@ -1,0 +1,49 @@
+# Release train: keeps CHANGELOG.md and VERSION current inside an automatically
+# maintained release pull request. It publishes nothing. Tagging and GitHub
+# releases stay skipped until planning/roadmap.json records milestone M13
+# (release signing and remote delivery) as done, and the Preparation gate
+# refuses to pass on a release-please branch until the same condition holds.
+name: Release please
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release pull request
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      # Least privilege for this job only; the workflow default stays read.
+      contents: write # push the release branch and, once unblocked, tag
+      pull-requests: write # open and refresh the release pull request
+      issues: write # "autorelease: pending"/"tagged" lifecycle labels
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Resolve the M13 release gate from planning/roadmap.json
+        id: gate
+        run: |
+          state="$(python3 -c 'import json; print(next((m["state"] for m in json.load(open("planning/roadmap.json"))["milestones"] if m["id"] == "M13"), "missing"))')"
+          if [ "$state" = "done" ]; then skip=false; else skip=true; fi
+          printf 'roadmap M13 state=%s -> skip-github-release=%s\n' "$state" "$skip"
+          printf 'skip-github-release=%s\n' "$skip" >> "$GITHUB_OUTPUT"
+
+      - name: Maintain the release pull request
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          skip-github-release: ${{ steps.gate.outputs.skip-github-release }}

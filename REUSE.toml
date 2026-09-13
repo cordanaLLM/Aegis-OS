@@ -17,3 +17,9 @@ path = ["README.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSING.md", "docs/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Lusoris <lusoris@proton.me>"
 SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+[[annotations]]
+path = ["docs/requirements.txt"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Lusoris <lusoris@proton.me>"
+SPDX-License-Identifier = "EUPL-1.2"

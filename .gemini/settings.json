@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "^run_shell_command$",
+        "hooks": [
+          {
+            "name": "hiss-16-block-evasion",
+            "type": "command",
+            "command": "python3 \"$GEMINI_PROJECT_DIR/.config/agent/hooks/block_evasion.py\"",
+            "timeout": 10000,
+            "description": "Blocks verification evasion (AGENTS.md rule 5)."
+          }
+        ]
+      }
+    ]
+  }
+}

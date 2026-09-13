@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "matcher": "Bash",
+        "bash": "python3 .config/agent/hooks/block_evasion.py",
+        "command": "python3 .config/agent/hooks/block_evasion.py",
+        "cwd": ".",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

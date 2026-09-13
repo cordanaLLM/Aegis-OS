@@ -26,8 +26,8 @@ This scope includes project-authored:
 - agent operating instructions and governance configuration; and
 - package metadata, lockfiles, and other technical build infrastructure.
 
-The verbatim EUPL v1.2 English text is in [`LICENSE`](LICENSE) and
-[`LICENSES/EUPL-1.2.txt`](LICENSES/EUPL-1.2.txt).
+The verbatim EUPL v1.2 English text is in [`LICENSE`](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSE) and
+[`LICENSES/EUPL-1.2.txt`](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSES/EUPL-1.2.txt).
 
 Text provenance: the enclosed text is the canonical English text published by
 the [SPDX License List](https://spdx.org/licenses/EUPL-1.2), which links the
@@ -54,7 +54,7 @@ When redistributing or adapting material in this scope, attribute it as:
 
 Include a link to this repository when reasonably practicable, identify
 changes, and comply with the ShareAlike terms. The verbatim legal code is in
-[`LICENSES/CC-BY-SA-4.0.txt`](LICENSES/CC-BY-SA-4.0.txt).
+[`LICENSES/CC-BY-SA-4.0.txt`](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSES/CC-BY-SA-4.0.txt).
 
 Text provenance: the enclosed legal code is copied verbatim from the
 [Creative Commons official plain-text legal code](https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt).

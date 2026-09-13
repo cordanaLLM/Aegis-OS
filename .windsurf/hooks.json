@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "pre_run_command": [
+      {
+        "command": "python3 .config/agent/hooks/block_evasion.py",
+        "show_output": true
+      }
+    ]
+  }
+}

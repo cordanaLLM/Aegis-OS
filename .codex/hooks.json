@@ -1,0 +1,18 @@
+{
+  "description": "HISS-16 anti-evasion interceptor for Aegis-OS.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.config/agent/hooks/block_evasion.py\"",
+            "timeout": 10,
+            "statusMessage": "Checking the command for verification evasion"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -18,6 +18,8 @@ env:
   LEFTHOOK_VERSION: "2.1.12"
   LEFTHOOK_SHA256: "22ff1ad48d1a0f4dca8d6b7e920056c6a9015f9204e5b693858ed9c2db759a16"
   REUSE_VERSION: "6.2.0"
+  # Published Praetor commit that builds the praetorctl this gate pins.
+  PRAETOR_COMMIT: "8d617bddf08042ad828d8a5c3c7852c4f000ce5d"
 
 jobs:
   verify:
@@ -30,14 +32,44 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build pinned praetorctl from the devcontainer source bundle
+      - name: Release pull requests stay blocked until roadmap milestone M13 is done
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--')
         run: |
-          docker build --target praetor_build -f .devcontainer/Dockerfile.praetor -t praetor-build .devcontainer
-          cid="$(docker create praetor-build)"
+          state="$(python3 -c 'import json; print(next((m["state"] for m in json.load(open("planning/roadmap.json"))["milestones"] if m["id"] == "M13"), "missing"))')"
+          if [ "$state" != "done" ]; then
+            echo "::error::release pull request blocked: planning/roadmap.json milestone M13 (release signing and remote delivery) has state \"$state\", expected \"done\"."
+            exit 1
+          fi
+          printf '%s\n' 'roadmap M13 is done; release pull requests may proceed.'
+
+      - name: Check out pinned Praetor source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: cordanaLLM/praetor
+          ref: ${{ env.PRAETOR_COMMIT }}
+          path: praetor-src
+          persist-credentials: false
+
+      - name: Set up the Go toolchain declared by Praetor
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: praetor-src/go.mod
+          cache: false
+
+      - name: Build pinned praetorctl from the published Praetor commit
+        env:
+          GOTOOLCHAIN: local
+          CGO_ENABLED: "0"
+          GOFLAGS: -mod=readonly
+        run: |
+          test "$(git -C praetor-src rev-parse HEAD)" = "$PRAETOR_COMMIT"
           mkdir -p "$RUNNER_TEMP/bin"
-          docker cp "$cid:/out/praetorctl" "$RUNNER_TEMP/bin/praetorctl"
-          docker rm "$cid"
+          ( cd praetor-src && go mod download && go mod verify \
+            && go build -trimpath -buildvcs=false -o "$RUNNER_TEMP/bin/praetorctl" ./cmd/standardsctl )
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          # The Praetor checkout is a build input only; the preparation gate must
+          # not scan or publish it as Aegis repository content.
+          rm -rf praetor-src
 
       - name: Install pinned lefthook
         run: |
@@ -54,7 +86,7 @@ jobs:
         run: pipx run "reuse==${REUSE_VERSION}" lint
 
       - name: DCO sign-off on pull request commits
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}

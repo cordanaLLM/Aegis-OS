@@ -1,6 +1,6 @@
 version: 1
 pinned_version: v1.0.0
-digest: sha256:d659dfa2a926bdb1bf8fd86b4cd540a7e43789635ae3c113dd5850601209efe8
+digest: sha256:2660870a0c01bb79c5c9e1096beb28f4e2aac9e76b7d3d798f0468cb3780b75b
 generated_at: ""
 profiles:
     - id: planning-artifacts
@@ -10,3 +10,6 @@ facets:
     - id: agent:sandboxed
       version: v1.0.0
       digest: sha256:1a89a7a93d8f054d03edd203bb15006431468641d59ac61999b1997fa0a3233f
+    - id: docs:seo-portal
+      version: v1.0.0
+      digest: sha256:3381e1b7ab5cfb1029fa1b96cd84c7d3d5a890bc2d1f340a7b4e8b5bf61e2256

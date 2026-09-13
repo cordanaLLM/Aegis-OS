@@ -8,6 +8,8 @@ htmlcov/
 /target/
 node_modules/
 /.cache/
+# MkDocs documentation portal build output.
+/site/
 /build/mkosi.output/
 /build/mkosi.builddir/
 *.raw
@@ -18,3 +20,7 @@ node_modules/
 # Dependency lockfiles are tracked once implementation dependencies are selected.
 /.workingdir2/
 /.workingdir/
+
+# Local-only Praetor DevContainer bootstrap: regenerate with
+#   praetorctl devcontainer generate --source-root <praetor checkout>
+/.devcontainer/
