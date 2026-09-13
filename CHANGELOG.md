@@ -13,6 +13,113 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (eBPF objects through the host kernel's verifier, milestone M19)
+
+- The first work in this repository that reaches a real kernel. Four objects
+  under `bpf/` compile warning-free with `clang -target bpf` and load through
+  the **running** kernel's BPF verifier: `action_gate` (P06, a BPF LSM program
+  on `lsm/bprm_check_security`), `kepler_power` (P13, a tracepoint program on
+  `sched/sched_switch`), `scx_cake` (P07, a sched_ext `struct_ops`) and
+  `scx_cake_stub` (the all-stub boundary fixture). `bpf/loader/aegis_bpf_probe.c`
+  is the loader; `make verify-bpf` is the gate; `docs/build/bpf.md` is the
+  evidence. **No Rust crate, manifest or lock file is touched.**
+- **The verifier log is the evidence, not the exit code.** The loader gives every
+  program its own log buffer at log level 1 *before* the object is loaded, so a
+  log comes back from a success as well as a failure and a multi-program object
+  cannot overwrite its own evidence -- which is why a loader exists here instead
+  of a `bpftool prog load`. It paid for itself on the first run: `scx_cake`
+  failed, and the log said `program must be sleepable to call sleepable kfunc
+  scx_bpf_create_dsq`, which is why `ops.init` carries `SEC("struct_ops.s/")`.
+  Each negative case deletes exactly one marked region of a positive source and
+  must produce a named rejection -- `R7 invalid mem access
+  'ringbuf_mem_or_null'` for the deleted ring-buffer NULL check, `R2 unbounded
+  memory access, make sure to bounds check any such access` for the deleted
+  map-value index mask, and
+  `The sequence of 8193 jumps is too complex.` for the deleted loop clamp. The
+  gate also requires the corresponding positive log *not* to carry the same
+  string, because a diagnostic both objects produce says nothing about the
+  deleted bound. The third one is stated as observed and not overclaimed: the
+  verifier did not print "infinite loop", it refused the program as too complex
+  after 90113 instructions.
+- **The struct_ops boundary case attached and detached a scheduler on the live
+  machine, and the original was restored and verified by name.** `root/ops` read
+  `rusty_1.1.3_x86_64_unknown_linux_gnu`, then absent, then `aegis_cake_stub`
+  across a bounded one-second hold, then absent, then
+  `rusty_1.1.3_x86_64_unknown_linux_gnu` again. The restore path was proven
+  *before* anything was attached. The stub is safe to attach because it declares
+  `SCX_OPS_SWITCH_PARTIAL` -- so only `SCHED_EXT`-policy tasks reach it, and
+  nothing on the profile sets that policy -- and `timeout_ms = 5000`, the
+  watchdog bound that ejects a stalled scheduler. The case is opt-in behind
+  `--allow-scheduler-takeover` and prints why it did not run otherwise (D67).
+- **Three register readings were wrong and are corrected.** The admitted libbpf
+  is **1.7.0**, not the `v1.8` the register carried: 1.7.0 is what
+  `pkg-config --modversion libbpf` reports and what the loader links and reports
+  at runtime, while `using libbpf v1.8` from `bpftool version` is the copy
+  bpftool was statically built against. `/sys/kernel/sched_ext/root/ops` read
+  `rusty_1.1.3_x86_64_unknown_linux_gnu`, not `ghostbrew`. A third reading was
+  corrected by measurement: **CAP_BPF alone is not sufficient**; all three
+  program types returned `-EPERM` until `CAP_PERFMON` was added.
+- **One of those corrections was itself wrong and is withdrawn.**
+  `/sys/kernel/sched_ext/switch_all` and `/sys/kernel/sched_ext/nr_rejected`
+  exist. Only `/sys/kernel/sched_ext/root/` had been listed, and both are
+  top-level `sched_ext` attributes one directory up. They are now captured at
+  each point of the takeover: `switch_all` read `1` before, **`0` for the whole
+  hold window** and `1` after, which is the kernel's own measurement that no task
+  was switched to the stub -- previously inferred from the
+  `SCX_OPS_SWITCH_PARTIAL` flag in the fixture's own source, and now required by
+  the gate. `enable_seq` read `19`, `20`, `21`: it is incremented on every enable
+  and never reset, so **that** pair is a difference, unlike the `SCX_EV_*` lines
+  and unlike `nr_rejected`, which the enable path itself zeroes.
+- **A verifier log is now evidence only when the load that wrote it stamped it.**
+  Each log is deleted immediately before its load, the gate passes a per-load
+  nonce that the loader writes into the header, and a log without this run's
+  nonce is refused rather than read. The loader exits `6` when it cannot *write*
+  a log, distinct from the `1` it exits when the verifier *rejects* an object.
+  Before this, a probe that failed for a non-verifier reason left a pre-existing
+  file untouched, and a non-zero exit over a stale file containing the recorded
+  rejection passed the headline negative case -- verified by passing it with a
+  hand-typed log, and verified again as a failure afterwards.
+- **The documented SKIP is reachable for every tool.** The PATH check now runs
+  before the first tool is invoked; with the order reversed, a host without
+  `clang`, `bpftool`, `pkg-config` or `llvm-strip` reported a failure instead of
+  `SKIP: <tool> is not on PATH; the eBPF verifier gate did not run.` All six
+  tools were checked by running the gate once per tool with that tool absent.
+  The `org.scx.Loader` calls run through `sudo -n`, because the methods are
+  polkit-gated and an unprivileged `busctl` gets `Not allowed!`.
+- **A pre-existing hazard on the reference profile was uncovered rather than
+  smoothed over.** The first detach freed `root/ops` and a second scheduler
+  supervisor claimed it one second later, because the host has two enabled at
+  once and whichever retries first wins. That is why the gate compares the
+  restored scheduler with the recorded one by name: accepting "something is
+  attached" would have recorded a restore that did not happen. It is also the
+  likely reason the register recorded `ghostbrew`.
+- The gate is wired as `make verify-bpf` and **deliberately not** into
+  `make verify-all`, for the reason `verify-kernel` is not, plus one of its own:
+  it needs CAP_BPF, CAP_PERFMON and passwordless sudo, and the objects are
+  compiled CO-RE against the BTF of the machine they are then loaded on, so a
+  runner kernel would be a different claim. A gate that can only skip is not a
+  gate. What runs in `verify-all` is `tools/test_bpf_objects.py`, 52 cases
+  needing no kernel. Nothing is `|| true`; a host that cannot run the gate prints
+  why and exits 0, so an exit 0 is evidence only when case lines are above it.
+- Decision **D66** is resolved: `bpf/scx_cake.bpf.c` is an Aegis original that
+  shares a name with `/usr/bin/scx_cake` from `extra/scx-scheds 1.1.3-2` and is
+  not a fork of it or of its upstream. It descends from the imported P07 proposal
+  sketch, rewritten -- the sketch's `enqueue` classified a task and dispatched it
+  nowhere, which attached would stall every runnable task until the watchdog
+  ejected it. Decision **D67** is resolved as recommended, and its own rationale
+  is corrected on the same three readings.
+- Scope: **nothing is measured and nothing is run.** No burst, latency,
+  frame-time, energy or power figure exists anywhere in this milestone; the P13
+  TDP literal is carried at the proposal's 15000 mW under the name
+  `AEGIS_KEPLER_TDP_MILLIWATT_UNMEASURED` because runtime multiplied by a flat
+  constant is runtime in different units. `action_gate` cannot deny an exec,
+  and a test asserts its only return expressions are `ret` and
+  `AEGIS_ACTION_ALLOW`, which is zero. P06, P07 and P13 stay proposals. This is
+  a **non-qualifying local fixture**: the kernel that accepted these objects is
+  neither built nor configured here, so it does not close M10's Nucleus-kernel
+  verification, and image, boot, hardware, accessibility and release remain
+  blocked. The verifier accepted these objects; it did not run them.
+
 ### Added (real-time control plane: P04, P07 and P08 logic, milestone M07)
 
 - Three more reserved directories become crates, and none of them is a daemon.

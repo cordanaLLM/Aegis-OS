@@ -1,8 +1,8 @@
 SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
-.PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-kernel verify-sources \
-	verify-reuse readiness test build boot release
+.PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-kernel verify-bpf \
+	verify-sources verify-reuse readiness test build boot release
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
 # too: a repository whose instructions say "run make verify-all" must not have a
@@ -102,6 +102,49 @@ verify-mkosi:
 # repository, nothing is installed, and the output is never a release artifact.
 verify-kernel:
 	python3 tools/verify_kernel_build.py
+
+# The eBPF verifier gate (M19): the tracked objects under bpf/ are compiled with
+# clang -target bpf and put through the RUNNING kernel's verifier, with the
+# verifier log retained for every load, positive and negative.
+#
+# It is deliberately NOT part of verify-all, for the same reason verify-kernel is
+# not, plus one this target has of its own:
+#
+#   * it needs CAP_BPF and CAP_PERFMON. The gate drops to the caller's own uid
+#     with exactly that capability set through `sudo setpriv`, so it needs
+#     passwordless sudo; a CI runner has neither that nor the privilege;
+#   * it needs the running kernel to carry CONFIG_BPF_LSM, CONFIG_DEBUG_INFO_BTF
+#     and an exported /sys/kernel/btf/vmlinux, because the objects are compiled
+#     CO-RE against the BTF of the machine they are then loaded on. A runner
+#     kernel is a different kernel, so a pass there would be a different claim;
+#   * one case attaches a sched_ext struct_ops, which takes over the machine's
+#     CPU scheduler. That case is additionally behind
+#     --allow-scheduler-takeover and says why it did not run without it (D67).
+#
+# So a gate wired into verify-all could only ever skip on the runner, and a gate
+# that always skips is not a gate. What CI does check is the half that needs no
+# kernel: tools/test_bpf_objects.py asserts that the pinned versions, the
+# mutation markers the negative cases delete, the stub's declared handler set and
+# the unmeasured TDP literal are all what this gate expects, and that test runs
+# inside verify-all.
+#
+# A host that cannot run it prints 'SKIP: <reason>; the eBPF verifier gate did
+# not run.' and exits 0, the convention verify-systemd and verify-mkosi use. An
+# exit 0 from this target is therefore evidence only when the case lines are
+# above it. It never suppresses a failure. That skip is reachable for every tool
+# because the gate checks PATH before it invokes the first one: invoking an
+# absent binary is an error inside the gate, so with the two in the other order
+# a host without clang, bpftool, pkg-config or llvm-strip failed here instead of
+# standing down.
+#
+# Objects, logs and the generated vmlinux.h go to AEGIS_BPF_BUILD_DIR, default
+# ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-bpf. Nothing is written into the
+# repository and nothing is installed.
+#
+# A pass is a NON-QUALIFYING LOCAL FIXTURE: the host kernel is neither built nor
+# configured here, so it cannot close M10's Nucleus-kernel verification.
+verify-bpf:
+	python3 tools/verify_bpf_objects.py
 
 verify-sources:
 	python3 tools/verify_preparation.py --sources

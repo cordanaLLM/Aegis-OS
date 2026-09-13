@@ -45,6 +45,10 @@ Two rules follow from the clause and are applied below:
 | mkosi | 27; distribution package `extra/mkosi 27-1` on the reference profile | `build/mkosi.conf`, `MinimumVersion=27`, which mkosi itself enforces, and `tools/verify_mkosi_definitions.py`, `MKOSI_FLOOR = 27` and `REFERENCE_PROFILE_MKOSI`, read back from `mkosi --version` before the gate runs | the M01 register's inherited `mkosi v24+` floor from export-007, which was a range rather than a pin and which no gate enforced | M18 (D14, D56) |
 | Linux source | `linux-7.2.5`, sha256 `55ddf0df8325d9dad96fcff7bd93977d22e3f50af06527572af59b77c7632b78` | `build/kernel/source.pin.json`; the digest is re-checked on every run and the detached signature is verified against key `647F28654894E3BD457199BE38DBBDC86092693E` | nothing; no kernel source was pinned before | M26 (D70) |
 | Kernel base configuration | `x86_64_defconfig` of the pinned source, plus two tracked fragments | `build/kernel/source.pin.json`; the requirement fragment is byte-identical to `KernelRequirement::config_fragment` and no full `.config` is tracked | nothing | M26 (D70) |
+| clang (BPF target) | floor 19.0.0; reference profile `clang version 22.1.8`, distribution package `extra/clang 22.1.8-2` | `tools/verify_bpf_objects.py`, `CLANG_FLOOR` and `REFERENCE_PROFILE_CLANG`, read back from `clang --version` and `clang -print-targets` before anything is compiled | the M26 row recording clang as installed and **not** admitted, because no gate ran it; M19 runs it | M19 |
+| bpftool | floor 7.4.0; reference profile `bpftool v7.8.0`, distribution package `core/bpf 7.2.5-1` | `tools/verify_bpf_objects.py`, `BPFTOOL_FLOOR` and `REFERENCE_PROFILE_BPFTOOL`, read back from `bpftool version` | nothing | M19 |
+| libbpf (linked by the loader) | floor 1.5; reference profile `1.7.0`, distribution package `core/libbpf 1.7.0-1.1` | `tools/verify_bpf_objects.py`, `LIBBPF_FLOOR` and `REFERENCE_PROFILE_LIBBPF`, read back from `pkg-config --modversion libbpf` and again at runtime from `libbpf_version_string()` | the M01 register's `libbpf v1.8`, which was a reading of the wrong artefact (see below) | M19 |
+| llvm-strip | floor 19.0.0; reference profile LLVM 22.1.8, same `extra/clang 22.1.8-2` toolchain | `tools/verify_bpf_objects.py`, `LLVM_STRIP_FLOOR`, read back from `llvm-strip --version` | nothing | M19 |
 
 The pinned Rust toolchain is materialised explicitly before the first cargo
 gate, because a runner image that ships rustup does not thereby ship the pinned
@@ -178,10 +182,44 @@ alone, fails `make verify-all`.
 | gpg | 2.4.9 | none declared | the pinned tarball's signature |
 | qemu-system-x86_64 | 11.1.1 | none declared | the read-back guest |
 
-clang 22.1.8 is installed on the reference profile and is **not** admitted: the
-gate builds with gcc and nothing in this repository runs clang. It is recorded
-here so that a later `LLVM=1` build is a visible admission rather than an
-inherited one.
+clang 22.1.8 is installed on the reference profile and is **not** admitted *by
+this row*: the kernel gate builds with gcc, and `LLVM=1` remains unadmitted for
+it. M19 admits the same clang for a different job -- `-target bpf` for the
+objects under `bpf/`, and the native target for their loader -- so a later
+`LLVM=1` kernel build is still a visible admission rather than an inherited one.
+
+## The eBPF toolchain, and the two libbpf versions that differ (M19)
+
+Every row in the M19 block above is a tool `tools/verify_bpf_objects.py` runs,
+and every one is read back from the tool before anything is compiled. The
+admissions are floors plus recorded reference values, the shape M03 set for
+systemd and M18 for mkosi, for the same reason: these are distribution packages
+and nothing in this repository can materialise them.
+
+The libbpf row is the one worth reading twice, because the M01 register recorded
+`libbpf v1.8` and that value is a reading of a different artefact:
+
+- `pkg-config --modversion libbpf` prints **1.7.0** on the reference profile, and
+  `/usr/include/bpf/libbpf_version.h` declares `LIBBPF_MAJOR_VERSION 1`,
+  `LIBBPF_MINOR_VERSION 7`. That is the shared library `bpf/loader/aegis_bpf_probe.c`
+  links against, and the probe prints it again at runtime from
+  `libbpf_version_string()`, which reports `v1.7`. This is the version that
+  matters: it is the code that fills the verifier-log buffer and creates the
+  struct_ops link.
+- `bpftool version` prints `using libbpf v1.8`. That is the libbpf **bpftool was
+  built against**, statically, inside `core/bpf 7.2.5-1`. It says nothing about
+  the shared library on the system, and on this host the two genuinely differ.
+
+The register's row is therefore corrected rather than confirmed: the admitted
+libbpf is 1.7.0, and the 1.8 reading is recorded beside it as what it actually
+measures. `tools/test_bpf_objects.py` asserts that both values and both commands
+appear on this page, so the two cannot be collapsed back into one number.
+
+What the M19 rows do **not** claim: that the objects run correctly, that any
+scheduling, power or policy figure was measured, or that a kernel this
+repository controls accepted them. They were verified by the workstation's own
+running kernel, which is a non-qualifying local fixture -- see
+`docs/build/bpf.md`.
 
 ### How the pinned source was verified
 

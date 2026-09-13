@@ -144,7 +144,7 @@ score.
 | 10 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | done | small | no | no | not-hardware | M14 | M08, M22 |
 | 11 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | done | small | no | no | not-hardware | M06 | M25 |
 | 12 | M07 | Real-time control plane: P04, P07 and P08 logic | done | medium | no | no | not-hardware | M02 | M19, M23 |
-| 13 | M19 | eBPF objects loaded through the verifier on the host kernel | ready | medium | no | no | full | M05, M07 | M10 |
+| 13 | M19 | eBPF objects loaded through the verifier on the host kernel | done | medium | no | no | full | M05, M07 | M10 |
 | 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | ready | medium | yes | no | full | M07, M26 | M10 |
 | 15 | M24 | Local boot harness over an externally supplied artifact | ready | large | yes | no | full | M15 | M11 |
 | 16 | M04 | UI accessibility harness: P12 Concordia tokens | ready | medium | no | no | not-hardware | M02 | M16 |
@@ -971,7 +971,7 @@ Epics:
 
 ### M19 - eBPF objects loaded through the verifier on the host kernel
 
-Rank 13. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 13. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile: full.
 Blocked by: M05, M07. Unblocks: M10.
 
@@ -980,29 +980,57 @@ Exit criteria:
 - Toolchain admission: clang (BPF target), bpftool and libbpf (or aya, per the
   M01 register) are selected through the template matrix with pinned versions
   before any compile
-- action_gate, scx_cake and kepler_power compile warning-free with clang -target
-  bpf
-- The objects load through the BPF verifier on the host kernel with CAP_BPF; the
-  host kernel version and config (BPF LSM, sched_ext, BTF) are recorded as
-  observed facts, not assumed
+- action_gate, scx_cake and kepler_power compile warning-free with clang
+  -target bpf
+- The objects load through the BPF verifier on the host kernel with CAP_BPF
+  **and CAP_PERFMON**; the host kernel version and config (BPF LSM, sched_ext,
+  BTF) are recorded as observed facts, not assumed. The register said CAP_BPF
+  alone and that was an assumption: on the reference kernel CAP_BPF by itself
+  refused all three program types before the verifier ran, with `BPF program
+  load failed: -EPERM` for the LSM, tracepoint and struct_ops program types
+  alike, and adding CAP_PERFMON made all three load. The recorded set is the
+  one that ran, applied with `sudo setpriv --bounding-set=-all,+bpf,+perfmon`
+  to the caller's own uid, never as root
 - Negative: removing the ringbuf NULL check or an unroll bound makes the
   verifier reject the object. Boundary: a struct_ops load with all handlers
   stubbed succeeds where the host exposes sched_ext
 - This is a non-qualifying local fixture: a host or stock kernel cannot close
   the Nucleus-kernel verification in M10
-- The three pinned tool versions are recorded from the reference profile before
-  the first compile: clang 22.1.8 (`clang -print-targets` listing bpf, bpfeb,
-  bpfel), bpftool v7.8.0 and libbpf v1.8.
+- The pinned tool versions are recorded from the reference profile before the
+  first compile: clang 22.1.8 (`clang -print-targets` listing bpf, bpfeb,
+  bpfel), bpftool v7.8.0, and libbpf **1.7.0** -- not the v1.8 this register
+  carried. The two are different artefacts and the register read the wrong one:
+  `pkg-config --modversion libbpf` prints 1.7.0 and
+  /usr/include/bpf/libbpf_version.h declares major 1 minor 7, which is the
+  shared library the loader links and which reports itself as v1.7 at runtime,
+  whereas the `using libbpf v1.8` line of `bpftool version` is the libbpf
+  bpftool was statically built against inside core/bpf 7.2.5-1. Both readings
+  are recorded in docs/roadmap/toolchain-admission.md, distinctly, and llvm-
+  strip from the same clang toolchain is admitted alongside them.
 - The verifier log is retained for every load, positive and negative, and the
   negative case is proven by the log rejecting the object — not by a non-zero
   exit code alone: removing the ringbuf NULL check or an unroll bound must
   produce a named verifier rejection in the log.
 - The scx_cake struct_ops boundary load explicitly attaches AND detaches on the
-  host kernel, and the pre-existing scheduler is recorded and restored:
-  /sys/kernel/sched_ext/root/ops reads `ghostbrew` before the test, the stubbed
-  scheduler during it, and `ghostbrew` again after, with nr_rejected and
-  switch_all captured at each point. Only one scx scheduler can hold root/ops,
-  so this is a deliberate disruptive step, not a background one (D67).
+  host kernel, and the pre-existing scheduler is recorded and restored, with
+  nr_rejected and switch_all captured at each point:
+  /sys/kernel/sched_ext/root/ops reads
+  **`rusty_1.1.3_x86_64_unknown_linux_gnu`** before the test -- not the
+  `ghostbrew` this register carried -- `aegis_cake_stub` during it, and
+  `rusty_1.1.3_x86_64_unknown_linux_gnu` again after. Those two counters are NOT
+  members of root/, which holds exactly `events` and `ops`; they are top-level
+  sched_ext attributes one directory up, and listing only root/ is what made
+  them look absent. /sys/kernel/sched_ext/switch_all read 1 before, **0 for the
+  whole hold window** and 1 after; /sys/kernel/sched_ext/nr_rejected read 0 at
+  every point; /sys/kernel/sched_ext/enable_seq read 19, 20 and 21. Which
+  readings may be subtracted differs by counter and is not one blanket claim:
+  the `SCX_EV_*` lines of root/events and nr_rejected both belong to the
+  scheduler instance -- the enable path sets nr_rejected to zero -- while
+  enable_seq is incremented on every enable and never reset, so its pair IS a
+  difference and the gate prints it. Only one scx scheduler can hold root/ops --
+  confirmed by an attach refused with `Device or resource busy` while the
+  machine's own scheduler held it -- so this is a deliberate disruptive step,
+  not a background one (D67).
 - The host kernel identity and config are recorded as observed facts:
   7.2.4-1-cachyos PREEMPT_DYNAMIC, CONFIG_SCHED_CLASS_EXT=y, CONFIG_BPF_LSM=y,
   CONFIG_DEBUG_INFO_BTF=y, with the probe command beside each.
@@ -2395,19 +2423,45 @@ Open decisions:
   recording which one M19 is actually verifying, is the kind of ambiguity the
   register exists to prevent; it would also make the M19 verifier log impossible
   to attribute.
+  **Decision (2026-09-13, M19):** Aegis original. `bpf/scx_cake.bpf.c` shares a
+  name with `/usr/bin/scx_cake` from `extra/scx-scheds 1.1.3-2` and derives
+  from neither it nor its upstream `https://github.com/sched-ext/scx`: no line
+  is copied, no commit is vendored, and it is not a fork. It descends from the
+  imported P07 proposal sketch under `.workingdir/prepared/scaffold/`,
+  rewritten rather than imported -- the sketch's `enqueue` classified a task
+  and then dispatched it nowhere, which attached would stall every runnable
+  task until the watchdog ejected it. The provenance is recorded in the
+  object's own header and asserted by `tools/test_bpf_objects.py`.
 - **D67** May M19's struct_ops boundary load displace the scheduler currently
   holding /sys/kernel/sched_ext/root/ops on the reference host? Recommended:
   Yes, as a deliberately scheduled disruptive step with recorded detach and
   reattach, not as a background test. The pre-existing root/ops value must be
   captured, the stubbed scheduler attached, then the original restored and
   re-verified. Why: Only one scx scheduler can hold root/ops at a time, and the
-  reference host currently runs `ghostbrew` with switch_all=1 and nr_rejected=0
-  — so M19's boundary criterion ('a struct_ops load with all handlers stubbed
-  succeeds where the host exposes sched_ext') necessarily takes over CPU
-  scheduling on the maintainer's working machine for the duration. That is
+  reference host runs exactly one at any moment — so M19's boundary criterion
+  ('a struct_ops load with all handlers stubbed succeeds where the host exposes
+  sched_ext') necessarily takes over CPU scheduling on the maintainer's working
+  machine for the duration. That is
   executable and it is the right test, but it is not something to discover
   mid-run. Deciding it in advance also produces the attach/detach evidence the
   criterion should have carried all along.
+  This clause carried readings that M19 found to be wrong, and they are
+  corrected here as well as in the register: `root/ops` read
+  `rusty_1.1.3_x86_64_unknown_linux_gnu` at M19 time, not `ghostbrew`. M19's own
+  first correction -- that `switch_all` and `nr_rejected` do not exist -- was
+  itself wrong and is withdrawn: `/sys/kernel/sched_ext/root/` holds exactly
+  `events` and `ops`, but both counters are top-level `sched_ext` attributes one
+  directory up, and only `root/` had been listed. They are captured at each
+  point of the sequence, and `switch_all` read `0` for the whole hold window,
+  which is the kernel's own measurement that no task was switched to the stub.
+  **Decision (2026-09-13, M19):** Yes, as recommended, and it ran. The sequence
+  is recorded in `docs/build/bpf.md`: the restore path was proven first, the
+  scheduler was released through `org.scx.Loader`, the stub was attached for a
+  bounded one-second window, detached, and the original restored and
+  re-verified **by name**. The case is opt-in behind `--allow-scheduler-takeover`,
+  so it is never a background step. It also uncovered that the reference host
+  has two scheduler supervisors enabled at once, which is why the restore check
+  compares names rather than accepting that something is attached.
 
 - **D69** What is the dependency and toolchain version policy for a long-running
   project? Decision (2026-09-13): track the latest upstream releases across
