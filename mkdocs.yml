@@ -98,6 +98,8 @@ nav:
       - Reference development profile: roadmap/hardware.md
       - Cited requirements: roadmap/requirements.md
       - Dependency-ordered tasks: roadmap/tasks.md
+  - Build inputs:
+      - P01/P02 definitions and systemd evidence: build/definitions.md
   - Integration:
       - Shared ownership and contracts: integration/stack.md
   - Decisions:

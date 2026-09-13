@@ -3,6 +3,13 @@
 version = 4
 
 [[package]]
+name = "aegis-fabrica-defs"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "aegis-justitia"
 version = "0.1.0"
 dependencies = [

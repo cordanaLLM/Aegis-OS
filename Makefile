@@ -1,7 +1,8 @@
 SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
-.PHONY: verify-all verify-rust verify-sources verify-reuse readiness test build boot release
+.PHONY: verify-all verify-rust verify-systemd verify-sources verify-reuse readiness test \
+	build boot release
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
 # too: a repository whose instructions say "run make verify-all" must not have a
@@ -14,6 +15,7 @@ PRAETORCTL ?= praetorctl
 verify-all:
 	python3 -B -m unittest discover -s tools -p 'test_*.py'
 	python3 tools/verify_preparation.py
+	$(MAKE) --no-print-directory verify-systemd
 	$(PRAETORCTL) compile-context --verify
 	$(PRAETORCTL) audit
 	@if [ -f Cargo.toml ]; then \
@@ -38,6 +40,14 @@ verify-rust:
 	cargo clippy --locked --all-targets --all-features -- -D warnings
 	RUSTDOCFLAGS='-D warnings' cargo doc --locked --no-deps
 	@printf '%s\n' 'PASS: workspace crate gate on the pinned toolchain; native build, image and boot remain blocked.'
+
+# The P01/P02 definition gate (M03): the reviewed repart and sysupdate
+# definitions are run through the host's own systemd, with the recorded
+# negative and boundary cases. The script guards itself: a host without
+# systemd-repart/systemd-sysupdate, or one below the admitted floor, prints why
+# it did not run instead of reporting a pass. It never suppresses a failure.
+verify-systemd:
+	python3 tools/verify_systemd_definitions.py
 
 verify-sources:
 	python3 tools/verify_preparation.py --sources

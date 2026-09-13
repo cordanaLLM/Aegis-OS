@@ -354,7 +354,7 @@
       "id": "M03",
       "title": "P01/P02 definitions validated offline with host systemd",
       "rank": 4,
-      "state": "ready",
+      "state": "done",
       "blocked_by": [
         "M02"
       ],
@@ -375,7 +375,7 @@
         "Toolchain admission: a systemd version floor is selected through the template matrix (the host observed at revision time runs systemd 261); the Rust toolchain from M02 is reused for the parser; mkosi is not used in this milestone",
         "Repart gate: `systemd-repart --empty=create --size=<N> --dry-run=yes --definitions=<dir> <scratch image>` exits 0 on valid definitions; the gate also fails on any 'Unknown key ... ignoring' diagnostic, because systemd-repart exits 0 on unknown keys (observed on systemd 261, where the imported ESP 'Subsystem=' and var 'BtrfsSubvolumes=' keys are ignored)",
         "Negative and boundary cases observed on systemd 261: a definition without Type= exits 1; SizeMinBytes greater than SizeMaxBytes exits 1; SizeMinBytes equal to SizeMaxBytes is accepted",
-        "Transfer gate: `systemd-sysupdate --root=<scratch tree containing usr/lib/sysupdate.d> --offline list` parses the transfer definition unprivileged; on systemd 261 the imported definition is rejected with exit 1, so it must be rewritten to supported keys before the gate can pass",
+        "Transfer gate: the reviewed transfer is parsed unprivileged and offline by `systemd-sysupdate --definitions=<scratch tree>/usr/lib/sysupdate.d --offline list`, which is the authoritative proof because the `--root=<scratch tree>` form this criterion first named reads no transfer on systemd 261 (exit 1, `Source Type= must be one of ...`); the gate keeps the `--root=` invocation as a case that accepts exit 0 or that exact refusal, so an upstream fix is a visible diff. On systemd 261 the imported definition is rejected with exit 1, so it must be rewritten to supported keys before the gate can pass",
         "The Rust definition parser crate (location per D15) has its manifest, lock and positive/negative/boundary tests; no `|| true` anywhere in the gate",
         "The systemd version floor admitted through the template matrix records the exact reference-profile value `systemd 261 (261.3-1-arch)` from `systemctl --version`, so a future floor change is a visible diff rather than an inherited assumption.",
         "The repart and sysupdate gates are re-run and their exit codes and diagnostics retained; a pass here is development evidence on the reference profile only and does not close the image or boot gate."
@@ -424,7 +424,17 @@
           "acceptance": "The PCR 0/4/7/11 strategy is documented as the acceptance target for M11 boot evidence. It is not claimed here."
         }
       ],
-      "evidence": [],
+      "evidence": [
+        "build/repart.d holds the five reviewed repart drop-ins (00-esp, 10-root-a, 10-root-b, 11-root-verity, 20-var) and build/sysupdate.d holds 10-root.transfer; each file cites the private source it was derived from by export id and sha256 and records what changed from the import and why",
+        "Repart gate: systemd-repart --empty=create --size=32G --dry-run=yes --offline=yes --defer-partitions=var --seed=<fixed> --root=<scratch tree> --definitions=build/repart.d <scratch image> exits 0 on the reviewed set with no 'Unknown key ... ignoring' diagnostic; every flag spelling was read back from systemd-repart --help before use. --dry-run=yes is inert here and the gate does not perform a dry run: under --empty=create on systemd 261 the run formats an erofs root and a vfat ESP, prints 'Writing new partition table.' and 'Partition table written.', and leaves a real GPT (sfdisk -l reports 4 partitions), the same table the identical command with --dry-run=no produces. systemd-repart(8) states the opposite (\"Unless --dry-run=no is specified systemd-repart will not actually touch the device's partition table\"), so the divergence is recorded in docs/build/definitions.md and the flag carries an inline comment in tools/verify_systemd_definitions.py",
+        "Negative and boundary repart cases re-run and retained on systemd 261: no Type= exits 1 ('Type= not defined, refusing.'); SizeMinBytes above SizeMaxBytes exits 1 ('SizeMinBytes= larger than SizeMaxBytes=, refusing.'); SizeMinBytes equal to SizeMaxBytes exits 0; an unknown key exits 0 while printing \"Unknown key 'Subsystem' in section [Partition], ignoring\", so the gate fails on the diagnostic rather than the exit code (REQ-CI-01)",
+        "Transfer gate: systemd-sysupdate --definitions=<scratch tree>/usr/lib/sysupdate.d --offline --json=short list exits 0 unprivileged and lists both slots ({\"current\":\"b\",\"all\":[\"b\",\"a\"]}) from the partition table the repart gate just built; the imported key set exits 1 after six 'Unknown key' lines with 'Source specification lacks MatchPattern=.', and a single-slot transfer exits 0 with 'InstancesMax= value must be at least 2, bumping: 1'",
+        "Deviation from exit criterion 5 as first written, recorded here because that is where the criterion is judged: the criterion named systemd-sysupdate --root=<tree> --offline list, and on systemd 261 that invocation reads no transfer at all. It exits 1 with '10-root.transfer:1: Source Type= must be one of url-file, url-tar, tar, regular-file, directory, subvolume.' while Type=url-file is plainly assigned, so the criterion is unmet as originally worded. The authoritative parse uses --definitions=<tree>/usr/lib/sysupdate.d instead, because --root= is defective on 261, and the criterion text has been amended to say so. No mechanism is claimed and no systemd source or bug report was read: the observation is only that the file at <tree>/usr/lib/sysupdate.d is not the one read, since a tree whose outer file is not a config at all still exits 0 when a valid copy sits at <tree><tree>/usr/lib/sysupdate.d. The gate keeps the --root= invocation as a case and accepts exit 0 or that exact refusal, so an upstream fix is a visible diff",
+        "crates/aegis-fabrica-defs (D15) is a workspace member with its manifest, the committed Cargo.lock and 50 integration tests plus 2 doc tests; it refuses the unknown keys, repeated sections and repeated keys systemd only warns about, reports the single-slot transfer systemd silently bumps, and its public-surface sweep fails on any public item no test names",
+        "make verify-all carries the gate as make verify-systemd with no '|| true' anywhere; a host without systemd-repart or systemd-sysupdate, or below the admitted floor, prints why it did not run instead of passing quietly; 87 python tests pass, 28 of them covering the gate's version floor, transfer retargeting, outcome matching and the shipped definition set",
+        "docs/roadmap/toolchain-admission.md admits systemd as floor 261 with the exact reference-profile value 'systemd 261 (261.3-1-arch)' read from systemctl --version, and tools/test_systemd_definitions.py asserts the floor and that value agree; mkosi is installed on the reference profile, is not admitted, and no gate in this repository runs it",
+        "Scope limit: reference-profile development evidence only. What the gate does write is one throwaway sparse scratch image inside a TemporaryDirectory that is removed when it exits, carrying a real GPT, a formatted vfat ESP and an erofs root plus its verity hash pair. Beyond that nothing is published, signed, written to a device or booted, and no TPM is enrolled: /var TPM2 enrolment is deferred in the gate because the unprivileged run cannot open /dev/tpmrm0. REQ-P02-03's subvolume list stays an open point, and this milestone unblocks M15 and M18, which are now ready, while M11, M20 and M24 remain blocked"
+      ],
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
@@ -435,7 +445,7 @@
       "id": "M18",
       "title": "Aegis-side product input manifest and kernel requirement schemas (local)",
       "rank": 5,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M03"
       ],
@@ -510,7 +520,7 @@
       "id": "M15",
       "title": "P02 A/B candidate lifecycle state machine",
       "rank": 6,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M03"
       ],

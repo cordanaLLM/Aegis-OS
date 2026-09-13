@@ -15,10 +15,16 @@ tests.
 | Crate | Component | Milestone | Scope |
 | :--- | :--- | :--- | :--- |
 | `aegis-justitia` | P06 decision engine | M02, M14 | Risk tiers, maker-checker oversight, Annex III escalation, approval timeouts, a one-way killswitch, and a hash-linked audit ledger behind a hashing trait (M02). Versioned consumer schemas for the P09, P05 and P16 edges and the reviewed hardened-unit contract (M14). Library only. |
+| `aegis-fabrica-defs` | P01/P02 declarative inputs | M03 | The definition parser D15 records: `repart.d(5)` drop-ins and the `sysupdate.d(5)` transfer, split into what systemd refuses and what the recorded requirement refuses. Library only. |
 
-`aegis-justitia` is the first and, for now, the only member of the workspace
-root `Cargo.toml`. The member list is written out rather than globbed, so the
-remaining reserved directories stay inactive until they meet the same bar.
+Both are members of the workspace root `Cargo.toml`. The member list is written
+out rather than globbed, so the remaining reserved directories stay inactive
+until they meet the same bar.
+
+`aegis-fabrica-defs` is a parser for the declarative inputs in `build/`, not the
+P01 or P02 component daemon. P01 `aegis-fabrica` and P02 `aegis-janus-vallum`
+remain proposals in `planning/components.json`: their activation blockers are
+image, kernel and hardware evidence this crate does not produce.
 Activation covers the crate gate only: `cargo fmt`, `cargo build --locked`,
 `cargo test` and `cargo clippy -D warnings` on the pinned toolchain. No native
 pass is claimed by this directory.

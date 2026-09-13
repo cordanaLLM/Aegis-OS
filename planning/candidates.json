@@ -16,8 +16,9 @@
       "component": "P01",
       "language": "declarative-config + proposed Rust crate",
       "proposed_paths": [
-        "build/ (mkosi, repart and sysupdate definition inputs)",
-        "crates/<undecided>/ definition parser (D15; no source records a crate name)"
+        "build/repart.d and build/sysupdate.d (reviewed repart drop-ins and the A/B transfer, M03)",
+        "build/ (mkosi and UKI synthesis inputs, not reviewed)",
+        "crates/aegis-fabrica-defs/ definition parser (D15, created in M03)"
       ],
       "in_proposed_workspace": false,
       "manifest_present": false,
@@ -61,22 +62,21 @@
         }
       ],
       "missing": [
-        "crate name and path for the D15 definition parser",
-        "crate Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
-        "positive, negative and boundary tests",
+        "mkosi and UKI synthesis inputs",
+        "a P01 component crate; aegis-fabrica-defs parses the declarative inputs and is not the daemon",
         "Imago request and artefact contracts",
-        "pinned image and kernel inputs"
+        "pinned image and kernel inputs",
+        "real artefact and boot evidence"
       ],
-      "note": "Boundary row: no P01 crate exists in the proposed workspace (export-006) or the directory map (export-007)."
+      "note": "The D15 parser path is decided and created (crates/aegis-fabrica-defs, M03); manifest_present stays false because P01 itself has no component manifest."
     },
     {
       "candidate_id": "C02",
       "component": "P02",
       "language": "declarative-config + proposed Rust crate",
       "proposed_paths": [
-        "build/ (repart drop-ins and sysupdate transfer definitions)",
-        "crates/<undecided>/ A/B lifecycle (D15; no source records a crate name)"
+        "build/repart.d and build/sysupdate.d (reviewed repart drop-ins and the A/B transfer, M03)",
+        "crates/<undecided>/ A/B lifecycle (D15; M15 records the crate name)"
       ],
       "in_proposed_workspace": false,
       "manifest_present": false,
@@ -116,11 +116,10 @@
       "missing": [
         "crate name and path for the D15 A/B lifecycle crate",
         "crate Cargo.toml",
-        "workspace Cargo.toml and Cargo.lock",
         "tests for candidate, signature check, delta acquisition, slot swap, watchdog, bless and rollback",
         "TPM2 and secure-boot hardware or emulator evidence"
       ],
-      "note": "Boundary row: no P02 crate exists in export-006 or export-007; crates/README.md reserves P03-P16 only."
+      "note": "The repart and transfer definitions are reviewed and gated (M03); the A/B lifecycle crate is M15 work and no P02 component manifest exists."
     },
     {
       "candidate_id": "C03",

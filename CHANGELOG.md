@@ -13,6 +13,32 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (P01/P02 definitions validated offline, milestone M03)
+
+- The P01 Fabrica and P02 Praesidium declarative inputs are now reviewed files
+  in `build/repart.d` and `build/sysupdate.d`, each citing the private source
+  it was derived from and recording what changed from that import and why.
+  `make verify-systemd` parses them with the host's own systemd, unprivileged
+  and offline, and fails on the `Unknown key ... ignoring` diagnostic rather
+  than on the exit code, because systemd accepts a definition it does not
+  understand.
+- `crates/aegis-fabrica-defs` is the second activated component. It refuses
+  what systemd only warns about -- unknown keys, repeated sections, repeated
+  keys -- and reports the single-slot transfer systemd silently bumps, so the
+  requirement the repository records is checked separately from what the parser
+  tolerates.
+- Two divergences between systemd 261 and its own documentation are recorded in
+  `docs/build/definitions.md` rather than worked around silently.
+  `--dry-run=yes` is inert under `--empty=create`: the run writes a real GPT
+  and formats an ESP, where `systemd-repart(8)` states it will not touch the
+  partition table. And `systemd-sysupdate --root=` reads no transfer at all, so
+  the authoritative parse uses `--definitions=`; the milestone's exit criterion
+  is amended to say so, and the gate keeps the `--root=` form as a case so an
+  upstream fix shows up as a diff.
+- The systemd toolchain is admitted at floor 261 with the reference-profile
+  value read back from `systemctl --version`. mkosi is installed on that
+  profile, is not admitted, and no gate in this repository runs it.
+
 ### Added (P06 consumer contracts, milestone M14)
 
 - The three edges P06 Justitia speaks over now have versioned schemas as typed

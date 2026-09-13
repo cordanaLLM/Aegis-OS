@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "aegis-fabrica-defs"
+description = "Aegis OS P01/P02 definition parser: repart drop-ins and sysupdate transfers, checked against what systemd refuses and what the A/B contract requires."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+thiserror.workspace = true
+
+[lints]
+workspace = true

@@ -41,6 +41,7 @@ Two rules follow from the clause and are applied below:
 | yamllint | 1.38.0 | `.github/workflows/ci.yml`, `YAMLLINT_VERSION`, run through `pipx run` | nothing | M00 |
 | flake8 | 7.3.0 | `.github/workflows/ci.yml`, `FLAKE8_VERSION`, run through `pipx run` | nothing | M00 |
 | black | 26.5.1 | `.github/workflows/ci.yml`, `BLACK_VERSION`, run through `pipx run` | nothing | M00 |
+| systemd (`systemd-repart`, `systemd-sysupdate`) | floor 261; reference profile `systemd 261 (261.3-1-arch)` | `tools/verify_systemd_definitions.py`, `SYSTEMD_FLOOR = 261` and `REFERENCE_PROFILE_SYSTEMD`, read back from `systemctl --version` before the gate runs | nothing | M03 |
 
 The pinned Rust toolchain is materialised explicitly before the first cargo
 gate, because a runner image that ships rustup does not thereby ship the pinned
@@ -76,6 +77,40 @@ zmij 1.0.23. `crates/aegis-justitia/tests/manifest_hygiene.rs` asserts that the
 lock contains the SHA-256 implementation and no MD5 implementation under any
 spelling.
 
+## The systemd floor, and why it is a floor rather than a pin
+
+The Rust rows above pin an exact toolchain because `rust-toolchain.toml` can
+materialise it. systemd cannot be materialised that way: it is the host's init
+system, and the gate runs the copy the machine already has. The admission is
+therefore a **floor plus a recorded reference value**, and both halves are
+mechanical:
+
+- `SYSTEMD_FLOOR = 261` in `tools/verify_systemd_definitions.py`. Below it the
+  gate prints why it did not run, naming the host version and the floor, and
+  does not report a pass.
+- `REFERENCE_PROFILE_SYSTEMD = "systemd 261 (261.3-1-arch)"`, the exact first
+  line of `systemctl --version` on the reference profile on 2026-09-13. It is
+  the value the negative and boundary outcomes in `docs/build/definitions.md`
+  were observed on.
+
+`tools/test_systemd_definitions.py` asserts that the floor and the recorded
+reference value agree, so raising one without the other fails the gate rather
+than passing silently. A future floor change is then a visible diff in this
+page and in that constant, not an assumption inherited from whatever the
+workstation happens to ship.
+
+What the floor does **not** claim: that an older systemd cannot read these
+definitions. It claims only that the exit codes and diagnostics this repository
+records were observed on 261, and that a gate running below the floor would be
+reporting against unobserved behaviour. CI runners at the time of writing ship
+an older systemd, so the gate skips there and says so; the definition parser
+`crates/aegis-fabrica-defs` runs everywhere and covers the same files without
+systemd.
+
+mkosi is installed on the reference profile and is **not** admitted by this
+milestone: M03's own exit criteria say mkosi is not used here, and no gate in
+this repository runs it.
+
 ## Not yet admitted
 
 These are run by a gate but pinned by nothing, so they are gaps recorded here
@@ -104,3 +139,6 @@ taken, no milestone may cite them as admitted toolchain.
 - The replaced distribution package is recorded in the local package-manager log
   as `removed rust (1:1.98.1-1.1)` immediately before
   `installed rustup (1.29.1-1.1)` on 2026-09-13.
+- The systemd row is checked by `tools/test_systemd_definitions.py`, which reads
+  the floor and the reference banner back through the same parser the gate uses,
+  and by the gate itself, which refuses to run below the floor.

@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+#
+# Negative fixture: the six keys the imported transfer used that sysupdate.d(5)
+# does not define (private source export-063, sha256
+# b284bb77c19f33a6674357a28f26f183984ee59707bd8c9dfd572da4dbf768a2). Values are
+# fixture values, not the imported ones. systemd-sysupdate 261 ignores each key
+# and then exits 1 with
+#   10-root.transfer:1: Source specification lacks MatchPattern=.
+
+[Transfer]
+ProtectVersion=%A
+
+[Source]
+Type=url-file
+Path=https://example.invalid/update/
+File=fixture-root.raw.xz
+
+[Target]
+Type=partition
+Partitions=root-a:root-b
+Writable=no
+Format=erofs
+Mode=0444
+MatchKey=root
+MatchPartitionType=root
+VerityMatchKey=root
