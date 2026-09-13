@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+#
+# P01/P02 dual-slot (A/B) root transfer. Rewritten from private source
+# export-063,
+# sha256 b284bb77c19f33a6674357a28f26f183984ee59707bd8c9dfd572da4dbf768a2
+# (REQ-P01-04, REQ-P02-04: a read-only EROFS release written into the
+# alternate root slot, mode 0444).
+#
+# Rewritten, not copied. systemd-sysupdate 261 rejects the imported definition
+# with exit 1 after ignoring six keys that sysupdate.d(5) does not define:
+#   Source: File=
+#   Target: Partitions=, Writable=, Format=, MatchKey=, VerityMatchKey=
+#   10-root.transfer:1: Source specification lacks MatchPattern=.
+# The intent each carried is preserved by a key that exists:
+#   File=aegis-os-root-%v.raw.xz  -> [Source] MatchPattern= with the @v wildcard
+#   Partitions=root-a:root-b      -> [Target] MatchPattern=root-@v with
+#                                    MatchPartitionType=root and InstancesMax=2
+#   Writable=no, Mode=0444        -> [Target] ReadOnly=1, Mode=0444
+#   Format=erofs                  -> carried by the release image itself
+#   MatchKey=/VerityMatchKey=root -> repart-side keys; see build/repart.d/
+# Two further values changed, both in keys the import already used:
+#   ProtectVersion=%v -> %A. sysupdate.d(5) defines %v as the kernel release
+#     ("Identical to uname -r output") and %A as the operating system image
+#     version read from IMAGE_VERSION= in os-release, and it recommends %A,
+#     %B or %w for this setting. The A/B slots carry an image version, not a
+#     kernel release, so %A is the specifier that names what is protected.
+#     tools/verify_systemd_definitions.py therefore points SYSTEMD_OS_RELEASE
+#     at a scratch os-release with IMAGE_VERSION=a so %A expands in the gate.
+#   Source Path= lost its %v/ component. For a url-file source, Path= is the
+#     directory URL that sysupdate suffixes with /SHA256SUMS and the file
+#     names from that manifest; the version is extracted by the @v wildcard
+#     in MatchPattern=, not from the path. A %v/ component would have pointed
+#     the manifest lookup at a per-kernel-release subdirectory.
+# The file name ends in .transfer because systemd 257 and later read only
+# /usr/lib/sysupdate.d/*.transfer; a .conf drop-in is skipped.
+#
+# Open point, not settled here: a complete A/B release also transfers the
+# dm-verity hash partition and the UKI. Those transfers need a real signed
+# artefact and belong to M11.
+#
+# Path=auto is the booted system's own block device.
+# tools/verify_systemd_definitions.py rewrites exactly this one line to the
+# scratch image it builds from build/repart.d/, because an unprivileged gate
+# must not open the workstation's root device.
+
+[Transfer]
+ProtectVersion=%A
+
+[Source]
+Type=url-file
+Path=https://releases.aegisos.org/update/
+MatchPattern=aegis-os-root-@v.raw.xz
+
+[Target]
+Type=partition
+Path=auto
+MatchPattern=root-@v
+MatchPartitionType=root
+ReadOnly=1
+Mode=0444
+InstancesMax=2

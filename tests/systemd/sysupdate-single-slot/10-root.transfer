@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+#
+# Boundary fixture: a transfer that declares a single slot. systemd-sysupdate
+# 261 does not refuse it; it prints
+#   10-root.transfer:26: InstancesMax= value must be at least 2, bumping: 1
+# and exits 0. Silently repairing the A/B contract is exactly the gap the
+# aegis-fabrica-defs parser closes: it reports the single slot against
+# REQ-P02-04 instead of bumping it.
+
+[Transfer]
+ProtectVersion=%A
+
+[Source]
+Type=url-file
+Path=https://example.invalid/update/
+MatchPattern=aegis-os-root-@v.raw.xz
+
+[Target]
+Type=partition
+Path=auto
+MatchPattern=root-@v
+MatchPartitionType=root
+ReadOnly=1
+Mode=0444
+InstancesMax=1
