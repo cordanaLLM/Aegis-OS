@@ -314,10 +314,12 @@ Exit criteria:
 - planning/components.json P06 status is advanced with the evidence path; `make
   verify-all` passes
 - The pinned Rust toolchain is installed through rustup (extra/rustup 1.29.1)
-  and recorded in a committed rust-toolchain.toml; `rustc --version` inside the
-  workspace reports the pinned version and NOT the distribution rustc 1.98.1
-  observed on the reference profile, and the template matrix row cites both
-  values so the substitution is auditable.
+  and recorded in a committed rust-toolchain.toml; `rustup show
+  active-toolchain` inside the workspace reports the pinned toolchain and
+  `rustup which rustc` resolves to the rustup path rather than /usr/bin/rustc;
+  the pinned release and the distribution release currently carry the same
+  version string because the distribution ships current stable, and the template
+  matrix row cites both values so the substitution is auditable.
 
 Cheapest exit: Promote the drafted P06 test module into a library crate with a
 trait boundary for hashing and signing. No TPM2, D-Bus or eBPF.
@@ -476,6 +478,10 @@ Exit criteria:
 - D56 is recorded: mkosi is not installed and M18 takes D14's 'validate through
   the Imago result' branch, or mkosi is pinned at extra/mkosi 27-1 which
   supersedes the register's inherited 'mkosi v24+' row with an exact pin.
+- mkosi 27 is installed on the reference profile and validates the image
+  definitions locally while Imago remains a scaffold (D56); the validation is
+  Aegis-side and constructs no product image, and it moves to consuming an Imago
+  result once Imago returns real artifacts
 
 Cheapest exit: Author the two schemas and validate them against the M03 files
 with the Rust toolchain from M02.
@@ -964,6 +970,8 @@ Exit criteria:
 - The Playwright browser revision is pinned to the version actually exercised;
   the reference profile has chromium-1228 cached, and the gate must fail rather
   than silently download a different revision.
+- The Node major is the latest release line (26.x on the reference profile) and
+  is tracked forward by Renovate rather than pinned to an older line (D65)
 
 Cheapest exit: Build the token file plus one Svelte component and run the axe
 suite in a container. No compositor and no daemons.
@@ -1073,8 +1081,8 @@ slice no longer waits behind one that is not.
 
 Exit criteria:
 
-- D58 is recorded and the chosen VMM is pinned through the template matrix
-  before any microVM run: Firecracker 1.17.0 (extra/firecracker 1.17.0-1,
+- D58 is decided: Firecracker is the sandbox VMM, pinned through the template
+  matrix before any microVM run (1.17.0 installed on the reference profile,
   currently absent) or QEMU 11.1.1 with the microvm machine type and
   MICROVM.4m.fd (already present).
 - Every measured boot time and memory footprint that replaces a scaffold literal
@@ -1091,6 +1099,10 @@ Exit criteria:
   and is not release evidence.
 - A pass here is development evidence on the reference profile and closes no
   hardware gate
+- Firecracker 1.17.0 and its jailer are installed on the reference profile; the
+  pinned version is recorded at activation
+- Firecracker has no PCI passthrough, so passthrough work stays with the
+  QEMU-based harness (D58)
 
 Cheapest exit: Run the candidate evaluation sandbox on the admitted VMM and
 record measured boot time, footprint and one AF_VSOCK round trip.
@@ -1743,6 +1755,11 @@ Open decisions:
   installing it would edge Aegis toward work it does not own. Version 27-1
   clears the v24+ floor, so if the branch is taken later the register row is
   resolved by an exact pin instead of an inherited range.
+  **Decision (2026-09-13):** mkosi runs inside Aegis for local image-definition
+  validation for as long as Imago is a scaffold: this repository cannot defer
+  validation to a producer that cannot yet produce. The validation is Aegis-side
+  only and constructs no product image; when Imago returns real artifacts, the
+  check moves to consuming that result.
 - **D57** Where does the PREEMPT_RT kernel for P07/P08 latency work come from: a
   distribution linux-rt package booted as a QEMU guest kernel, a distribution
   linux-rt package installed as a host boot entry, or a request to Nucleus?
@@ -1772,6 +1789,10 @@ Open decisions:
   Firecracker has no PCI passthrough, so a MicroVmInstance with is_gpu_enabled
   set needs a different VMM regardless of the three GPUs and clean IOMMU groups
   present on this profile.
+  **Decision (2026-09-13):** Firecracker is the sandbox VMM for P10 and M22,
+  matching the concept's sub-125 ms boot target and its jailer isolation model.
+  It has no PCI passthrough, so passthrough work stays with the QEMU-based
+  harness.
 - **D59** Do consumer GPU limits change P03's (and P09's) acceptance, given that
   the reference profile cannot demonstrate PCIe P2PDMA or CUDA GPUDirect at all?
   Recommended: Yes. Reframe P03/P09 acceptance to DMA-BUF plus host-mediated BAR
@@ -1818,6 +1839,10 @@ Open decisions:
   updates and therefore cannot satisfy a pinned admission at all. M02 is the
   single ready milestone, so this is the first thing that blocks real work — and
   it is the reason M02 is category 2 rather than category 1.
+  **Decision (2026-09-13):** rustup is installed and provides the pinned
+  toolchain, replacing the distribution rust package. rust-toolchain.toml pins
+  the channel, CI honours it automatically, and the template matrix row records
+  both the pinned version and the distribution version it replaced.
 - **D62** How is Secure Boot evidenced, given that the reference host's firmware
   has Secure Boot disabled AND is not in Setup Mode? Recommended: Guest-side
   only, scoped to the new M24: generate a custom-key OVMF VARS store with
@@ -1877,6 +1902,9 @@ Open decisions:
   gate would otherwise pass on whatever the workstation happens to have. The
   Playwright browser cache is already populated at chromium-1228, which makes it
   particularly easy for an unpinned gate to look green for the wrong reason.
+  **Decision (2026-09-13):** The UI toolchain admits the latest Node major (26.x
+  as installed on the reference profile) and tracks it forward with Renovate,
+  rather than pinning an older line.
 - **D66** Is bpf/scx_cake.bpf.c an Aegis original or a fork of upstream
   scx-scheds, given that the distribution already ships the binary? Recommended:
   Record the provenance explicitly in M19: either pin the upstream scx-scheds
@@ -1903,6 +1931,13 @@ Open decisions:
   executable and it is the right test, but it is not something to discover
   mid-run. Deciding it in advance also produces the attach/detach evidence the
   criterion should have carried all along.
+
+- **D69** What is the dependency and toolchain version policy for a long-running
+  project? Decision (2026-09-13): track the latest upstream releases across
+  toolchains, editions and crates, and refresh pins rather than freeze them. The
+  first component lands on Rust edition 2024 with the current stable toolchain
+  and current crate releases; Renovate proposes the moves and the gates prove
+  them.
 
 ## Evidence
 
