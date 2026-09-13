@@ -4,11 +4,13 @@
 import argparse
 import hashlib
 import json
+import string
 import subprocess
 import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+HEX = string.hexdigits.lower()
 LICENSE_TEXTS = {
     "LICENSE": "57fb42fbcd0b037ce528ed8f72f1ec095d67bc6825ecf1448ff39be1fe68a4b4",
     "LICENSES/EUPL-1.2.txt": "57fb42fbcd0b037ce528ed8f72f1ec095d67bc6825ecf1448ff39be1fe68a4b4",
@@ -17,6 +19,15 @@ LICENSE_TEXTS = {
 LICENSE_IDS = {"EUPL-1.2", "CC-BY-SA-4.0"}
 ROADMAP_STATES = {"done", "ready", "blocked"}
 ROADMAP_COSTS = {"trivial", "small", "medium", "large"}
+REGISTER_BUNDLE = "8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6"
+REGISTER_LIMITS = {
+    "candidates": 64,
+    "contradictions": 256,
+    "toolchain_drift": 256,
+    "quarantined_artifacts": 64,
+}
+DISPUTE_STATES = {"resolved", "open"}
+QUOTE_LIMIT = 200
 
 
 def read_json(path):
@@ -127,6 +138,88 @@ def verify_roadmap():
     return rows
 
 
+def verify_digest(value, label):
+    """Accept only a full lowercase hexadecimal sha256 digest."""
+    if not isinstance(value, str) or len(value) != 64 or value.strip(HEX) != "":
+        raise ValueError(f"{label} needs a 64-character lowercase sha256 digest")
+
+
+def verify_public_citation(source_id, digest):
+    """A public citation must hash to the tracked file it names."""
+    path = ROOT / source_id.split("public:", 1)[1].split("@")[0]
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"Cited repository file is missing: {source_id}")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        raise ValueError(
+            f"Cited repository file changed since the register was written: {source_id}"
+        )
+
+
+def verify_side(side, label):
+    source_id = side["source_id"]
+    verify_digest(side["sha256"], f"{label} {source_id}")
+    if not side["summary"] or len(side["summary"]) > QUOTE_LIMIT:
+        raise ValueError(f"{label} needs a summary of at most {QUOTE_LIMIT} characters")
+    if source_id.startswith("public:"):
+        verify_public_citation(source_id, side["sha256"])
+
+
+def verify_candidate(row, proposals):
+    if not row["proposed_paths"] or not row["sources"]:
+        raise ValueError(f"Candidate {row['candidate_id']} needs a path and a source")
+    for source in row["sources"]:
+        verify_digest(source["sha256"], f"Candidate {row['candidate_id']} {source['id']}")
+    claims = row["manifest_present"] or row["lockfile_present"]
+    if claims and row["component"] in proposals:
+        raise ValueError(
+            f"Candidate {row['candidate_id']} claims a manifest while {row['component']} "
+            "is still a proposal"
+        )
+
+
+def verify_dispute(row):
+    if row["status"] not in DISPUTE_STATES:
+        raise ValueError(f"Contradiction {row['id']} needs a status in {sorted(DISPUTE_STATES)}")
+    for side in ("side_a", "side_b"):
+        verify_side(row[side], f"Contradiction {row['id']} {side}")
+    resolved = row["status"] == "resolved"
+    if resolved != bool(row.get("resolution")):
+        raise ValueError(f"Contradiction {row['id']} records a resolution only when resolved")
+
+
+def verify_register_rows(data, proposals):
+    for name, limit in REGISTER_LIMITS.items():
+        rows = data[name]
+        if not 1 <= len(rows) <= limit:
+            raise ValueError(f"Register section {name} must hold 1..{limit} rows")
+    ids = [row["candidate_id"] for row in data["candidates"]]
+    if len(set(ids)) != len(ids):
+        raise ValueError("Duplicate candidate identifiers")
+    for row in data["candidates"]:
+        verify_candidate(row, proposals)
+    for row in data["contradictions"]:
+        verify_dispute(row)
+    for row in data["toolchain_drift"]:
+        verify_digest(row["sha256"], f"Drift row {row['item']}")
+    for row in data["quarantined_artifacts"]:
+        verify_digest(row["sha256"], f"Quarantined {row['artifact']}")
+        if row["tracked_in_repository"] or not row["defects"]:
+            raise ValueError(f"Quarantined {row['artifact']} must be untracked and list defects")
+
+
+def verify_candidates(components):
+    """Validate the M01 register against the pinned bundle and the component inventory."""
+    data = read_json(ROOT / "planning/candidates.json")
+    if data["schema_version"] != 1 or data["source_bundle_sha256"] != REGISTER_BUNDLE:
+        raise ValueError("Register must declare schema 1 and the pinned source bundle")
+    proposals = {row["id"] for row in components if row["status"] == "proposal"}
+    covered = {row["component"] for row in data["candidates"]}
+    if covered != {row["id"] for row in components}:
+        raise ValueError("Register must cover every component exactly once or more")
+    verify_register_rows(data, proposals)
+    return data
+
+
 def verify_sources():
     data = read_json(ROOT / ".workingdir/source-inventory.json")
     source = ROOT / ".workingdir/notebookllmprep"
@@ -156,10 +249,18 @@ def main():
     rows = verify_components()
     verify_privacy()
     verify_licensing()
+    register = verify_candidates(rows)
     milestones = verify_roadmap()
     if args.sources:
         verify_sources()
     if args.readiness:
+        open_disputes = sum(1 for row in register["contradictions"] if row["status"] == "open")
+        print(
+            f"M01 register: {len(register['candidates'])} candidates; "
+            f"{len(register['contradictions'])} contradictions ({open_disputes} open); "
+            f"{len(register['toolchain_drift'])} drift rows; "
+            f"{len(register['quarantined_artifacts'])} quarantined artefacts"
+        )
         for row in rows:
             print(
                 f"{row['id']} {row['name']}: {row['status']}; "

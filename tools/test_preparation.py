@@ -96,6 +96,42 @@ class PreparationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 check.verify_licensing()
 
+    def write_register(self):
+        digest = "a" * 64
+        data = {
+            "schema_version": 1,
+            "source_bundle_sha256": check.REGISTER_BUNDLE,
+            "candidates": [
+                {
+                    "candidate_id": f"C{i:02}",
+                    "component": f"P{i:02}",
+                    "proposed_paths": ["crates/x"],
+                    "manifest_present": False,
+                    "lockfile_present": False,
+                    "sources": [{"id": "export-001", "sha256": digest}],
+                }
+                for i in range(1, 17)
+            ],
+            "contradictions": [
+                {
+                    "id": "DSP-01",
+                    "side_a": {"source_id": "export-062", "sha256": digest, "summary": "a"},
+                    "side_b": {"source_id": "export-002", "sha256": digest, "summary": "b"},
+                    "status": "open",
+                }
+            ],
+            "toolchain_drift": [{"item": "tokio", "sha256": digest}],
+            "quarantined_artifacts": [
+                {
+                    "artifact": "ci",
+                    "sha256": digest,
+                    "tracked_in_repository": False,
+                    "defects": ["suppresses failures"],
+                }
+            ],
+        }
+        (self.root / "planning/candidates.json").write_text(json.dumps(data))
+
     def test_privacy_guard_rejects_tracked_working_data(self):
         self.git_init()
         check.verify_privacy()
@@ -115,6 +151,7 @@ class PreparationTests(unittest.TestCase):
         self.git_init()
         self.write_licensing({})
         self.write_roadmap([self.milestone("M00", 0, "ready")])
+        self.write_register()
         out = io.StringIO()
         argv = ["verify_preparation.py", "--readiness"]
         with patch.object(sys, "argv", argv), patch.object(check, "LICENSE_TEXTS", {}):
@@ -201,6 +238,167 @@ class PreparationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RegisterTests(unittest.TestCase):
+    """Positive, negative and boundary coverage for the M01 candidate register."""
+
+    BUNDLE = check.REGISTER_BUNDLE
+    DIGEST = "a" * 64
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.patch = patch.object(check, "ROOT", self.root)
+        self.patch.start()
+        self.addCleanup(self.patch.stop)
+        (self.root / "planning").mkdir()
+        self.components = [{"id": f"P{i:02}", "status": "proposal"} for i in range(1, 17)]
+
+    def side(self, source_id="export-062"):
+        return {"source_id": source_id, "sha256": self.DIGEST, "summary": "a side"}
+
+    def register(self, **overrides):
+        data = {
+            "schema_version": 1,
+            "source_bundle_sha256": self.BUNDLE,
+            "candidates": [
+                {
+                    "candidate_id": f"C{i:02}",
+                    "component": f"P{i:02}",
+                    "proposed_paths": ["crates/x"],
+                    "manifest_present": False,
+                    "lockfile_present": False,
+                    "sources": [{"id": "export-001", "sha256": self.DIGEST}],
+                }
+                for i in range(1, 17)
+            ],
+            "contradictions": [
+                {
+                    "id": "DSP-01",
+                    "side_a": self.side(),
+                    "side_b": self.side("export-002"),
+                    "status": "open",
+                }
+            ],
+            "toolchain_drift": [{"item": "tokio", "sha256": self.DIGEST}],
+            "quarantined_artifacts": [
+                {
+                    "artifact": "ci",
+                    "sha256": self.DIGEST,
+                    "tracked_in_repository": False,
+                    "defects": ["suppresses failures"],
+                }
+            ],
+        }
+        data.update(overrides)
+        (self.root / "planning/candidates.json").write_text(json.dumps(data))
+        return data
+
+    def test_complete_register_passes(self):
+        self.register()
+        self.assertEqual(len(check.verify_candidates(self.components)["candidates"]), 16)
+
+    def test_pinned_bundle_and_schema_are_required(self):
+        for key, value in (("schema_version", 2), ("source_bundle_sha256", self.DIGEST)):
+            self.register(**{key: value})
+            with self.assertRaises(ValueError):
+                check.verify_candidates(self.components)
+
+    def test_every_component_must_be_covered(self):
+        data = self.register()
+        self.register(candidates=data["candidates"][:-1])
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
+
+    def test_manifest_claim_fails_closed_while_component_is_a_proposal(self):
+        data = self.register()
+        data["candidates"][0]["manifest_present"] = True
+        self.register(candidates=data["candidates"])
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
+        data["candidates"][0]["manifest_present"] = False
+        data["candidates"][0]["lockfile_present"] = True
+        self.register(candidates=data["candidates"])
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
+
+    def test_digest_form_is_enforced(self):
+        for bad in ("A" * 64, "a" * 63, "z" * 64, 42):
+            with self.assertRaises(ValueError):
+                check.verify_digest(bad, "row")
+        check.verify_digest(self.DIGEST, "row")
+
+    def test_contradictions_need_both_sides_and_a_matching_resolution(self):
+        data = self.register()
+        row = data["contradictions"][0]
+        row["status"] = "resolved"
+        self.register(contradictions=[row])
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
+        row["resolution"] = "D02"
+        self.register(contradictions=[row])
+        self.assertTrue(check.verify_candidates(self.components))
+        row["status"] = "open"
+        self.register(contradictions=[row])
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
+
+    def test_summary_length_boundary(self):
+        data = self.register()
+        row = data["contradictions"][0]
+        row["side_a"]["summary"] = "x" * check.QUOTE_LIMIT
+        self.register(contradictions=[row])
+        self.assertTrue(check.verify_candidates(self.components))
+        row["side_a"]["summary"] = "x" * (check.QUOTE_LIMIT + 1)
+        self.register(contradictions=[row])
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
+
+    def test_public_citation_must_hash_to_the_tracked_file(self):
+        (self.root / "docs").mkdir()
+        target = self.root / "docs/stack.md"
+        target.write_text("contract")
+        digest = hashlib.sha256(target.read_bytes()).hexdigest()
+        data = self.register()
+        row = data["contradictions"][0]
+        row["side_b"] = {
+            "source_id": "public:docs/stack.md",
+            "sha256": digest,
+            "summary": "public side",
+        }
+        self.register(contradictions=[row])
+        self.assertTrue(check.verify_candidates(self.components))
+        target.write_text("contract changed")
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
+        target.unlink()
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
+
+    def test_quarantined_artifacts_must_be_untracked_with_defects(self):
+        data = self.register()
+        row = data["quarantined_artifacts"][0]
+        row["tracked_in_repository"] = True
+        self.register(quarantined_artifacts=[row])
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
+        row["tracked_in_repository"] = False
+        row["defects"] = []
+        self.register(quarantined_artifacts=[row])
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
+
+    def test_row_count_bounds_and_duplicate_identifiers(self):
+        self.register(toolchain_drift=[])
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
+        data = self.register()
+        data["candidates"][1]["candidate_id"] = data["candidates"][0]["candidate_id"]
+        self.register(candidates=data["candidates"])
+        with self.assertRaises(ValueError):
+            check.verify_candidates(self.components)
 
 
 class RoadmapStateTests(unittest.TestCase):

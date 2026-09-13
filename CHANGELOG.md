@@ -13,6 +13,32 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (M01 register)
+
+- Component inventory and decision register for milestone M01:
+  `planning/candidates.json` holds the machine-readable register (seventeen
+  candidate rows covering all sixteen components, twenty-seven source
+  contradictions, fifty-six toolchain and identity drift rows, eight quarantined
+  imported artefacts) and `docs/roadmap/inventory.md` publishes it. Every row
+  cites its planning source by export id and digest.
+- `verify_candidates()` validates that register inside `make verify-all`: schema
+  and pinned source-bundle digest, coverage of all sixteen components, digest
+  form, bounded row counts, both sides and a status on every contradiction with
+  a resolution if and only if it is resolved, untracked quarantined artefacts,
+  and a recomputed digest for every citation of a tracked repository file. A
+  candidate claiming a manifest while its component is still a proposal fails
+  closed. Ten tests cover the positive, negative and boundary cases.
+
+### Changed (M01 register)
+
+- Roadmap milestone M01 is done with recorded evidence, and M02, the first
+  component promoted end to end, is now the ready milestone.
+- Decisions D21 to D55 are carried forward: crate placement and naming for the
+  P01/P02 definition parser and the A/B lifecycle, workspace membership for P03
+  and P15, the fifteen unresolved source contradictions, the toolchain and
+  identity drift items, and the defects that must be fixed before any imported
+  workflow is activated.
+
 ### Added (2026-09-13, later)
 
 - Registered the anti-evasion interceptor as committed client settings for
