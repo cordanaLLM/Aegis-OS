@@ -6,7 +6,7 @@
   ],
   "abi": {
     "minimum-release": "6.12",
-    "module-abi": "7.2.4-1-cachyos"
+    "module-abi": "7.2.5-1-cachyos"
   },
   "features": [
     {

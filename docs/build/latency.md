@@ -15,7 +15,7 @@ measuring produced was an awkward result:
 
 ```text
 guest (7.2.5-aegis-m26, PREEMPT_RT)      50000 cycles   max 273969 ns
-host  (7.2.4-1-cachyos, PREEMPT_DYNAMIC) 50000 cycles   max 267461 ns
+host  (7.2.5-1-cachyos, PREEMPT_DYNAMIC) 50000 cycles   max 267461 ns
 ```
 
 **The non-realtime machine measured the lower worst case.** That is not a fault
@@ -131,7 +131,7 @@ guest, from inside the virtual machine
   CONFIG_PREEMPT_RT=y
 
 host, same script, same interpreter
-  uname -r: 7.2.4-1-cachyos
+  uname -r: 7.2.5-1-cachyos
   # CONFIG_PREEMPT_RT is not set
 ```
 
@@ -227,7 +227,7 @@ The recorded run, with every figure naming the kernel that produced it:
 | Kernel | Preemption | Cycles | Min | Mean | Max |
 | :--- | :--- | ---: | ---: | ---: | ---: |
 | 7.2.5-aegis-m26 (guest) | PREEMPT_RT | 50000 | 1510 ns | 9664 ns | 273969 ns |
-| 7.2.4-1-cachyos (host) | not PREEMPT_RT | 50000 | 440 ns | 1449 ns | 267461 ns |
+| 7.2.5-1-cachyos (host) | not PREEMPT_RT | 50000 | 440 ns | 1449 ns | 267461 ns |
 
 Against the three P07 tier edges and the P08 target:
 
@@ -355,7 +355,7 @@ kernel's own compiled-in configuration, through the probe both machines run.
 ## Where a host kernel change would show up
 
 `REFERENCE_HOST` in `crates/aegis-calliope/src/measured.rs` records
-`7.2.4-1-cachyos`. The gate compares that with `os.uname().release` on every run
+`7.2.5-1-cachyos`. The gate compares that with `os.uname().release` on every run
 and fails if they differ, saying the recorded host reading describes a kernel
 that is no longer running. That is deliberate: a recorded negative is about one
 kernel, and a host update should make it stale loudly rather than leave a figure

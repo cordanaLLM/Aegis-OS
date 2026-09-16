@@ -67,7 +67,7 @@ REFERENCE_PROFILE_LIBBPF = "1.7.0"
 REFERENCE_PROFILE_LIBBPF_PACKAGE = "core/libbpf 1.7.0-1.1"
 REFERENCE_PROFILE_BPFTOOL_BUILTIN_LIBBPF = "v1.8"
 LLVM_STRIP_FLOOR = (19, 0, 0)
-REFERENCE_PROFILE_KERNEL = "7.2.4-1-cachyos"
+REFERENCE_PROFILE_KERNEL = "7.2.5-1-cachyos"
 
 # Kernel configuration the fixtures require, each read back from the running
 # kernel rather than assumed. The probe command is recorded beside each.

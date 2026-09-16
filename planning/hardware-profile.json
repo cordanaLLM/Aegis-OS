@@ -18,7 +18,7 @@
   },
   "memory_bytes": 64910954496,
   "kernel": {
-    "release": "7.2.4-1-cachyos",
+    "release": "7.2.5-1-cachyos",
     "preemption": "PREEMPT_DYNAMIC",
     "realtime": false,
     "config": {

@@ -72,7 +72,7 @@ fn the_reference_requirement_is_satisfied_by_the_measured_profile() -> Fallible 
     let profile = profile()?;
     let requirement = payload("kernel-requirement.reference.json")?;
     assert_eq!(profile.architecture(), Architecture::X86_64);
-    assert_eq!(profile.release().as_str(), "7.2.4-1-cachyos");
+    assert_eq!(profile.release().as_str(), "7.2.5-1-cachyos");
     let unmet = requirement.unmet(&profile);
     assert_eq!(unmet, Vec::new(), "{unmet:?}");
     Ok(())

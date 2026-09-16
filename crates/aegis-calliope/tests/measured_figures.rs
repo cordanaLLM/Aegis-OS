@@ -73,7 +73,7 @@ fn rendering_a_measured_value_names_its_tool_and_kernel() {
     );
     assert_eq!(
         HOST_WORST_WAKEUP_NS.to_string(),
-        "267461 (measured by cyclictest on 7.2.4-1-cachyos, not PREEMPT_RT)"
+        "267461 (measured by cyclictest on 7.2.5-1-cachyos, not PREEMPT_RT)"
     );
 }
 

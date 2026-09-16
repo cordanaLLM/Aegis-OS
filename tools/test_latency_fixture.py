@@ -326,7 +326,7 @@ class MeasuringKernelReadingTests(unittest.TestCase):
         with redirect_stdout(printed):
             problems = gate.host_not_satisfying_case(
                 measured_figures("#1 SMP PREEMPT_RT", 273_969),
-                measured_figures("#1 SMP PREEMPT_DYNAMIC", 267_461, "7.2.4-1-cachyos"),
+                measured_figures("#1 SMP PREEMPT_DYNAMIC", 267_461, "7.2.5-1-cachyos"),
                 FIXTURE_EDGES,
             )
         self.assertEqual(problems, [])
@@ -340,7 +340,7 @@ class MeasuringKernelReadingTests(unittest.TestCase):
         with redirect_stdout(printed):
             problems = gate.host_not_satisfying_case(
                 measured_figures("#1 SMP PREEMPT_RT", 273_969),
-                measured_figures("#1 SMP PREEMPT_RT", 267_461, "7.2.4-1-cachyos"),
+                measured_figures("#1 SMP PREEMPT_RT", 267_461, "7.2.5-1-cachyos"),
                 FIXTURE_EDGES,
             )
         self.assertTrue(any("which is PREEMPT_RT" in line for line in problems))
@@ -351,7 +351,7 @@ class MeasuringKernelReadingTests(unittest.TestCase):
         with redirect_stdout(printed):
             problems = gate.host_not_satisfying_case(
                 measured_figures("#1 SMP PREEMPT_RT", 273_969),
-                measured_figures("", 267_461, "7.2.4-1-cachyos"),
+                measured_figures("", 267_461, "7.2.5-1-cachyos"),
                 FIXTURE_EDGES,
             )
         self.assertTrue(any("no kernel version line" in line for line in problems))
@@ -373,7 +373,7 @@ class ThresholdTests(unittest.TestCase):
 
     def test_the_recorded_identities_are_the_two_kernels(self):
         self.assertEqual(gate.recorded_release("AEGIS_M26_GUEST"), "7.2.5-aegis-m26")
-        self.assertEqual(gate.recorded_release("REFERENCE_HOST"), "7.2.4-1-cachyos")
+        self.assertEqual(gate.recorded_release("REFERENCE_HOST"), "7.2.5-1-cachyos")
 
     def test_a_missing_constant_is_a_gate_error_rather_than_a_default(self):
         with self.assertRaises(gate.GateError):
