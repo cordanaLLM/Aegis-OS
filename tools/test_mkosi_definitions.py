@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from host import target as posix_target
+
 import verify_mkosi_definitions as gate
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -156,11 +158,14 @@ class RepartDirectoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as base:
             reviewed = self._reviewed(base)
             stow = self._stowaway(base, "stow/build/repart.d")
-            self.assertTrue(str(stow).endswith("build/repart.d"))
+            # The premise of this case: the stowaway really does share the
+            # reviewed tail. Spelled as the gate reports it, so the premise
+            # holds on any host.
+            self.assertTrue(posix_target(stow).endswith("build/repart.d"))
             problems = gate.check_repart_directories([str(reviewed), str(stow)], reviewed)
             self.assertEqual(len(problems), 1)
             self.assertIn("50-stowaway.conf", problems[0])
-            self.assertIn(str(stow), problems[0])
+            self.assertIn(posix_target(stow), problems[0])
 
     def test_a_directory_merely_named_repart_d_is_reported(self):
         """Negative: the weaker `/repart.d` tail the floor cases used to assert."""

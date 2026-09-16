@@ -19,6 +19,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from host import readonly_directory_blocks_removal
+
 import verify_bpf_objects as gate
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -363,6 +365,9 @@ class LogStaleness(unittest.TestCase):
 
     def test_remove_log_reports_a_file_it_cannot_remove(self):
         """Negative: exactly the case where a stale log survives the load."""
+        enforced, absent = readonly_directory_blocks_removal()
+        if not enforced:
+            self.skipTest(absent)
         with tempfile.TemporaryDirectory(prefix="aegis-bpf-test-") as base:
             directory = Path(base) / "logs"
             directory.mkdir()
@@ -421,11 +426,13 @@ class SchedExtCounters(unittest.TestCase):
     def test_the_counters_are_top_level_attributes_not_members_of_root(self):
         self.assertEqual(gate.SCHED_EXT_COUNTERS, ("switch_all", "nr_rejected", "enable_seq"))
         for name in gate.SCHED_EXT_COUNTERS:
-            path = str(gate.SCHED_EXT_DIR / name)
+            # A sysfs attribute is a kernel interface: POSIX on the target
+            # whatever the host spells it as locally (HISS-21).
+            path = (gate.SCHED_EXT_DIR / name).as_posix()
             self.assertEqual(path, f"/sys/kernel/sched_ext/{name}")
             self.assertNotIn("root", path)
-        self.assertEqual(str(gate.SCHED_EXT_OPS), "/sys/kernel/sched_ext/root/ops")
-        self.assertEqual(str(gate.SCHED_EXT_STATE), "/sys/kernel/sched_ext/state")
+        self.assertEqual(gate.SCHED_EXT_OPS.as_posix(), "/sys/kernel/sched_ext/root/ops")
+        self.assertEqual(gate.SCHED_EXT_STATE.as_posix(), "/sys/kernel/sched_ext/state")
 
     def test_the_probe_reads_them_from_inside_the_hold_window(self):
         """A reading taken after the link is released is not a reading during it."""

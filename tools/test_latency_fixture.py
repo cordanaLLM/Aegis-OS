@@ -11,6 +11,7 @@ import ast
 import io
 import re
 import unittest
+from unittest import mock
 from contextlib import redirect_stdout
 from pathlib import Path
 
@@ -420,6 +421,12 @@ class ArgumentTests(unittest.TestCase):
         self.assertNotEqual(gate.comparable_arguments(guest), gate.comparable_arguments(host))
 
 
+# The release a POSIX host would report, deliberately unlike any built release so
+# the "guest reports the host's own release" refusal is not accidentally tripped.
+HOST_PRESENT = ("7.4.1-generic", None)
+HOST_ABSENT = (None, "os.uname() is POSIX-only and absent on this host")
+
+
 class GuestScriptTests(unittest.TestCase):
     """The guest must prove the current run produced its report."""
 
@@ -453,8 +460,9 @@ class GuestScriptTests(unittest.TestCase):
             f"{gate.GUEST_MARK}-PROBE-END\n"
         )
         printed = io.StringIO()
-        with redirect_stdout(printed):
-            problems = gate.guest_identity_case(stale, "aegis-2-cafe", "7.2.5-aegis-m26")
+        with mock.patch.object(gate, "kernel_release", return_value=HOST_PRESENT):
+            with redirect_stdout(printed):
+                problems = gate.guest_identity_case(stale, "aegis-2-cafe", "7.2.5-aegis-m26")
         self.assertTrue(any("not this run's" in line for line in problems))
         self.assertIn("FAIL latency/guest-preempt-rt", printed.getvalue())
 
@@ -469,9 +477,30 @@ class GuestScriptTests(unittest.TestCase):
             f"{gate.GUEST_MARK}-PROBE-END\n"
         )
         printed = io.StringIO()
-        with redirect_stdout(printed):
-            problems = gate.guest_identity_case(text, "aegis-2-cafe", "7.2.5-aegis-m26")
+        with mock.patch.object(gate, "kernel_release", return_value=HOST_PRESENT):
+            with redirect_stdout(printed):
+                problems = gate.guest_identity_case(text, "aegis-2-cafe", "7.2.5-aegis-m26")
         self.assertTrue(any("not CONFIG_PREEMPT_RT=y" in line for line in problems))
+
+    def test_a_host_without_a_release_skips_the_guest_case_with_a_reason(self):
+        """Boundary: no os.uname() means a stated skip, not a crash and not a pass."""
+        text = (
+            f"{gate.GUEST_MARK}-BEGIN\n"
+            f"{gate.GUEST_MARK}-NONCE aegis-2-cafe\n"
+            f"{gate.GUEST_MARK}-UNAME-R 7.2.5-aegis-m26\n"
+            f"{gate.GUEST_MARK}-UNAME-V #1 SMP PREEMPT_RT\n"
+            f"{gate.GUEST_MARK}-PROBE-BEGIN\n"
+            "CONFIG_PREEMPT_RT=y\n"
+            f"{gate.GUEST_MARK}-PROBE-END\n"
+        )
+        printed = io.StringIO()
+        with mock.patch.object(gate, "kernel_release", return_value=HOST_ABSENT):
+            with redirect_stdout(printed):
+                problems = gate.guest_identity_case(text, "aegis-2-cafe", "7.2.5-aegis-m26")
+        self.assertEqual(problems, [])
+        self.assertIn("SKIP latency/guest-preempt-rt", printed.getvalue())
+        self.assertIn(HOST_ABSENT[1], printed.getvalue())
+        self.assertNotIn("PASS latency/guest-preempt-rt", printed.getvalue())
 
     def test_a_report_that_never_reached_a_stage_is_a_gate_error(self):
         with self.assertRaises(gate.GateError):

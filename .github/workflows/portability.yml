@@ -1,0 +1,66 @@
+---
+# Platform Neutrality (HISS-21): the harness self-tests must run on Linux, macOS
+# and Windows, or skip with a stated reason. A gate that cannot run is not a
+# passing gate, and a platform that quietly stops executing a case while still
+# reporting green is the third state the invariant forbids.
+#
+# This gate covers the portable harness only -- the Python gate logic under
+# tools/, which is what a contributor runs on their own machine. It builds no
+# product image, boots nothing and publishes no release. The Linux-only
+# evidence (eBPF verifier loads, systemd-repart, mkosi, the kernel build) stays
+# with the Verification gate in ci.yml on ubuntu-24.04; the cases here exercise
+# that gate logic against fixtures, which is portable by construction.
+#
+# Each leg reports its own status context, so .github/rulesets/main.json names
+# three: "Platform Neutrality (Linux)", "(macOS)" and "(Windows)". Per HISS-21 a
+# required context that no run ever reports leaves a pull request expected
+# forever, so the ruleset is applied to the branch only after these legs have
+# gone green at least once -- never in the same change that introduces them.
+name: Platform Neutrality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portability-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  selftest:
+    name: Platform Neutrality (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      # Which platforms are broken is this job's entire output; cancelling the
+      # survivors on the first failure discards it.
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            runner: ubuntu-24.04
+          - name: macOS
+            runner: macos-15
+          - name: Windows
+            runner: windows-2025
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Pinned rather than taken from the image, so a leg that diverges is the
+      # platform differing and not the interpreter differing.
+      - name: Set up the pinned Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      # The driver requires both that the suite passed and that a floor of cases
+      # actually ran, and prints every skip with the reason it carries. Raise the
+      # floor to a platform's measured figure once a green run reports one; never
+      # lower it to turn a red run green.
+      - name: Harness self-tests
+        run: python -B tools/portability_selftest.py --min-executed 250
