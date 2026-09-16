@@ -1187,9 +1187,9 @@ Exit criteria:
 
 - Toolchain admission: Node, pnpm, Playwright browsers and Svelte are selected
   through the template matrix with pinned versions (D10: latest stable versions
-  at activation, fast adoption through Renovate, sveltesentio adopted once
-  mature) before any UI gate runs; package manifests and lockfiles are committed
-  for ui/concordia-tokens
+  at activation, fast adoption through Renovate, sveltesentio adopted now at its
+  published per-package versions) before any UI gate runs; package manifests and
+  lockfiles are committed for ui/concordia-tokens
 - The Playwright and axe-core suite runs headless in a container with zero
   violations on the default state; it fails when the focus outline is removed;
   the focus width and contrast boundary follows D16
@@ -2417,6 +2417,18 @@ Open decisions:
   a dependency. **Decision (2026-09-13):** The latest stable toolchain versions
   at activation with fast adoption through Renovate; the shared sveltesentio
   framework replaces the direct stack once it is mature enough.
+  **Decision (2026-09-16, supersedes the maturity condition):** The maturity
+  condition is met and sveltesentio is adopted now, not evaluated as a
+  candidate. `golusoris/sveltesentio` publishes nineteen `@sveltesentio/*`
+  packages to npm under MIT, versioned per package (`@sveltesentio/ui` 0.5.0,
+  `@sveltesentio/shell` 0.2.0, `@sveltesentio/core` 0.3.0 at this decision), so
+  a consumer pins a released package version rather than a repository revision.
+  The toolchain rule is unchanged: Node LTS and pnpm are still selected through
+  the template matrix, and each `@sveltesentio/*` package is pinned in the UI
+  component's manifest and lockfile before any UI gate runs. This settles the
+  toolchain question only; it admits no package that a component has not
+  declared, and the accessibility and UI gates remain blocked on their own
+  evidence.
 - **D11** When are hosted rulesets, labels and publication settings for the
   existing origin verified by readback? Options: As an M01 follow-up, without
   enabling release delivery; At M13 together with publication settings; Only

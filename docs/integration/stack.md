@@ -24,6 +24,18 @@ boundaries: a Go library is not a direct dependency of a Rust daemon. Use a
 compatible library or an explicit protocol/FFI adapter with contract tests. GPU
 templates are candidates only for components that require those backends.
 
+The shared package producers are identified and released, so a consumer pins a
+published version rather than waiting for maturity: `golusoris/golusoris` for Go
+(module `github.com/golusoris/golusoris`, v0.12.0, EUPL-1.2, resolvable on the
+Go module proxy) and `golusoris/sveltesentio` for the UI surface (nineteen
+`@sveltesentio/*` packages published on npm, MIT, versioned per package). A Rust
+shared-package producer from the same family is expected but does not exist yet;
+until one does, Rust components select crates through the template matrix, and
+that absence is the reason to keep the row generic rather than to add a producer
+that cannot be pinned. Identification is not qualification: a consumer still
+owes the package/language boundary, the pinned version, the licence and the
+consumer contract tests named in the table above.
+
 While Imago and Nucleus are scaffolds, Aegis performs the parts it cannot defer:
 it validates image definitions locally (D56) and builds the kernel locally (D70,
 milestone M26). Neither produces a release artifact, and both hand back to the
@@ -34,9 +46,12 @@ is.
 Activation order: the ranked, blocking-state roadmap in `docs/roadmap/README.md`
 and `planning/roadmap.json` is authoritative (`make readiness` lists the ready
 set). It keeps the original sequence below but orders local, hardware-free
-component work ahead of the producer contract pin, because both builder
-identities are currently unresolved on GitHub and a blocked external step must
-not stall work that can already be verified.
+component work ahead of the producer contract pin. Both builder identities now
+resolve (`cordanaLLM/imago`, `cordanaLLM/nucleus`), so the ordering no longer
+rests on an unknown address; it rests on the contract still being unverified,
+because neither producer has returned an artifact against an Aegis-pinned
+schema, and a blocked external step must not stall work that can already be
+verified.
 
 1. Finish the component inventory and source provenance (roadmap M00, M01).
 2. Promote one component end-to-end with manifests, locks, template selection,
