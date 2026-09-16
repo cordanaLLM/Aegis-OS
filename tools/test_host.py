@@ -72,6 +72,26 @@ class TargetPathTests(unittest.TestCase):
         """Boundary: a relative path stays relative; the helper adds no root."""
         self.assertEqual(host.target(pathlib.PureWindowsPath(r"build\repart.d")), "build/repart.d")
 
+    def test_the_result_does_not_depend_on_the_running_host(self):
+        """Negative: the one defect this helper must never have is host-dependence.
+
+        The first implementation used `PurePath`, whose flavour is chosen by the
+        running interpreter, so a Windows-shaped value normalised on Windows and
+        passed through untouched on Linux and macOS. It passed on the machine it
+        was written on and failed on the other two legs. The property under test
+        is therefore the invariance itself: equivalent spellings of one path must
+        render identically, on every platform that runs this suite.
+        """
+        for spelling in (
+            r"C:\tmp\scratch\img.raw",
+            r"\tmp\scratch\img.raw",
+            "/tmp/scratch/img.raw",
+            pathlib.PureWindowsPath(r"C:\tmp\scratch\img.raw"),
+            pathlib.PurePosixPath("/tmp/scratch/img.raw"),
+        ):
+            with self.subTest(spelling=str(spelling)):
+                self.assertEqual(host.target(spelling), "/tmp/scratch/img.raw")
+
 
 class HostProbeTests(unittest.TestCase):
     """Each probe answers with a value or a reason, and never raises."""

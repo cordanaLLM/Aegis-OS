@@ -22,7 +22,7 @@ by a test rather than by a Linux user reading a broken unit file.
 import os
 import pathlib
 import tempfile
-from pathlib import PurePath, PureWindowsPath
+from pathlib import PurePosixPath
 
 # A scalar bound on the path length this helper will render (HISS-02). Linux caps
 # a path at PATH_MAX; anything longer is a caller defect, not a value to pass on.
@@ -40,13 +40,24 @@ def target(path):
     text = str(path)
     if len(text) > MAX_TARGET_PATH:
         raise ValueError(f"path exceeds {MAX_TARGET_PATH} characters; refusing to emit it")
-    pure = PurePath(text)
-    if isinstance(pure, PureWindowsPath) and pure.drive:
-        # A drive-qualified path cannot be handed to a Linux tool as-is. Drop the
-        # drive and keep the rooted remainder, which is what a scratch tree under
-        # a temporary directory means on either host.
-        pure = PureWindowsPath(text[len(pure.drive) :])
-    return pure.as_posix()
+
+    # Deliberately NOT `PurePath(text)`: that picks its flavour from the running
+    # host, so a Windows-shaped path would only be normalised on Windows -- the
+    # exact host-dependence this function exists to remove. The first version did
+    # that and passed on Windows while failing on Linux and macOS, which is what
+    # the platform matrix caught. The rules below are the same on every host.
+    if len(text) >= 2 and text[1] == ":" and text[0].isalpha():
+        # A drive letter has no meaning to the Linux tool reading this. Drop it
+        # and keep the rooted remainder, which is what a scratch tree under a
+        # temporary directory denotes on either host.
+        text = text[2:]
+    # A backslash is a separator here whatever host is reading the value. POSIX
+    # permits it inside a filename, so this would corrupt such a name -- no gate
+    # produces one, and a path bound for systemd or the kernel cannot contain one.
+    text = text.replace("\\", "/")
+    if not text:
+        return "."
+    return PurePosixPath(text).as_posix()
 
 
 def kernel_release():
