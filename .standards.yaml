@@ -19,7 +19,7 @@ repository:
 receipt:
     public_key: "213f9534a662075308e2087694985eff7590386760a19609b08437412b46e9d8"
 profiles:
-    - planning-artifacts
+    - os-image
 facets:
     - agent:sandboxed
     - docs:seo-portal
