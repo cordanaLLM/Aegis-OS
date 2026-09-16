@@ -458,13 +458,13 @@ pub const AEGIS_M26_GUEST: KernelIdentity =
 
 /// The reference development host, as the same probe reported it.
 ///
-/// `uname -r` printed `7.2.4-1-cachyos` and the same probe script run against
+/// `uname -r` printed `7.2.5-1-cachyos` and the same probe script run against
 /// the host's own `/proc/config.gz` printed
 /// `# CONFIG_PREEMPT_RT is not set`, on 2026-09-13. This is a dated reading of
 /// one machine; `make verify-latency` re-reads both halves on every run and
 /// refuses to proceed if the running host is no longer this one.
 pub const REFERENCE_HOST: KernelIdentity =
-    KernelIdentity::new("7.2.4-1-cachyos", PreemptionModel::NotPreemptRt);
+    KernelIdentity::new("7.2.5-1-cachyos", PreemptionModel::NotPreemptRt);
 
 /// The P08 round-trip-latency target, in nanoseconds.
 ///
