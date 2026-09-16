@@ -44,6 +44,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from host import kernel_release
+
 ROOT = Path(__file__).resolve().parent.parent
 PROBE_SCRIPT = ROOT / "tools" / "guest" / "aegis-preempt-probe.sh"
 GUEST_INIT = ROOT / "tools" / "guest" / "aegis-latency-init.sh"
@@ -520,7 +522,10 @@ def guest_identity_case(report_text, nonce, release):
         )
     reported = guest_field(report_text, "UNAME-R")
     recorded = recorded_release("AEGIS_M26_GUEST")
-    host = os.uname().release
+    host, absent = kernel_release()
+    if host is None:
+        print(f"SKIP latency/guest-preempt-rt: {absent}")
+        return []
     if reported != release:
         problems.append(f"the guest reports {reported!r}, not the built release {release!r}")
     if reported != recorded:
@@ -548,7 +553,10 @@ def host_identity_case():
     problems = []
     code, output, shell = host_probe()
     recorded = recorded_release("REFERENCE_HOST")
-    running = os.uname().release
+    running, absent = kernel_release()
+    if running is None:
+        print(f"SKIP latency/host-identity: {absent}")
+        return []
     if code != 0:
         problems.append(f"the probe exited {code} on the host: {output}")
     elif output != "# CONFIG_PREEMPT_RT is not set":

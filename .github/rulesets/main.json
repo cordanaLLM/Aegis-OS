@@ -39,6 +39,15 @@
         "required_status_checks": [
           {
             "context": "Verification gate"
+          },
+          {
+            "context": "Platform Neutrality (Linux)"
+          },
+          {
+            "context": "Platform Neutrality (macOS)"
+          },
+          {
+            "context": "Platform Neutrality (Windows)"
           }
         ]
       }

@@ -215,7 +215,9 @@ class ShippedDefinitionTests(unittest.TestCase):
     def test_every_reviewed_definition_cites_its_source(self):
         """Positive: each file names an export id and a 64-character digest."""
         root = gate.ROOT / "build"
-        names = sorted(str(p.relative_to(root)) for p in root.rglob("*") if p.is_file())
+        # Repo-relative identifiers are POSIX by convention (HISS-21): git spells
+        # them with "/", and so does every citation in planning/.
+        names = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file())
         self.assertIn("repart.d/00-esp.conf", names)
         for relative in names:
             if not relative.endswith((".conf", ".transfer")):

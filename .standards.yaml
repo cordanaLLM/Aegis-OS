@@ -17,9 +17,9 @@ repository:
       - hiss-16
 # Ed25519 Exit-0 receipt trust anchor (praetorctl gate keygen; private key outside the repository).
 receipt:
-    public_key: "213f9534a662075308e2087694985eff7590386760a19609b08437412b46e9d8"
+    public_key: "0137c5a537e190ba5a34fd1f9c4ebc1d590ce3990e72b433ab2bb0b507b382bc"
 profiles:
-    - planning-artifacts
+    - os-image
 facets:
     - agent:sandboxed
     - docs:seo-portal
