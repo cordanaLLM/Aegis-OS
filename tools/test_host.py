@@ -47,7 +47,8 @@ class TargetPathTests(unittest.TestCase):
 
     def test_a_posix_path_is_unchanged(self):
         """Positive: the common case must not be perturbed."""
-        self.assertEqual(host.target("/sys/kernel/sched_ext/switch_all"), "/sys/kernel/sched_ext/switch_all")
+        counter = "/sys/kernel/sched_ext/switch_all"
+        self.assertEqual(host.target(counter), counter)
         self.assertEqual(host.target("/defs"), "/defs")
         self.assertEqual(host.target(pathlib.PurePosixPath("/img.raw")), "/img.raw")
 

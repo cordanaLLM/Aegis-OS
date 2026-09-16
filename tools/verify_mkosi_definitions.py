@@ -204,9 +204,7 @@ def check_repart_directories(listed, expected):
         if extra:
             # A repart directory names a location mkosi reads on Linux, so it is
             # reported in the target's spelling and not the running host's.
-            problems.append(
-                f"repart directory {posix_target(row)!r} adds the definitions {extra}"
-            )
+            problems.append(f"repart directory {posix_target(row)!r} adds the definitions {extra}")
     return problems
 
 

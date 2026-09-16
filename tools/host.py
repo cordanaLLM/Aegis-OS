@@ -75,7 +75,11 @@ def kernel_release():
     """
     uname = getattr(os, "uname", None)
     if uname is None:
-        return None, "os.uname() is POSIX-only and absent on this host, so the running kernel release cannot be read; this case is covered on the Linux leg of the platform matrix"
+        return None, (
+            "os.uname() is POSIX-only and absent on this host, so the running kernel "
+            "release cannot be read; this case is covered on the Linux leg of the "
+            "platform matrix"
+        )
     return uname().release, None
 
 
@@ -129,4 +133,7 @@ def readonly_directory_blocks_removal():
             return True, None
         finally:
             probe.chmod(0o755)
-    return False, "this host removes a file from a read-only directory, so a refusal cannot be provoked here; this case is covered on the Linux leg of the platform matrix"
+    return False, (
+        "this host removes a file from a read-only directory, so a refusal cannot be "
+        "provoked here; this case is covered on the Linux leg of the platform matrix"
+    )

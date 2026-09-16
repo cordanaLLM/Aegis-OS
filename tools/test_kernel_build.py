@@ -10,7 +10,6 @@ checkout that cannot run the build still fails when one of those drifts.
 import gzip
 import io
 import json
-import os
 import re
 import tempfile
 import unittest

@@ -963,8 +963,7 @@ def print_facts(versions, config, lsm_active, sched_ext):
     """Print every observed fact with the command that produced it."""
     release, absent = kernel_release()
     print(
-        f"kernel: {release or absent} (uname -r); "
-        f"reference profile {REFERENCE_PROFILE_KERNEL}"
+        f"kernel: {release or absent} (uname -r); " f"reference profile {REFERENCE_PROFILE_KERNEL}"
     )
     for symbol in (*REQUIRED_CONFIG, SCHED_EXT_CONFIG):
         state = "y" if f"{symbol}=y" in (config or "") else "not set"
