@@ -1940,24 +1940,47 @@ Exit criteria:
   nucleus checkouts, with a positive result, a negative result (rejected payload
   with a correlated error) and a boundary result (empty requirement list
   rejected explicitly)
-- Canonical producer identities are confirmed, or the unresolved GitHub
-  identities (cordanaLLM/imago and cordanaLLM/nucleus did not resolve at
-  revision time) and the non-canonical identities in builder workflows are
-  recorded as the blocker
+- Canonical producer identities are confirmed with the verifying command and its
+  output retained: `git ls-remote --heads
+  https://github.com/cordanaLLM/imago.git` and the same for nucleus. Both
+  returned 'Repository not found' at the 2026-09-13 reference-profile probe and
+  resolve from 2026-09-16 (imago main 16f964b and nucleus main 8672247 on
+  2026-09-27); any non-canonical identity still in builder workflows is recorded
+  as the blocker
 - Simulated output is not accepted as a result; no hosted dispatch is claimed
-- Until the producer repositories exist, the producer-side schemas, fixtures and
-  results stay tracked in Aegis as dogfooding input for creating them; nothing
-  is published to cordanaLLM/imago or cordanaLLM/nucleus from here
-- The unresolved producer identities are recorded as the blocker with the
-  verifying command and its output retained verbatim: `git ls-remote --heads
-  https://github.com/cordanaLLM/imago.git` and the same for nucleus, both
-  returning 'Repository not found' at the reference-profile probe date.
-- The local checkout commits actually exercised are pinned in the evidence
-  (imago 4f116fc, nucleus 78ca8f2 as observed), so the dogfooding run is
-  reproducible and is never mistaken for hosted acceptance.
+- Producer-side decoders, fixtures and results live in the producer
+  repositories: imago decodes the Aegis payloads from fixtures byte-identical to
+  build/product-input.json and build/kernel-requirement.json (imago #32, #35),
+  and nucleus publishes the imago.nucleus.kernel-artifact.v1 manifest shape
+  (nucleus #11). Aegis tracks its own payloads only, and nothing is published to
+  cordanaLLM/imago or cordanaLLM/nucleus from here
+- The producer commits exercised are pinned in the evidence from each producer's
+  main branch, so the run is reproducible and is never mistaken for hosted
+  acceptance. The 2026-09-13 pins (imago 4f116fc, nucleus 78ca8f2) were
+  local-only commits that never reached either producer and are not reused.
 
 Cheapest exit: Run the pair against the pinned local checkouts without any
 hosted dispatch.
+
+Evidence:
+
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, three exit
+  criteria were rewritten on 2026-09-27 and a fourth was merged into one of
+  them, because their premise -- that the producer repositories do not resolve
+  -- stopped being true. None is a relaxation. The identity criterion and the
+  retained-command criterion were merged: the `git ls-remote` command stays
+  required, and its 2026-09-13 result stays recorded as history. The dogfooding
+  criterion is replaced because the producers now carry the consuming side
+  themselves (imago #32 and #35, nucleus #11). The local pins imago 4f116fc and
+  nucleus 78ca8f2 are dropped because neither commit ever reached its producer.
+  Observed, and not a criterion: neither producer builds anything yet. imago's
+  pkg/aegis stops at acceptance, with binding an accepted request to an executor
+  left to later work, nucleus refuses to emit a kernel artifact it did not
+  compile while its forge compiles no kernel (nucleus #18, open), and neither
+  repository has a release. E09-1's and E09-2's positive halves therefore wait
+  on producer work; their negative and boundary halves are reachable against the
+  producers' decoders now.
 
 Epics:
 
@@ -2279,8 +2302,9 @@ roadmap through a reviewed change.
 
 Risks, recorded from the cards and the private readiness matrix:
 
-- Cross-repository contracts are declared but unverified; the configured
-  producer origins do not resolve, and Aegis cannot close M09 alone.
+- Cross-repository contracts are declared but unverified. Both producer
+  repositories resolve and decode the M18 payloads, but neither builds an image
+  or a kernel yet, so Aegis cannot close M09 alone.
 - Imported workflows suppress failures (REQ-CI-01, REQ-CI-02), and the imported
   integration script prints boot/TPM2 success without executing anything
   (REQ-BOOT-02). They stay inactive, and any activated gate must be rewritten.
@@ -2865,6 +2889,81 @@ Open decisions:
   what its probe reads. The guest case still requires the M26 release, a
   PREEMPT_RT reading and a non-empty sample. Re-recording REFERENCE_HOST means
   a new measurement, recorded under the kernel that produced it.
+
+### Decisions from the desktop environment concept (2026-09-27)
+
+Source: `.workingdir/aegis-desktop-environment-specification.md` (private,
+sha256 prefix `a41f6c9e825d`), a notebook export (version 2.0.0-DEV) and
+therefore proposal data. On 2026-09-27 the maintainer selected four of its
+pillars for the design; each is an open decision below, and nothing is
+activated. Three rows of its status table are wrong: `crates/aegis-ipc` and
+`crates/praetor` are marked implemented and neither exists (Praetor is the
+separate Go repository cordanaLLM/praetor), and there is no
+`crates/aegis-shell`; the recorded shell is P05 aegis-forum-shell. Its seL4
+memory-limit example does not apply to a Linux system. Not selected: 6DOF hand
+terminals with bare-hand gesture input, and TEE attestation beyond TPM2 (TDX,
+SEV-SNP, CCA).
+
+- **D74** Does P05 Forum shell adopt the concept's post-WIMP spatial canvas:
+  interaction instruments and surrogate objects in place of menus and modal
+  dialogs, QuadTree viewport culling, space-scale pan and zoom with
+  focus+context magnification, and DOM-fragment transclusion? Options: the
+  canvas as P05's primary surface; the canvas as one workspace inside a
+  conventional P05 shell; P05 as recorded. Recommended: the canvas as one P05
+  workspace, built against the M16 state and lifecycle contract, with P12
+  requirements written before activation: keyboard and screen-reader reach for
+  every instrument and surrogate, reduced motion for pan, zoom and
+  magnification, and a stable layout for screen-magnifier users. Why: P05 has no
+  UI code yet (`ui/` holds only its README) and M16 is blocked on M04 and M14;
+  under D10's 2026-09-16 decision its UI builds on `@sveltesentio` packages,
+  which require Svelte 5 or later. Every UI component carries a P12 edge
+  (REQ-P12-01, REQ-P12-03, REQ-P12-05, REQ-P12-06), and the concept names none.
+  `@sveltesentio/shell` 0.2.0 provides device-class layout and D-pad focus, not
+  a spatial canvas, so the canvas would be built here.
+- **D75** Does Aegis build a Rust-native display runtime (Servo, WebRender,
+  wgpu) that mounts shell surfaces through `zwlr_layer_shell_v1` and imports
+  hardware-decoded video as DMA-BUF without copies? Options: a new component on
+  the `servo` crate (0.6.0, 2026-09-25) and wgpu (30.0.1); a conventional
+  webview for the shell, with zero-copy video only in the native P04/P08 path;
+  defer until M25 and M12 demonstrate a display path. Recommended: defer, and
+  evaluate the Servo option at M25, where DMA-BUF sharing is first demonstrated.
+  wgpu imports single-plane DMA-BUF (gfx-rs/wgpu#9366, merged 2026-04-09) but
+  not the multi-planar NV12 buffers VA-API and NVDEC produce (gfx-rs/wgpu#9801,
+  open). Why: no recorded component owns a web runtime. Servo records Linux
+  assistive-technology detection as unreliable (servo/servo#46834, open),
+  against REQ-P12-03 and REQ-P12-08. The concept names smithay for surface
+  binding, which D08 checked and did not admit at M07 (0.7.0 is still current);
+  a layer-shell client needs `wayland-client` and `smithay-client-toolkit`
+  (0.21.1), which no decision has checked.
+- **D76** Is the concept's heads-up visual language the design language for P12
+  Concordia: security states as colour and frame style (amber dashed for
+  unverified, cyan double line while a gate runs, blue with corner brackets once
+  verified, crimson hazard frame on fault), scanline, chromatic-aberration and
+  Fresnel depth shaders, and diegetic panels anchored in the canvas? Options:
+  Concordia's default theme; an optional theme over Concordia's base tokens,
+  which M04 creates; decline. Recommended: an optional theme, with each state
+  told apart by frame shape and text as well as colour, every shader and
+  animation behind the desktop's reduced-motion preference, which REQ-P12-02
+  already requires the UI to follow through `org.freedesktop.portal.Settings`,
+  and the fault flash held under WCAG 2.3.1's three-flash limit. Why: M04 owns
+  the only accessibility gate (axe-core and Playwright, the D16 focus ring,
+  D17's rule against monolithic CSS). The concept cites MIL-STD-1472H for its
+  colours, and that citation has not been checked against the standard. Which
+  recorded state feeds which frame is part of this decision.
+- **D77** Do shell, compositor and daemons talk over line-delimited JSON-RPC 2.0
+  on Unix sockets for control, with video frames and telemetry kept off the
+  sockets? Options: that control plane with iceoryx2 (0.10.0, MIT OR Apache-2.0)
+  shared memory as the data plane; that control plane with DMA-BUF descriptors
+  passed as `SCM_RIGHTS` messages as the data plane; typed per-edge payloads as
+  the crates define them today, with a transport chosen per edge at activation.
+  Recommended: the DMA-BUF data plane, decided at M16, whose IPC is stubbed
+  today, with iceoryx2 evaluated only if a high-rate stream appears that is not
+  a GPU buffer. Why: P04 models a tiered `af_unix` mesh (M07), and P08 and P15
+  already carry DMA-BUF descriptor types with no transport;
+  `crates/aegis-hestia/src/overlay.rs` already names `SCM_RIGHTS` as how a
+  descriptor travels. `@sveltesentio/ipc-sockmap` 0.2.0 frames length-prefixed
+  messages on a Node-to-Go edge, not JSON-RPC, so it does not supply this
+  contract.
 
 - export-001 f32a74743af5ab85c0682a5384cf01b71b0e9e2878d8f8ce09a6d592211e4ea5
 - export-002 7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91
