@@ -1,16 +1,12 @@
 {
   "configurations": [
     {
-      "type": "command",
+      "args": [
+        "verify-all"
+      ],
       "name": "Standards: Verify All",
       "program": "make",
-      "args": ["verify-all"]
-    },
-    {
-      "type": "command",
-      "name": "Standards: Audit",
-      "program": "standardsctl",
-      "args": ["audit"]
+      "type": "command"
     }
   ]
 }

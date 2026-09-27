@@ -1,7 +1,6 @@
 version: 1
 pinned_version: v1.0.0
-digest: sha256:639b04b8497d537bb01dac275ac0283aa1c104b9ccc275dcc52ecc24a55818ea
-generated_at: ""
+digest: sha256:e5ca3302a426fecc5e1f3651b4d47249570b11c7b14f25ed24ffbe8b70bb4924
 profiles:
     - id: os-image
       version: v1.0.0
@@ -9,7 +8,7 @@ profiles:
 facets:
     - id: agent:sandboxed
       version: v1.0.0
-      digest: sha256:1a89a7a93d8f054d03edd203bb15006431468641d59ac61999b1997fa0a3233f
+      digest: sha256:0ef3ebf5423873d200e12ba405ca93b3064c57eedf9091852f2d69316dfb7c63
     - id: docs:seo-portal
       version: v1.0.0
       digest: sha256:3381e1b7ab5cfb1029fa1b96cd84c7d3d5a890bc2d1f340a7b4e8b5bf61e2256

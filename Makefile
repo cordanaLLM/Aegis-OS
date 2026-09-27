@@ -205,3 +205,10 @@ test: verify-all
 build boot release:
 	@printf '%s\n' '$@ blocked: no image build, boot or release gate is open in this repository. See docs/integration/stack.md and make readiness.' >&2
 	@exit 1
+
+# BEGIN praetor documentation gate
+.PHONY: docs-lint
+verify-all: docs-lint
+docs-lint:
+	@node tools/markdownlint/verify.mjs
+# END praetor documentation gate

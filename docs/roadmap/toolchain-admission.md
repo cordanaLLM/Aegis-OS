@@ -33,11 +33,11 @@ Two rules follow from the clause and are applied below:
 | Rust (`rustc`, `cargo`) | 1.98.1 | `rust-toolchain.toml`, `channel = "1.98.1"`, materialised by rustup | distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.98 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.9.0-stable | `rust-toolchain.toml`, same `components` list | the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
-| praetorctl | source commit `8d617bddf08042ad828d8a5c3c7852c4f000ce5d` | `.github/workflows/ci.yml`, `PRAETOR_COMMIT`, verified with `git rev-parse` before the build | nothing | M00 |
+| praetorctl | source commit `7e7746a324ab2e787b5604b435d396196dbf413c` | `.github/workflows/ci.yml`, `PRAETOR_COMMIT`, verified with `git rev-parse` before the build | nothing | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; it is a build input for praetorctl, not a gate of its own | M00 |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
 | reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, run through `pipx run` | nothing | M00 |
-| markdownlint-cli2 | 0.23.2 | `.github/workflows/ci.yml`, `MARKDOWNLINT_VERSION`, run through `npx --yes` | nothing | M00 |
+| markdownlint-cli2 | 0.23.2 | `.github/workflows/ci.yml`, `MARKDOWNLINT_VERSION`, run through `npx --yes`; separately locked by Praetor's `tools/markdownlint/package-lock.json` for `make docs-lint`, which `praetorctl audit` requires byte-for-byte | nothing | M00; the Praetor gate with the `7e7746a` pin |
 | yamllint | 1.38.0 | `.github/workflows/ci.yml`, `YAMLLINT_VERSION`, run through `pipx run` | nothing | M00 |
 | flake8 | 7.3.0 | `.github/workflows/ci.yml`, `FLAKE8_VERSION`, run through `pipx run` | nothing | M00 |
 | black | 26.5.1 | `.github/workflows/ci.yml`, `BLACK_VERSION`, run through `pipx run` | nothing | M00 |
@@ -329,6 +329,9 @@ rather than admissions:
   the runner image and from the workstation distribution.
 - `npx` and `pipx` are the delivery mechanism for four pinned linters; the
   Node.js and Python runtimes behind them are the runner's.
+- `node`, which `make docs-lint` (part of `make verify-all`) runs directly, is
+  the runner's or the workstation's; `.github/workflows/praetor-docs.yml` asks
+  `actions/setup-node` for major version 24. Praetor supplies both files.
 
 Pinning them is a separate decision, not an implicit part of M02. Until it is
 taken, no milestone may cite them as admitted toolchain.
