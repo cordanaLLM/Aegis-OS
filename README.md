@@ -16,6 +16,7 @@ Praetor manages this repository's declared governance policy. This managed block
 | **Debt Baseline** | `.standards-baseline.json` | 0 recorded infractions; audit forbids growth |
 <!-- praetor:readme-governance:end -->
 <!-- markdownlint-enable MD013 -->
+<!-- --8<-- [start:portal] -->
 
 [![Code: EUPL
 1.2](https://img.shields.io/badge/code-EUPL--1.2-315c9b.svg)](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSING.md)
@@ -73,3 +74,4 @@ receive reviewed implementation files, not a copy of the private archive.
 never executes imported scripts, installs packages, or enables release
 workflows. Set `PRAETOR_SOURCE_ROOT` if the local Praetor checkout is not at
 `../praetor`.
+<!-- --8<-- [end:portal] -->
