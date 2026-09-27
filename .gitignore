@@ -18,9 +18,14 @@ node_modules/
 *.iso
 # Private notebook exports, connection guides, evidence, and session state.
 # Dependency lockfiles are tracked once implementation dependencies are selected.
-/.workingdir2/
-/.workingdir/
 
 # Local-only Praetor DevContainer bootstrap: regenerate with
 #   praetorctl devcontainer generate --source-root <praetor checkout>
 /.devcontainer/
+
+# BEGIN praetor private artifacts (praetorctl adopt)
+/.workingdir/
+/.workingdir2/
+/.standards/worktrees/
+/.agents/mcp_config.json
+# END praetor private artifacts

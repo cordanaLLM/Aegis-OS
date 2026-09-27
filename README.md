@@ -1,7 +1,23 @@
 # Aegis OS
 
-[![HISS-16
-Compliant](https://img.shields.io/badge/Standards-HISS--16%20Compliant-brightgreen)](https://github.com/cordanaLLM/Aegis-OS/blob/main/AGENTS.md)
+<!-- markdownlint-disable MD013 -->
+<!-- praetor:readme-governance:start -->
+[![HISS Adopted](https://img.shields.io/badge/Standards-HISS%20Adopted-blue)](AGENTS.md)
+[![Documentation Governance](https://github.com/cordanaLLM/Aegis-OS/actions/workflows/praetor-docs.yml/badge.svg)](https://github.com/cordanaLLM/Aegis-OS/actions/workflows/praetor-docs.yml)
+
+Praetor manages this repository's declared governance policy. This managed block records adoption state; it is not a verification certificate.
+
+| Gate | Command | Contract |
+| :--- | :--- | :--- |
+| **Verification** | `make verify-all` | Runs the repository's configured verification cascade |
+| **HISS Audit** | `praetorctl audit` | Enforces policy, generated-surface integrity, and the debt ratchet |
+| **Context Sync** | `praetorctl compile-context --verify` | Verifies every generated agent context against `AGENTS.md` |
+| **Documentation** | `make docs-lint` | Enforces locked Markdown style and private scratch-link policy |
+| **Debt Baseline** | `.standards-baseline.json` | 0 recorded infractions; audit forbids growth |
+<!-- praetor:readme-governance:end -->
+<!-- markdownlint-enable MD013 -->
+<!-- --8<-- [start:portal] -->
+
 [![Code: EUPL
 1.2](https://img.shields.io/badge/code-EUPL--1.2-315c9b.svg)](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSING.md)
 [![Original content: CC BY-SA
@@ -58,3 +74,4 @@ receive reviewed implementation files, not a copy of the private archive.
 never executes imported scripts, installs packages, or enables release
 workflows. Set `PRAETOR_SOURCE_ROOT` if the local Praetor checkout is not at
 `../praetor`.
+<!-- --8<-- [end:portal] -->

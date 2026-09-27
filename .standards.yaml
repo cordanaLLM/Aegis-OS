@@ -23,3 +23,24 @@ profiles:
 facets:
     - agent:sandboxed
     - docs:seo-portal
+# Standard overrides only increase strictness, except review_mode: single_maintainer, which lets the
+# only maintainer merge while no second reviewer or review bot exists. Restore independent review then;
+# the profile's required count stays declared so restoration keeps its minimum. Owner-approved 2026-09-27.
+overrides:
+    branch_protection:
+        review_mode: single_maintainer
+register:
+    sources:
+        expected: 13
+        sha256: sha256:4c7b874749da032aacc4828175306035b1e432097b03793b3f406333ab37b3c6
+        inputs:
+            - path: .paperclip/harness.json
+              surface: prompts
+              kind: message
+              format: json
+              selector: operating_contract.*
+            - path: .paperclip/harness.json
+              surface: prompts
+              kind: message
+              format: json
+              selector: invariants.*

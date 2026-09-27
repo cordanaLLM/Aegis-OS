@@ -18,6 +18,11 @@
     {
       "matchManagers": ["github-actions"],
       "pinDigests": true
+    },
+    {
+      "description": "Praetor-locked assets: praetorctl audit requires them byte-for-byte, so updates arrive through a praetor pin bump, not here",
+      "matchFileNames": [".github/workflows/praetor-docs.yml", "tools/markdownlint/**"],
+      "enabled": false
     }
   ]
 }

@@ -7,8 +7,10 @@
 #   line-length 100: pinned action digests (`uses: owner/repo@<40 hex> # vX.Y`)
 #     and single-token values cannot be wrapped.
 #   ignored paths: .config/archetypes/** is digest-pinned by .standards.lock and
-#     must stay byte-identical; Praetor generates and rewrites the remaining
-#     ignored files, so their style is an upstream concern.
+#     must stay byte-identical; praetorctl audit requires the documentation gate
+#     assets (tools/markdownlint/, praetor-docs.yml) byte-for-byte; Praetor
+#     generates and rewrites the remaining ignored files, so their style is an
+#     upstream concern.
 extends: default
 
 rules:
@@ -25,6 +27,8 @@ ignore: |
   .standards.yaml
   .standards.lock
   .config/labels.yaml
+  .github/workflows/praetor-docs.yml
+  tools/markdownlint/
   .workingdir/
   .workingdir2/
   site/
