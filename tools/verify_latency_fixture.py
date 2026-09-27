@@ -548,6 +548,23 @@ def guest_identity_case(report_text, nonce, release):
     return problems
 
 
+def recorded_host_note(recorded, running):
+    """Name the kernel the recorded host figure was measured on, beside the running one.
+
+    `REFERENCE_HOST` is provenance: the kernel the M23 host figure came from.
+    A host update does not change which kernel produced that figure, so the
+    constant is never rewritten to the running release (D73). The running
+    kernel is judged by this run's probe instead, and a difference is printed
+    on every run rather than failing it.
+    """
+    if running == recorded:
+        return f"recorded host figure: measured on {recorded}, the running kernel"
+    return (
+        f"recorded host figure: measured on {recorded}; the host now runs {running}, "
+        "and this run's probe above is what decides the case"
+    )
+
+
 def host_identity_case():
     """Case 2: the same probe on the reference host reports the option not set."""
     problems = []
@@ -561,11 +578,6 @@ def host_identity_case():
         problems.append(f"the probe exited {code} on the host: {output}")
     elif output != "# CONFIG_PREEMPT_RT is not set":
         problems.append(f"the host's own configuration reports {output!r}")
-    if running != recorded:
-        problems.append(
-            f"the host now runs {running!r}; the crate records {recorded!r}. "
-            "The recorded host reading describes a kernel that is no longer running"
-        )
     report(
         "latency/host-not-preempt-rt",
         problems,
@@ -573,6 +585,7 @@ def host_identity_case():
             f"host uname -r: {running}",
             f"host probe ({PROBE_SCRIPT.name}, the file the guest ran, under {shell}): "
             f"{output}",
+            recorded_host_note(recorded, running),
         ],
     )
     return problems
@@ -653,6 +666,12 @@ def guest_measured_case(figures, edges, release):
     about that reading rather than a separate one: a guest that did not report
     PREEMPT_RT prints `kernel-not-realtime` at every edge instead of four
     `satisfied` lines followed by the reason they did not count.
+
+    Which edges a run satisfies is the measured outcome, printed and not
+    asserted (D73). The guest's worst case includes the host's scheduling of
+    its virtual CPU, so on a loaded host every edge can be exceeded; M23's
+    positive criterion asks for measured figures, and the boundary case shows
+    the rule can reach `satisfied`.
     """
     realtime = reports_realtime(figures["version"])
     rows = placement_rows(figures, realtime, edges)
@@ -663,11 +682,13 @@ def guest_measured_case(figures, edges, release):
         problems.append(f"the measuring kernel reports {figures['version']!r}, not PREEMPT_RT")
     if figures["cycles"] <= 0 or figures["max"] <= 0:
         problems.append(f"the measurement produced no samples: {figures}")
-    if not any(decided == "satisfied" for _n, _t, _p, decided in rows):
-        problems.append(
-            "no tier edge was satisfied; no threshold was attained on an admitted kernel"
+    notes = figure_notes("guest", figures, rows)
+    if realtime and not any(decided == "satisfied" for _n, _t, _p, decided in rows):
+        notes.append(
+            "guest: this run satisfied no edge; its worst case includes the host's "
+            "scheduling of the guest's virtual CPU"
         )
-    report("latency/guest-measured", problems, figure_notes("guest", figures, rows))
+    report("latency/guest-measured", problems, notes)
     return problems
 
 

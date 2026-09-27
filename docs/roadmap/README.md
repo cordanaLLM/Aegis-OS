@@ -1869,6 +1869,24 @@ Evidence:
   sysinfo.nodename is dropped by the parser and never reaches the repository,
   because planning/hardware-profile.json forbids recording machine identifiers;
   tools/test_latency_fixture.py asserts it does not survive parsing
+- Superseded in part by decision D73 (2026-09-27), and disclosed here because
+  it changes how this milestone's gate judges a run: the host-kernel rule in
+  the preceding entry is withdrawn. The reference host runs a rolling kernel,
+  and its first update was answered by writing 7.2.5-1-cachyos beside the
+  7.2.4-1-cachyos figure without measuring again (PR #119, superseded), which
+  is the attribution the rule existed to prevent. REFERENCE_HOST now stays the
+  kernel the recorded host figure was measured on;
+  latency/host-not-preempt-rt is decided by the probe each run executes on the
+  running kernel, and prints both releases when they differ. The same decision
+  stops latency/guest-measured requiring a satisfied tier edge, which exit
+  criterion 5 does not ask for: on 2026-09-27, with the reference host under
+  other work, six of seven printed guest runs exceeded all four edges (worst
+  cases 4943092 to 22007327 ns). The guest release, its PREEMPT_RT reading and
+  a non-empty sample are still required, and the boundary case still shows the
+  rule reaching satisfied. tools/test_latency_fixture.py covers the host case
+  as passing, drifted, realtime, failed-probe and absent-release, and the guest
+  case with every edge exceeded; the drifted host and the all-exceeded guest
+  both fail against the previous gate
 - Two measured surface floors were re-read rather than left where they were,
   because adding a module moved them:
   crates/aegis-calliope/tests/public_surface.rs now collects 236 names against
@@ -2829,6 +2847,24 @@ Open decisions:
   reused unchanged and no second boot apparatus is built. The A/B transfer
   stays E11-4's, which already held it. This keeps M24 deliverable now on a
   pinned upstream image rather than waiting on Imago.
+
+- **D73** Does a host kernel update fail `make verify-latency` until the
+  recorded host reading is re-recorded, and must the guest run satisfy a tier
+  edge? Options: keep both rules and take a new measurement after every host
+  update; keep them and accept relabelling the recorded release; or treat
+  REFERENCE_HOST as provenance, decide the host case from each run's probe,
+  and report the guest's satisfied edges as the measured outcome. Why: the
+  reference host runs a rolling kernel (7.2.4, 7.2.5 and 7.2.8 within two
+  weeks), and the first update was answered by relabelling the 7.2.4 figure
+  as 7.2.5 without a measurement (PR #119). Separately, host load pushed the
+  guest's worst case past the 8 ms frame edge in six of seven printed runs on
+  2026-09-27, failing a requirement that M23's exit criteria do not state.
+  **Decision (2026-09-27):** The third option. A recorded figure keeps the
+  kernel that produced it; `tools/verify_latency_fixture.py` prints the
+  recorded and running releases side by side and fails the host case only on
+  what its probe reads. The guest case still requires the M26 release, a
+  PREEMPT_RT reading and a non-empty sample. Re-recording REFERENCE_HOST means
+  a new measurement, recorded under the kernel that produced it.
 
 - export-001 f32a74743af5ab85c0682a5384cf01b71b0e9e2878d8f8ce09a6d592211e4ea5
 - export-002 7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91

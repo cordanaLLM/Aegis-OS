@@ -355,13 +355,35 @@ kernel's own compiled-in configuration, through the probe both machines run.
 ## Where a host kernel change would show up
 
 `REFERENCE_HOST` in `crates/aegis-calliope/src/measured.rs` records
-`7.2.4-1-cachyos`. The gate compares that with `os.uname().release` on every run
-and fails if they differ, saying the recorded host reading describes a kernel
-that is no longer running. That is deliberate: a recorded negative is about one
-kernel, and a host update should make it stale loudly rather than leave a figure
-attributed to a kernel nobody is running. The cost is that a routine host kernel
-update fails `make verify-latency` until the constant and this page are
-re-recorded.
+`7.2.4-1-cachyos`: the kernel the recorded host figure above was measured on.
+That stays true after the host updates, so the constant and the figures on this
+page keep it (D73). The host case is decided by the probe this run executes on
+whatever kernel is running, and the gate prints both releases when they differ.
+From the run on 2026-09-27, with the two long lines wrapped at 80 columns:
+
+```text
+PASS latency/host-not-preempt-rt
+     host uname -r: 7.2.8-1-cachyos
+     host probe (aegis-preempt-probe.sh, the file the guest ran, under
+     /usr/bin/bash): # CONFIG_PREEMPT_RT is not set
+     recorded host figure: measured on 7.2.4-1-cachyos; the host now runs
+     7.2.8-1-cachyos, and this run's probe above is what decides the case
+```
+
+Until 2026-09-27 the gate failed on any difference, so a routine host update
+failed `make verify-latency` until the constant was re-recorded. That rule was
+answered on 7.2.5 by writing the new release next to the 7.2.4 figure without
+measuring again, which attributes a figure to a kernel that did not produce it.
+Re-recording the constant now means taking a new measurement, and a new
+measurement is recorded under the kernel that produced it.
+
+The guest case prints which tier edges a run satisfied and does not require one.
+The guest's worst case includes the host's scheduling of its virtual CPU: on
+2026-09-27, with the reference host under other work (load average 11 to 16),
+seven runs whose figures were printed measured guest worst cases of 4943092 to
+22007327 ns, and six of them exceeded all four edges. The
+guest release, its `PREEMPT_RT` reading and a non-empty sample are still
+required, and the boundary case shows the rule reaches `satisfied`.
 
 ## What a pass here does not close
 

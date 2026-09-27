@@ -364,6 +364,86 @@ class MeasuringKernelReadingTests(unittest.TestCase):
             self.assertEqual(placed, "attained")
             self.assertEqual(gate.verdict(False, placed), "kernel-not-realtime")
 
+    def test_a_realtime_guest_that_satisfies_no_edge_is_still_a_measurement(self):
+        """Boundary: a loaded host pushes every edge past; that is an outcome, not a fault.
+
+        22007327 ns is a guest worst case this gate measured on 2026-09-27 while
+        the reference host carried other work. Every edge is exceeded, the rows
+        say so, and the case passes because M23 asks for measured figures (D73).
+        """
+        printed = io.StringIO()
+        with redirect_stdout(printed):
+            problems = gate.guest_measured_case(
+                measured_figures("#1 SMP PREEMPT_RT", 22_007_327),
+                FIXTURE_EDGES,
+                "7.2.5-aegis-m26",
+            )
+        self.assertEqual(problems, [])
+        rows = printed_rows(printed.getvalue())
+        self.assertEqual(len(rows), len(FIXTURE_EDGES))
+        for row in rows:
+            self.assertTrue(row.endswith("worst-case-exceeds"), row)
+        self.assertIn("this run satisfied no edge", printed.getvalue())
+        self.assertIn("PASS latency/guest-measured", printed.getvalue())
+
+    def test_a_guest_that_satisfies_an_edge_prints_no_such_note(self):
+        printed = io.StringIO()
+        with redirect_stdout(printed):
+            gate.guest_measured_case(
+                measured_figures("#1 SMP PREEMPT_RT", 273_969),
+                FIXTURE_EDGES,
+                "7.2.5-aegis-m26",
+            )
+        self.assertNotIn("satisfied no edge", printed.getvalue())
+
+
+class HostIdentityTests(unittest.TestCase):
+    """The host case is decided by this run's probe; REFERENCE_HOST is provenance (D73)."""
+
+    NOT_SET = (0, "# CONFIG_PREEMPT_RT is not set", "/usr/bin/bash")
+
+    def run_case(self, probe, release):
+        printed = io.StringIO()
+        with mock.patch.object(gate, "host_probe", return_value=probe):
+            with mock.patch.object(gate, "kernel_release", return_value=release):
+                with redirect_stdout(printed):
+                    problems = gate.host_identity_case()
+        return problems, printed.getvalue()
+
+    def test_the_recorded_kernel_still_running_passes(self):
+        recorded = gate.recorded_release("REFERENCE_HOST")
+        problems, text = self.run_case(self.NOT_SET, (recorded, None))
+        self.assertEqual(problems, [])
+        self.assertIn("PASS latency/host-not-preempt-rt", text)
+        self.assertIn(f"measured on {recorded}, the running kernel", text)
+
+    def test_a_host_update_is_printed_and_does_not_fail(self):
+        """A newer non-realtime kernel keeps the figure on the kernel that produced it."""
+        recorded = gate.recorded_release("REFERENCE_HOST")
+        problems, text = self.run_case(self.NOT_SET, ("7.2.8-1-cachyos", None))
+        self.assertEqual(problems, [])
+        self.assertIn("PASS latency/host-not-preempt-rt", text)
+        self.assertIn(f"measured on {recorded}; the host now runs 7.2.8-1-cachyos", text)
+
+    def test_a_host_that_became_realtime_fails(self):
+        problems, text = self.run_case(
+            (0, "CONFIG_PREEMPT_RT=y", "/usr/bin/bash"), ("7.2.8-rt1", None)
+        )
+        self.assertTrue(any("CONFIG_PREEMPT_RT=y" in line for line in problems))
+        self.assertIn("FAIL latency/host-not-preempt-rt", text)
+
+    def test_a_probe_that_did_not_run_fails(self):
+        problems, text = self.run_case((127, "bash: no such file", "/usr/bin/bash"), ("x", None))
+        self.assertTrue(any("exited 127" in line for line in problems))
+        self.assertIn("FAIL latency/host-not-preempt-rt", text)
+
+    def test_a_host_without_a_release_skips_with_a_reason(self):
+        problems, text = self.run_case(self.NOT_SET, HOST_ABSENT)
+        self.assertEqual(problems, [])
+        self.assertIn("SKIP latency/host-identity", text)
+        self.assertIn(HOST_ABSENT[1], text)
+        self.assertNotIn("PASS latency/host-not-preempt-rt", text)
+
 
 class ThresholdTests(unittest.TestCase):
     """The gate reads the edges out of the crates and does not restate them."""
