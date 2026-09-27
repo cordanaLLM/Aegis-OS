@@ -34,6 +34,7 @@ flowchart LR
 | **HISS-10** | Warning Hygiene | Rule 10 | Zero-warning tolerance across compiler, linter, and format sweeps. | Exit code 1 |
 | **HISS-15** | 3D Testing | Rule 5 | Positive, negative, and boundary tests mandatory for all public interfaces. | CI coverage gate |
 | **HISS-16** | Context Integrity | Fleet | Single canonical `AGENTS.md`; vendor files compiled via `praetorctl compile-context`. | Pre-commit blocker |
+| **HISS-21** | Platform Neutrality | Fleet | Gates and the artifacts they emit run on Linux, macOS and Windows, or skip with the reason printed; a path a Linux tool reads is POSIX whatever host wrote it. | Platform Neutrality matrix |
 
 ## Operational Rules
 
@@ -202,3 +203,26 @@ Registration rules:
   tests. Exercise the patterns through `tools/test_block_evasion.py` (or build
   the literal from concatenated fragments) instead of typing it into a shell
   command.
+
+## Platform neutrality in the gates
+
+HISS-21 is enforced by `.github/workflows/portability.yml`, which runs the
+harness self-tests on Linux, macOS and Windows with `fail-fast: false`. Each leg
+reports its own status context. `tools/portability_selftest.py` drives it and
+requires two things, not one: the suite passed, *and* a floor of cases actually
+ran. An exit code alone cannot distinguish a platform that passed from one that
+quietly stopped executing a case.
+
+Two rules follow for anything under `tools/`:
+
+- A path a Linux tool reads is POSIX whatever host wrote it. Render it with
+  `host.target()`, never `str(Path(...))`. A `systemd-repart` command line and a
+  `.transfer` unit both carried literal `\` paths before this existed.
+- A POSIX-only API is reached through `host.kernel_release()`, `host.uid()` or
+  `host.gid()`, which return `(value, None)` or `(None, reason)`. Print the
+  reason and skip the case; never let the gate raise, and never let it pass
+  without running. `tools/test_host.py` sweeps the gates for unguarded calls, so
+  a new one fails there rather than on a contributor's machine.
+
+Raise the self-test floor to a platform's measured figure once a green run
+reports one; never lower it to turn a red run green.

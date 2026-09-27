@@ -29,6 +29,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from host import target as posix_target
+
 ROOT = Path(__file__).resolve().parent.parent
 # Admitted floor, recorded in docs/roadmap/toolchain-admission.md. The gate
 # refuses to report a pass from an older systemd, whose diagnostics and exit
@@ -78,7 +80,7 @@ def retarget_transfer(text, device):
     hits = [index for index, line in enumerate(lines) if line.strip() == "Path=auto"]
     if len(hits) != 1:
         raise GateError(f"expected exactly one 'Path=auto' line, found {len(hits)}")
-    lines[hits[0]] = f"Path={device}"
+    lines[hits[0]] = f"Path={posix_target(device)}"
     return "\n".join(lines) + "\n"
 
 
@@ -161,9 +163,9 @@ def repart_argv(definitions, image, root):
         "--offline=yes",
         f"--defer-partitions={DEFER_TYPES}",
         f"--seed={SEED}",
-        f"--root={root}",
-        f"--definitions={definitions}",
-        str(image),
+        f"--root={posix_target(root)}",
+        f"--definitions={posix_target(definitions)}",
+        posix_target(image),
     ]
 
 
@@ -235,7 +237,11 @@ def repart_cases(base, root, positive_image):
 def sysupdate_argv(definitions=None, root=None):
     """Build the offline, unprivileged transfer listing invocation."""
     argv = ["systemd-sysupdate"]
-    argv.append(f"--root={root}" if definitions is None else f"--definitions={definitions}")
+    argv.append(
+        f"--root={posix_target(root)}"
+        if definitions is None
+        else f"--definitions={posix_target(definitions)}"
+    )
     argv.extend(["--offline", "--no-pager", "--json=short", "list"])
     return argv
 

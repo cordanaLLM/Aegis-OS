@@ -209,7 +209,7 @@ pub const D06_WASM_RUNTIME: DecisionRecord = DecisionRecord {
         },
         Citation {
             export: "public:docs/integration/stack.md",
-            sha256_prefix: "8d40bdc6886c",
+            sha256_prefix: "bc062910505e",
         },
     ],
 };

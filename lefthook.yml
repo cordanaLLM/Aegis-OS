@@ -59,11 +59,4 @@ pre-push:
         else echo HISS-16 governance hook cannot run because praetorctl is not installed >&2;
         exit 1; fi
     gate:
-      run: >-
-        gate_mode="";
-        if [ ! -f go.mod ]; then gate_mode="--dry-run";
-        echo "no go.mod, race-detector stage skipped, no receipt minted" >&2; fi;
-        if command -v praetorctl >/dev/null 2>&1; then praetorctl gate run --path=. $gate_mode;
-        elif [ -d ./cmd/standardsctl ]; then go run ./cmd/standardsctl gate run --path=. $gate_mode;
-        else echo "HISS-16 hook cannot run: praetorctl is not installed" >&2;
-        exit 1; fi
+      run: python3 -B .config/lefthook/scripts/gate.py

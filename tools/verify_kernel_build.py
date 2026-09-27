@@ -45,6 +45,9 @@ import sys
 import time
 from pathlib import Path
 
+from host import kernel_release
+from host import target as posix_target
+
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE_PIN = ROOT / "build" / "kernel" / "source.pin.json"
 REQUIREMENT = ROOT / "build" / "kernel-requirement.json"
@@ -361,18 +364,20 @@ def configure(tree, output, extra):
     output.mkdir(parents=True)
     pin = json.loads(SOURCE_PIN.read_text())
     code, _stdout, stderr = run(
-        ["make", f"O={output}", pin["base-configuration-target"]], CONFIGURE_TIMEOUT, cwd=tree
+        ["make", f"O={posix_target(output)}", pin["base-configuration-target"]],
+        CONFIGURE_TIMEOUT,
+        cwd=tree,
     )
     if code != 0:
         raise GateError(f"{pin['base-configuration']} did not resolve: {stderr.strip()}")
-    fragments = [str(SUPPORT_FRAGMENT), str(REQUIREMENT_FRAGMENT)]
+    fragments = [posix_target(SUPPORT_FRAGMENT), posix_target(REQUIREMENT_FRAGMENT)]
     if extra is not None:
         scratch = output / "case.config"
         scratch.write_text(extra)
-        fragments.append(str(scratch))
-    merge = str(tree / "scripts" / "kconfig" / "merge_config.sh")
+        fragments.append(posix_target(scratch))
+    merge = posix_target(tree / "scripts" / "kconfig" / "merge_config.sh")
     code, _stdout, stderr = run(
-        [merge, "-m", "-O", str(output), str(output / ".config"), *fragments],
+        [merge, "-m", "-O", posix_target(output), posix_target(output / ".config"), *fragments],
         CONFIGURE_TIMEOUT,
         cwd=tree,
     )
@@ -445,7 +450,7 @@ def build_initramfs(base):
     populate_guest(tree)
     archive = base / "guest" / "initramfs.cpio"
     names = "\n".join(
-        sorted(str(path.relative_to(tree)) for path in tree.rglob("*"))[:MAX_GUEST_LINES]
+        sorted(path.relative_to(tree).as_posix() for path in tree.rglob("*"))[:MAX_GUEST_LINES]
     )
     with archive.open("wb") as handle:
         done = subprocess.run(
@@ -609,7 +614,10 @@ def readback_case(base, produced, image, release, rows):
     reported = guest_field(reported_text, "UNAME-R")
     captured = guest_section(reported_text, "CONFIG")
     (base / "guest" / "guest-config").write_text(captured + "\n")
-    host = os.uname().release
+    host, absent = kernel_release()
+    if host is None:
+        print(f"SKIP kernel/readback-positive: {absent}")
+        return []
     problems = identity_problems(reported, release, host)
     problems.extend(unsatisfied(rows, parse_config(captured)))
     identical = captured.strip() == produced.read_text().strip()
@@ -633,7 +641,7 @@ def host_readback_cases(rows, release):
 
     One outcome list per case, so a run that fails both counts two failures
     rather than one. Only the negative case needs the host's own configuration;
-    the boundary case reads ``os.uname()`` alone, so a kernel built without
+    the boundary case reads the host release alone, so a kernel built without
     ``CONFIG_IKCONFIG_PROC`` skips the negative case *by name* and never takes
     the boundary case down with it.
     """
@@ -647,7 +655,10 @@ def host_readback_cases(rows, release):
         outcomes.append(negative)
     else:
         print(f"SKIP kernel/readback-negative-missing-option: {HOST_CONFIG} does not exist.")
-    host = os.uname().release
+    host, absent = kernel_release()
+    if host is None:
+        print(f"SKIP kernel/readback-boundary-host-kernel: {absent}")
+        return outcomes
     identity = identity_problems(host, release, host)
     boundary = [] if identity else ["the host's release passed the identity check"]
     report("kernel/readback-boundary-host-kernel", boundary, [f"refused: {i}" for i in identity])

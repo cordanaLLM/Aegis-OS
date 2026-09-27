@@ -43,6 +43,10 @@ import sys
 import time
 from pathlib import Path
 
+from host import kernel_release
+from host import gid as host_gid
+from host import uid as host_uid
+
 ROOT = Path(__file__).resolve().parent.parent
 BPF_DIR = ROOT / "bpf"
 LOADER = BPF_DIR / "loader" / "aegis_bpf_probe.c"
@@ -270,7 +274,11 @@ def read_tool_versions():
 
 def kernel_config():
     """Return the running kernel's configuration, or None when it is unreadable."""
-    for argv in (["zcat", "/proc/config.gz"], ["cat", f"/boot/config-{os.uname().release}"]):
+    release, _absent = kernel_release()
+    candidates = [["zcat", "/proc/config.gz"]]
+    if release is not None:
+        candidates.append(["cat", f"/boot/config-{release}"])
+    for argv in candidates:
         if shutil.which(argv[0]) is None:
             continue
         code, stdout, _ = run(argv, timeout=60)
@@ -439,8 +447,8 @@ def capability_argv():
         "sudo",
         "-n",
         "setpriv",
-        f"--reuid={os.getuid()}",
-        f"--regid={os.getgid()}",
+        f"--reuid={host_uid()[0]}",
+        f"--regid={host_gid()[0]}",
         "--clear-groups",
         f"--bounding-set={CAPABILITIES}",
         f"--inh-caps={CAPABILITIES}",
@@ -953,7 +961,10 @@ def prepare(paths):
 
 def print_facts(versions, config, lsm_active, sched_ext):
     """Print every observed fact with the command that produced it."""
-    print(f"kernel: {os.uname().release} (uname -r); reference profile {REFERENCE_PROFILE_KERNEL}")
+    release, absent = kernel_release()
+    print(
+        f"kernel: {release or absent} (uname -r); " f"reference profile {REFERENCE_PROFILE_KERNEL}"
+    )
     for symbol in (*REQUIRED_CONFIG, SCHED_EXT_CONFIG):
         state = "y" if f"{symbol}=y" in (config or "") else "not set"
         print(f"  {symbol}={state} (zcat /proc/config.gz)")
@@ -977,7 +988,8 @@ def print_facts(versions, config, lsm_active, sched_ext):
     )
     strip_version = ".".join(str(part) for part in versions["llvm_strip"][0] or ())
     print(f"llvm-strip: LLVM version {strip_version} (llvm-strip --version)")
-    print(f"loads run as uid {os.getuid()} with capabilities {CAPABILITIES} (setpriv)")
+    running_uid, no_uid = host_uid()
+    print(f"loads run as uid {running_uid or no_uid} with capabilities {CAPABILITIES} (setpriv)")
     print(f"sched_ext present: {sched_ext}")
 
 

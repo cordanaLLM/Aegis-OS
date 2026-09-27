@@ -300,7 +300,7 @@
       },
       "decisions": [
         "D05: consumes Concordia tokens",
-        "D10: latest stable UI toolchain, sveltesentio once mature"
+        "D10: latest stable UI toolchain; sveltesentio adopted now, pinned per @sveltesentio/* package version"
       ]
     },
     {

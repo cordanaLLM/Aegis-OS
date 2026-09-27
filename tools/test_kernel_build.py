@@ -10,7 +10,6 @@ checkout that cannot run the build still fails when one of those drifts.
 import gzip
 import io
 import json
-import os
 import re
 import tempfile
 import unittest
@@ -82,11 +81,21 @@ def admitted_rows():
     return found
 
 
-def host_readback(rows, release, configuration):
+# The release a POSIX host would report. Pinned rather than read so the Linux
+# behaviour of these cases is replayed on every platform (HISS-20), instead of
+# the suite silently losing the boundary case wherever os.uname() is absent
+# (HISS-21). HOST_ABSENT is the same probe on a host that publishes no release.
+HOST_PRESENT = ("7.4.1-generic", None)
+HOST_ABSENT = (None, "os.uname() is POSIX-only and absent on this host")
+
+
+def host_readback(rows, release, configuration, host=HOST_PRESENT):
     """Run the gate's host read-back cases against a stand-in /proc/config.gz.
 
     ``configuration`` of None stands for a kernel that publishes none, which is
     the case the skip has to handle without dropping the boundary case with it.
+    ``host`` stands for what the platform reports as its running release, so the
+    boundary case is exercised on a host that has no such notion.
     """
     with tempfile.TemporaryDirectory() as directory:
         stand_in = Path(directory) / "config.gz"
@@ -94,8 +103,9 @@ def host_readback(rows, release, configuration):
             stand_in.write_bytes(gzip.compress(configuration.encode()))
         printed = io.StringIO()
         with mock.patch.object(gate, "HOST_CONFIG", stand_in):
-            with redirect_stdout(printed):
-                outcomes = gate.host_readback_cases(rows, release)
+            with mock.patch.object(gate, "kernel_release", return_value=host):
+                with redirect_stdout(printed):
+                    outcomes = gate.host_readback_cases(rows, release)
     return outcomes, printed.getvalue()
 
 
@@ -263,8 +273,8 @@ class PinnedInputTests(unittest.TestCase):
         self.assertEqual(
             pin["fragments"],
             [
-                str(gate.SUPPORT_FRAGMENT.relative_to(ROOT)),
-                str(gate.REQUIREMENT_FRAGMENT.relative_to(ROOT)),
+                gate.SUPPORT_FRAGMENT.relative_to(ROOT).as_posix(),
+                gate.REQUIREMENT_FRAGMENT.relative_to(ROOT).as_posix(),
             ],
         )
         self.assertEqual(len(pin["tarball-sha256"]), 64)
@@ -375,7 +385,20 @@ class HostReadBackCaseTests(unittest.TestCase):
         self.assertEqual(outcomes, [[]])
         self.assertIn("SKIP kernel/readback-negative-missing-option", printed)
         self.assertIn("PASS kernel/readback-boundary-host-kernel", printed)
-        self.assertIn(os.uname().release, printed)
+        self.assertIn(HOST_PRESENT[0], printed)
+
+    def test_a_host_that_publishes_no_release_skips_the_boundary_case_with_a_reason(self):
+        """Boundary: a platform without os.uname() skips, stating why, and does not crash."""
+        outcomes, printed = host_readback(
+            [row("CONFIG_SCHED_CLASS_EXT", "built-in")],
+            "7.2.5-aegis-m26",
+            PRODUCED,
+            host=HOST_ABSENT,
+        )
+        self.assertEqual(outcomes, [[]])
+        self.assertIn("SKIP kernel/readback-boundary-host-kernel", printed)
+        self.assertIn(HOST_ABSENT[1], printed)
+        self.assertNotIn("PASS kernel/readback-boundary-host-kernel", printed)
 
 
 if __name__ == "__main__":

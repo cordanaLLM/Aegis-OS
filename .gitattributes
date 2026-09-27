@@ -1,3 +1,11 @@
 # Licence texts are pinned by digest in tools/verify_preparation.py; keep LF on every platform.
 LICENSE text eol=lf
 LICENSES/* text eol=lf
+
+# The gates are read by Linux tooling and edited from every platform; a
+# host-dependent line ending makes a one-line change look like a rewrite
+# and is the same class as a host-dependent path separator (HISS-21).
+*.py text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

@@ -27,6 +27,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from host import target as posix_target
+
 ROOT = Path(__file__).resolve().parent.parent
 # Admitted floor, recorded in docs/roadmap/toolchain-admission.md. build/mkosi.conf
 # carries the same number as MinimumVersion=, so mkosi itself refuses an older
@@ -191,7 +193,7 @@ def check_repart_directories(listed, expected):
     matched = [row for row in listed if same_directory(row, resolved)]
     if len(matched) != 1:
         return [
-            f"expected exactly one repart directory at {str(resolved)!r}, "
+            f"expected exactly one repart directory at {posix_target(resolved)!r}, "
             f"found {len(matched)}; the summary lists {listed!r}"
         ]
     problems = []
@@ -200,7 +202,9 @@ def check_repart_directories(listed, expected):
             continue
         extra = sorted(path.name for path in Path(row).glob("*.conf"))
         if extra:
-            problems.append(f"repart directory {row!r} adds the definitions {extra}")
+            # A repart directory names a location mkosi reads on Linux, so it is
+            # reported in the target's spelling and not the running host's.
+            problems.append(f"repart directory {posix_target(row)!r} adds the definitions {extra}")
     return problems
 
 
