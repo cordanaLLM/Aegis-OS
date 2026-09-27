@@ -1710,11 +1710,10 @@
       "exit_criteria": [
         "The M18 schemas are proposed to cordanaLLM/imago and cordanaLLM/nucleus; acceptance is recorded only when each producer consumes the payload, not a fixed symbol list",
         "One request/result pair is executed locally against pinned local imago and nucleus checkouts, with a positive result, a negative result (rejected payload with a correlated error) and a boundary result (empty requirement list rejected explicitly)",
-        "Canonical producer identities are confirmed, or the unresolved GitHub identities (cordanaLLM/imago and cordanaLLM/nucleus did not resolve at revision time) and the non-canonical identities in builder workflows are recorded as the blocker",
+        "Canonical producer identities are confirmed with the verifying command and its output retained: `git ls-remote --heads https://github.com/cordanaLLM/imago.git` and the same for nucleus. Both returned 'Repository not found' at the 2026-09-13 reference-profile probe and resolve from 2026-09-16 (imago main 16f964b and nucleus main 8672247 on 2026-09-27); any non-canonical identity still in builder workflows is recorded as the blocker",
         "Simulated output is not accepted as a result; no hosted dispatch is claimed",
-        "Until the producer repositories exist, the producer-side schemas, fixtures and results stay tracked in Aegis as dogfooding input for creating them; nothing is published to cordanaLLM/imago or cordanaLLM/nucleus from here",
-        "The unresolved producer identities are recorded as the blocker with the verifying command and its output retained verbatim: `git ls-remote --heads https://github.com/cordanaLLM/imago.git` and the same for nucleus, both returning 'Repository not found' at the reference-profile probe date.",
-        "The local checkout commits actually exercised are pinned in the evidence (imago 4f116fc, nucleus 78ca8f2 as observed), so the dogfooding run is reproducible and is never mistaken for hosted acceptance."
+        "Producer-side decoders, fixtures and results live in the producer repositories: imago decodes the Aegis payloads from fixtures byte-identical to build/product-input.json and build/kernel-requirement.json (imago #32, #35), and nucleus publishes the imago.nucleus.kernel-artifact.v1 manifest shape (nucleus #11). Aegis tracks its own payloads only, and nothing is published to cordanaLLM/imago or cordanaLLM/nucleus from here",
+        "The producer commits exercised are pinned in the evidence from each producer's main branch, so the run is reproducible and is never mistaken for hosted acceptance. The 2026-09-13 pins (imago 4f116fc, nucleus 78ca8f2) were local-only commits that never reached either producer and are not reused."
       ],
       "cheapest_exit": "Run the pair against the pinned local checkouts without any hosted dispatch.",
       "epics": [
@@ -1752,7 +1751,9 @@
           "acceptance": "The retained pair shows correlation id and exact revisions. Simulated output is refused. Identity status is recorded."
         }
       ],
-      "evidence": [],
+      "evidence": [
+        "Disclosure, in the shape M18 recorded, because a milestone that edits its own bar must say so where the bar is judged: before any delivery, three exit criteria were rewritten on 2026-09-27 and a fourth was merged into one of them, because their premise -- that the producer repositories do not resolve -- stopped being true. None is a relaxation. The identity criterion and the retained-command criterion were merged: the `git ls-remote` command stays required, and its 2026-09-13 result stays recorded as history. The dogfooding criterion is replaced because the producers now carry the consuming side themselves (imago #32 and #35, nucleus #11). The local pins imago 4f116fc and nucleus 78ca8f2 are dropped because neither commit ever reached its producer. Observed, and not a criterion: neither producer builds anything yet. imago's pkg/aegis stops at acceptance, with binding an accepted request to an executor left to later work, nucleus refuses to emit a kernel artifact it did not compile while its forge compiles no kernel (nucleus #18, open), and neither repository has a release. E09-1's and E09-2's positive halves therefore wait on producer work; their negative and boundary halves are reachable against the producers' decoders now."
+      ],
       "reference_profile": {
         "support": "partial",
         "requires": [],
