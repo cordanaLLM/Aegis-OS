@@ -4,9 +4,9 @@ Status: reviewed planning data
 
 ## Purpose and limits
 
-This register reconciles the sixteen subsystems against the imported planning
-sources and records what each one was missing before it could be activated. It
-is planning data only.
+This register reconciles the concept's sixteen subsystems, and from D75 the
+seventeenth, P17 aegis-scaena, against their planning sources and records what
+each one was missing before it could be activated. It is planning data only.
 
 - It records **no** build, boot, image, hardware, accessibility or release
   evidence, and its existence closes none of those gates. They remain blocked
@@ -16,9 +16,12 @@ is planning data only.
 - The machine-readable form is `planning/candidates.json`. It is validated by
   `verify_candidates()` in `tools/verify_preparation.py`, which runs inside
   `make verify-all`.
-- Every row cites the planning source by export id and sha256. The source bundle
-  digest is `8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6`;
-  all 62 source digests were recomputed before this register was written.
+- Every row cites its planning source by id and sha256. The source bundle digest
+  is `8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6`; all 62
+  source digests were recomputed before this register was written. The P17 row
+  cites the private desktop specification instead, as
+  `desktop-spec a41f6c9e825d`, because that specification is outside the
+  bundle.
 - The subsystem graph `export-062` (`1ce919ed54bb`) stays the graph of record.
   No decision recorded here edits it; superseded strings inside it are annotated
   instead.
@@ -27,13 +30,16 @@ is planning data only.
 
 ## Implementation candidates
 
-Seventeen candidate rows cover all sixteen components: twelve Rust candidates,
-three UI candidates, and the two declarative-definition candidates (P01, P02)
-whose Rust crates are authorised but unnamed. P15 appears twice because decision
-D09 gives it both a Rust crate and a UI package.
+Eighteen candidate rows cover all seventeen components: thirteen Rust
+candidates, three UI candidates, and the two declarative-definition candidates
+(P01, P02) whose Rust crates are authorised but unnamed. P15 appears twice
+because decision D09 gives it both a Rust crate and a UI package. The P17 row
+(C18) was added by D75 rather than at M01; ADR-0003
+(public:docs/adr/0003-display-runtime-p17-scaena.md `706676855b65`) records why
+the OS design gained a component beyond the concept's sixteen.
 
-These notes hold for every row without exception, and each was checked against
-the tracked tree rather than inferred:
+These notes hold for every row, and each was checked against the tracked tree
+rather than inferred; note 1's M01 date covers every row except C18:
 
 1. **Recorded on 2026-09-13 at milestone M01, and superseded in part by M02.**
    When this register was written, no `Cargo.toml`, `Cargo.lock`,
@@ -41,7 +47,8 @@ the tracked tree rather than inferred:
    and `ui` tracked only their README files. Milestone M02 then activated P06:
    the workspace root `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml` and
    `crates/aegis-justitia/` are committed, and the P06 row below records that
-   manifest and lockfile.
+   manifest and lockfile. The C18 row was added on 2026-09-28 under D75, after
+   M02 had committed the workspace root.
 2. **Recorded at M01, extended by M14 for the P06 consumer contracts.** The
    P06 row's residual gaps no longer include the three consumer schemas: the
    action proposal from P09, the decision request to P05 and the signed audit
@@ -74,11 +81,12 @@ not a repository fact: that workspace is proposal data and is not committed.
 | P10 aegis-vesta | rust | `crates/aegis-vesta/src/` sandbox and capsule tables, decision D06 and the two payloads P10 stands at either end of (M06); `crates/aegis-vesta/tests/` | yes | export-018 5dbc6d071bbb; export-037 ce490c88081f | a P10 component daemon (the crate holds the tables and the bounds, starts no monitor and instantiates no module); a monitor, a guest and a Wasm runtime, all absent by design at M06; a pinned Rust-native runtime, since D06 selects the language boundary at M06 and pins no version; both P06 gating paths are carried by the M06 capsule request and reported apart, but nothing admits or refuses a sandbox execution on that field, so D04 stays unresolved and the behavioural admission gate DSP-04 assigns to M06 is outstanding; thread-per-core runtime decision (open decision D46); real evidence for the boot-time and footprint figures, both recorded as unmeasured |
 | P11 aegis-ludus | rust | `crates/aegis-ludus/src/` launch validator, receipt fields, credential probes and the receipt P11 hands to P02 (M08); `crates/aegis-ludus/tests/` | yes | export-019 b0aa6e54ed57; export-033 531cbdf98eb5 | a P11 component daemon (the crate holds the bounds, the outcomes and the payload and links no platform SDK); a named rich-presence library, which open decision D48 may remove the need for entirely, so the P11 to P04 edge stays untyped at M08; a FIDO2 authenticator, which the reference profile does not have at all and which is recorded as a procurement dependency rather than stubbed; a key bound to the TPM2 the profile does have, which is M20 |
 | P12 aegis-concordia | css design tokens | `ui/concordia-tokens/concordia-tokens.css` | not applicable | export-020 1748f49bb7f8; export-042 411fb8c2d731; export-023 a0d06b6b8e6c | ui/concordia-tokens/package.json; JavaScript lockfile; accessibility test package (export-023 is quarantined proposal data); focus-ring width applied per D16 (3px token, 2px boundary minimum); confirmation that no monolithic CSS library is introduced (D17) |
-| P13 aegis-tellus | rust | `crates/aegis-tellus/src/` SCI arithmetic, defer threshold, slice table and the zone-list wattage seam (M05); `crates/aegis-tellus/tests/`; `bpf/kepler_power.bpf.c` | yes | export-036 25813d240733; export-048 293357bac7d3 | a P13 component daemon (the crate holds the rate engine half of REQ-P13-08's mapping and is not the Kepler telemetry probe); the kepler_power eBPF probe, uncompiled and unloaded (M19, M10); a measured RAPL delta, which needs a privileged reader because energy_uj is mode 0400 (M21); a D-Bus transport for either outbound edge (M16); blueprint-level requirement source: the bundle holds no P13 report |
+| P13 aegis-tellus | rust | `crates/aegis-tellus/src/` SCI arithmetic, defer threshold, slice table and the zone-list wattage seam (M05); `crates/aegis-tellus/tests/`; `bpf/kepler_power.bpf.c` | yes | export-036 25813d240733; export-048 293357bac7d3 | a P13 component daemon (the crate holds the rate engine half of REQ-P13-08's mapping and is not the Kepler telemetry probe); the kepler_power eBPF probe, uncompiled and unloaded (M19, M10); a measured RAPL delta, which needs a privileged reader because energy_uj is mode 0400 (M21); a transport for EMIT_CARBON_TELEMETRY (M16) or SPATIOTEMPORAL_TASK_SHIFT, both of which D77 moves from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; blueprint-level requirement source: the bundle holds no P13 report |
 | P14 aegis-hephaestus | rust | `crates/aegis-hephaestus/src/` geometry and meshing bounds, solver admission, the P09 request consumed and the viewport P14 hands to P15 (M08); `crates/aegis-hephaestus/tests/` | yes | export-021 6a3cda152e6c; export-029 427996186520 | a P14 component daemon (the crate holds the bounds and the payload and links no kernel and starts no solver); CAD and solver dependency pins, absent from the export-006 dependency table and recorded as five unpinned rows in the crate's own register; a licence decision for GPL-licensed solver bindings; a symbolic solver, so the intake outcome has no variant meaning verified and open decision D27 is not settled |
-| P15 aegis-hestia | rust | `crates/aegis-hestia/src/` storage and vector logic, the D09 boundary payload and the P04 registration (M17); `crates/aegis-hestia/tests/` | no (joined the repository workspace at M17, settling D22) | export-022 46cea660df63; export-030 689d175667d6 | a P15 component daemon (the crate models the store and the overlay and is neither); a real PGlite instance, its WebAssembly runtime and the Btrfs @pglite subvolume; a Wayland connection and a wlr-layer-shell binding, stubbed until M12; real hardware or emulator evidence |
+| P15 aegis-hestia | rust | `crates/aegis-hestia/src/` storage and vector logic, the D09 boundary payload and the P04 registration (M17); `crates/aegis-hestia/tests/` | no (joined the repository workspace at M17, settling D22) | export-022 46cea660df63; export-030 689d175667d6 | a P15 component daemon (the crate models the store and the overlay and is neither); a real PGlite instance, its WebAssembly runtime and the Btrfs @pglite subvolume; a Wayland connection and a wlr-layer-shell binding, stubbed until a P04 serves zwlr_layer_shell_v1, which no milestone yet plans (D79); real hardware or emulator evidence |
 | P15 aegis-hestia | svelte | `ui/hestia-app/src/App.svelte` | not applicable | export-045 359466152a37; export-022 46cea660df63 | ui/hestia-app/package.json; JavaScript lockfile; accessibility test; UI toolchain pin (D10). The Rust side of the D09 boundary exists from M17 (`aegis_hestia::HestiaView`); nothing on this side consumes it yet |
 | P16 aegis-athena | rust | `crates/aegis-athena/src/` seven-stage lifecycle, Pareto gate, SHA-256 checkpoint ledger and the P02 promotion trigger (M05); `crates/aegis-athena/tests/` | yes | export-025 6b23723ddb76 | a P16 component daemon (the crate holds the lifecycle, the gate and the chain and executes no candidate); the P10 Vesta microVM that would run one (M06, M22); a systemd-sysupdate client and a transport for the promotion trigger; a durable, signed ledger sink (M20); blueprint-level requirement source: the bundle holds no P16 report |
+| P17 aegis-scaena | rust | `crates/aegis-scaena/src/`; `crates/aegis-scaena/tests/` | no (added by D75, after export-006) | desktop-spec a41f6c9e825d | crates/aegis-scaena/Cargo.toml, a written-out member entry and a Cargo.lock entry (M27); the lock-sweep re-scope D78, in the same change that adds the first Wayland or VA-API crate to the lock; toolchain admission for cros-libva at git rev 59384456ac2a and its build tools (D80); a shell engine behind the surface contract (open decision D82) and its accessibility exposure test (REQ-P17-06); a P04 that serves zwlr_layer_shell_v1 and zwp_linux_dmabuf_v1, without which evidence is the client half only (D79) |
 
 Boundary rows, stated explicitly because they are the ones a workspace-wide
 build would silently skip:
@@ -94,8 +102,9 @@ build would silently skip:
   neither of these is among them.
 - **P01** and **P02** have no proposed crate at any path: absent from the
   proposed workspace, absent from the imported directory map, and outside the
-  P03-P16 range that `crates/README.md` reserves. Decision D15 authorises new
-  crates under `crates/`; their names and split are open decision D21.
+  daemon list that `crates/README.md` reserves (P03, P04, P06-P11, P13-P17).
+  Decision D15 authorises new crates under `crates/`; their names and split are
+  open decision D21.
 - **P09**, **P13** and **P16** rest on a single source each. The bundle holds no
   blueprint report for them: it spans export-001 to export-063 with export-008
   absent, 62 sources in total, and the import record contains no report for

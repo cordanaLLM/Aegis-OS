@@ -113,6 +113,7 @@ nav:
       - ADR index: adr/README.md
       - ADR-0001 Pure-Rust compositor: adr/0001-pure-rust-compositor.md
       - ADR-0002 Exclude the Steamworks SDK: adr/0002-exclude-steamworks-from-image.md
+      - ADR-0003 P17 display runtime: adr/0003-display-runtime-p17-scaena.md
       - ADR template: adr/0000-template.md
   - Project:
       - Domain glossary: context.md
