@@ -2,7 +2,8 @@
 // structural: a GitHub Flavored Markdown table row cannot be wrapped without
 // breaking the table, and the requirement, task and milestone registers are
 // tables by design, so MD013 skips table rows. Prose, headings and code blocks
-// are still held to the 80-column limit.
+// are still held to the 80-column limit. tools/figures/ is Praetor's managed figure
+// engine, which praetorctl audit locks byte for byte, so its style is Praetor's concern.
 {
   "config": {
     "default": true,
@@ -10,6 +11,7 @@
   },
   "globs": ["**/*.md"],
   "ignores": [
+    "tools/figures/**",
     ".workingdir/**",
     ".workingdir2/**",
     "site/**",

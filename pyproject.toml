@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+# black reads this file whenever it runs in this repository, so CI's black step
+# and tools/praetor_bump.py get the same exclusion. tools/figures/ is Praetor's
+# managed figure engine; praetorctl audit locks it byte for byte, so its style
+# is Praetor's concern (the same reasoning as the flake8 exclude in setup.cfg).
+[tool.black]
+line-length = 100
+extend-exclude = "^/tools/figures/"
