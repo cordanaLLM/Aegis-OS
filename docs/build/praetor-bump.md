@@ -52,7 +52,11 @@ set, so a missing ledger has to be restored explicitly. `bugs.meta.json` and
 1. **Nothing to do?** It fetches Praetor's `main` into a bare clone under
    `${XDG_CACHE_HOME:-~/.cache}/aegis-praetor-bump/`. When Aegis `main` already
    pins that head, it prints `up to date` and exits 0. It also exits 0 when the
-   open bump pull request already names that head. The shared Praetor checkout
+   open bump pull request already names that head and was built on the current
+   Aegis `main` (the `Target: praetor` and `Base: aegis` lines of its body).
+   When `main` has moved since, the bump is rebuilt on it: the ruleset requires
+   an up-to-date branch, and a rebase made on the forge is an unsigned commit
+   the signature rule refuses. The shared Praetor checkout
    next to this one only lends objects to the first clone (`git clone
    --reference-if-able --dissociate`); the script never writes to it.
 2. **Build.** It builds `praetorctl` at that commit with the Verification

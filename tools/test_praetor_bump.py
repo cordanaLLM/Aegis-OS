@@ -169,31 +169,46 @@ class AdmissionRowTests(unittest.TestCase):
 class DecisionTests(unittest.TestCase):
     """When a run has work, and what it does with the rolling pull request."""
 
-    def pr(self, number, target):
-        return {"number": number, "body": f"text\n\n{bump.TARGET_MARKER}{target}\n", "url": ""}
+    def pr(self, number, target, base=BASE):
+        body = f"text\n\n{bump.TARGET_MARKER}{target}\n{bump.BASE_MARKER}{base}\n"
+        return {"number": number, "body": body, "url": ""}
 
     def test_an_equal_pin_is_up_to_date(self):
-        self.assertEqual(bump.decide(NEW, NEW, []), ("up-to-date", None))
-        self.assertEqual(bump.decide(NEW, NEW, [self.pr(7, OLD)]), ("up-to-date", None))
+        self.assertEqual(bump.decide(NEW, NEW, BASE, []), ("up-to-date", None))
+        self.assertEqual(bump.decide(NEW, NEW, BASE, [self.pr(7, OLD)]), ("up-to-date", None))
 
     def test_an_open_pull_request_for_the_target_means_nothing_to_do(self):
-        """Idempotency: the same head with its pull request already open does nothing."""
-        self.assertEqual(bump.decide(OLD, NEW, [self.pr(9, NEW)]), ("proposed", 9))
+        """Idempotency: the same head on the same main, already proposed, does nothing."""
+        self.assertEqual(bump.decide(OLD, NEW, BASE, [self.pr(9, NEW)]), ("proposed", 9))
 
     def test_an_older_open_pull_request_is_updated_and_none_is_created(self):
-        self.assertEqual(bump.decide(OLD, NEW, [self.pr(9, BASE)]), ("update", 9))
-        self.assertEqual(bump.decide(OLD, NEW, []), ("create", None))
+        self.assertEqual(bump.decide(OLD, NEW, BASE, [self.pr(9, BASE)]), ("update", 9))
+        self.assertEqual(bump.decide(OLD, NEW, BASE, []), ("create", None))
+
+    def test_a_moved_aegis_main_rebuilds_the_open_pull_request(self):
+        """Negative: the same Praetor head built on an older Aegis main is rebuilt."""
+        self.assertEqual(bump.decide(OLD, NEW, BASE, [self.pr(9, NEW, base=OLD)]), ("update", 9))
+
+    def test_a_body_without_a_base_line_is_rebuilt(self):
+        """Boundary: a pull request that records no Aegis main is never taken as current."""
+        body = {"number": 4, "body": f"{bump.TARGET_MARKER}{NEW}\n", "url": ""}
+        self.assertEqual(bump.decide(OLD, NEW, BASE, [body]), ("update", 4))
 
     def test_an_abbreviated_marker_does_not_count_as_proposed(self):
         """Boundary: only the full commit id matches; a prefix is another commit."""
-        body = {"number": 4, "body": f"{bump.TARGET_MARKER}{NEW[:7]}", "url": ""}
-        self.assertEqual(bump.decide(OLD, NEW, [body]), ("update", 4))
+        target = {"number": 4, "body": f"{bump.TARGET_MARKER}{NEW[:7]}", "url": ""}
+        self.assertEqual(bump.decide(OLD, NEW, BASE, [target]), ("update", 4))
+        short = f"{bump.TARGET_MARKER}{NEW}\n{bump.BASE_MARKER}{BASE[:7]}\n"
+        base = {"number": 5, "body": short, "url": ""}
+        self.assertEqual(bump.decide(OLD, NEW, BASE, [base]), ("update", 5))
 
     def test_an_invalid_commit_is_refused(self):
         with self.assertRaises(bump.BumpError):
-            bump.decide("main", NEW, [])
+            bump.decide("main", NEW, BASE, [])
         with self.assertRaises(bump.BumpError):
-            bump.decide(OLD, NEW[:12], [])
+            bump.decide(OLD, NEW[:12], BASE, [])
+        with self.assertRaises(bump.BumpError):
+            bump.decide(OLD, NEW, "HEAD", [])
 
     def test_gh_output_is_parsed_or_refused(self):
         parsed = bump.parse_prs('[{"number": 3, "body": "b", "url": "u"}, {"body": "x"}]')
@@ -352,6 +367,7 @@ class MessageTests(unittest.TestCase):
         self.assertIn("- a", lines)
         self.assertIn("- b (hand-maintained)", lines)
         self.assertEqual(bump.proposed_target(message), NEW)
+        self.assertEqual(bump.proposed_base(message), BASE)
         self.assertNotIn("Signed-off-by", message)
 
     def test_the_commit_prose_is_wrapped(self):
@@ -386,6 +402,7 @@ class MessageTests(unittest.TestCase):
         report = bump.Report(["x"], [], (1, ["abc1234 one"]), ["SKIP: no tool"], "")
         body = bump.pr_body(PLAN, report)
         self.assertEqual(bump.proposed_target(body), NEW)
+        self.assertEqual(bump.proposed_base(body), BASE)
         self.assertIn("## Pre-Merge Verification Checklist", body)
         self.assertIn("- SKIP: no tool", body)
         self.assertIn(bump.ROLLING_BRANCH, body)
@@ -549,13 +566,23 @@ class SurveyTests(unittest.TestCase):
                 self.assertEqual(bump.survey(session), (None, 0))
             self.assertIn("up to date", session.stream.getvalue())
 
+    def proposal(self, base):
+        body = f"{bump.TARGET_MARKER}{NEW}\\n{bump.BASE_MARKER}{base}"
+        return f'[{{"number": 5, "body": "{body}", "url": ""}}]'
+
     def test_an_already_proposed_head_stops(self):
         with tempfile.TemporaryDirectory() as base:
-            prs = f'[{{"number": 5, "body": "{bump.TARGET_MARKER}{NEW}", "url": ""}}]'
-            session, fake = self.session(base, prs=prs)
+            session, fake = self.session(base, prs=self.proposal(BASE))
             with mock.patch.object(bump, "run", side_effect=fake):
                 self.assertEqual(bump.survey(session), (None, 0))
             self.assertIn("#5 already proposes", session.stream.getvalue())
+
+    def test_a_proposal_on_an_older_main_plans_a_rebuild(self):
+        """Negative: Aegis main moved under the open pull request, so the bump reruns."""
+        with tempfile.TemporaryDirectory() as base:
+            session, fake = self.session(base, prs=self.proposal(OLD))
+            with mock.patch.object(bump, "run", side_effect=fake):
+                self.assertEqual(bump.survey(session), (PLAN, 0))
 
     def test_a_pair_that_failed_before_is_not_rerun_without_retry(self):
         with tempfile.TemporaryDirectory() as base:
