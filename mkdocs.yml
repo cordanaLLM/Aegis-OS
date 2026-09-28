@@ -107,6 +107,7 @@ nav:
       - Aegis-built kernel and guest read-back: build/kernel.md
       - eBPF fixtures and verifier evidence: build/bpf.md
       - Latency fixture and determinism verdicts: build/latency.md
+      - Boot harness over a pinned upstream image: build/boot-harness.md
   - Integration:
       - Shared ownership and contracts: integration/stack.md
   - Decisions:

@@ -13,6 +13,50 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (boot harness over an externally supplied artifact, milestone M24)
+
+- **The first boot of a real operating system image in this repository, and
+  Aegis built none of it.** `make verify-boot`
+  (`tools/verify_boot_harness.py`) verifies the pinned
+  Fedora-Cloud-Base-UEFI-UKI 44-1.7 image against Fedora's clearsigned CHECKSUM
+  by key fingerprint, hashes the cached bytes immediately before every boot,
+  and boots them headless under QEMU with KVM, OVMF with Secure Boot and a
+  swtpm TPM. `docs/build/boot-harness.md` is the evidence.
+- **The guest reads its own PCRs.** A NoCloud seed hands the image a script and
+  a per-boot nonce; PCR 0, 4, 7 and 11 come back on a second serial line beside
+  that nonce, each annotated as extended or at its reset value. PCR 11 is
+  extended, by the image's systemd-stub UKI. The same bytes on the firmware
+  without Secure Boot change PCR 7 and leave PCR 11 alone.
+- **Refusals before boot, and a timeout that is a rule.** A copy with one
+  flipped bit is refused at the digest before the boot entry runs a program or
+  writes a file for it, a CHECKSUM with one altered digit fails its signature,
+  and a 5 s timeout is reported as a miss only when the deadline expired with
+  QEMU still running and the harness stopped it. The recorded timeout is 180 s,
+  inclusive, checked as a rule at 179, 180 and 181 s. It was 120 s until the
+  maintainer raised it: a quiet host reaches the prompt in about 15.5 s, but the
+  slowest boot measured, 65.7 s at load average 89, left only 54.3 s under
+  120 s, and keeps 114.3 s under 180 s. The recorded run, at load average 85,
+  saw the prompt after 47.4 s.
+- **Guest Secure Boot without touching the host.** Every guest variable store is
+  generated per run with virt-fw-vars; the artifact's UKI is signed with sbsign
+  and boots on a store holding only that key, where the unsigned copy is
+  refused by the firmware. The host's own Secure Boot state is read from
+  efivarfs and never written.
+- **Nothing outlives the harness.** SIGTERM, SIGHUP and SIGQUIT end it through
+  the same clean-up as Ctrl-C, QEMU runs with `exit-with-parent=on` so a
+  SIGKILL of the harness takes the guest and its swtpm down too, and gpg runs
+  with `--no-autostart`, so no gpg-agent is left behind.
+- **Decision D84** moves E24-2's dm-verity acceptance to M11 (E11-5) and its
+  /var-unseal acceptance to M20 (E20-3), where a real image exists; both
+  milestones disclose the addition in their evidence.
+- **Decision D85 closes M24 on the upstream kind of artifact.** The harness
+  verifies a clearsigned CHECKSUM, the one signature scheme its pin schema has,
+  and the signature form of an Imago return is not pinned until M09. Verifying
+  an Imago return before boot moves to M11 (an exit criterion and E11-1), which
+  adds that pin scheme once M09 pins it; M11's E11-2 now allows that one change
+  to the harness and no other. Both milestones disclose the edits, and M24 is
+  done.
+
 ### Added (P07 and P08 latency fixtures on a realtime kernel guest, milestone M23)
 
 - **The first measured timing figure in this repository, and the first one that

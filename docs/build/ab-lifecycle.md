@@ -7,6 +7,12 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 Status: recorded model from milestone M15, 2026-09-13
 
+**Note added 2026-09-28 (decisions D72 and D84).** Where this page says M24
+consumes or compares the transition trace, read M11: under D72 the real A/B
+transfer is M11's epic E11-4, which runs on the M24 boot harness
+(`docs/build/boot-harness.md`). M24 boots a pinned upstream image that has no
+A/B slots, and compares no trace. The text below is kept as M15 recorded it.
+
 `build/repart.d` and `build/sysupdate.d` say what an A/B update *is*: two root
 slots, a dm-verity hash partition, and one dual-slot transfer with
 `InstancesMax=2` and a read-only target. `crates/aegis-fabrica-defs` reads those
