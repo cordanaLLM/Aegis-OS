@@ -77,6 +77,17 @@ entitled to license. In particular:
 - Linux kernel, systemd, mkosi, PipeWire, and every other third-party component,
   specification, standard, law, image, and dependency retain their respective
   terms and notices.
+- Vendored third-party code keeps its upstream licence. The figure engine
+  Praetor manages under `tools/figures/` vendors interfig (© 2025 Vectorize AI,
+  Inc., MIT) in `tools/figures/third_party/interfig/upstream/`, and its
+  committed player bundle in `tools/figures/dist/` is `EUPL-1.2 AND MIT`
+  (interfig, React, react-dom and scheduler; the MIT texts are in
+  `tools/figures/dist/THIRD-PARTY-LICENSES.txt`). `REUSE.toml` labels both trees
+  with override tables, and
+  [`LICENSES/MIT.txt`](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSES/MIT.txt)
+  is the canonical SPDX text. `make verify-all` fails if that text differs from
+  its pinned digest, or if a third-party identifier appears anywhere but on
+  those two trees.
 - A citation, hyperlink, bibliography entry, factual reference, or lawful
   quotation does not relicense the cited or quoted work.
 
