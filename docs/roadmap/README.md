@@ -1289,7 +1289,7 @@ Epics:
 
 Rank 16. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
-not-hardware. Blocked by: M02. Unblocks: M16.
+not-hardware. Blocked by: M02. Unblocks: M16, M11.
 
 Exit criteria:
 
@@ -1424,6 +1424,10 @@ Exit criteria:
   with 1,000 seeded nodes and 10 in view the exported accessibility snapshot
   still lists all 1,000 in focus order (REQ-P05-11), and moving focus to a
   culled node moves the camera to reveal it (REQ-P05-09).
+- REQ-P12-06 (D91): the M04 accessibility gate also scans ui/forum-shell in the
+  same digest-pinned container, with the D81 tag set and no impact filter, and
+  reports zero violations and zero incomplete on the shell's default state; the
+  shell reuses M04's toolchain admission and builds no second harness
 
 Cheapest exit: Unit-test the Svelte store and lifecycle logic with mocked
 sockets, the two edges D77 moves framed as line-delimited JSON-RPC 2.0, and
@@ -1458,6 +1462,12 @@ Epics:
   nested instrument returns focus to canvas level in exactly that many presses;
   a disabled single-letter shortcut no longer fires; an empty canvas exposes a
   labelled empty state.
+- **E16-4 Forum Shell accessibility scan (D91)**. Requirements: REQ-P12-06.
+  Acceptance: Positive: the shell's default state and its seeded canvas scan
+  with zero violations and zero incomplete under the D81 tag set. Negative: a
+  planted violation in the shell, an unlabelled control, fails the gate.
+  Boundary: the empty canvas is scanned as well and passes with its labelled
+  empty state.
 
 ### M25 - GPU DMA-BUF sharing and VFIO passthrough slices
 
@@ -2463,7 +2473,7 @@ Epics:
 
 Rank 23. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
-Blocked by: M09, M24. Unblocks: M13, M20, M12.
+Blocked by: M09, M24, M04. Unblocks: M13, M20, M12.
 
 Exit criteria:
 
@@ -2477,8 +2487,12 @@ Exit criteria:
   and a QEMU/OVMF/swtpm boot log on a KVM-capable host with real PCR 0/4/7/11
   readback and dm-verity/LUKS2 unlock records
 - Scope: the minimal image carries no UI and no kernel-attached eBPF programs
-  (D20); the accessibility gate attaches when the UI enters an image, and eBPF
-  objects enter through M10 and M12
+  (D20); eBPF objects enter through M10 and M12
+- REQ-P12-01 (D91): the integration adapter requests an image/UKI build from
+  Imago, and accepts its return, only for a commit on which the M04
+  accessibility gate reported PASS; a FAIL, or a SKIP for a missing engine,
+  image or offline store, stops the request before it is sent. The image still
+  carries no UI (D20): the gate is a build precondition, not image content
 - The A/B sysupdate transfer is exercised once between root-a and root-b, and
   observed transitions are compared with the M15 state machine
 - The M24 harness is reused unchanged except for the one pin scheme D85 moves
@@ -2603,6 +2617,11 @@ Epics:
   fails exactly as a wholesale modification does. This acceptance moved from
   M24's E24-2 under D84 and runs on the M24 harness, changed only as E11-2
   allows.
+- **E11-6 UKI compilation gated on the accessibility pass (D91)**. Requirements:
+  REQ-P12-01. Acceptance: Positive: with the M04 gate passing on the commit, the
+  build request is sent and its record names the accessibility run id.
+  Negative: a planted accessibility violation stops the request before it is
+  sent. Boundary: a gate that printed SKIP stops it too; a skip is not a pass.
 
 ### M10 - eBPF objects re-verified against the Nucleus-pinned kernel in a VM
 
@@ -3861,7 +3880,9 @@ delivered.
   P12's activation blockers in `planning/components.json` and P12's row in
   `docs/roadmap/inventory.md` list them. M04 also runs a third labelled test
   that reads Chromium's accessibility tree; D89 does not name it, it is not
-  AT-SPI2 evidence, and it counts towards nothing.
+  AT-SPI2 evidence, and it counts towards nothing. D91 is the recorded decision
+  this note waits for: it assigns REQ-P12-06 and REQ-P12-01, and keeps the
+  portal and AT-SPI2 halves open.
 - **D90** M04's fifth criterion named chromium-1228 as the revision cached on
   the reference profile. Options: restate it as the browser revision bundled by
   the pinned `@playwright/test` and container image digest; fix it in a separate
@@ -3874,6 +3895,33 @@ delivered.
   digest; 1243 is recorded as the host-cache revision observed on 2026-09-28,
   the host cache is never the evidence, and M04's evidence carries a disclosure
   entry in the shape M18 recorded.
+
+### Decisions after the M04 delivery (2026-09-28)
+
+- **D91** Which milestones own what D89 left open: the UKI gating of REQ-P12-01,
+  the portal half of REQ-P12-02, the AT-SPI2 half of REQ-P12-03 and
+  REQ-P12-06's scan of the Forum Shell? Options: split by the milestone that
+  builds each thing, REQ-P12-06 to M16, REQ-P12-01 to M11, and the portal and
+  AT-SPI2 halves kept open until a live-session P05 milestone is planned; leave
+  all four open; move all four to M16; split as the first option but with
+  REQ-P12-01 in M13. Why: M16 creates `ui/forum-shell` on the toolchain M04
+  admitted, so scanning it is the same gate over one more package; M11 is where
+  Aegis first requests an image/UKI from Imago, so it is the first place a build
+  can be refused; the portal and AT-SPI2 halves need real D-Bus daemons in a
+  running session, which M16's D77 criterion keeps on mocks and no planned
+  milestone provides. **Decision (2026-09-28):** the first option. M16 gains a
+  criterion and epic E16-4 for REQ-P12-06. M11 gains a criterion and epic E11-6
+  for REQ-P12-01: the integration adapter requests an image/UKI build from
+  Imago, and accepts its return, only for a commit on which the M04 gate
+  reported PASS, and a SKIP stops it as a FAIL does. M11 is now blocked by
+  M04, which is done, so M11's state and the computed order are unchanged. This
+  amends D20 in one clause only: D20 kept the accessibility gate off M11
+  because it would have put the Node/Playwright admission on the first-artifact
+  path, and M04 has since made that admission. The minimal image still carries
+  no UI and no kernel-attached eBPF programs. The portal half of REQ-P12-02 and
+  the AT-SPI2 half of REQ-P12-03 stay open and owned by no milestone, listed
+  with P12's activation blockers, until a live-session P05 milestone is
+  planned.
 
 ## Evidence
 

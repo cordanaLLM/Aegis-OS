@@ -1399,7 +1399,8 @@
         "M02"
       ],
       "unblocks": [
-        "M16"
+        "M16",
+        "M11"
       ],
       "cost": "medium",
       "needs_hardware": false,
@@ -1493,7 +1494,8 @@
         "The shell state and typed process lifecycle are unit-tested with compositor, Justitia and Tellus inputs stubbed",
         "The DecisionRequest consumer is typed against the M14 schema; the P05/P12 token-edge direction (D05) is recorded",
         "D77 framing: the two stubbed inbound edges D77 moves off D-Bus, DISPATCH_DECISION_REQUEST from P06 and EMIT_CARBON_TELEMETRY from P13, each arrive as one line-delimited JSON-RPC 2.0 message on a mocked AF_UNIX stream; a line that is not valid JSON-RPC 2.0 is answered with a JSON-RPC error and the stream continues; the StatusNotifierWatcher, the portal settings and AT-SPI2 stay on D-Bus mocks; SYNC_DESKTOP_SHELL from P04 keeps the Unix socket stream the graph records, whose endpoint and budget stay open under D32.",
-        "D74 canvas state: the canvas node registry, camera and QuadTree cull bounds are part of the tested shell state, and culling changes only what is painted: with 1,000 seeded nodes and 10 in view the exported accessibility snapshot still lists all 1,000 in focus order (REQ-P05-11), and moving focus to a culled node moves the camera to reveal it (REQ-P05-09)."
+        "D74 canvas state: the canvas node registry, camera and QuadTree cull bounds are part of the tested shell state, and culling changes only what is painted: with 1,000 seeded nodes and 10 in view the exported accessibility snapshot still lists all 1,000 in focus order (REQ-P05-11), and moving focus to a culled node moves the camera to reveal it (REQ-P05-09).",
+        "REQ-P12-06 (D91): the M04 accessibility gate also scans ui/forum-shell in the same digest-pinned container, with the D81 tag set and no impact filter, and reports zero violations and zero incomplete on the shell's default state; the shell reuses M04's toolchain admission and builds no second harness"
       ],
       "cheapest_exit": "Unit-test the Svelte store and lifecycle logic with mocked sockets, the two edges D77 moves framed as line-delimited JSON-RPC 2.0, and D-Bus mocks only for the platform interfaces.",
       "epics": [
@@ -1533,6 +1535,14 @@
             "REQ-P17-04"
           ],
           "acceptance": "Positive: a keyboard-only walk over a seeded canvas reaches every node and invokes every action, ending in the same store state as the pointer path; from each instrument Escape restores focus to its node and Tab reaches the next shell region; at the minimum, 1.0 and maximum camera scale the measured focus ring is at least 2 px and 3:1; and a DecisionRequest and a telemetry update each arrive as one JSON-RPC 2.0 line. Negative: culling implemented by removing nodes from the snapshot fails the 1,000-node check, an instrument with only a pointer handler fails the walk, a transcluded fragment that swallows Tab fails, a focus ring drawn inside the scaled layer (1.5 px at scale 0.5) fails, a focused node fully under a panel fails, and a line with jsonrpc other than \"2.0\" is refused with an error while the stream continues. Boundary: a node exactly on the cull boundary and a node straddling the viewport edge are both listed; a 2.0 px focus ring passes and 1.9 px fails; a partly covered focused node passes; Escape from the deepest nested instrument returns focus to canvas level in exactly that many presses; a disabled single-letter shortcut no longer fires; an empty canvas exposes a labelled empty state."
+        },
+        {
+          "id": "E16-4",
+          "title": "Forum Shell accessibility scan (D91)",
+          "requirement_ids": [
+            "REQ-P12-06"
+          ],
+          "acceptance": "Positive: the shell's default state and its seeded canvas scan with zero violations and zero incomplete under the D81 tag set. Negative: a planted violation in the shell, an unlabelled control, fails the gate. Boundary: the empty canvas is scanned as well and passes with its labelled empty state."
         }
       ],
       "evidence": [],
@@ -1884,7 +1894,8 @@
       "state": "blocked",
       "blocked_by": [
         "M09",
-        "M24"
+        "M24",
+        "M04"
       ],
       "unblocks": [
         "M13",
@@ -1903,7 +1914,8 @@
         "BLOCKED until: Imago accepts the M09 manifest and returns an image/UKI with digest and signature. The kernel is the pinned distribution linux-rt package from the M18 manifest unless a Nucleus artifact is already available (D07)",
         "Toolchain admission: QEMU, OVMF, swtpm and the signing tools (cosign or sbsign) are selected through the template matrix with pinned versions before any boot or signing gate",
         "Unblocking evidence: retained image output digest, signature verification log, and a QEMU/OVMF/swtpm boot log on a KVM-capable host with real PCR 0/4/7/11 readback and dm-verity/LUKS2 unlock records",
-        "Scope: the minimal image carries no UI and no kernel-attached eBPF programs (D20); the accessibility gate attaches when the UI enters an image, and eBPF objects enter through M10 and M12",
+        "Scope: the minimal image carries no UI and no kernel-attached eBPF programs (D20); eBPF objects enter through M10 and M12",
+        "REQ-P12-01 (D91): the integration adapter requests an image/UKI build from Imago, and accepts its return, only for a commit on which the M04 accessibility gate reported PASS; a FAIL, or a SKIP for a missing engine, image or offline store, stops the request before it is sent. The image still carries no UI (D20): the gate is a build precondition, not image content",
         "The A/B sysupdate transfer is exercised once between root-a and root-b, and observed transitions are compared with the M15 state machine",
         "The M24 harness is reused unchanged except for the one pin scheme D85 moves here, and the only new inputs are the Imago artifact and its pin; a criterion states that no second boot apparatus is built here.",
         "The artifact's digest and signature are verified with the pinned cosign (2.6.3 on the reference profile) before the boot runs, and a tampered-digest negative case is exercised.",
@@ -1959,6 +1971,14 @@
             "REQ-P02-01"
           ],
           "acceptance": "Positive: the verity root hash the harness reads back from the booted Imago image matches the value its signed release records. Negative: a modified root image fails verity and does not boot to the established state. Boundary: a root image identical to the signed one except for one flipped bit fails exactly as a wholesale modification does. This acceptance moved from M24's E24-2 under D84 and runs on the M24 harness, changed only as E11-2 allows."
+        },
+        {
+          "id": "E11-6",
+          "title": "UKI compilation gated on the accessibility pass (D91)",
+          "requirement_ids": [
+            "REQ-P12-01"
+          ],
+          "acceptance": "Positive: with the M04 gate passing on the commit, the build request is sent and its record names the accessibility run id. Negative: a planted accessibility violation stops the request before it is sent. Boundary: a gate that printed SKIP stops it too; a skip is not a pass."
         }
       ],
       "evidence": [
