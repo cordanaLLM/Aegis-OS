@@ -33,7 +33,7 @@ Two rules follow from the clause and are applied below:
 | Rust (`rustc`, `cargo`) | 1.98.1 | `rust-toolchain.toml`, `channel = "1.98.1"`, materialised by rustup | distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.98 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.9.0-stable | `rust-toolchain.toml`, same `components` list | the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
-| praetorctl | source commit `a5ecb6fd998c59920e8432b27edbfb8fd36a7aa2` | `.github/workflows/ci.yml`, `PRAETOR_COMMIT`, verified with `git rev-parse` before the build | the previous pin, source commit `4ac59ce0e610abb0820f3c8122a1bbfea68b7ed2`; the pin follows Praetor's `main` (see below) | M00 |
+| praetorctl | source commit `80b228bd067df563ed19155507a30542966c7ffa` | `.github/workflows/ci.yml`, `PRAETOR_COMMIT`, verified with `git rev-parse` before the build | the previous pin, source commit `a5ecb6fd998c59920e8432b27edbfb8fd36a7aa2`; the pin follows Praetor's `main` (see below) | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; it is a build input for praetorctl, not a gate of its own | M00 |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
 | reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, run through `pipx run` | nothing | M00 |
