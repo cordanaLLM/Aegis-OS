@@ -23,6 +23,45 @@
       "description": "Praetor-locked assets: praetorctl audit requires them byte-for-byte, so updates arrive through a praetor pin bump, not here",
       "matchFileNames": [".github/workflows/praetor-docs.yml", "tools/markdownlint/**"],
       "enabled": false
+    },
+    {
+      "description": "M04: @playwright/test and the Playwright image carry the same browser revision, so they move in one pull request; the accessibility gate fails when their versions differ",
+      "matchPackageNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
+      "groupName": "playwright and its container image"
+    },
+    {
+      "description": "M04: package.json engines.node and the pinned Node release move together, and D65 tracks the latest release line. ignoreUnstable is off because Renovate counts a Node release as unstable until its line reaches LTS (the node-version datasource and node versioning alike), so a pin on an LTS line would never be offered the newer Current line",
+      "matchFileNames": ["ui/concordia-tokens/**"],
+      "matchPackageNames": ["node"],
+      "ignoreUnstable": false,
+      "groupName": "node for the accessibility gate"
+    },
+    {
+      "description": "M04: packageManager and engines.pnpm name one pnpm version (D43 as decided at M04)",
+      "matchFileNames": ["ui/concordia-tokens/**"],
+      "matchPackageNames": ["pnpm"],
+      "groupName": "pnpm for the accessibility gate"
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "M04 accessibility gate: the Playwright image in ui/concordia-tokens/toolchain.pin.json, moved by tag and digest together",
+      "customType": "regex",
+      "managerFilePatterns": ["/^ui/concordia-tokens/toolchain\\.pin\\.json$/"],
+      "matchStrings": [
+        "\"reference\": \"(?<depName>mcr\\.microsoft\\.com/playwright):(?<currentValue>v\\d+\\.\\d+\\.\\d+-noble)@(?<currentDigest>sha256:[0-9a-f]{64})\""
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-(?<compatibility>.+)$"
+    },
+    {
+      "description": "M04 accessibility gate: the Node release in ui/concordia-tokens/toolchain.pin.json (D65: the latest line, tracked forward); its sha256 is refreshed by hand, and make a11y-fetch refuses a tarball that does not match it",
+      "customType": "regex",
+      "managerFilePatterns": ["/^ui/concordia-tokens/toolchain\\.pin\\.json$/"],
+      "matchStrings": ["\"node\": \\{\\s*\"version\": \"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""],
+      "depNameTemplate": "node",
+      "datasourceTemplate": "node-version",
+      "versioningTemplate": "node"
     }
   ]
 }

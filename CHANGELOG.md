@@ -13,6 +13,38 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (UI accessibility harness over the P12 Concordia tokens, milestone M04)
+
+- **The first accessibility gate, and it runs inside `make verify-all`.**
+  `tools/verify_a11y.py` installs the P12 Concordia token file and one Svelte 5
+  component from their lockfile, builds them and scans them with Playwright and
+  axe-core in the official Playwright image, pinned by digest, with networking
+  disabled and the repository mounted read-only. Without an engine or its
+  cache it prints why it did not run; `make a11y-fetch`, which CI runs first,
+  is the one networked step. `docs/build/accessibility-harness.md` is the
+  evidence.
+- **Zero violations under the D81 tag set, no impact filter.** axe-core 4.13.0
+  runs WCAG 2.2 AA exactly, `target-size` included, and the report names the
+  EN 301 549 V4.1.1 and V3.2.1 clause for every criterion a rule evaluated and
+  the two it cannot, 11.2.4.11 and 11.2.5.7. A test counts only when it was
+  meant to pass and passed, so an expected failure, a skip or a flaky retry
+  fails the gate rather than reading as a pass.
+- **The focus ring is measured, not assumed.** axe-core has no rule for a focus
+  indicator, so the suite reads its width and contrast from computed style: the
+  3 px token and the 2 px D16 floor pass and 1 px fails, 3:1 passes and 2.99:1
+  fails, 200% text overflows nothing, and a stripped outline, a planted
+  violation and a D76 stub theme each fail the run.
+- **One pin per tool.** Node 26.10.0 by the sha256 of its release tarball, not
+  the image's own Node; pnpm 12.6.0 by `packageManager` and the lockfile; the
+  browser revision bundled by `@playwright/test` 1.63.0 and the image digest.
+  Renovate tracks all of them forward.
+- **Decisions D86 to D90**: P12 stays a proposal, no `@sveltesentio/*` package
+  in M04, and the gate runs inside `make verify-all` with a fetch target. The
+  portal, AT-SPI2 and UKI halves of REQ-P12-01 to REQ-P12-03 are not M04's and
+  no milestone carries them yet; browser emulation is labelled as such. The
+  chromium-1228 criterion now names the bundled revision. D42 is superseded by
+  D65, and D43 is decided for pnpm 12. M04 is done, and M16 is ready.
+
 ### Added (boot harness over an externally supplied artifact, milestone M24)
 
 - **The first boot of a real operating system image in this repository, and

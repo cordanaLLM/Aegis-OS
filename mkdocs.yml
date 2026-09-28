@@ -108,6 +108,7 @@ nav:
       - eBPF fixtures and verifier evidence: build/bpf.md
       - Latency fixture and determinism verdicts: build/latency.md
       - Boot harness over a pinned upstream image: build/boot-harness.md
+      - Accessibility harness over the P12 tokens: build/accessibility-harness.md
   - Integration:
       - Shared ownership and contracts: integration/stack.md
   - Decisions:

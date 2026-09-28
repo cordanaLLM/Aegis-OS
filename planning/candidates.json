@@ -229,7 +229,7 @@
         "ui/forum-shell/package.json",
         "JavaScript lockfile",
         "accessibility test wiring (export-023 is proposal data, quarantined)",
-        "UI toolchain pin (D10; open decisions D42 and D43)",
+        "UI toolchain pin: reuse M04's admission (D10; D42 superseded by D65, D43 decided at M04)",
         "Concordia token consumption contract (D05)"
       ],
       "note": "Not applicable to export-006: that workspace is a Cargo workspace and declares no UI package."
@@ -451,7 +451,8 @@
       "component": "P12",
       "language": "css design tokens",
       "proposed_paths": [
-        "ui/concordia-tokens/concordia-tokens.css"
+        "ui/concordia-tokens/concordia-tokens.css",
+        "ui/concordia-tokens/src/ConcordiaPanel.svelte and the accessibility suite under ui/concordia-tokens/tests/ (M04)"
       ],
       "in_proposed_workspace": false,
       "manifest_present": false,
@@ -477,13 +478,12 @@
         }
       ],
       "missing": [
-        "ui/concordia-tokens/package.json",
-        "JavaScript lockfile",
-        "accessibility test package (export-023 is quarantined proposal data)",
-        "focus-ring width applied per D16 (3px token, 2px boundary minimum)",
-        "confirmation that no monolithic CSS library is introduced (D17)"
+        "P12 activation: tools/verify_preparation.py binds activation evidence to a Cargo manifest, which ui/concordia-tokens/package.json is not, and M04 does not change that (D86)",
+        "the P05 consumer of the tokens (D05), typed at M16",
+        "the portal, AT-SPI2 and UKI halves of REQ-P12-01 to REQ-P12-03, which M04 covers at the CSS level in browser emulation only, and REQ-P12-06's scan of the Forum Shell, which M04 runs on the P12 component only (D89): open and owned by no milestone, since D89 names M16 and M27 but no milestone's criteria or epics carry them yet",
+        "the D76 heads-up theme, which no milestone plans yet"
       ],
-      "note": "Not applicable to export-006: no JavaScript package manifest exists in any source."
+      "note": "Not applicable to export-006: no JavaScript package manifest exists in any source. Settled at M04: ui/concordia-tokens/package.json and pnpm-lock.yaml, the token file with every colour, stroke and motion value as a custom property and the 3px focus ring D16 bounds at a 2px floor, one Svelte 5 component, and the Playwright and axe-core suite that tools/verify_a11y.py runs are committed, with no monolithic CSS library (D17); export-023 stays quarantined and was not used. manifest_present and lockfile_present stay false because verify_candidates() reads each flag as a component-activation claim rather than as a filesystem fact, and P12 stays a proposal (D86)."
     },
     {
       "candidate_id": "C13",
@@ -1383,27 +1383,27 @@
       "proposed_pin": "a hardcoded major in the imported CI against a different major in the guide",
       "source_id": "export-041",
       "sha256": "e05ddc9466fcfbf4615d6a466f03f0c64ae95745de77c613309cd628d8fb4513",
-      "current_upstream": "the CI major reached end of life on 2026-04-30; the guide major is in maintenance until 2027-04-30; the current active long-term line is two majors newer",
-      "drift": "outdated on both sides: neither imported value is a supported long-term release",
-      "milestone": "M04 (D10); consumed by M16"
+      "current_upstream": "26.10.0 of 2026-09-21, the Current line, which enters Active LTS on 2026-10-28; the newest LTS is 24.21.0; the reference profile runs v26.10.0",
+      "drift": "resolved at M04: neither imported major is inherited; the accessibility gate pins Node 26.10.0 by the sha256 of its release tarball, recorded in docs/roadmap/toolchain-admission.md, and the exact engines pin with engineStrict refuses any other Node, the Playwright image's own 24.20.0 included",
+      "milestone": "M04 (D65, which supersedes D42); admitted; consumed by M16"
     },
     {
       "item": "UI package manager",
       "proposed_pin": "unpinned install script with no version",
       "source_id": "export-007",
       "sha256": "84f43472c5369d00a40ba9ded70915b4e4e18d28e4fa383f8ac73b71ed611ce8",
-      "current_upstream": "12.4.1 (npm dist-tag latest)",
-      "drift": "unpinned, and contradicted: the imported CI and Makefile assume a different package manager entirely",
-      "milestone": "M04"
+      "current_upstream": "12.6.0 (npm dist-tag latest, read 2026-09-28); the reference profile runs pnpm 10.29.3",
+      "drift": "resolved at M04: pnpm 12.6.0, pinned by packageManager and engines.pnpm in ui/concordia-tokens/package.json and by its binary's integrity in pnpm-lock.yaml; the imported CI's and Makefile's package manager is not adopted",
+      "milestone": "M04 (D43); admitted"
     },
     {
       "item": "UI framework",
       "proposed_pin": "major version only, no minor or patch anywhere",
       "source_id": "export-007",
       "sha256": "84f43472c5369d00a40ba9ded70915b4e4e18d28e4fa383f8ac73b71ed611ce8",
-      "current_upstream": "5.57.0 (npm dist-tag latest)",
-      "drift": "current major, unpinned minor: the reactive syntax used by the imported components remains valid",
-      "milestone": "M04; manifest at M16"
+      "current_upstream": "5.57.1 (npm dist-tag latest, read 2026-09-28)",
+      "drift": "resolved at M04 for the P12 component: svelte 5.57.1, exact in ui/concordia-tokens/package.json and locked in pnpm-lock.yaml",
+      "milestone": "M04; admitted; the shell's manifest at M16"
     },
     {
       "item": "browser test runner",
@@ -1411,8 +1411,8 @@
       "source_id": "export-041",
       "sha256": "e05ddc9466fcfbf4615d6a466f03f0c64ae95745de77c613309cd628d8fb4513",
       "current_upstream": "1.63.0, released 2026-09-04",
-      "drift": "unpinned: browser binaries are pinned per runner release, so an unpinned runner means unpinned browsers",
-      "milestone": "M04"
+      "drift": "resolved at M04: @playwright/test 1.63.0, exact and locked, run in the Playwright image of the same version pinned by digest, whose browser revision 1243 the gate reads back before the suite runs (D90)",
+      "milestone": "M04; admitted"
     },
     {
       "item": "accessibility rule engine",
@@ -1420,8 +1420,8 @@
       "source_id": "export-023",
       "sha256": "a0d06b6b8e6c8a0ac76f32377d8c39293ad2f191771755694b70eac53abe31f4",
       "current_upstream": "4.13.0, released 2026-08-05",
-      "drift": "unpinned, and a correctness problem: the imported standards file makes a full pass a hard gate, so the gate's definition of pass would change between runs",
-      "milestone": "M04"
+      "drift": "resolved at M04: axe-core 4.13.0 and @axe-core/playwright 4.13.0, exact and locked; the gate runs the D81 tag set with no impact filter, so a pass means the same thing between runs",
+      "milestone": "M04; admitted"
     },
     {
       "item": "release-workflow toolchain action",
@@ -1447,8 +1447,8 @@
       "source_id": "export-041",
       "sha256": "e05ddc9466fcfbf4615d6a466f03f0c64ae95745de77c613309cd628d8fb4513",
       "current_upstream": "7.0.0, released 2026-07-14",
-      "drift": "outdated by three majors, tag-pinned, and carries the end-of-life Node major as its input",
-      "milestone": "M04 and M13"
+      "drift": "outdated by three majors, tag-pinned, and carries the end-of-life Node major as its input; M04 admits no setup action, because the accessibility gate's Node is the pinned tarball inside its container",
+      "milestone": "M13 (M04 needed none)"
     },
     {
       "item": "Rust cache action",

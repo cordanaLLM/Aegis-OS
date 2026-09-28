@@ -73,14 +73,14 @@ not a repository fact: that workspace is proposal data and is not committed.
 | P02 aegis-janus-vallum | declarative-config + proposed Rust crate | `build/repart.d and build/sysupdate.d (reviewed, M03)`; `crates/aegis-janus-lifecycle/ A/B lifecycle (D15, created in M15)` | no (no component crate) | export-011 528da609dab7; export-053 d85a1f6ceb0e; export-054 41d6d121b142; export-055 c915f281532f; export-063 b284bb77c19f | a P02 component crate (aegis-janus-lifecycle models the lifecycle and is not the daemon); real signature, dm-verity and sysupdate effects, all stubbed in M15; TPM2 and secure-boot hardware or emulator evidence; real artefact and boot evidence |
 | P03 aegis-vulcan | rust | `crates/aegis-vulcan/src/` validation slice and P03 consumer descriptors (M17); `crates/aegis-vulcan/tests/` | no (joined the repository workspace at M17, settling D22) | export-012 9b502c76509b; export-038 fe2cb01cfd13 | a P03 component daemon (the crate validates the arithmetic and the bounds and is not the driver); real BAR mapping, VFIO container, IOMMU domain and NVMe or GPU peer-to-peer transfer; a transport for either consumer descriptor, stubbed until M12; IOMMU, VFIO, NVMe and GPU peer-to-peer evidence |
 | P04 aegis-compositor | rust | `crates/aegis-compositor/src/` surface registry, Tier-1 client table, mocked Tier-2 mesh, pinned frame-pacing constant and decision D08 (M07); `crates/aegis-compositor/tests/`; `build/mkosi.extra/usr/lib/systemd/system/aegis-compositor.service` | yes | export-013 7f4c22813332; export-027 f19640d7a7da; export-028 d74a93eac654 | a P04 component daemon (the crate holds the registry and the bounds and opens no display); a compositor library, a Wayland connection and a DRM output, all absent by design at M07 -- D08 and ADR-0001 select pure Rust as a language boundary and the smithay 0.7.0 upstream check at M07 admits no package, and export-007 still says wlroots; a Tier-2 transport, since the zenoh 1.10.1 upstream check at M07 admits no crate and MockedMesh is an in-process table; a Tier-3 sidecar dispatcher, whose owner dispute DSP-21 leaves unsettled; the P04 to P05 endpoint and budget (open decision D32); real latency, throughput and frame-time evidence, none of which M07 produces |
-| P05 aegis-forum-shell | svelte | `ui/forum-shell/src/App.svelte` | not applicable | export-014 659691a2d7d0; export-043 e3dbfa226e54; export-023 a0d06b6b8e6c | ui/forum-shell/package.json; JavaScript lockfile; accessibility test wiring (export-023 is proposal data, quarantined); UI toolchain pin (D10; open decisions D42 and D43); Concordia token consumption contract (D05) |
+| P05 aegis-forum-shell | svelte | `ui/forum-shell/src/App.svelte` | not applicable | export-014 659691a2d7d0; export-043 e3dbfa226e54; export-023 a0d06b6b8e6c | ui/forum-shell/package.json; JavaScript lockfile; accessibility test wiring (export-023 is proposal data, quarantined); UI toolchain pin: reuse M04's admission (D10; D42 superseded by D65, D43 decided at M04); Concordia token consumption contract (D05) |
 | P06 aegis-justitia | rust | `crates/aegis-justitia/src/main.rs`; `crates/aegis-justitia/tests/` | yes | export-015 fcbe2caed363; export-031 5ff683328148; export-047 971948673346; export-024 50a41ecd0b74 | crates/aegis-justitia/Cargo.toml; workspace Cargo.toml and Cargo.lock; library code outside #[cfg(test)] (export-047 defines its engine inside the test module); hash-algorithm trait boundary (D02); eBPF compile and verifier evidence for action_gate (M19, M10) |
 | P07 aegis-lictor | rust | `crates/aegis-lictor/src/` scx_cake burst classifier, bounded broker table, locality mask, fragility-probe lifecycle and the two edges P07 consumes (M07); `crates/aegis-lictor/tests/`; `bpf/scx_cake.bpf.c` | yes | export-016 cfa58b5b23b8; export-032 30d67bc52290; export-056 39af243568ad | a P07 component daemon (the crate holds the classifier and the tables and loads no program); eBPF toolchain admission and a verifier pass (M19; open decision D40), with the imported aya 0.12 and aya-bpf 0.1 requirements recorded at M07 as proposal data that is not inherited; a kernel arbitration path -- no sched_ext attachment, no drm_sched priority, no cgroups v2 write and no affinity call; kernel sched_ext evidence (D20 keeps eBPF out of the first image); real latency and determinism evidence, which needs a PREEMPT_RT kernel and is M23 |
 | P08 aegis-calliope | rust | `crates/aegis-calliope/src/` sandboxed-plugin lifecycle, DMA-BUF descriptor table and stride rule, real-time grant and local phase-and-drift estimator (M07); `crates/aegis-calliope/tests/` | yes | export-017 afbc0af8056d; export-026 c2f1e433cd32 | a P08 component daemon (the crate holds the tables and the lifecycle and starts no graph); a PipeWire dependency pin (none is declared in export-006) and a running graph; a DMA-BUF export, since nothing here allocates a buffer or holds a file descriptor; a privileged limits configuration -- the reference profile reads `ulimit -r` 99, above the required 95, and `ulimit -l` 8192 KiB, below the report's infinity, so the memlock half is an operator action; the P08/P11 capture direction (open decision D29); real PipeWire, DMA-BUF and latency runtime evidence, none of which M07 produces |
 | P09 aegis-minerva | rust | `crates/aegis-minerva/src/` router, replay buffer, constraint screen and the two payloads P09 produces (M06); `crates/aegis-minerva/tests/` | yes | export-034 213a95fc0d02 | a P09 component daemon (the crate holds the tables and the bounds and runs no inference); an accelerator path, a solver and a transport, all absent by design at M06; blueprint-level requirement source: the bundle holds no P09 report; real evidence for the 20 W envelope and the 1.5 ms routing cap, both recorded as unmeasured; the P09/P14 direction is typed at M06 and open decision D27 is not settled |
 | P10 aegis-vesta | rust | `crates/aegis-vesta/src/` sandbox and capsule tables, decision D06 and the two payloads P10 stands at either end of (M06); `crates/aegis-vesta/tests/` | yes | export-018 5dbc6d071bbb; export-037 ce490c88081f | a P10 component daemon (the crate holds the tables and the bounds, starts no monitor and instantiates no module); a monitor, a guest and a Wasm runtime, all absent by design at M06; a pinned Rust-native runtime, since D06 selects the language boundary at M06 and pins no version; both P06 gating paths are carried by the M06 capsule request and reported apart, but nothing admits or refuses a sandbox execution on that field, so D04 stays unresolved and the behavioural admission gate DSP-04 assigns to M06 is outstanding; thread-per-core runtime decision (open decision D46); real evidence for the boot-time and footprint figures, both recorded as unmeasured |
 | P11 aegis-ludus | rust | `crates/aegis-ludus/src/` launch validator, receipt fields, credential probes and the receipt P11 hands to P02 (M08); `crates/aegis-ludus/tests/` | yes | export-019 b0aa6e54ed57; export-033 531cbdf98eb5 | a P11 component daemon (the crate holds the bounds, the outcomes and the payload and links no platform SDK); a named rich-presence library, which open decision D48 may remove the need for entirely, so the P11 to P04 edge stays untyped at M08; a FIDO2 authenticator, which the reference profile does not have at all and which is recorded as a procurement dependency rather than stubbed; a key bound to the TPM2 the profile does have, which is M20 |
-| P12 aegis-concordia | css design tokens | `ui/concordia-tokens/concordia-tokens.css` | not applicable | export-020 1748f49bb7f8; export-042 411fb8c2d731; export-023 a0d06b6b8e6c | ui/concordia-tokens/package.json; JavaScript lockfile; accessibility test package (export-023 is quarantined proposal data); focus-ring width applied per D16 (3px token, 2px boundary minimum); confirmation that no monolithic CSS library is introduced (D17) |
+| P12 aegis-concordia | css design tokens | `ui/concordia-tokens/concordia-tokens.css`; `ui/concordia-tokens/src/ConcordiaPanel.svelte` and the accessibility suite under `ui/concordia-tokens/tests/` (M04) | not applicable | export-020 1748f49bb7f8; export-042 411fb8c2d731; export-023 a0d06b6b8e6c | P12 activation: tools/verify_preparation.py binds activation evidence to a Cargo manifest, which ui/concordia-tokens/package.json is not, and M04 does not change that (D86); the P05 consumer of the tokens (D05), typed at M16; the portal, AT-SPI2 and UKI halves of REQ-P12-01 to REQ-P12-03, which M04 covers at the CSS level in browser emulation only, and REQ-P12-06's scan of the Forum Shell, which M04 runs on the P12 component only (D89): open and owned by no milestone, since D89 names M16 and M27 but no milestone's criteria or epics carry them yet; the D76 heads-up theme, which no milestone plans yet |
 | P13 aegis-tellus | rust | `crates/aegis-tellus/src/` SCI arithmetic, defer threshold, slice table and the zone-list wattage seam (M05); `crates/aegis-tellus/tests/`; `bpf/kepler_power.bpf.c` | yes | export-036 25813d240733; export-048 293357bac7d3 | a P13 component daemon (the crate holds the rate engine half of REQ-P13-08's mapping and is not the Kepler telemetry probe); the kepler_power eBPF probe, uncompiled and unloaded (M19, M10); a measured RAPL delta, which needs a privileged reader because energy_uj is mode 0400 (M21); a transport for EMIT_CARBON_TELEMETRY (M16) or SPATIOTEMPORAL_TASK_SHIFT, both of which D77 moves from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; blueprint-level requirement source: the bundle holds no P13 report |
 | P14 aegis-hephaestus | rust | `crates/aegis-hephaestus/src/` geometry and meshing bounds, solver admission, the P09 request consumed and the viewport P14 hands to P15 (M08); `crates/aegis-hephaestus/tests/` | yes | export-021 6a3cda152e6c; export-029 427996186520 | a P14 component daemon (the crate holds the bounds and the payload and links no kernel and starts no solver); CAD and solver dependency pins, absent from the export-006 dependency table and recorded as five unpinned rows in the crate's own register; a licence decision for GPL-licensed solver bindings; a symbolic solver, so the intake outcome has no variant meaning verified and open decision D27 is not settled |
 | P15 aegis-hestia | rust | `crates/aegis-hestia/src/` storage and vector logic, the D09 boundary payload and the P04 registration (M17); `crates/aegis-hestia/tests/` | no (joined the repository workspace at M17, settling D22) | export-022 46cea660df63; export-030 689d175667d6 | a P15 component daemon (the crate models the store and the overlay and is neither); a real PGlite instance, its WebAssembly runtime and the Btrfs @pglite subvolume; a Wayland connection and a wlr-layer-shell binding, stubbed until a P04 serves zwlr_layer_shell_v1, which no milestone yet plans (D79); real hardware or emulator evidence |
@@ -198,14 +198,14 @@ source it is reported as unknowable rather than guessed.
 | image output version string | a hardcoded 1.0.0 in the output filename | export-049 4d9043f4af30 | no image or release exists; the release train is gated and M13 is blocked | not assessable as drift: a hardcoded version that no release process produces, and the imported release workflow uses a different filename | M11 (naming) and M13 (release) |
 | boot kernel package | a bare real-time kernel package name with no version | export-049 4d9043f4af30 | the distribution package resolves to a rolling real-time kernel; upstream publishes separate stable, mainline and longterm lines | resolved at M18 for the identity: the product input manifest records the boot kernel source and the pinned default package linux-rt, and the dated snapshot fixes which linux-rt build that name resolves to. D70 as amended makes M26 the current producer; the artefact itself is M26 and M10 work | M18 (D07 and D18); re-verified at M26 and M10 |
 | target kernel floor | a floor plus an unreleased target version | export-016 cfa58b5b23b8 | the named target version is not released; upstream lists it only as a release candidate, with an earlier stable and longterm line available | replaced at M18 by a feature payload: build/kernel-requirement.json states the Kconfig symbols, states and probes a conforming kernel must satisfy, with a checked minimum release of 6.12 and the unreleased target release recorded but never checked against a profile, because a check against a version that does not exist would refuse every kernel that does | M18 (feature payload, not a version list); consumed by M26 |
-| Node.js runtime | a hardcoded major in the imported CI against a different major in the guide | export-041 e05ddc9466fc | the CI major reached end of life on 2026-04-30; the guide major is in maintenance until 2027-04-30; the current active long-term line is two majors newer | outdated on both sides: neither imported value is a supported long-term release | M04 (D10); consumed by M16 |
-| UI package manager | unpinned install script with no version | export-007 84f43472c536 | 12.4.1 (npm dist-tag latest) | unpinned, and contradicted: the imported CI and Makefile assume a different package manager entirely | M04 |
-| UI framework | major version only, no minor or patch anywhere | export-007 84f43472c536 | 5.57.0 (npm dist-tag latest) | current major, unpinned minor: the reactive syntax used by the imported components remains valid | M04; manifest at M16 |
-| browser test runner | unpinned; named in five sources with no version | export-041 e05ddc9466fc | 1.63.0, released 2026-09-04 | unpinned: browser binaries are pinned per runner release, so an unpinned runner means unpinned browsers | M04 |
-| accessibility rule engine | unpinned | export-023 a0d06b6b8e6c | 4.13.0, released 2026-08-05 | unpinned, and a correctness problem: the imported standards file makes a full pass a hard gate, so the gate's definition of pass would change between runs | M04 |
+| Node.js runtime | a hardcoded major in the imported CI against a different major in the guide | export-041 e05ddc9466fc | 26.10.0 of 2026-09-21, the Current line, which enters Active LTS on 2026-10-28; the newest LTS is 24.21.0; the reference profile runs v26.10.0 | resolved at M04: neither imported major is inherited; the accessibility gate pins Node 26.10.0 by the sha256 of its release tarball, recorded in docs/roadmap/toolchain-admission.md, and the exact engines pin with engineStrict refuses any other Node, the Playwright image's own 24.20.0 included | M04 (D65, which supersedes D42); admitted; consumed by M16 |
+| UI package manager | unpinned install script with no version | export-007 84f43472c536 | 12.6.0 (npm dist-tag latest, read 2026-09-28); the reference profile runs pnpm 10.29.3 | resolved at M04: pnpm 12.6.0, pinned by packageManager and engines.pnpm in ui/concordia-tokens/package.json and by its binary's integrity in pnpm-lock.yaml; the imported CI's and Makefile's package manager is not adopted | M04 (D43); admitted |
+| UI framework | major version only, no minor or patch anywhere | export-007 84f43472c536 | 5.57.1 (npm dist-tag latest, read 2026-09-28) | resolved at M04 for the P12 component: svelte 5.57.1, exact in ui/concordia-tokens/package.json and locked in pnpm-lock.yaml | M04; admitted; the shell's manifest at M16 |
+| browser test runner | unpinned; named in five sources with no version | export-041 e05ddc9466fc | 1.63.0, released 2026-09-04 | resolved at M04: @playwright/test 1.63.0, exact and locked, run in the Playwright image of the same version pinned by digest, whose browser revision 1243 the gate reads back before the suite runs (D90) | M04; admitted |
+| accessibility rule engine | unpinned | export-023 a0d06b6b8e6c | 4.13.0, released 2026-08-05 | resolved at M04: axe-core 4.13.0 and @axe-core/playwright 4.13.0, exact and locked; the gate runs the D81 tag set with no impact filter, so a pass means the same thing between runs | M04; admitted |
 | release-workflow toolchain action | a major tag on an action namespace | export-052 78920f933421 | the referenced repository returns HTTP 404; no published action exists at that name | nonexistent: unresolvable, and a name-squatting exposure in a job holding write permissions; replace, do not re-pin | M13 |
 | checkout action | a major tag rather than a commit digest | export-041 e05ddc9466fc | 7.0.1, released 2026-07-20 | outdated by three majors and tag-pinned; a mutable tag is the standard supply-chain weakness | M13 |
-| Node setup action | a major tag | export-041 e05ddc9466fc | 7.0.0, released 2026-07-14 | outdated by three majors, tag-pinned, and carries the end-of-life Node major as its input | M04 and M13 |
+| Node setup action | a major tag | export-041 e05ddc9466fc | 7.0.0, released 2026-07-14 | outdated by three majors, tag-pinned, and carries the end-of-life Node major as its input; M04 admits no setup action, because the accessibility gate's Node is the pinned tarball inside its container | M13 (M04 needed none) |
 | Rust cache action | a major tag | export-041 e05ddc9466fc | 2.9.2, released 2026-08-06 | current major, tag-pinned rather than digest-pinned; the only imported action whose major is still live | M13 |
 | community Rust toolchain action | a moving branch reference | export-041 e05ddc9466fc | the repository publishes one release tag and is conventionally referenced by named branch refs | unpinned by design: both the action code and the installed Rust version float | M02 and M13 |
 | release publishing action | a major tag | export-052 78920f933421 | 3.0.3, released 2026-08-30 | outdated by one major, tag-pinned; it publishes a non-draft release, so it must stay inactive until M13 | M13 |
@@ -245,7 +245,8 @@ ones to act on first:
    today; the reference must be replaced at M13, not re-pinned.
 3. The runtime major hardcoded in the imported CI reached end of life on
    2026-04-30, and the major named in the imported guide is in maintenance only.
-   Neither imported value is a supported long-term release (open decision D42).
+   Neither imported value is a supported long-term release (open decision D42,
+   since superseded by D65 at M04).
 
 Two further observations: the image package list still names the compositor
 library that ADR-0001 superseded, which argues for authoring that list fresh at
@@ -281,7 +282,9 @@ conformance gate.
 
 Replacement: No whole-file replacement: the Rust gate is authorable at M02, the
 accessibility gate at M04, the eBPF gate at M19, and image synthesis with a real
-boot gate at M11.
+boot gate at M11. The accessibility gate landed at M04 inside `make verify-all`,
+with no suppression anywhere it runs and the Node line pinned (REQ-CI-02,
+REQ-CI-03).
 
 ### imported release and attestation workflow (`export-052`, `78920f933421`)
 
@@ -400,7 +403,10 @@ for a contrast ratio and a stroke width.
 
 Replacement: M04 (accessibility harness): headless against a managed server,
 zero violations on the default state, failing when the focus outline is removed,
-and implementing the D16 boundary.
+and implementing the D16 boundary. Delivered at M04 by
+`ui/concordia-tokens/tests/a11y.spec.js` and `tools/verify_a11y.py`, which
+measure the focus ring's width and contrast rather than its style and serve the
+static build inside the container; this file was not used.
 
 ### imported action-interceptor test module (`export-047`, `971948673346`)
 
@@ -449,7 +455,8 @@ affects and the milestone that must close it.
 One of the five inventory decisions, D22, has since been settled: milestone M17
 took the recommended option and the resolution is recorded in place below. The
 entry stays listed and the numbering is unchanged, so a reader who followed a
-D22 citation from elsewhere still lands on it.
+D22 citation from elsewhere still lands on it. Two drift-register decisions
+were settled the same way at M04: D42, superseded by D65, and D43.
 
 ### From the inventory (D21-D25)
 
@@ -631,14 +638,28 @@ D22 citation from elsewhere still lands on it.
   maintenance? Affects the M04 admission and M16, which consumes it.
   Recommended: the current active long-term line, per D10. The CI major is end
   of life and is not a candidate at all; the guide major buys nothing over the
-  current line and expires sooner.
+  current line and expires sooner. **Settled at M04 (2026-09-28), superseded by
+  D65:** the maintainer chose D65's line rather than the current long-term one.
+  The accessibility gate pins Node 26.10.0 by the sha256 of its release tarball,
+  and the 26.x line enters Active LTS on 2026-10-28 (the nodejs/Release
+  schedule, read 2026-09-28), after which D65 and this recommendation name the
+  same line. The imported CI and guide majors are both superseded, and the M01
+  drift register's Node row is closed with that exact pin.
 - **D43** Which package manager does the UI use? The imported guide prescribes
   one and the imported CI and Makefile assume another, and the choice determines
   which lockfile format M04 commits. Recommended: defer to whatever the shared
   template matrix supplies for this framework, since D10 already routes the
   stack toward the shared UI framework; choosing independently would create a
   second drift axis. If the matrix is silent, take the guide's choice and delete
-  the contrary assumptions rather than carrying both.
+  the contrary assumptions rather than carrying both. **Decided at M04
+  (2026-09-28):** pnpm, at its latest stable 12.x release, 12.6.0 on 2026-09-28,
+  pinned through the `packageManager` field of
+  `ui/concordia-tokens/package.json` and admitted in
+  `docs/roadmap/toolchain-admission.md`; the lockfile is `pnpm-lock.yaml`. The
+  shared UI framework's own repository, golusoris/sveltesentio, pins pnpm
+  11.27.0 in its root `packageManager` (read 2026-09-28); that value is not
+  inherited, and the imported CI's and Makefile's contrary assumptions stay
+  quarantined with them.
 - **D44** Does the repository adopt commit-digest pinning for third-party
   workflow actions, or keep major-tag references? Affects M13 and, by precedent,
   the repository-owned preparation gate. Recommended: digest-pin everything

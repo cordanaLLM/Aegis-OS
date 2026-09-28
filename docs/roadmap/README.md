@@ -50,9 +50,9 @@ Current verified state at revision time:
   `Platform Neutrality (Windows)` and `Documentation Governance`.
 - Every milestone and epic is mirrored as a GitHub milestone and a `roadmap`
   issue; M27 is GitHub milestone 28, and E27-1 to E27-3 and E16-3 are issues
-  #125 to #128. The exceptions are E11-5 and E20-3, which D84 adds and which are
-  not mirrored yet, and issues #79, #80, #52 and #53, whose E24-1, E24-2, E11-1
-  and E11-2 text predates D84 and D85.
+  #125 to #128. E11-5 and E20-3, which D84 adds, are issues #139 and #140;
+  #52 and #53 carry the E11-1 and E11-2 text of D84 and D85, and #79 and #80
+  (E24-1, E24-2) are closed with M24 (read back 2026-09-28).
   `planning/roadmap.json` stays the source of truth.
 - cordanaLLM/imago and cordanaLLM/nucleus resolve and decode the M18 payloads,
   and neither builds an image or a kernel yet (M09's disclosure of 2026-09-27).
@@ -163,8 +163,8 @@ score.
 | 13 | M19 | eBPF objects loaded through the verifier on the host kernel | done | medium | no | no | full | M05, M07 | M10 |
 | 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | done | medium | yes | no | full | M07, M26 | M10 |
 | 15 | M24 | Local boot harness over an externally supplied artifact | done | large | yes | no | full | M15 | M11 |
-| 16 | M04 | UI accessibility harness: P12 Concordia tokens | ready | medium | no | no | not-hardware | M02 | M16 |
-| 17 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
+| 16 | M04 | UI accessibility harness: P12 Concordia tokens | done | medium | no | no | not-hardware | M02 | M16 |
+| 17 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | ready | small | no | no | not-hardware | M04, M14 | - |
 | 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
 | 19 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
 | 20 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
@@ -1287,7 +1287,7 @@ Epics:
 
 ### M04 - UI accessibility harness: P12 Concordia tokens
 
-Rank 16. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 16. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M02. Unblocks: M16.
 
@@ -1308,9 +1308,12 @@ Exit criteria:
   the reference profile runs Node v26.10.0 (v26.8.2 on 2026-09-13) and pnpm
   10.29.3, neither of which is the register's Node 20 or Node 22, so the row is
   closed with an exact pin and not inherited (D65).
-- The Playwright browser revision is pinned to the version actually exercised;
-  the reference profile has chromium-1228 cached, and the gate must fail rather
-  than silently download a different revision.
+- The Playwright browser revision is pinned to the browser revision bundled by
+  the pinned @playwright/test and container image digest, and the gate must fail
+  rather than silently download a different revision. The reference profile's
+  host browser cache held chromium-1243 when observed on 2026-09-28
+  (chromium-1228 on 2026-09-13); it is written by Praetor's figure engine and is
+  never the evidence (D90).
 - The Node major is the latest release line (26.x on the reference profile) and
   is tracked forward by Renovate rather than pinned to an older line (D65)
 - D81: the gate runs the WCAG 2.2 AA tag set (wcag2a, wcag2aa, wcag21a,
@@ -1329,6 +1332,57 @@ Exit criteria:
 Cheapest exit: Build the token file plus one Svelte component and run the axe
 suite in a container. No compositor and no daemons.
 
+Evidence (the D90 and D89 disclosures and the closing summary; every entry is in
+`planning/roadmap.json`, and the run is on
+`docs/build/accessibility-harness.md`):
+
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: exit criterion 5 was rewritten in
+  planning/roadmap.json during this delivery, under decision D90 (2026-09-28),
+  before the state moved to done. It read 'The Playwright browser revision is
+  pinned to the version actually exercised; the reference profile has
+  chromium-1228 cached, and the gate must fail rather than silently download a
+  different revision.' It now pins the browser revision bundled by the pinned
+  @playwright/test and container image digest, and records chromium-1243 as the
+  host-cache revision observed on 2026-09-28. This is a correction and not a
+  relaxation: the gate still fails rather than download another revision, and
+  the pin now binds to the lockfile and the image digest instead of to a cache
+  that Praetor's figure engine writes, whose own Playwright pin moved it from
+  chromium-1228 to chromium-1243 on 2026-09-27. D65's text in
+  docs/roadmap/README.md is restated the same way, and the README's M04 section
+  mirrors the new criterion. No other exit criterion and neither epic's text
+  changed.
+- Disclosure, in the shape M18 recorded: E04-2 lists REQ-P12-01 (UKI compilation
+  gated on an accessibility pass), REQ-P12-02 (the portal's settings over D-Bus)
+  and REQ-P12-03 (AT-SPI2) while M04's cheapest exit has no compositor and no
+  daemons. Under decision D89 (2026-09-28) M04 covers their CSS level only, with
+  Playwright's reducedMotion and forcedColors emulation, each labelled in the
+  test title, the gate output and docs/build/accessibility-harness.md as browser
+  emulation. A third labelled test reads Chromium's accessibility tree; D89 does
+  not name it, and it counts towards nothing. The portal half of REQ-P12-02, the
+  AT-SPI2 half of REQ-P12-03 and the UKI gating of REQ-P12-01 are not met by
+  M04, and no emulation counts as daemon evidence. D89 assigns them to the
+  milestones that own the shell and the image, M16 and M27, but no milestone
+  carries them yet: M16's epics list none of the three and its D77 criterion
+  keeps the portal settings and AT-SPI2 on D-Bus mocks, M27 is the P17 VA-API
+  slice, and M11 says only that the accessibility gate attaches when the UI
+  enters an image. Until a recorded decision adds them to a milestone's criteria
+  and epics they are open and owned by no milestone, listed with P12's
+  activation blockers in planning/components.json and P12's row in
+  docs/roadmap/inventory.md (recorded with D89 in docs/roadmap/README.md).
+  E04-2's text is unchanged; this narrows what its three requirement ids are
+  evidence of here, and it is disclosed as a narrowing.
+- Done, as D89 and D90 scope the bar, and each part by the entry named: criteria
+  1, 4 and 6 by the toolchain entry (Node 26.10.0 and pnpm 12.6.0 exact and
+  locked, the drift row closed, Renovate tracking forward); criterion 2 by the
+  suite entry (headless in the pinned container, zero violations, the stripped
+  outline failing, the D16 width and 3:1 boundaries); criterion 3 by the D17 and
+  suppression entry; criterion 5 by the browser entry; criterion 7 by the D81
+  entry; criterion 8 by the D76 entry; E04-1 and E04-2 by their entries. Each
+  rests on the recorded runs or on tools/test_a11y.py inside `make verify-all`,
+  and none on simulated output: the emulation results are labelled as such and
+  count as nothing more (D89).
+
 Epics:
 
 - **E04-1 UI toolchain admission and lockfiles**. Requirements: REQ-UI-01,
@@ -1346,7 +1400,7 @@ Epics:
 
 ### M16 - P05 Forum shell state and lifecycle with stubbed IPC
 
-Rank 17. State: blocked. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 17. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M04, M14. Unblocks: nothing.
 
@@ -3269,17 +3323,27 @@ Open decisions:
   20 vs 22'? (D42 relates.) Recommended: Resolve D42 with an exact pin against a
   current LTS decision; do not inherit either register value and do not silently
   adopt v26.8.2 because it happens to be installed. Record the reference-profile
-  values (Node v26.8.2, pnpm 10.29.3, Playwright chromium-1228 cached) in the
-  template matrix beside the chosen pin. Why: The machine runs a third version
-  that appears nowhere in the register, so the row cannot be closed by picking a
-  side — the evidence has moved past both options. M01's register explicitly
-  marks these as proposal data to be resolved rather than inherited, and M04's
-  gate would otherwise pass on whatever the workstation happens to have. The
-  Playwright browser cache is already populated at chromium-1228, which makes it
-  particularly easy for an unpinned gate to look green for the wrong reason.
-  **Decision (2026-09-13):** The UI toolchain admits the latest Node major (26.x
-  as installed on the reference profile) and tracks it forward with Renovate,
-  rather than pinning an older line.
+  values (Node v26.8.2, pnpm 10.29.3) in the template matrix beside the chosen
+  pin, and pin the browser revision bundled by the pinned `@playwright/test` and
+  container image digest (restated under D90). Why: The machine runs a third
+  version that appears nowhere in the register, so the row cannot be closed by
+  picking a side — the evidence has moved past both options. M01's register
+  explicitly marks these as proposal data to be resolved rather than inherited,
+  and M04's gate would otherwise pass on whatever the workstation happens to
+  have. The Playwright browser cache was already populated (chromium-1228 on
+  2026-09-13), which makes it particularly easy for an unpinned gate to look
+  green for the wrong reason. **Decision (2026-09-13):** The UI toolchain admits
+  the latest Node major (26.x as installed on the reference profile) and tracks
+  it forward with Renovate, rather than pinning an older line. **Recorded at M04
+  (2026-09-28):** the accessibility gate pins Node 26.10.0 by the sha256 of its
+  release tarball; the 26.x line enters Active LTS on 2026-10-28 (the
+  nodejs/Release schedule, read 2026-09-28), and D42 is settled by this
+  decision. The host browser cache is written by Praetor's figure engine, held
+  chromium-1243 on 2026-09-28, and is never the evidence (D90). Renovate counts
+  a Node release as unstable until its line reaches LTS, so once 26.x is LTS it
+  would not offer the next Current line; `renovate.json` sets `ignoreUnstable`
+  to false for `node` in `ui/concordia-tokens`, so the pin is offered each new
+  release line when it is released.
 - **D66** Is bpf/scx_cake.bpf.c an Aegis original or a fork of upstream
   scx-scheds, given that the distribution already ships the binary? Recommended:
   Record the provenance explicitly in M19: either pin the upstream scx-scheds
@@ -3731,6 +3795,85 @@ them, change none, and are written down so they are not reopened.
   sixth criterion and E11-2 forbade, so both now except that one scheme and
   still fail M11 on any other change, and M11 discloses the relaxation. M11
   stays blocked; M09 is its one unfinished blocker.
+
+### Decisions from the M04 delivery (2026-09-28)
+
+The maintainer decided D86 to D90 on 2026-09-28, before M04's implementation,
+from the research that preceded it, and settled two open drift-register
+decisions the same day: D42 is superseded by D65, whose 26.x line enters Active
+LTS on 2026-10-28, and D43 is decided for pnpm at its latest stable 12.x, pinned
+through `packageManager` (both recorded in place in
+`docs/roadmap/inventory.md`). D89 and D90 change a milestone's acceptance and
+M04 discloses both in its evidence; D86, D87 and D88 record how M04 is
+delivered.
+
+- **D86** Does M04 advance P12 in `planning/components.json`, or only record
+  milestone evidence? Options: evidence only, P12 staying a proposal as the
+  components of M17, M05, M06 and M08 did; activate P12 in M04 and extend
+  `tools/verify_preparation.py` to read a `package.json` manifest; defer
+  activation to a later milestone once that extension exists. Why: no M04
+  criterion asks for a status change, and the validator binds activation to a
+  Cargo manifest, which a `package.json` is not. **Decision (2026-09-28):**
+  evidence only. P12 stays a proposal and the validator is unchanged; P12's
+  blockers are restated with what M04 delivered.
+- **D87** Which `@sveltesentio/*` packages does M04 declare? Options: none, with
+  plain CSS custom properties and one Svelte 5 component, M16 adopting packages
+  when the shell needs them; `@sveltesentio/core` and `@sveltesentio/testing`;
+  `@sveltesentio/ui` for its tokens. Why: D10 admits no package a component has
+  not declared. The published `@sveltesentio/testing` 0.1.0 declares
+  `@sveltesentio/core` 0.1.0 as an exact peer and exports TypeScript sources a
+  Playwright spec cannot import from `node_modules`, `@sveltesentio/ui` 0.5.0
+  brings Tailwind, in tension with D17, and no package carries the D16 width or
+  the D76 stroke and motion tokens. **Decision (2026-09-28):** none in M04.
+- **D88** Where does the accessibility gate run? Options: inside `make
+  verify-all` with a guard that prints a skip reason when no container engine is
+  found or the digest-pinned image or the offline dependency store is not
+  present locally, the gate itself never pulling and running the container with
+  networking disabled, a separate fetch target pulling the image by digest and
+  filling an offline store, and CI running that fetch before `make verify-all`;
+  a separate target with its own CI job, outside `make verify-all`; inside `make
+  verify-all`, pulling on demand. Why: the CI runner has a container engine, so
+  unlike the kernel and boot gates this one can run there, and keeping the pull
+  out of the gate is what lets it honour REQ-P12-04's disabled network.
+  **Decision (2026-09-28):** the first option. The fetch target is `make
+  a11y-fetch`, which `.github/workflows/ci.yml` runs before `make verify-all`.
+- **D89** How does M04 treat REQ-P12-01 (UKI compilation gated on an
+  accessibility pass), REQ-P12-02 (the portal's settings over D-Bus) and
+  REQ-P12-03 (AT-SPI2), which E04-2 lists while M04's cheapest exit has no
+  compositor and no daemons? Options: cover their CSS level with Playwright's
+  reduced-motion and forced-colours emulation, labelled as browser emulation in
+  the output and the evidence, and record the portal, AT-SPI2 and UKI halves as
+  not met by M04; build a portal stub and an AT-SPI2 probe in M04; drop the
+  three from E04-2. Why: emulation is not the desktop, and counting it as portal
+  or AT-SPI2 evidence would be simulated output. **Decision (2026-09-28):** the
+  first option. The portal, AT-SPI2 and UKI halves stay with the milestones that
+  own the shell and the image, M16 and M27, and no emulation counts as daemon
+  evidence.
+
+  **Recorded with D89 (2026-09-28, at the delivery's review).** No milestone
+  carries the three halves yet. M16's epics list none of REQ-P12-01 to
+  REQ-P12-03, and its D77 criterion keeps the portal settings and AT-SPI2 on
+  D-Bus mocks; M27 is the P17 VA-API slice, whose epics list REQ-P17 and REQ-WS
+  rows only; and M11 says only that the accessibility gate attaches when the UI
+  enters an image. REQ-P12-06's scan of the Forum Shell is in the same position,
+  since M04 scans the P12 component only. Until a recorded decision adds them to
+  a milestone's criteria and epics, they are open and owned by no milestone;
+  P12's activation blockers in `planning/components.json` and P12's row in
+  `docs/roadmap/inventory.md` list them. M04 also runs a third labelled test
+  that reads Chromium's accessibility tree; D89 does not name it, it is not
+  AT-SPI2 evidence, and it counts towards nothing.
+- **D90** M04's fifth criterion named chromium-1228 as the revision cached on
+  the reference profile. Options: restate it as the browser revision bundled by
+  the pinned `@playwright/test` and container image digest; fix it in a separate
+  change; leave the text and note the drift in the evidence. Why: the host cache
+  is written by Praetor's figure engine, whose own pin moved it to chromium-1243
+  on 2026-09-27, so a criterion tied to it moves with another repository.
+  **Decision (2026-09-28):** the first option, in this delivery. The criterion
+  in `planning/roadmap.json`, its mirror below and D65's text now name the
+  browser revision bundled by the pinned `@playwright/test` and container image
+  digest; 1243 is recorded as the host-cache revision observed on 2026-09-28,
+  the host cache is never the evidence, and M04's evidence carries a disclosure
+  entry in the shape M18 recorded.
 
 ## Evidence
 

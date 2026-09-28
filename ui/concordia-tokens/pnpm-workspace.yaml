@@ -1,0 +1,10 @@
+---
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+#
+# pnpm settings for the M04 accessibility package. pnpm 12 reads its settings
+# from this file, not from .npmrc. engineStrict turns the exact Node and pnpm
+# versions in package.json "engines" into a refusal: an install on any other
+# Node fails with ERR_PNPM_UNSUPPORTED_ENGINE instead of warning, so the gate
+# cannot run on the image's own Node by accident.
+engineStrict: true

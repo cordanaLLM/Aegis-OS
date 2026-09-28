@@ -1,0 +1,25 @@
+{
+  "name": "aegis-concordia-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "description": "P12 Concordia design tokens, one Svelte 5 component that consumes them, and the M04 accessibility suite. Development evidence only.",
+  "license": "EUPL-1.2",
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": "26.10.0",
+    "pnpm": "12.6.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "test:a11y": "playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "axe-core": "4.13.0",
+    "svelte": "5.57.1",
+    "vite": "8.3.1"
+  }
+}
