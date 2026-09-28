@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+#
+# One run of the praetor pin auto-bump (docs/build/praetor-bump.md). A user
+# unit: `make install-praetor-bump` installs it for the maintainer and replaces
+# @AEGIS_REPO@ with the checkout it was run from. It is started by
+# aegis-praetor-bump.path when praetorctl is reinstalled, and by
+# aegis-praetor-bump.timer once a day.
+[Unit]
+Description=Bump the Aegis-OS CI praetorctl pin to Praetor main
+Documentation=file://@AEGIS_REPO@/docs/build/praetor-bump.md
+# The bump pushes and opens pull requests as the maintainer; it never runs as root.
+ConditionUser=!root
+
+[Service]
+Type=oneshot
+WorkingDirectory=@AEGIS_REPO@
+ExecStart=/usr/bin/python3 @AEGIS_REPO@/tools/praetor_bump.py
+# The tools the gates start: praetorctl's replacement is prepended by the
+# script itself; cargo and rustup, gh, go, npx and lefthook are found here.
+Environment=PATH=%h/.local/bin:%h/go/bin:%h/.cargo/bin:/usr/local/bin:/usr/bin
+# A oneshot has no start timeout by default. Every command the script starts
+# has its own deadline; this bounds the whole run (HISS-02).
+TimeoutStartSec=4h
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=yes

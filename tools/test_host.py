@@ -11,9 +11,14 @@ is written next week, so the rule is enforced over the tree rather than over a
 list of known offenders.
 """
 
+import contextlib
 import pathlib
 import re
+import subprocess
+import sys
+import tempfile
 import unittest
+from unittest import mock
 
 import host
 
@@ -123,6 +128,91 @@ class HostProbeTests(unittest.TestCase):
         self.assertTrue((reason is None) == enforced)
         if not enforced:
             self.assertIn("read-only directory", reason)
+
+
+class LockTests(unittest.TestCase):
+    """`exclusive_lock()` keeps two runs apart, and says why it did not lock."""
+
+    def test_the_first_lock_is_taken_and_a_second_is_refused(self):
+        """Positive and negative: flock locks belong to an open file description."""
+        if host.fcntl is None:
+            self.skipTest("fcntl is absent on this host; the refusal is covered below")
+        with tempfile.TemporaryDirectory() as base:
+            path = pathlib.Path(base) / "lock"
+            with open(path, "a+", encoding="utf-8") as first, open(
+                path, "a+", encoding="utf-8"
+            ) as second:
+                self.assertEqual(host.exclusive_lock(first), (True, None))
+                held, reason = host.exclusive_lock(second)
+                self.assertFalse(held)
+                self.assertIn("another run holds the lock", reason)
+            with open(path, "a+", encoding="utf-8") as third:
+                self.assertEqual(host.exclusive_lock(third), (True, None))
+
+    def test_a_host_without_fcntl_is_refused_with_a_reason(self):
+        """Boundary: the Windows shape, simulated everywhere so every leg runs it."""
+        with mock.patch.object(host, "fcntl", None), tempfile.TemporaryFile("a+") as handle:
+            held, reason = host.exclusive_lock(handle)
+        self.assertFalse(held)
+        self.assertIn("fcntl.flock()", reason)
+
+
+class EndSessionTests(unittest.TestCase):
+    """`end_session()` stops what a timed-out child started, or says why it cannot."""
+
+    def test_a_running_session_is_ended(self):
+        """Positive: the child and its session are gone after the call."""
+        if getattr(host.os, "killpg", None) is None:
+            self.skipTest("os.killpg is absent on this host; the refusal is covered below")
+        child = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(60)"], start_new_session=True
+        )
+        try:
+            self.assertEqual(host.end_session(child.pid), (True, None))
+            self.assertIsNotNone(child.wait(timeout=10))
+        finally:
+            child.kill()
+            child.wait(timeout=10)
+
+    def posix_group(self, **killpg):
+        """Patch in a POSIX `killpg` and `SIGKILL`, so every leg reaches the signal call.
+
+        Both are POSIX-only: on the Windows leg `create=True` supplies them, and
+        without SIGKILL the call would never reach the patched `killpg`.
+        """
+        stack = contextlib.ExitStack()
+        stack.enter_context(mock.patch.object(host.signal, "SIGKILL", 9, create=True))
+        stack.enter_context(mock.patch.object(host.os, "killpg", create=True, **killpg))
+        return stack
+
+    def test_a_session_that_already_ended_is_not_an_error(self):
+        """Boundary: nothing left to signal is the success case, not a failure."""
+        with self.posix_group(side_effect=ProcessLookupError):
+            self.assertEqual(host.end_session(4242), (True, None))
+
+    def test_a_host_without_killpg_answers_with_a_reason(self):
+        """Negative: the Windows shape, simulated everywhere so every leg runs it."""
+        with mock.patch.object(host, "os", mock.Mock(spec=[])):
+            ended, reason = host.end_session(4242)
+        self.assertFalse(ended)
+        self.assertIn("os.killpg()", reason)
+
+    def test_a_host_without_sigkill_answers_with_a_reason(self):
+        """Negative: Windows has no SIGKILL even where a `killpg` is present."""
+        with mock.patch.object(host.os, "killpg", create=True) as killpg, mock.patch.object(
+            host, "signal", mock.Mock(spec=[])
+        ):
+            ended, reason = host.end_session(4242)
+        self.assertFalse(ended)
+        self.assertIn("signal.SIGKILL", reason)
+        killpg.assert_not_called()
+
+    def test_a_refused_signal_answers_with_a_reason(self):
+        """Negative: a group the host will not signal is reported, not raised."""
+        with self.posix_group(side_effect=PermissionError("no")):
+            ended, reason = host.end_session(4242)
+        self.assertFalse(ended)
+        self.assertIn("could not be signalled", reason)
 
 
 class PosixOnlyApiSweep(unittest.TestCase):

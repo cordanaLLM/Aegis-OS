@@ -2,7 +2,8 @@ SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
 .PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-kernel verify-bpf \
-	verify-latency verify-sources verify-reuse readiness test build boot release
+	verify-latency verify-sources verify-reuse readiness test build boot release \
+	install-praetor-bump uninstall-praetor-bump
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
 # too: a repository whose instructions say "run make verify-all" must not have a
@@ -198,6 +199,42 @@ verify-reuse:
 
 readiness:
 	python3 tools/verify_preparation.py --readiness
+
+# The local praetor pin auto-bump (docs/build/praetor-bump.md). It installs
+# three systemd user units for the invoking user, never root:
+#
+#   * aegis-praetor-bump.service runs tools/praetor_bump.py from THIS checkout,
+#     so @AEGIS_REPO@ in the templates under tools/praetor-bump/ becomes
+#     $(CURDIR). Run the target from the primary checkout, not a worktree that
+#     will be deleted;
+#   * aegis-praetor-bump.path starts it when ~/.local/bin/praetorctl changes,
+#     which Praetor's `make dev-install` does;
+#   * aegis-praetor-bump.timer starts it once a day as the fallback.
+#
+# The path unit and the timer are enabled and started; the service only ever
+# runs when one of them starts it or by hand. Neither target is part of
+# verify-all: they change the workstation, not the repository.
+# uninstall-praetor-bump stops and removes all three.
+SYSTEMD_USER_DIR ?= $(HOME)/.config/systemd/user
+PRAETOR_BUMP_UNITS := aegis-praetor-bump.service aegis-praetor-bump.path aegis-praetor-bump.timer
+
+install-praetor-bump:
+	@if [ "$$(id -u)" -eq 0 ]; then \
+		printf '%s\n' 'install-praetor-bump: refusing to run as root; the bump runs as the maintainer.' >&2; \
+		exit 1; \
+	fi
+	mkdir -p '$(SYSTEMD_USER_DIR)'
+	for unit in $(PRAETOR_BUMP_UNITS); do \
+		sed 's|@AEGIS_REPO@|$(CURDIR)|g' "tools/praetor-bump/$$unit" > '$(SYSTEMD_USER_DIR)'/"$$unit" || exit 1; \
+	done
+	systemctl --user daemon-reload
+	systemctl --user enable --now aegis-praetor-bump.path aegis-praetor-bump.timer
+
+uninstall-praetor-bump:
+	-systemctl --user disable --now aegis-praetor-bump.path aegis-praetor-bump.timer
+	-systemctl --user stop aegis-praetor-bump.service
+	for unit in $(PRAETOR_BUMP_UNITS); do rm -f '$(SYSTEMD_USER_DIR)'/"$$unit"; done
+	systemctl --user daemon-reload
 
 # test == the preparation gate, which now carries the crate gate itself.
 test: verify-all

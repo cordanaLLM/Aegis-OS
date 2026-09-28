@@ -119,4 +119,5 @@ nav:
       - Domain glossary: context.md
       - Governance: governance.md
       - Contributing: contributing.md
+      - Praetor pin auto-bump: build/praetor-bump.md
       - Licensing: licensing.md
