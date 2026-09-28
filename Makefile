@@ -2,7 +2,7 @@ SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
 .PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-kernel verify-bpf \
-	verify-latency verify-sources verify-reuse readiness test build boot release \
+	verify-latency verify-boot verify-sources verify-reuse readiness test build boot release \
 	install-praetor-bump uninstall-praetor-bump
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
@@ -190,6 +190,51 @@ verify-bpf:
 # PREEMPT_RT buys. See docs/build/latency.md.
 verify-latency:
 	python3 tools/verify_latency_fixture.py
+
+# The boot harness gate (M24, D62, D72, D84): an externally supplied artifact --
+# today the pinned Fedora Cloud UEFI-UKI 44 image, at M11 an Imago return -- is
+# verified against its signed CHECKSUM and booted headless under QEMU with KVM,
+# OVMF with Secure Boot and a swtpm TPM, and the guest reads PCR 0, 4, 7 and 11
+# back from inside itself with a per-boot nonce.
+#
+# It is deliberately NOT part of verify-all, for the reasons verify-latency is
+# not, plus one of its own:
+#
+#   * it boots five guests, which on the reference profile is about forty-five
+#     seconds of wall clock, and it needs a 630 MB artifact in its cache;
+#   * the CI runner has no /dev/kvm, and the harness has no TCG fallback: a boot
+#     without KVM is a different claim, so on the runner it could only skip. A
+#     gate that always skips is not a gate.
+#
+# What CI does re-run is the half that needs no guest: tools/test_boot_harness.py
+# holds the pin, the producer-version floor, the inclusive timeout rule and its
+# boundary, the guest report parser, the argument vectors, the recorded admission
+# and the set of programs the gate may start at all. It runs inside verify-all.
+#
+# A host that cannot run it prints 'SKIP: <reason>; the boot harness gate did not
+# run.' and exits 0 -- a missing tool, OVMF image, read-write /dev/kvm or cached
+# artifact -- the convention the other hardware gates use. An exit 0 from this
+# target is therefore evidence only when the case lines are above it. The cache
+# is filled with `python3 tools/verify_boot_harness.py --fetch`, which downloads
+# the pinned artifact, its signed CHECKSUM and the signing keys; a failed or
+# mismatched download is a FAIL, not a skip. It never suppresses a failure.
+#
+# It modifies neither the host firmware nor the pinned bytes. The host's Secure
+# Boot variables are read from efivarfs, never written; every guest writes to a
+# throwaway qcow2 overlay and a per-run variable store, and the artifact is
+# hashed before every boot and after the last one. swtpm and QEMU are ended with
+# their whole session on every exit the harness can catch -- a normal end, an
+# exception, SIGINT, SIGTERM, SIGHUP or SIGQUIT -- and QEMU runs with
+# exit-with-parent, so a SIGKILL of the harness takes QEMU down and swtpm ends
+# with its client. gpg runs with --no-autostart, so no gpg-agent is left behind.
+#
+# The cache and the retained logs live under AEGIS_BOOT_HARNESS_DIR, default
+# ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-boot-harness. Nothing is written into
+# the repository. A pass is development evidence on the reference profile: it
+# closes no image, boot, hardware or release gate and is not evidence for M11.
+# See docs/build/boot-harness.md.
+verify-boot:
+	python3 tools/verify_boot_harness.py
 
 verify-sources:
 	python3 tools/verify_preparation.py --sources

@@ -64,6 +64,21 @@ that keep the fragment tied to the schema. Nothing it produces is a release
 artifact and nothing is written into this repository. The commands, the guest's
 own output and the scope limits are in `docs/build/kernel.md`.
 
+## Reviewed and gated (M24)
+
+| Path | What it declares |
+| :--- | :--- |
+| `boot/artifact.pin.json` | the externally supplied artifact the boot harness boots: compose URL, sha256, size, producer version and floor, the clearsigned CHECKSUM and its signing-key fingerprint, and the recorded login-prompt timeout |
+
+This is not an image definition. It pins an upstream image that Aegis boots and
+does not construct (D72, D84): `make verify-boot` verifies the CHECKSUM
+signature by that fingerprint, hashes the cached bytes immediately before every
+boot, and boots them headless under QEMU with KVM, OVMF and swtpm on a throwaway
+overlay. It is **not** part of `make verify-all`; the reasoning is on the
+`verify-boot` target in the `Makefile`. The bytes live outside the repository,
+and the run, the PCR read-back and the scope limits are in
+`docs/build/boot-harness.md`.
+
 ## Still reserved
 
 Current candidates are indexed under `.workingdir/prepared/scaffold/build/`

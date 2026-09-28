@@ -358,6 +358,77 @@ fragments are applied in order by the kernel's own
    `KernelRequirement::config_fragment` renders from
    `build/kernel-requirement.json`. It is generated, not written.
 
+## The boot harness's toolchain, and the artifact it boots (M24)
+
+Every row below is a tool or firmware image `tools/verify_boot_harness.py`
+runs, read back before anything boots, on the reference profile on
+2026-09-28. `tools/test_boot_harness.py` reads this table back and requires it
+to state the same admission as the gate's own `TOOLCHAIN` and `FIRMWARE` lists:
+the names are compared as **sets**, and each row's reference value and its
+Floor cell are compared against the gate's entry, so a row added here for a
+tool the gate never runs, or a value edited on this page alone, fails
+`make verify-all`. The same test holds the set of programs the gate may start
+at all, and requires every admitted tool to be one the gate actually runs.
+
+The three OVMF images print no version, so they are admitted by file digest.
+virt-fw-vars prints none either; the gate runs it once and reads the version
+from the `virt-firmware` Python distribution metadata. The last-but-one column
+is the D69 comparison: the newest upstream release, read on 2026-09-28 from
+each project's own release listing.
+
+| Tool | Reference-profile version | Floor | Latest upstream, read 2026-09-28 | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| qemu-system-x86_64 | 11.1.1 | none declared | 11.1.1, `download.qemu.org` | every guest, `accel=kvm` with no fallback |
+| qemu-img | 11.1.1 | none declared | 11.1.1 | each boot's throwaway overlay, and the read-only ESP copy |
+| swtpm | 0.10.2 | none declared | 0.10.2, `v0.10.2` of 2026-08-19 | the guest's TPM 2.0, one instance per boot |
+| swtpm_setup | 0.10.2 | none declared | 0.10.2, same release | manufactures each boot's TPM state: EK, sha256 bank only |
+| virt-firmware (`virt-fw-vars`) | 26.9 | none declared | 26.9, PyPI | every guest variable store, from the shipped template |
+| sbsign | 0.9.5 | none declared | 0.9.5, tag `v0.9.5` | signs the artifact's UKI with the run's key |
+| sbverify | 0.9.5 | none declared | 0.9.5, same tag | verifies the signed and the unsigned copy against that key |
+| xorriso | 1.5.8.pl02 | none declared | 1.5.8.pl02 of 2026-05-22 | writes the NoCloud `cidata` seed |
+| mcopy (mtools) | 4.0.49 | none declared | 4.0.49 | copies the UKI out of the ESP copy |
+| openssl | 3.6.4 | none declared | 4.0.2 of 2026-08-25; the distribution ships the 3.6 series | makes the run's guest key pair |
+| gpg | 2.4.9 | none declared | 2.5.24 of 2026-09-23; the distribution ships 2.4.9 of the 2.4 branch, which reached upstream end of life on 2026-06-30 | verifies the clearsigned CHECKSUM, with `--no-autostart` so no gpg-agent outlives the gate |
+| curl | 8.22.0 | none declared | 8.22.0 of 2026-09-02 | `--fetch` only: the artifact, the CHECKSUM and the keys |
+| OVMF_CODE.secboot.4m.fd | sha256 `cc150d941d4f1d39e596dedc545384a66ccfb3c9ba5cf9bc3a54d8d427d4d88f` | none declared | edk2-stable202608 of 2026-08-21, packaged as edk2-ovmf 202608-1 | the firmware of every Secure Boot guest |
+| OVMF_VARS.4m.fd | sha256 `5d2ac383371b408398accee7ec27c8c09ea5b74a0de0ceea6513388b15be5d1e` | none declared | same release | the template every guest store is generated from |
+| OVMF_CODE.4m.fd | sha256 `2febd26c0b4cf95a636a941afa37d64a552723443ed9ac72f763f6840da98cb4` | none declared | same release | the firmware of the contrast boot, without Secure Boot |
+
+Two rows are behind upstream and stay as recorded: openssl and gpg are the
+distribution's packages, and nothing this gate does depends on a feature of the
+newer series. gpg is the one that matters most, because it is the signature
+verifier: GnuPG's download page lists the 2.4 branch as past its end of life
+on 2026-06-30 (read 2026-09-28), with 2.5 and 2.6 current. It stays admitted
+because the distribution ships 2.4.9 and nothing newer, and the gate uses it
+only to import public keys and to check one clearsigned file against a pinned
+fingerprint. Moving the row to a 2.5 or 2.6 release once the distribution ships
+one is a D69 refresh. xorriso's version carries its patch level, `.pl02`, which
+the gate reads back as part of the version.
+The pin is a reference value rather than a floor for every row,
+the shape M23 and M26 used: no source this gate relies on declares a minimum,
+so a different installed version prints beside the recorded one instead of
+being refused.
+
+**The artifact is pinned by a file, not by a tool.**
+`build/boot/artifact.pin.json` names Fedora-Cloud-Base-UEFI-UKI 44-1.7 at its
+compose URL under `/releases/44/`, sha256
+`2b0af3e6bf4add3695e52df5db3b2eb48d081ab38963ae48c35fca45d5c31b64`, 630784000
+bytes, producer-version floor `44-1.7`, and the signing key of the clearsigned
+`Fedora-Cloud-44-1.7-x86_64-CHECKSUM`: fingerprint
+`36F612DCF27F7D1A48A835E4DBFCF71C6D9F90A6`, `Fedora (44)
+<fedora-44-primary@fedoraproject.org>`, the value
+`https://fedoraproject.org/security/` lists for Fedora 44. The gate verifies the
+signature by that fingerprint in gpg's `VALIDSIG` status line, not by a web of
+trust, and hashes the cached bytes against the pin immediately before every
+boot. The bytes live under `AEGIS_BOOT_HARNESS_DIR`, never in the repository;
+`*.qcow2` is ignored by `.gitignore`.
+
+What these rows do **not** claim: that the artifact is an Aegis image, that a
+boot here qualifies hardware, or that the guest's Secure Boot is the host's.
+The programs inside the guest -- `cat`, `od`, `systemctl` and cloud-init itself
+-- belong to the pinned artifact and are covered by its digest, not by a row
+here. `docs/build/boot-harness.md` records the run.
+
 ## Proposed for M27: the display slice's crates and build tools (D80)
 
 These rows are proposals, not admissions. Milestone M27 admits them when its
@@ -451,3 +522,9 @@ taken, no milestone may cite them as admitted toolchain.
   contains no installer, no bootloader tool and nothing that writes outside the
   build directory, so adding one fails `make verify-all` rather than being
   noticed in review.
+- The M24 rows are checked by `tools/test_boot_harness.py` the same way, with
+  the three OVMF images compared by digest. That test also holds the programs
+  the boot harness may start, which contain nothing that writes a firmware
+  variable or a boot entry, and it requires every admitted tool to be one the
+  gate runs. `make verify-boot` then reads each version and digest back before
+  it boots anything.

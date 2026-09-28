@@ -1,0 +1,30 @@
+{
+  "schema": "aegis.m24.boot-artifact-pin.v1",
+  "note": "M24 development evidence only. This is an externally supplied upstream image that Aegis boots and does not construct (docs/integration/stack.md); image construction stays with cordanaLLM/imago. The bytes are cached outside the repository and hashed against sha256 immediately before every boot.",
+  "kind": "upstream-distribution-image",
+  "producer": "Fedora Project",
+  "name": "Fedora-Cloud-Base-UEFI-UKI",
+  "version": "44-1.7",
+  "version-floor": "44-1.7",
+  "architecture": "x86_64",
+  "format": "qcow2",
+  "file": "Fedora-Cloud-Base-UEFI-UKI-44-1.7.x86_64.qcow2",
+  "url": "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Cloud/x86_64/images/Fedora-Cloud-Base-UEFI-UKI-44-1.7.x86_64.qcow2",
+  "sha256": "2b0af3e6bf4add3695e52df5db3b2eb48d081ab38963ae48c35fca45d5c31b64",
+  "size": 630784000,
+  "signature": {
+    "scheme": "gpg-clearsigned-checksum",
+    "checksum-file": "Fedora-Cloud-44-1.7-x86_64-CHECKSUM",
+    "checksum-url": "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Cloud/x86_64/images/Fedora-Cloud-44-1.7-x86_64-CHECKSUM",
+    "key-url": "https://fedoraproject.org/fedora.gpg",
+    "fingerprint": "36F612DCF27F7D1A48A835E4DBFCF71C6D9F90A6",
+    "identity": "Fedora (44) <fedora-44-primary@fedoraproject.org>",
+    "fingerprint-cross-check": "https://fedoraproject.org/security/ lists 36F6 12DC F27F 7D1A 48A8 35E4 DBFC F71C 6D9F 90A6 for Fedora 44 (read 2026-09-28)"
+  },
+  "boot": {
+    "login-prompt-timeout-seconds": 180,
+    "guest-microsoft-db": "uefi11",
+    "shim-fallback-no-reboot": true,
+    "uki-path": "EFI/Linux/6.19.10-300.fc44.x86_64.efi"
+  }
+}

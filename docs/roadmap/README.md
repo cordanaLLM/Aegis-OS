@@ -50,7 +50,10 @@ Current verified state at revision time:
   `Platform Neutrality (Windows)` and `Documentation Governance`.
 - Every milestone and epic is mirrored as a GitHub milestone and a `roadmap`
   issue; M27 is GitHub milestone 28, and E27-1 to E27-3 and E16-3 are issues
-  #125 to #128. `planning/roadmap.json` stays the source of truth.
+  #125 to #128. The exceptions are E11-5 and E20-3, which D84 adds and which are
+  not mirrored yet, and issues #79, #80, #52 and #53, whose E24-1, E24-2, E11-1
+  and E11-2 text predates D84 and D85.
+  `planning/roadmap.json` stays the source of truth.
 - cordanaLLM/imago and cordanaLLM/nucleus resolve and decode the M18 payloads,
   and neither builds an image or a kernel yet (M09's disclosure of 2026-09-27).
   The private readiness matrix is a superseded 2026-09-13 snapshot.
@@ -159,7 +162,7 @@ score.
 | 12 | M07 | Real-time control plane: P04, P07 and P08 logic | done | medium | no | no | not-hardware | M02 | M19, M23, M27 |
 | 13 | M19 | eBPF objects loaded through the verifier on the host kernel | done | medium | no | no | full | M05, M07 | M10 |
 | 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | done | medium | yes | no | full | M07, M26 | M10 |
-| 15 | M24 | Local boot harness over an externally supplied artifact | ready | large | yes | no | full | M15 | M11 |
+| 15 | M24 | Local boot harness over an externally supplied artifact | done | large | yes | no | full | M15 | M11 |
 | 16 | M04 | UI accessibility harness: P12 Concordia tokens | ready | medium | no | no | not-hardware | M02 | M16 |
 | 17 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | blocked | small | no | no | not-hardware | M04, M14 | - |
 | 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
@@ -1140,7 +1143,7 @@ Epics:
 
 ### M24 - Local boot harness over an externally supplied artifact
 
-Rank 15. State: ready. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 15. State: done. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M15. Unblocks: M11.
 
@@ -1153,10 +1156,12 @@ Exit criteria:
   on the reference profile (OVMF_CODE.4m.fd, OVMF_VARS.4m.fd,
   OVMF_CODE.secboot.4m.fd) and swtpm 0.10.2 are selected through the template
   matrix with pinned versions
-- The harness is parameterised over an externally supplied bootable artifact: a
-  pinned upstream distribution image or an Imago return. Aegis constructs no
-  image here; image construction stays with cordanaLLM/imago per
-  docs/integration/stack.md
+- The harness is parameterised over an externally supplied bootable artifact
+  named by a pin file, and is proven here on a pinned upstream distribution
+  image; under D85, verifying an Imago return's signature before boot is M11's,
+  which adds that pin scheme once M09 pins the signature form of the Imago
+  result. Aegis constructs no image here; image construction stays with
+  cordanaLLM/imago per docs/integration/stack.md
 - A swtpm instance is attached to the guest and PCR 0, 4, 7 and 11 are read back
   from inside the booted guest and retained; the reading records that host
   Secure Boot is disabled, so PCR 7 documents the firmware state rather than
@@ -1170,26 +1175,115 @@ Exit criteria:
   second over, and reports the two outcomes differently
 - A pass here is development evidence on the reference profile. It closes no
   image, boot, hardware or release gate, and it is not evidence for M11
+- ukify 262 (262-1-arch, re-read 2026-09-28; ukify 261 on 2026-09-13),
+  sbsigntools 0.9.5, erofs-utils 1.9.4 and virt-firmware 26.9 are installed on
+  the reference profile for the guest-side key store and unified kernel image
+  signing
+- The guest key store is generated from the shipped OVMF variables with
+  virt-fw-vars and the unified kernel image is signed with sbsigntools, so no
+  host firmware setting is changed; the host's own Secure Boot state is recorded
+  but is not this milestone's subject
 
 Cheapest exit: Boot a pinned upstream image headless under QEMU with OVMF and
 swtpm, and retain the console log and PCR readback. No image is constructed.
+
+Evidence (the D84 and D85 disclosures and the closing summary; every entry is
+in `planning/roadmap.json`, and the run is on `docs/build/boot-harness.md`):
+
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: epic E24-2 was rewritten in
+  planning/roadmap.json during this delivery, under decision D84 (2026-09-28),
+  before the state moved to done. Its acceptance read 'Positive: PCR values are
+  read back from swtpm, and the verity root hash matches. Negative: a modified
+  root image fails verity and does not boot to the established state. Boundary:
+  a PCR policy that omits PCR 11 fails to unseal /var. The imported script is
+  not used.' For this milestone that is a narrowing, and it is disclosed as one:
+  the verity and unseal halves are not dropped but moved, the first to M11 as an
+  exit criterion and epic E11-5 (REQ-P02-01) and the second to M20 as an exit
+  criterion and epic E20-3 (REQ-P02-02), each with its own disclosure entry,
+  because a pinned upstream image carries neither a verity root nor a TPM-sealed
+  /var and criterion 2 forbids constructing an image here. What E24-2 keeps is
+  strengthened rather than restated: the PCR read-back is from inside the guest
+  and tied to the boot by a nonce, and PCR 7 is shown to change with the
+  firmware's Secure Boot state. D84 changed none of the nine exit criteria;
+  criterion 2 was restated later under D85, which the next entry discloses.
+  docs/roadmap/README.md now renders criteria 8 and 9, which its M24 section had
+  omitted; that restores the mirror and changes no bar.
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: exit criterion 2 and epic E24-1 were
+  rewritten in planning/roadmap.json during this delivery, under decision D85
+  (2026-09-28), before the state moved to done. Criterion 2 read 'The harness is
+  parameterised over an externally supplied bootable artifact: a pinned upstream
+  distribution image or an Imago return. Aegis constructs no image here; image
+  construction stays with cordanaLLM/imago per docs/integration/stack.md'.
+  E24-1's acceptance read 'Positive: the supplied artifact's digest and
+  signature verify locally before any boot, whether it is a pinned upstream
+  distribution image or an Imago return. Negative: a tampered digest or a bad
+  signature is refused before boot, not during it. Boundary: a producer version
+  exactly at the floor is accepted and one below is refused. Under decision D72
+  this milestone owns the harness and the boot evidence; consuming and verifying
+  an actual Imago result is M11's.' For this milestone that is a narrowing, and
+  it is disclosed as one: the Imago-return half is not dropped but moved to M11,
+  as an exit criterion and as added sentences of E11-1, whose requirements
+  (REQ-P01-01, REQ-P01-06, REQ-P01-08) are E24-1's, with its own disclosure
+  entry there. It moved because the harness's pin schema
+  aegis.m24.boot-artifact-pin.v1 implements one signature scheme,
+  gpg-clearsigned-checksum, and load_pin refuses any other
+  (tools/test_boot_harness.py holds that refusal), while the Imago return's
+  signature form is not pinned: imago's proposed result schema
+  imago.p01.product-result.v1 (its ADR-0020 at 16f964b) carries image-digest and
+  a signature-ref string, is to be agreed in M09, which waits on producer
+  builds, and nothing produces a result yet. A scheme added here would guess a
+  contract M09 has not pinned. The negative and boundary halves of E24-1 and the
+  rest of criterion 2 are unchanged and judged as written, and so are the other
+  eight exit criteria and E24-2 as D84 scoped it. D85 also records that M11's
+  sixth criterion and E11-2, which failed that milestone on any change to the
+  harness, now except that one pin scheme; that relaxation is disclosed on M11.
+- Done, as D84 and D85 scope the bar, and each part by the entry named: criteria
+  1 and 8 by the toolchain entry (every tool read back before any boot, the
+  three OVMF images admitted by sha256, the D69 comparison on the admission
+  page); criterion 2 and E24-1's positive half by the upstream-artifact entry
+  (the CHECKSUM signature by the pinned fingerprint, digest and version read
+  from the signed text only, the bytes hashed before every boot, `--pin`, no
+  image constructed); E24-1's negative and boundary halves and criterion 5's
+  first half by the refusal entry (the tampered copy refused at the digest by
+  the verification and by the boot entry, with no file written and no swtpm or
+  QEMU started, BADSIG on the altered CHECKSUM, 44-1.7 admitted and 44-1.6
+  refused); criteria 3 and 4 by the positive entry (swtpm attached, PCR 0, 4, 7
+  and 11 read inside the guest and retained with the console log and the exit
+  status, the host's disabled Secure Boot recorded beside them); criterion 5's
+  second half and criterion 6 by the timeout entry (the 5 s miss with QEMU still
+  running and stopped by the harness; 179, 180 and 181 s reported as reached,
+  reached, missed); criterion 7 by the scope entry and the gate's own last line;
+  criterion 9 by the key-store and signed-UKI entry; E24-2 by the positive,
+  contrast and REQ-BOOT-02 entries. Each rests on the recorded run
+  r20260928T195251-1a11 or on tools/test_boot_harness.py inside
+  `make verify-all`, and none on simulated output.
 
 Epics:
 
 - **E24-1 Externally supplied artifact verified before boot**. Requirements:
   REQ-P01-01, REQ-P01-06, REQ-P01-08. Acceptance: Positive: the supplied
-  artifact's digest and signature verify locally before any boot, whether it
-  is a pinned upstream distribution image or an Imago return. Negative: a
-  tampered digest or a bad signature is refused before boot, not during it.
-  Boundary: a producer version exactly at the floor is accepted and one below
-  is refused. Under decision D72 this milestone owns the harness and the boot
-  evidence; consuming and verifying an actual Imago result is M11's.
+  artifact's digest and signature verify locally before any boot, for a pinned
+  upstream distribution image. Negative: a tampered digest or a bad signature is
+  refused before boot, not during it. Boundary: a producer version exactly at
+  the floor is accepted and one below is refused. Under decision D72 this
+  milestone owns the harness and the boot evidence; consuming and verifying an
+  actual Imago result is M11's. Under decision D85 the Imago-return half of the
+  positive case moved to M11 (its exit criterion and E11-1), which adds that pin
+  scheme once M09 pins the signature form of the Imago result (the signature-ref
+  of imago.p01.product-result.v1).
 - **E24-2 Real boot evidence replaces the simulated script**. Requirements:
-  REQ-BOOT-01, REQ-BOOT-02, REQ-P01-05, REQ-P02-02, REQ-P02-01. Acceptance:
-  Positive: PCR values are read back from swtpm, and the verity root hash
-  matches. Negative: a modified root image fails verity and does not boot to the
-  established state. Boundary: a PCR policy that omits PCR 11 fails to unseal
-  /var. The imported script is not used.
+  REQ-BOOT-01, REQ-BOOT-02, REQ-P01-05. Acceptance: Positive: PCR 0, 4, 7 and 11
+  are read back from inside a guest booted headless under KVM on the swtpm
+  instance the harness attached, with that boot's own nonce beside them.
+  Negative: a report without the boot's nonce is refused, and the imported
+  integration script and any simulated output never count as boot evidence
+  (REQ-BOOT-02). Boundary: each PCR is recorded as extended or at its reset
+  value, as read, and PCR 7 is shown to change with the firmware's Secure Boot
+  state on the same bytes. Under decision D84 the dm-verity acceptance moved to
+  M11 (E11-5) and the /var unseal without PCR 11 to M20 (E20-3), because a
+  pinned upstream image carries neither a verity root nor a TPM-sealed /var.
 
 ### M04 - UI accessibility harness: P12 Concordia tokens
 
@@ -2333,8 +2427,9 @@ Exit criteria:
   objects enter through M10 and M12
 - The A/B sysupdate transfer is exercised once between root-a and root-b, and
   observed transitions are compared with the M15 state machine
-- The M24 harness is reused unchanged and the only new input is the Imago
-  artifact; a criterion states that no second boot apparatus is built here.
+- The M24 harness is reused unchanged except for the one pin scheme D85 moves
+  here, and the only new inputs are the Imago artifact and its pin; a criterion
+  states that no second boot apparatus is built here.
 - The artifact's digest and signature are verified with the pinned cosign (2.6.3
   on the reference profile) before the boot runs, and a tampered-digest negative
   case is exercised.
@@ -2352,9 +2447,69 @@ Exit criteria:
   list and the built image for the SDK package, its shared library and a
   vendored copy of its source, and fails on any of them. It is a check over
   those names and not a proof that no proprietary component is present.
+- Moved here from M24's E24-2 by D84: the dm-verity root hash of the Imago image
+  matches the value its signed release records, and a modified root image fails
+  verity and does not boot to the established state. M24's pinned upstream image
+  carries no verity root, and M24 constructs no image, so the acceptance can
+  only be judged on this milestone's artifact.
+- Moved here from M24's criterion 2 and E24-1 by D85: the M24 harness verifies
+  the Imago return's digest and signature before any boot. Once M09 pins the
+  signature form of the Imago result (the signature-ref of
+  imago.p01.product-result.v1), this milestone adds that form to the harness's
+  pin schema as a second signature scheme, with its own positive, negative and
+  boundary cases, and the gpg-clearsigned-checksum scheme M24 proved keeps
+  verifying the upstream pin unchanged. M24 proved the upstream kind only, and a
+  scheme added before M09 pins the form would guess its contract.
 
 Cheapest exit: No cheaper exit exists: this is the first real artifact. Keep it
 to one image and one boot, and retain every log.
+
+Evidence:
+
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, one exit
+  criterion and epic E11-5 were added on 2026-09-28 under decision D84. None is
+  a relaxation: they add the dm-verity acceptance that M24's E24-2 carried until
+  then -- 'the verity root hash matches' and 'a modified root image fails verity
+  and does not boot to the established state' -- because a pinned upstream image
+  has no verity root and M24 constructs no image, and REQ-P02-01 moves with it.
+  E11-5's boundary (one flipped bit) is new and strictly narrower than the
+  negative it sits beside. Nothing else in this milestone changed under D84, and
+  the next entry discloses what D85 changed later; M11 was blocked on M09 and
+  M24 when D84 was recorded, M24 has since closed, and this entry is not
+  evidence that any criterion is met.
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, on 2026-09-28
+  under decision D85, one exit criterion was added, and criterion 6, the
+  acceptance of E11-1 and E11-2, the title of E11-2 and the last sentence of
+  E11-5 were rewritten. The added criterion and E11-1's added sentences are not
+  relaxations: they take over the half of M24's criterion 2 and E24-1 that M24
+  could not prove, verifying 'an Imago return' before boot, because the
+  signature form of the Imago result is to be pinned in M09 and nothing produces
+  a result yet. E11-1 read 'Positive: digest and signature verify locally.
+  Negative: a tampered image digest or bad signature is rejected. Boundary: a
+  producer version exactly at the floor is accepted, and one below is
+  rejected.'; those sentences stand unchanged. Criterion 6 and E11-2 are
+  relaxed, and are disclosed as such: criterion 6 read 'The M24 harness is
+  reused unchanged and the only new input is the Imago artifact; a criterion
+  states that no second boot apparatus is built here.' and E11-2 read 'Positive:
+  the Imago artifact is fed to the M24 harness with no change to the harness,
+  and the harness reports the same evidence shape it reported for a pinned
+  upstream image. Negative: no second boot apparatus is built here -- a change
+  to the harness fails this milestone rather than being absorbed into it.
+  Boundary: under decision D72 the real boot evidence is M24's epic and the A/B
+  transfer is E11-4's; what this milestone adds is the artifact and the proof
+  that the harness needed nothing new to accept it.' Both now allow exactly one
+  change to the harness, the pin scheme for the signature form M09 pins, with
+  its own positive, negative and boundary cases, and still fail this milestone
+  on any other change or on a second boot apparatus; without that exception the
+  moved acceptance could not be met by any milestone. E11-2's title read 'The
+  Imago artifact runs through the unchanged M24 harness' and E11-5's last
+  sentence ended 'runs on the unchanged M24 harness (E11-2).'; both now name the
+  same one exception and relax nothing beyond it, and the reference-profile
+  rationale, which records why M24 was split out, keeps its wording and gains a
+  dated sentence saying so. Nothing else changed. M24 is done, so M09 is the one
+  blocker left, and this entry is not evidence that any criterion is met.
 
 Epics:
 
@@ -2362,16 +2517,22 @@ Epics:
   REQ-P01-06, REQ-P01-08. Acceptance: Positive: digest and signature verify
   locally. Negative: a tampered image digest or bad signature is rejected.
   Boundary: a producer version exactly at the floor is accepted, and one below
-  is rejected.
-- **E11-2 The Imago artifact runs through the unchanged M24 harness**.
-  Requirements: REQ-P01-05, REQ-P01-01. Acceptance: Positive: the Imago
-  artifact is fed to the M24 harness with no change to the harness, and the
-  harness reports the same evidence shape it reported for a pinned upstream
-  image. Negative: no second boot apparatus is built here -- a change to the
-  harness fails this milestone rather than being absorbed into it. Boundary:
+  is rejected. Under decision D85 this runs in the M24 harness before any boot,
+  through the pin scheme this milestone adds once M09 pins the signature form of
+  the Imago result: the Imago return's digest and signature verify before the
+  boot, a tampered digest or a bad signature is refused before boot and not
+  during it, and the upstream pin M24 recorded still verifies unchanged. This
+  half moved from M24's criterion 2 and E24-1, whose requirements it shares.
+- **E11-2 The Imago artifact runs through the M24 harness, changed only by the
+  D85 pin scheme**. Requirements: REQ-P01-05, REQ-P01-01. Acceptance: Positive:
+  the Imago artifact is fed to the M24 harness with no change to the harness
+  except the pin scheme for its signature form that D85 moves here (E11-1), and
+  the harness reports the same evidence shape it reported for a pinned upstream
+  image. Negative: no second boot apparatus is built here -- any other change to
+  the harness fails this milestone rather than being absorbed into it. Boundary:
   under decision D72 the real boot evidence is M24's epic and the A/B transfer
-  is E11-4's; what this milestone adds is the artifact and the proof that the
-  harness needed nothing new to accept it.
+  is E11-4's; what this milestone adds is the artifact, that one pin scheme and
+  the proof that the harness needed nothing else to accept it.
 - **E11-3 Analyzer gate without suppression in the image path**. Requirements:
   REQ-CI-01. Acceptance: Positive: the M03 gate passes on the image inputs.
   Negative: an ignored-key diagnostic fails the image acceptance. Boundary: no
@@ -2380,6 +2541,14 @@ Epics:
   REQ-P02-08. Acceptance: Positive: the second slot is written read-only and
   boots. Negative: a transfer with a bad signature is discarded. Boundary:
   watchdog expiry before bless rolls back once.
+- **E11-5 dm-verity root verified on the real image**. Requirements: REQ-P02-01.
+  Acceptance: Positive: the verity root hash the harness reads back from the
+  booted Imago image matches the value its signed release records. Negative: a
+  modified root image fails verity and does not boot to the established state.
+  Boundary: a root image identical to the signed one except for one flipped bit
+  fails exactly as a wholesale modification does. This acceptance moved from
+  M24's E24-2 under D84 and runs on the M24 harness, changed only as E11-2
+  allows.
 
 ### M10 - eBPF objects re-verified against the Nucleus-pinned kernel in a VM
 
@@ -2466,9 +2635,31 @@ Exit criteria:
 - The quote covers PCR 0, 4, 7 and 11, while the unseal policy binds PCR 0, 4
   and 11 only: on the reference profile Secure Boot is disabled, so a PCR 7
   policy would attest to that state rather than to a trusted chain (D63)
+- tpm2-tools 5.8 is installed on the reference profile; /dev/tpmrm0 is group tss
+  and the developer account is a member (re-read 2026-09-28), so the PCR read
+  runs unprivileged
+- PCR 7 is measured inside a guest booted against an enrolled variable store, so
+  the value attests a key set rather than recording that Secure Boot was off
+- Moved here from M24's E24-2 by D84: an unseal attempt under a PCR policy that
+  omits PCR 11 fails to unseal /var on the real M11 image, whose /var is
+  TPM-sealed. M24's pinned upstream image has no sealed /var, so the acceptance
+  can only be judged here.
 
 Cheapest exit: Use the M11 VM with swtpm. No physical TPM is required for this
 milestone.
+
+Evidence:
+
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, one exit
+  criterion and epic E20-3 were added on 2026-09-28 under decision D84. None is
+  a relaxation: they add the boundary M24's E24-2 carried until then -- 'a PCR
+  policy that omits PCR 11 fails to unseal /var' -- because a pinned upstream
+  image has no TPM-sealed /var, and E20-2 already cites the same REQ-P02-02. M24
+  does not pre-prove D63's tpm2-tools quote path: its harness reads PCRs through
+  sysfs, so the criterion recording that pre-proof is still open here. Nothing
+  else in this milestone changed; it stays blocked on M11 and M14, and this
+  entry is not evidence that any criterion is met.
 
 Epics:
 
@@ -2481,6 +2672,12 @@ Epics:
   Acceptance: Positive: /var unseals under the enrolled policy. Negative: a
   wrong PCR policy fails to unseal. Boundary: changing only PCR 7 (recorded in
   the quote, excluded from the unseal policy) is enough to prevent unseal.
+- **E20-3 PCR 11 is required to unseal /var**. Requirements: REQ-P02-02.
+  Acceptance: Positive: /var unseals under the enrolled policy that binds PCR 0,
+  4 and 11 (D63). Negative: a PCR policy that omits PCR 11 fails to unseal /var.
+  Boundary: a policy that differs from the enrolled one only by dropping PCR 11
+  is refused, so PCR 11 is load-bearing rather than incidental. This acceptance
+  moved from M24's E24-2 under D84.
 
 ### M12 - GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths
 
@@ -3451,6 +3648,89 @@ beyond TPM2 (TDX, SEV-SNP, CCA).
   decoder binding D80 pins, and it is reviewed whenever that binding is replaced
   or re-pinned. The deviation grants nothing to Aegis-authored code and waives
   no other invariant.
+
+### Decisions from the M24 delivery (2026-09-28)
+
+The maintainer decided D84 on 2026-09-28, before M24's implementation, from the
+research that preceded it, and D85 and the recorded timeout the same day, after
+the delivery's review and its real runs. D84 and D85 change milestones'
+acceptance; the implementation choices recorded with D84, the timeout among
+them, change none, and are written down so they are not reopened.
+
+- **D84** Which of E24-2's acceptance halves can M24 prove on a pinned upstream
+  image? Options: keep the real swtpm PCR read-back and the ban on the imported
+  simulated script in M24, and move the dm-verity acceptance to M11 and the /var
+  unseal without PCR 11 to M20, where a real image exists; build a scratch
+  verity and LUKS2 fixture from the upstream image here; or keep M24 open until
+  an Imago return carries a verity root and a sealed /var. Why: E24-2 asked for
+  a matching verity root hash, a modified root that fails verity, and a PCR
+  policy without PCR 11 that fails to unseal /var. A pinned upstream cloud image
+  has no verity root and no TPM-sealed /var, M24's second criterion forbids
+  constructing an image here, and D63 already says the unseal half needs the
+  real image. **Decision (2026-09-28):** the first option. E24-2 keeps PCR 0, 4,
+  7 and 11 read back from inside a guest booted on swtpm, tied to that boot by a
+  nonce, and the rule that the imported integration script and any simulated
+  output never count (REQ-BOOT-02). The verity acceptance is now an exit
+  criterion and epic E11-5 of M11 (REQ-P02-01), and the unseal acceptance an
+  exit criterion and epic E20-3 of M20 (REQ-P02-02); each carries a disclosure
+  entry in its evidence. M24 does not take D63's pre-proof of the tpm2-tools
+  quote path: the harness reads PCRs through sysfs, and the quote stays M20's.
+
+  **Recorded with D84 (2026-09-28).** The artifact is Fedora-Cloud-Base-UEFI-UKI
+  44-1.7, because it boots a systemd-stub UKI and so exercises PCR 11 and the
+  UKI signing criterion; Ubuntu 26.04 boots shim and GRUB and would leave both
+  untested. The pin is the compose URL, the sha256 and the signing-key
+  fingerprint in `build/boot/artifact.pin.json`; the bytes are cached outside
+  the repository and hashed on the exact file booted, immediately before the
+  boot, and every boot writes to a throwaway overlay. Guest Secure Boot is a
+  per-run variable store generated with virt-fw-vars from the shipped
+  `OVMF_VARS.4m.fd`, with a custom PK and KEK and the Microsoft UEFI CA in db so
+  the distribution-signed image boots unmodified on `OVMF_CODE.secboot.4m.fd`,
+  plus a separate case that signs the UKI with sbsign and the custom key; the
+  host firmware is never written, and its state is read from efivarfs. "Within
+  the recorded timeout" is inclusive: a prompt at exactly the timeout passes.
+  The one-second boundary is tested as a pure rule on synthetic times, and live
+  boots only measure the margin the recorded timeout keeps, which is the lesson
+  of D73: a live edge under host load is not a gate.
+
+  **Recorded timeout (2026-09-28, after the delivery's runs):** As recommended,
+  the recorded login-prompt timeout is raised from 120 s to 180 s, still
+  inclusive. Why: a quiet host reaches the prompt in about 15.5 s, but a
+  `make verify-boot` run while other work held the load average at 89 saw it
+  after 65.7 s, the slowest boot measured, which left 54.3 s under 120 s; at
+  180 s the same boot keeps 114.3 s. The pin, the gate's tests, whose boundary
+  is now 179, 180 and 181 s, and every page that stated 120 s now state 180 s.
+  The negative case keeps its deliberately short 5 s, which is below the
+  firmware and kernel start-up alone.
+
+  M15's last criterion still names M24 as the consumer of the A/B transition
+  trace, and stays as M15 recorded it. Under D72 the transfer is E11-4's, so the
+  consumer is M11 running on this harness; a pinned upstream image has no A/B
+  slots, and nothing in M24 compares the trace. `docs/build/ab-lifecycle.md`
+  carries a dated note saying so.
+- **D85** How does M24 close, when its criterion 2 and E24-1 also ask the
+  harness to verify an Imago return before boot and the signature form of the
+  Imago result is not pinned yet? Alternatives on record from M24's review:
+  close M24 on the upstream-image kind it proves and move the Imago-return
+  verification to M11; keep M24 ready until M09 pins the signature form and
+  this harness gains that scheme with its own cases; or add M09 to M24's
+  blockers. Why: every other part of M24 is met by real runs. The harness's pin
+  schema has one signature scheme, `gpg-clearsigned-checksum`, and refuses any
+  other; imago's proposed result schema `imago.p01.product-result.v1` (its
+  ADR-0020 at 16f964b) carries an image digest and a `signature-ref` string
+  whose form M09 is to pin, M09 waits on producer builds, and nothing produces
+  a result yet. **Decision (2026-09-28):** the first option, as recommended.
+  M24 is done for the upstream-image kind it proves. Verifying an Imago
+  return's signature before boot moves to M11, which adds that pin scheme once
+  M09 pins the signature form of the Imago result (the `signature-ref` of
+  `imago.p01.product-result.v1`). M24's criterion 2 and E24-1 are restated for
+  the upstream kind, and M11 gains an exit criterion and the moved acceptance
+  in E11-1, whose requirements are E24-1's; each milestone carries a disclosure
+  entry in its evidence. A consequence recorded beside the answer, not put to
+  the maintainer: adding a pin scheme is a change to the harness, which M11's
+  sixth criterion and E11-2 forbade, so both now except that one scheme and
+  still fail M11 on any other change, and M11 discloses the relaxation. M11
+  stays blocked; M09 is its one unfinished blocker.
 
 ## Evidence
 
