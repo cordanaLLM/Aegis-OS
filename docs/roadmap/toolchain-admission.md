@@ -429,6 +429,54 @@ The programs inside the guest -- `cat`, `od`, `systemctl` and cloud-init itself
 -- belong to the pinned artifact and are covered by its digest, not by a row
 here. `docs/build/boot-harness.md` records the run.
 
+## The accessibility gate's toolchain (M04)
+
+Every row below is a tool, package or image `tools/verify_a11y.py` runs, read
+back before the suite runs, on the reference profile on 2026-09-28.
+`tools/test_a11y.py` reads this table back and requires each version to be the
+one the pin, `package.json` and the lockfile state, so a value edited on this
+page alone fails `make verify-all`. The pins live in
+`ui/concordia-tokens/toolchain.pin.json` (the image and Node),
+`ui/concordia-tokens/package.json` (`packageManager`, exact `engines` and
+devDependencies) and `ui/concordia-tokens/pnpm-lock.yaml` (every package's
+integrity, and the pnpm binary's). The last-but-one column is the D69
+comparison: the newest upstream release, read on 2026-09-28 from the npm
+registry's `latest` tag, `nodejs.org/dist/index.json` or the project's release
+listing.
+
+| Tool | Pinned version | How it is pinned | Latest upstream, read 2026-09-28 | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| Node.js | 26.10.0; tarball sha256 `ca70e9e349de048b9522abb3adc05b3bd6f43c5ffd3ec57916c7da292f59f022` | `toolchain.pin.json` and `engines.node`, exact, with `engineStrict`; the sha256 is the one in `SHASUMS256.txt`, signed by `5BE8A3F6C8A5C01D106C0AD820B1A390B168D356` | 26.10.0 of 2026-09-21, the Current line, which enters Active LTS on 2026-10-28; the newest LTS is 24.21.0 | runs vite and Playwright inside the container |
+| pnpm | 12.6.0; `@pnpm/exe.linux-x64` integrity `sha512-qFWBneHJAJ73W4whtbaFOL1M/7DBC6ILHXuxc7ZPtEhfPuT1zeZiGrmKHoMAfJA+mcm6xhOFljqVTUS+00Jabw==` | `packageManager` and `engines.pnpm`; the integrity is pnpm-lock.yaml's | 12.6.0 of 2026-09-22 (`latest`); `next-12` is 12.8.1 | installs from the lockfile, offline |
+| `@playwright/test` | 1.63.0 | `package.json`, exact; pnpm-lock.yaml | 1.63.0 of 2026-09-04 | the test runner; the image tag must carry the same version |
+| `chromium-headless-shell` | revision 1243, Chromium 153.0.8010.12 | `toolchain.pin.json`, read back from `playwright-core/browsers.json` and from the launched browser | the revision `@playwright/test` 1.63.0 bundles | the browser the suite drives, baked into the image |
+| `axe-core` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0 of 2026-08-05 | the rule engine; D81 runs its WCAG 2.2 AA tag set |
+| `@axe-core/playwright` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0 of 2026-08-11 | injects axe-core into the page |
+| `svelte` | 5.57.1 | `package.json`, exact; pnpm-lock.yaml | 5.57.1 of 2026-09-18 | the one component |
+| `vite` | 8.3.1 | `package.json`, exact; pnpm-lock.yaml | 8.3.1 of 2026-09-24 | the static build and `vite preview` |
+| `@sveltejs/vite-plugin-svelte` | 7.3.1 | `package.json`, exact; pnpm-lock.yaml | 7.3.1 of 2026-09-23 | compiles the component in the build |
+| Playwright image | `mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27`; linux/amd64 `sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7` | `toolchain.pin.json`; pulled and run by digest only | `v1.63.0-noble`, built 2026-09-04, 912 MiB compressed | Ubuntu 24.04 with the browsers and their libraries; its own Node 24.20.0 is not used |
+| `podman` | 6.1.2 on the reference profile (`podman 6.1.2-1.1`), rootless | the preferred engine when on `PATH`; `AEGIS_A11Y_ENGINE` overrides | 6.1.2 of 2026-09-16 | runs each step; the CI runner's is 4.9.3 |
+| `docker` | 29.8.1 on the reference profile (`docker 1:29.8.1-1.1`) | the fallback engine, run with `--user` | 29.8.1 of 2026-09-15 | runs each step where podman is absent |
+| `curl` | 8.22.0 on the reference profile | recorded, not pinned; started only by `--fetch` (`make a11y-fetch`), with `--proto =https` and a deadline | 8.22.0 of 2026-09-02 | `--fetch` only: downloads the Node tarball and the pnpm binary, each kept only when it hashes to its pin |
+
+Every row is at the newest release except the Node line's LTS status, which D65
+accepts: 26.x is the latest line and becomes LTS on 2026-10-28, and D42 is
+settled by D65. The engines and curl are recorded, not pinned: the gate prints
+which engine ran, and a pass on either is the same claim because the image, the
+Node and the lockfile are the same bytes; curl runs only in `make a11y-fetch`,
+and a download that does not hash to its pin is discarded, so curl's version
+changes no byte the gate runs. `tools/test_a11y.py` requires a row here for
+every program the gate may start on the host. The reference profile's own Node
+(v26.10.0) and pnpm (10.29.3) are not what the gate runs; the M01 drift
+register's "Node 20 vs 22" row is closed with the exact 26.10.0 pin above, and
+pnpm 12.6.0 replaces the reference profile's 10.29.3 for this gate.
+
+What these rows do **not** claim: that the host's Playwright browser cache is
+pinned. `~/.cache/ms-playwright` held chromium-1228 on 2026-09-13 and
+chromium-1243 on 2026-09-28, written by Praetor's figure engine; the gate never
+reads it. `docs/build/accessibility-harness.md` records the run.
+
 ## Proposed for M27: the display slice's crates and build tools (D80)
 
 These rows are proposals, not admissions. Milestone M27 admits them when its
@@ -476,7 +524,9 @@ rather than admissions:
   Node.js and Python runtimes behind them are the runner's.
 - `node`, which `make docs-lint` (part of `make verify-all`) runs directly, is
   the runner's or the workstation's; `.github/workflows/praetor-docs.yml` asks
-  `actions/setup-node` for major version 24. Praetor supplies both files.
+  `actions/setup-node` for major version 24. Praetor supplies both files. The
+  accessibility gate's Node is a different one, admitted above: 26.10.0 by
+  sha256, inside the container.
 - The praetor pin auto-bump (`tools/praetor_bump.py`) runs `yamllint`,
   `flake8`, `black` and `reuse` as the workstation installs them, not through
   `pipx` at the versions above, and builds the documentation portal with the

@@ -1,9 +1,9 @@
 SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
-.PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-kernel verify-bpf \
-	verify-latency verify-boot verify-sources verify-reuse readiness test build boot release \
-	install-praetor-bump uninstall-praetor-bump
+.PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-a11y a11y-fetch verify-kernel \
+	verify-bpf verify-latency verify-boot verify-sources verify-reuse readiness test build boot \
+	release install-praetor-bump uninstall-praetor-bump
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
 # too: a repository whose instructions say "run make verify-all" must not have a
@@ -18,6 +18,7 @@ verify-all:
 	python3 tools/verify_preparation.py
 	$(MAKE) --no-print-directory verify-systemd
 	$(MAKE) --no-print-directory verify-mkosi
+	$(MAKE) --no-print-directory verify-a11y
 	$(PRAETORCTL) compile-context --verify
 	$(PRAETORCTL) audit
 	@if [ -f Cargo.toml ]; then \
@@ -60,6 +61,38 @@ verify-systemd:
 # so this gate validates a definition and constructs no image (D56).
 verify-mkosi:
 	python3 tools/verify_mkosi_definitions.py
+
+# The accessibility gate (M04, D16, D65, D76, D81): the P12 Concordia token
+# file and its one Svelte 5 component are installed from the lockfile, built and
+# scanned with Playwright and axe-core inside the official Playwright image,
+# named by digest in ui/concordia-tokens/toolchain.pin.json, with networking
+# disabled and the repository mounted read-only (REQ-P12-04). Node and pnpm are
+# the pinned releases, not the image's own Node.
+#
+# It IS part of verify-all, unlike verify-boot, because it runs where CI runs:
+# the ubuntu-24.04 runner has a container engine, and CI runs `make a11y-fetch`
+# before `make verify-all`. It guards itself the way verify-systemd and
+# verify-mkosi do: with no podman or docker, without the pinned image, Node
+# archive, pnpm binary or offline store in its cache, or with a store filled for
+# another pnpm-lock.yaml, it prints
+# 'SKIP: <reason>; the accessibility gate did not run.' and exits 0, so an exit 0
+# is evidence only when the case lines are above it. A cached archive that no
+# longer hashes to its pin is a FAIL, not a skip. The gate never pulls and never
+# downloads; it never suppresses a failure.
+#
+# `make a11y-fetch` is the one networked step: it pulls the image by digest,
+# downloads the Node tarball and the pnpm binary, refuses either if it does not
+# hash to its pin, and fills the offline pnpm store from the lockfile, recording
+# that lockfile's sha256 beside it once the fill succeeded. The cache
+# and the retained logs live under AEGIS_A11Y_DIR, default
+# ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-a11y. Nothing is written into the
+# repository. A pass covers the P12 token component; it closes no accessibility
+# gate for the shell or the image. See docs/build/accessibility-harness.md.
+verify-a11y:
+	python3 tools/verify_a11y.py
+
+a11y-fetch:
+	python3 tools/verify_a11y.py --fetch
 
 # The kernel build gate (M26, D70): the pinned linux source is verified, the
 # tracked fragments are applied to x86_64_defconfig, the result is compiled and

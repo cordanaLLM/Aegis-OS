@@ -1,0 +1,546 @@
+{
+  "schema": "aegis.m04.en301549-clause-map.v1",
+  "note": "WCAG 2.2 success criterion to EN 301 549 clause 11 (non-web software), as D81 specifies: the V4.1.1 clause, and the V3.2.1 clause, which names the open-functionality sub-clause where V3.2.1 splits one, and says 'none in V3.2.1' where V4.1.1 adds a WCAG 2.2 criterion. Level AAA criteria are listed because axe-core tags some rules with them; clause 11 makes each Void or has no entry for it. Every clause number was checked against the headings of the two standards at the digests below on 2026-09-28; titles are WCAG 2.2's.",
+  "sources": {
+    "en301549-v4.1.1": {
+      "sha256": "636914c5c18dc58cf7716b8935502f1471de05caf5e1e6ae32469eed929cb824",
+      "url": "https://www.etsi.org/deliver/etsi_en/301500_301599/301549/04.01.01_60/en_301549v040101p.pdf"
+    },
+    "en301549-v3.2.1": {
+      "sha256": "1eee3a1841a94567da8e59f3b19a782ce9ab081c386b6a2a763b8cde13ff5b49",
+      "url": "https://www.etsi.org/deliver/etsi_en/301500_301599/301549/03.02.01_60/en_301549v030201p.pdf"
+    },
+    "wcag-2.2": {
+      "sha256": "6e3c5fe397257cae509a2fb4752b73062cf8cbeb92c2cec618989b17e4cf7057",
+      "url": "https://www.w3.org/TR/2024/REC-WCAG22-20241212/"
+    }
+  },
+  "not-covered-by-axe": [
+    "2.4.11",
+    "2.5.7"
+  ],
+  "criteria": {
+    "1.1.1": {
+      "title": "Non-text Content",
+      "level": "A",
+      "v4.1.1": "11.1.1.1",
+      "v3.2.1": "11.1.1.1.1"
+    },
+    "1.2.1": {
+      "title": "Audio-only and Video-only (Prerecorded)",
+      "level": "A",
+      "v4.1.1": "11.1.2.1",
+      "v3.2.1": "11.1.2.1.1"
+    },
+    "1.2.2": {
+      "title": "Captions (Prerecorded)",
+      "level": "A",
+      "v4.1.1": "11.1.2.2",
+      "v3.2.1": "11.1.2.2"
+    },
+    "1.2.3": {
+      "title": "Audio Description or Media Alternative (Prerecorded)",
+      "level": "A",
+      "v4.1.1": "11.1.2.3",
+      "v3.2.1": "11.1.2.3.1"
+    },
+    "1.2.4": {
+      "title": "Captions (Live)",
+      "level": "AA",
+      "v4.1.1": "11.1.2.4",
+      "v3.2.1": "11.1.2.4"
+    },
+    "1.2.5": {
+      "title": "Audio Description (Prerecorded)",
+      "level": "AA",
+      "v4.1.1": "11.1.2.5",
+      "v3.2.1": "11.1.2.5"
+    },
+    "1.2.6": {
+      "title": "Sign Language (Prerecorded)",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "1.2.7": {
+      "title": "Extended Audio Description (Prerecorded)",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "1.2.8": {
+      "title": "Media Alternative (Prerecorded)",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "1.2.9": {
+      "title": "Audio-only (Live)",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "1.3.1": {
+      "title": "Info and Relationships",
+      "level": "A",
+      "v4.1.1": "11.1.3.1",
+      "v3.2.1": "11.1.3.1.1"
+    },
+    "1.3.2": {
+      "title": "Meaningful Sequence",
+      "level": "A",
+      "v4.1.1": "11.1.3.2",
+      "v3.2.1": "11.1.3.2.1"
+    },
+    "1.3.3": {
+      "title": "Sensory Characteristics",
+      "level": "A",
+      "v4.1.1": "11.1.3.3",
+      "v3.2.1": "11.1.3.3"
+    },
+    "1.3.4": {
+      "title": "Orientation",
+      "level": "AA",
+      "v4.1.1": "11.1.3.4",
+      "v3.2.1": "11.1.3.4"
+    },
+    "1.3.5": {
+      "title": "Identify Input Purpose",
+      "level": "AA",
+      "v4.1.1": "11.1.3.5",
+      "v3.2.1": "11.1.3.5.1"
+    },
+    "1.3.6": {
+      "title": "Identify Purpose",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "1.4.1": {
+      "title": "Use of Color",
+      "level": "A",
+      "v4.1.1": "11.1.4.1",
+      "v3.2.1": "11.1.4.1"
+    },
+    "1.4.2": {
+      "title": "Audio Control",
+      "level": "A",
+      "v4.1.1": "11.1.4.2",
+      "v3.2.1": "11.1.4.2"
+    },
+    "1.4.3": {
+      "title": "Contrast (Minimum)",
+      "level": "AA",
+      "v4.1.1": "11.1.4.3",
+      "v3.2.1": "11.1.4.3"
+    },
+    "1.4.4": {
+      "title": "Resize Text",
+      "level": "AA",
+      "v4.1.1": "11.1.4.4",
+      "v3.2.1": "11.1.4.4.1"
+    },
+    "1.4.5": {
+      "title": "Images of Text",
+      "level": "AA",
+      "v4.1.1": "11.1.4.5",
+      "v3.2.1": "11.1.4.5.1"
+    },
+    "1.4.6": {
+      "title": "Contrast (Enhanced)",
+      "level": "AAA",
+      "v4.1.1": "11.1.4.6 (Void)",
+      "v3.2.1": "11.1.4.6 (Void)"
+    },
+    "1.4.7": {
+      "title": "Low or No Background Audio",
+      "level": "AAA",
+      "v4.1.1": "11.1.4.7 (Void)",
+      "v3.2.1": "11.1.4.7 (Void)"
+    },
+    "1.4.8": {
+      "title": "Visual Presentation",
+      "level": "AAA",
+      "v4.1.1": "11.1.4.8 (Void)",
+      "v3.2.1": "11.1.4.8 (Void)"
+    },
+    "1.4.9": {
+      "title": "Images of Text (No Exception)",
+      "level": "AAA",
+      "v4.1.1": "11.1.4.9 (Void)",
+      "v3.2.1": "11.1.4.9 (Void)"
+    },
+    "1.4.10": {
+      "title": "Reflow",
+      "level": "AA",
+      "v4.1.1": "11.1.4.10",
+      "v3.2.1": "11.1.4.10"
+    },
+    "1.4.11": {
+      "title": "Non-text Contrast",
+      "level": "AA",
+      "v4.1.1": "11.1.4.11",
+      "v3.2.1": "11.1.4.11"
+    },
+    "1.4.12": {
+      "title": "Text Spacing",
+      "level": "AA",
+      "v4.1.1": "11.1.4.12",
+      "v3.2.1": "11.1.4.12"
+    },
+    "1.4.13": {
+      "title": "Content on Hover or Focus",
+      "level": "AA",
+      "v4.1.1": "11.1.4.13",
+      "v3.2.1": "11.1.4.13"
+    },
+    "2.1.1": {
+      "title": "Keyboard",
+      "level": "A",
+      "v4.1.1": "11.2.1.1",
+      "v3.2.1": "11.2.1.1.1"
+    },
+    "2.1.2": {
+      "title": "No Keyboard Trap",
+      "level": "A",
+      "v4.1.1": "11.2.1.2",
+      "v3.2.1": "11.2.1.2"
+    },
+    "2.1.3": {
+      "title": "Keyboard (No Exception)",
+      "level": "AAA",
+      "v4.1.1": "11.2.1.3 (Void)",
+      "v3.2.1": "11.2.1.3 (Void)"
+    },
+    "2.1.4": {
+      "title": "Character Key Shortcuts",
+      "level": "A",
+      "v4.1.1": "11.2.1.4",
+      "v3.2.1": "11.2.1.4.1"
+    },
+    "2.2.1": {
+      "title": "Timing Adjustable",
+      "level": "A",
+      "v4.1.1": "11.2.2.1",
+      "v3.2.1": "11.2.2.1"
+    },
+    "2.2.2": {
+      "title": "Pause, Stop, Hide",
+      "level": "A",
+      "v4.1.1": "11.2.2.2",
+      "v3.2.1": "11.2.2.2"
+    },
+    "2.2.3": {
+      "title": "No Timing",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.2.4": {
+      "title": "Interruptions",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.2.5": {
+      "title": "Re-authenticating",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.2.6": {
+      "title": "Timeouts",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.3.1": {
+      "title": "Three Flashes or Below Threshold",
+      "level": "A",
+      "v4.1.1": "11.2.3.1",
+      "v3.2.1": "11.2.3.1"
+    },
+    "2.3.2": {
+      "title": "Three Flashes",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.3.3": {
+      "title": "Animation from Interactions",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.4.1": {
+      "title": "Bypass Blocks",
+      "level": "A",
+      "v4.1.1": "11.2.4.1 (Void)",
+      "v3.2.1": "11.2.4.1 (Void)"
+    },
+    "2.4.2": {
+      "title": "Page Titled",
+      "level": "A",
+      "v4.1.1": "11.2.4.2",
+      "v3.2.1": "11.2.4.2 (Void)"
+    },
+    "2.4.3": {
+      "title": "Focus Order",
+      "level": "A",
+      "v4.1.1": "11.2.4.3",
+      "v3.2.1": "11.2.4.3"
+    },
+    "2.4.4": {
+      "title": "Link Purpose (In Context)",
+      "level": "A",
+      "v4.1.1": "11.2.4.4",
+      "v3.2.1": "11.2.4.4"
+    },
+    "2.4.5": {
+      "title": "Multiple Ways",
+      "level": "AA",
+      "v4.1.1": "11.2.4.5 (Void)",
+      "v3.2.1": "11.2.4.5 (Void)"
+    },
+    "2.4.6": {
+      "title": "Headings and Labels",
+      "level": "AA",
+      "v4.1.1": "11.2.4.6",
+      "v3.2.1": "11.2.4.6"
+    },
+    "2.4.7": {
+      "title": "Focus Visible",
+      "level": "AA",
+      "v4.1.1": "11.2.4.7",
+      "v3.2.1": "11.2.4.7"
+    },
+    "2.4.8": {
+      "title": "Location",
+      "level": "AAA",
+      "v4.1.1": "11.2.4.8 (Void)",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.4.9": {
+      "title": "Link Purpose (Link Only)",
+      "level": "AAA",
+      "v4.1.1": "11.2.4.9 (Void)",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.4.10": {
+      "title": "Section Headings",
+      "level": "AAA",
+      "v4.1.1": "11.2.4.10 (Void)",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.4.11": {
+      "title": "Focus Not Obscured (Minimum)",
+      "level": "AA",
+      "v4.1.1": "11.2.4.11",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.4.12": {
+      "title": "Focus Not Obscured (Enhanced)",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.4.13": {
+      "title": "Focus Appearance",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.5.1": {
+      "title": "Pointer Gestures",
+      "level": "A",
+      "v4.1.1": "11.2.5.1",
+      "v3.2.1": "11.2.5.1"
+    },
+    "2.5.2": {
+      "title": "Pointer Cancellation",
+      "level": "A",
+      "v4.1.1": "11.2.5.2",
+      "v3.2.1": "11.2.5.2"
+    },
+    "2.5.3": {
+      "title": "Label in Name",
+      "level": "A",
+      "v4.1.1": "11.2.5.3",
+      "v3.2.1": "11.2.5.3.1"
+    },
+    "2.5.4": {
+      "title": "Motion Actuation",
+      "level": "A",
+      "v4.1.1": "11.2.5.4",
+      "v3.2.1": "11.2.5.4"
+    },
+    "2.5.5": {
+      "title": "Target Size (Enhanced)",
+      "level": "AAA",
+      "v4.1.1": "11.2.5.5 (Void)",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.5.6": {
+      "title": "Concurrent Input Mechanisms",
+      "level": "AAA",
+      "v4.1.1": "11.2.5.6 (Void)",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.5.7": {
+      "title": "Dragging Movements",
+      "level": "AA",
+      "v4.1.1": "11.2.5.7",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "2.5.8": {
+      "title": "Target Size (Minimum)",
+      "level": "AA",
+      "v4.1.1": "11.2.5.8",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "3.1.1": {
+      "title": "Language of Page",
+      "level": "A",
+      "v4.1.1": "11.3.1.1",
+      "v3.2.1": "11.3.1.1.1"
+    },
+    "3.1.2": {
+      "title": "Language of Parts",
+      "level": "AA",
+      "v4.1.1": "11.3.1.2 (Void)",
+      "v3.2.1": "11.3.1.2 (Void)"
+    },
+    "3.1.3": {
+      "title": "Unusual Words",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "3.1.4": {
+      "title": "Abbreviations",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "3.1.5": {
+      "title": "Reading Level",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "3.1.6": {
+      "title": "Pronunciation",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "3.2.1": {
+      "title": "On Focus",
+      "level": "A",
+      "v4.1.1": "11.3.2.1",
+      "v3.2.1": "11.3.2.1"
+    },
+    "3.2.2": {
+      "title": "On Input",
+      "level": "A",
+      "v4.1.1": "11.3.2.2",
+      "v3.2.1": "11.3.2.2"
+    },
+    "3.2.3": {
+      "title": "Consistent Navigation",
+      "level": "AA",
+      "v4.1.1": "11.3.2.3 (Void)",
+      "v3.2.1": "11.3.2.3 (Void)"
+    },
+    "3.2.4": {
+      "title": "Consistent Identification",
+      "level": "AA",
+      "v4.1.1": "11.3.2.4",
+      "v3.2.1": "11.3.2.4 (Void)"
+    },
+    "3.2.5": {
+      "title": "Change on Request",
+      "level": "AAA",
+      "v4.1.1": "11.3.2.5 (Void)",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "3.2.6": {
+      "title": "Consistent Help",
+      "level": "A",
+      "v4.1.1": "11.3.2.6 (Void)",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "3.3.1": {
+      "title": "Error Identification",
+      "level": "A",
+      "v4.1.1": "11.3.3.1",
+      "v3.2.1": "11.3.3.1.1"
+    },
+    "3.3.2": {
+      "title": "Labels or Instructions",
+      "level": "A",
+      "v4.1.1": "11.3.3.2",
+      "v3.2.1": "11.3.3.2"
+    },
+    "3.3.3": {
+      "title": "Error Suggestion",
+      "level": "AA",
+      "v4.1.1": "11.3.3.3",
+      "v3.2.1": "11.3.3.3"
+    },
+    "3.3.4": {
+      "title": "Error Prevention (Legal, Financial, Data)",
+      "level": "AA",
+      "v4.1.1": "11.3.3.4",
+      "v3.2.1": "11.3.3.4"
+    },
+    "3.3.5": {
+      "title": "Help",
+      "level": "AAA",
+      "v4.1.1": "11.3.3.5 (Void)",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "3.3.6": {
+      "title": "Error Prevention (All)",
+      "level": "AAA",
+      "v4.1.1": "11.3.3.6 (Void)",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "3.3.7": {
+      "title": "Redundant Entry",
+      "level": "A",
+      "v4.1.1": "11.3.3.7",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "3.3.8": {
+      "title": "Accessible Authentication (Minimum)",
+      "level": "AA",
+      "v4.1.1": "11.3.3.8",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "3.3.9": {
+      "title": "Accessible Authentication (Enhanced)",
+      "level": "AAA",
+      "v4.1.1": "none in V4.1.1",
+      "v3.2.1": "none in V3.2.1"
+    },
+    "4.1.1": {
+      "title": "Parsing (Obsolete and removed)",
+      "level": "obsolete",
+      "v4.1.1": "11.4.1.1 (Void)",
+      "v3.2.1": "11.4.1.1.1"
+    },
+    "4.1.2": {
+      "title": "Name, Role, Value",
+      "level": "A",
+      "v4.1.1": "11.4.1.2",
+      "v3.2.1": "11.4.1.2.1"
+    },
+    "4.1.3": {
+      "title": "Status Messages",
+      "level": "AA",
+      "v4.1.1": "11.4.1.3",
+      "v3.2.1": "11.4.1.3.1"
+    }
+  }
+}

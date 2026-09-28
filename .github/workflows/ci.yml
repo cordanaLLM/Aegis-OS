@@ -3,7 +3,8 @@
 # pull requests. It runs `make verify-all`, so it carries whatever gates that
 # target carries, plus the licence, lint and sign-off steps listed below. It
 # builds no product image, boots nothing and publishes no release: the image,
-# boot, hardware, accessibility and release gates stay blocked.
+# boot, hardware, accessibility and release gates stay blocked. The M04
+# accessibility harness it runs covers the P12 token component only.
 name: Verification gate
 
 on:
@@ -33,7 +34,9 @@ jobs:
   verify:
     name: Verification gate
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # 30 rather than 20 since M04: the accessibility gate's fetch pulls a
+    # 912 MiB compressed image (2.53 GB unpacked) before the gate runs.
+    timeout-minutes: 30
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -102,6 +105,15 @@ jobs:
           rustup show active-toolchain
           rustup which rustc
           rustup which cargo-clippy
+
+      # The accessibility gate inside make verify-all never pulls and never
+      # downloads (M04). This is the one networked step: it pulls the
+      # Playwright image by digest, downloads the pinned Node tarball and pnpm
+      # binary, refuses either unless it hashes to its pin, and fills the
+      # offline pnpm store, so the gate runs here instead of printing SKIP.
+      # The runner has podman and docker; the gate prefers podman.
+      - name: Fetch the accessibility gate's pinned inputs
+        run: make a11y-fetch
 
       # make verify-all runs the crate gate itself once a workspace manifest is
       # present, so the cargo evidence sits inside this one job. That is

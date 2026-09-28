@@ -10,6 +10,10 @@ node_modules/
 /.cache/
 # MkDocs documentation portal build output.
 /site/
+# A local pnpm install or build of the M04 package; the gate itself writes
+# only under AEGIS_A11Y_DIR, never here.
+/ui/concordia-tokens/dist/
+/ui/concordia-tokens/test-output/
 /build/mkosi.output/
 /build/mkosi.builddir/
 *.raw

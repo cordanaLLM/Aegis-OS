@@ -8,7 +8,10 @@
 #     and single-token values cannot be wrapped.
 #   ignored paths: .config/archetypes/** is digest-pinned by .standards.lock and
 #     must stay byte-identical; Praetor generates and rewrites the remaining
-#     ignored files, so their style is an upstream concern.
+#     ignored files, so their style is an upstream concern. pnpm-lock.yaml is
+#     written by pnpm and read back by `pnpm install --frozen-lockfile`, whose
+#     integrity lines cannot be wrapped; a hand edit to fit this style would be
+#     the lockfile drift the M04 gate refuses.
 #   linted Praetor assets: praetorctl audit locks tools/markdownlint/ and
 #     praetor-docs.yml byte for byte, and Praetor ships both clean under
 #     yamllint's strict defaults since cordanaLLM/praetor#517, which the rules
@@ -35,3 +38,4 @@ ignore: |
   .workingdir/
   .workingdir2/
   site/
+  ui/concordia-tokens/pnpm-lock.yaml
