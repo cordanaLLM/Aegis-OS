@@ -5,7 +5,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # P01/P02 definitions and what systemd said about them
 
-Status: recorded observations from milestone M03, reference profile, 2026-09-13
+Status: recorded observations from milestone M03, reference profile,
+2026-09-13; re-run on systemd 262 on 2026-09-28
 
 This page records what the reviewed definitions in `build/` are, what the host's
 own systemd did with them, and what is deliberately left open. Everything below
@@ -40,12 +41,35 @@ exit code is the target's exit code.
 
 The script guards itself twice before it reports anything:
 
-1. `systemd-repart` or `systemd-sysupdate` missing from `PATH` prints
-   `SKIP: ... not on PATH; the systemd definition gate did not run.`
-2. a host below the admitted floor prints the host banner, the floor and the
-   recorded reference profile, and does not run.
+1. each of `systemd-repart` and `systemd-sysupdate` is looked up on `PATH`
+   first and then in systemd's libexec directory, `/usr/lib/systemd`, and the
+   gate prints the copy it will run and where it came from. A tool in neither
+   place prints a `SKIP:` line naming the tool and both places searched.
+2. each tool it found is held to the admitted floor by its own `--version`. A
+   tool below the floor, or one that prints no systemd banner, gives a `SKIP:`
+   line naming the tool, its path and its banner, the floor and the recorded
+   reference profile, and the gate does not run. A copy on `PATH` can be a
+   different release from the systemd running as PID 1, so `systemctl
+   --version` is printed beside the tools' banners as a cross-check only and
+   does not decide admission.
 
 Both print why; neither reports a pass.
+
+The libexec step exists because systemd 262 moved `systemd-sysupdate` from
+`/usr/bin` back to its libexec directory and calls that path "the most
+compatible way to call it" (`NEWS`, "CHANGES WITH 262"); the 261.3 package had
+installed `/usr/bin/systemd-sysupdate`. Until 2026-09-28 the gate looked on
+`PATH` only, so it printed
+`SKIP: systemd-sysupdate not on PATH; the systemd definition gate did not run.`
+on the reference profile from the systemd 262 upgrade on 2026-09-25 onward, and
+on CI since M03 merged: the ubuntu-24.04 runner's systemd 255.4-1ubuntu8.17
+ships the tool only at `/usr/lib/systemd/systemd-sysupdate` (its
+packages.ubuntu.com file list), and the CI logs at the M03 merge (`61f2fe1`)
+and at `020bcd5` both show that line. With the libexec step the runner should
+find the tool and skip on the floor instead, because 255 is below 261, so CI
+would still not run this gate. That is expected from the code and from the
+mocked test `test_a_libexec_copy_below_the_floor_still_skips`; no CI run of the
+change has been read yet, and its first log on this branch is what confirms it.
 
 ## Recorded outcomes on systemd 261 (261.3-1-arch)
 
@@ -67,7 +91,49 @@ while doing something other than what the file says. REQ-CI-01 names exactly
 this failure mode in the imported CI workflow, which suppressed the repart
 validation step's failures outright.
 
-## Four findings worth writing down
+## Re-run on systemd 262 (262-1-arch), 2026-09-28
+
+With the tool found in `/usr/lib/systemd`, eight of the nine cases reproduce the
+table above exactly on systemd 262: the same exit codes and the same decisive
+diagnostics. The `--root=` case did not. As first staged it exited 1 on
+`Failed to resolve '<scratch>/positive.raw': No such file or directory`, a third
+outcome, so the gate failed, which is its job. The next finding records what
+changed and how the case was restaged; after that, all nine cases pass:
+
+<!-- markdownlint-disable MD013 -->
+```text
+systemd-repart: /usr/bin/systemd-repart (from PATH)
+systemd-sysupdate: /usr/lib/systemd/systemd-sysupdate (from the systemd libexec directory /usr/lib/systemd, not PATH)
+systemd definition gate on systemd-repart 'systemd 262 (262-1-arch)' and systemd-sysupdate 'systemd 262 (262-1-arch)' (floor systemd 261).
+systemctl reports 'systemd 262 (262-1-arch)': a cross-check only; the floor applies to the tools.
+PASS sysupdate/root-tree: exit 0
+PASS: repart and sysupdate definition gates on the reference profile; development evidence only, no image, boot, hardware or release gate is closed.
+```
+<!-- markdownlint-enable MD013 -->
+
+The excerpt keeps the resolution lines, the banners, the `--root=` case and
+the verdict; the other eight case lines read `PASS` with the exit codes in the
+table above.
+
+The same gate was then run with the systemd 261.3 `systemd-repart` and
+`systemd-sysupdate`, extracted from the cached `systemd-261.3-1` package into a
+scratch directory and put first on `PATH` with `LD_LIBRARY_PATH` pointing at
+that package's `libsystemd-shared-261.3-1.so`. It printed both tools as
+`(from PATH)` with the banner `systemd 261 (261.3-1-arch)`, printed `systemctl`'s
+`systemd 262 (262-1-arch)` as the cross-check, passed all nine cases and ended
+the `--root=` case on its recorded exit 1. So the restaged case holds on both
+releases.
+
+The first run of that comparison predates the per-tool floor. The gate then
+read the floor from `systemctl --version` alone, so it admitted the 261.3 tools
+on the 262 banner and printed that banner, which named a systemd that had not
+run the cases. The floor now reads each tool's own `--version`. A stand-in
+`systemd-sysupdate` first on `PATH` that prints `systemd 255
+(255.4-1ubuntu8.17)` is refused on this host with
+`SKIP: systemd-sysupdate at <path> reports 'systemd 255 (255.4-1ubuntu8.17)',
+below the admitted floor systemd 261`, although `systemctl` reports 262.
+
+## Five findings worth writing down
 
 ### `--dry-run=yes` is inert under `--empty=create`
 
@@ -128,12 +194,19 @@ Failed to encrypt device: State not recoverable
 ```
 <!-- markdownlint-enable MD013 -->
 
-Exit 1. `/dev/tpmrm0` is `crw-rw---- root tss` and the gate does not run as
-root or in `tss`. The gate therefore passes `--defer-partitions=var`, which is
-systemd's own mechanism for a partition that is created in the table now and
-populated later. That is also the truthful sequence: TPM2 sealing binds to the
-target machine's PCR state, so it belongs to first boot on the target, not to
-the image build. Exercising the enrolment itself is M20 work on swtpm.
+Exit 1. `/dev/tpmrm0` is `crw-rw---- root tss` and the gate did not run as
+root or in `tss` when this was observed. The gate therefore passes
+`--defer-partitions=var`, which is systemd's own mechanism for a partition that
+is created in the table now and populated later. That is also the truthful
+sequence: TPM2 sealing binds to the target machine's PCR state, so it belongs to
+first boot on the target, not to the image build. Exercising the enrolment
+itself is M20 work on swtpm.
+
+Since then the developer account has joined `tss` (re-read 2026-09-28,
+`planning/hardware-profile.json`), so the permission half of this finding no
+longer holds on the reference profile. The un-deferred run was not repeated, and
+the deferral stays: it rests on the first-boot sequence, which does not depend
+on group membership.
 
 ### `systemd-sysupdate --root=` reads no transfer on systemd 261
 
@@ -151,16 +224,46 @@ a file that is not a config at all at
 0 and lists the slots. The file under the tree is never read.
 
 Because the named invocation cannot prove the parse, the authoritative proof is
-the `--definitions=<tree>/usr/lib/sysupdate.d` form, which reads the same
-scratch tree's directory and exits 0 with
-`{"current":"b","all":["b","a"],"appstreamUrls":[]}`. The substitution is
-recorded in M03's evidence in `planning/roadmap.json` and the criterion text
-there has been amended to describe what is actually proven.
+the `--definitions=<tree>/usr/lib/sysupdate.d` form, which exits 0 with
+`{"current":"b","all":["b","a"],"appstreamUrls":[]}`. At M03 it read the same
+scratch tree's directory; since 2026-09-28 the two cases read separate staged
+trees, `reviewed` for `--definitions=` and `sysroot` for `--root=`, both staged
+from the same reviewed transfer (see the systemd 262 finding below). The
+substitution is recorded in M03's evidence in `planning/roadmap.json` and the
+criterion text there has been amended to describe what is actually proven.
 
 The gate still keeps the named invocation as a case and accepts exactly two
 outcomes: exit 0, or exit 1 with that diagnostic. A third outcome fails the
 gate, so a systemd release that fixes this is a visible diff rather than a
 silent change.
+
+### systemd 262 reads `--root=` as a root, which the case was not staged for
+
+systemd 262 produced that visible diff. It reads the transfer through `--root=`
+and reports it relative to the tree (`usr/lib/sysupdate.d/10-root.transfer:48`
+where 261 printed the root-prefixed absolute path), and it then resolves the
+transfer's `Path=` inside the tree as well. The case had pointed `Path=` at the
+scratch image outside the tree, so 262 exited 1 on `Failed to resolve ...: No
+such file or directory`. Mirroring the image inside the tree was enough for exit
+0 with `{"current":"b","all":["b","a"],"appstreamUrls":[]}`.
+
+A second diagnostic in the same run was a silent drop of the kind REQ-CI-01 is
+about: `10-root.transfer:48: Failed to expand specifiers in ProtectVersion=,
+ignoring: %A`. Under `--root=`, `SYSTEMD_OS_RELEASE` pointing at a file outside
+the tree left `%A` unexpanded, with the tree's own `usr/lib/os-release` present
+or not. Without the variable, the tree's own `os-release` expanded it and the
+line was gone. The `--definitions=` cases, which run without `--root=`, never
+printed it.
+
+So `stage_root_tree()` in `tools/verify_systemd_definitions.py` now builds a
+self-contained tree: the repart gate writes its scratch image into it, the
+transfer's `Path=` names that image as the tree does (`/positive.raw`), and the
+identity is the tree's own `usr/lib/os-release`, with no `SYSTEMD_OS_RELEASE`.
+Its exit-0 outcome forbids `Failed to expand specifiers` as well as
+`Unknown key`, and must list both slots, as the positive case must; the positive
+case forbids the specifier diagnostic too. Its exit-1 outcome is unchanged. No
+systemd source or upstream report was read, so this records behaviour, not its
+cause.
 
 ### `Subvolumes=` exists, but not in the imported spelling
 

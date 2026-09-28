@@ -41,7 +41,7 @@ Two rules follow from the clause and are applied below:
 | yamllint | 1.38.0 | `.github/workflows/ci.yml`, `YAMLLINT_VERSION`, run through `pipx run` | nothing | M00 |
 | flake8 | 7.3.0 | `.github/workflows/ci.yml`, `FLAKE8_VERSION`, run through `pipx run` | nothing | M00 |
 | black | 26.5.1 | `.github/workflows/ci.yml`, `BLACK_VERSION`, run through `pipx run` | nothing | M00 |
-| systemd (`systemd-repart`, `systemd-sysupdate`) | floor 261; reference profile `systemd 261 (261.3-1-arch)` | `tools/verify_systemd_definitions.py`, `SYSTEMD_FLOOR = 261` and `REFERENCE_PROFILE_SYSTEMD`, read back from `systemctl --version` before the gate runs | nothing | M03 |
+| systemd (`systemd-repart`, `systemd-sysupdate`) | floor 261; reference profile `systemd 261 (261.3-1-arch)`, the value the outcomes were recorded on; the reference profile reads `systemd 262 (262-1-arch)` since 2026-09-25 | `tools/verify_systemd_definitions.py`, `SYSTEMD_FLOOR = 261` and `REFERENCE_PROFILE_SYSTEMD`; each tool is taken from `PATH`, else from `/usr/lib/systemd`, printed, and held to the floor by its own `--version` before the gate runs (`systemctl --version` is printed as a cross-check only) | nothing | M03 |
 | mkosi | 27; distribution package `extra/mkosi 27-1` on the reference profile | `build/mkosi.conf`, `MinimumVersion=27`, which mkosi itself enforces, and `tools/verify_mkosi_definitions.py`, `MKOSI_FLOOR = 27` and `REFERENCE_PROFILE_MKOSI`, read back from `mkosi --version` before the gate runs | the M01 register's inherited `mkosi v24+` floor from export-007, which was a range rather than a pin and which no gate enforced | M18 (D14, D56) |
 | Linux source | `linux-7.2.5`, sha256 `55ddf0df8325d9dad96fcff7bd93977d22e3f50af06527572af59b77c7632b78` | `build/kernel/source.pin.json`; the digest is re-checked on every run and the detached signature is verified against key `647F28654894E3BD457199BE38DBBDC86092693E` | nothing; no kernel source was pinned before | M26 (D70) |
 | Kernel base configuration | `x86_64_defconfig` of the pinned source, plus two tracked fragments | `build/kernel/source.pin.json`; the requirement fragment is byte-identical to `KernelRequirement::config_fragment` and no full `.config` is tracked | nothing | M26 (D70) |
@@ -114,9 +114,10 @@ system, and the gate runs the copy the machine already has. The admission is
 therefore a **floor plus a recorded reference value**, and both halves are
 mechanical:
 
-- `SYSTEMD_FLOOR = 261` in `tools/verify_systemd_definitions.py`. Below it the
-  gate prints why it did not run, naming the host version and the floor, and
-  does not report a pass.
+- `SYSTEMD_FLOOR = 261` in `tools/verify_systemd_definitions.py`. Each tool
+  the gate runs is held to it by that binary's own `--version`. Below it the
+  gate prints why it did not run, naming the tool, its path, its banner and the
+  floor, and does not report a pass.
 - `REFERENCE_PROFILE_SYSTEMD = "systemd 261 (261.3-1-arch)"`, the exact first
   line of `systemctl --version` on the reference profile on 2026-09-13. It is
   the value the negative and boundary outcomes in `docs/build/definitions.md`
@@ -128,13 +129,26 @@ than passing silently. A future floor change is then a visible diff in this
 page and in that constant, not an assumption inherited from whatever the
 workstation happens to ship.
 
+The reference profile moved to `systemd 262 (262-1-arch)` on 2026-09-25, and
+the floor and the recorded reference value were left at 261 on purpose. On
+2026-09-28 the gate ran on 262, and eight of its nine cases reproduced the
+outcomes recorded on 261. The ninth, the `--root=` case, was restaged so that it
+holds on both releases. It then passed on 262 and again on the 261.3 tools
+extracted from the cached package; `docs/build/definitions.md` records both
+runs. Raising the floor to 262 would drop that 261 evidence without adding any.
+
 What the floor does **not** claim: that an older systemd cannot read these
 definitions. It claims only that the exit codes and diagnostics this repository
 records were observed on 261, and that a gate running below the floor would be
 reporting against unobserved behaviour. CI runners at the time of writing ship
 an older systemd, so the gate skips there and says so; the definition parser
 `crates/aegis-fabrica-defs` runs everywhere and covers the same files without
-systemd.
+systemd. Until 2026-09-28 the stated reason on the ubuntu-24.04 runner was the
+wrong one: its systemd 255.4-1ubuntu8.17 ships `systemd-sysupdate` only in
+`/usr/lib/systemd`, and the gate looked on `PATH` alone, so CI printed
+`SKIP: systemd-sysupdate not on PATH` (read in the logs at `61f2fe1` and
+`020bcd5`). With the libexec step the gate should find the tool there and skip
+on the floor; no CI run of that change has been read yet.
 
 ## The mkosi pin, and why its floor enforces itself
 

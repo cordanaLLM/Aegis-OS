@@ -22,7 +22,7 @@ evidences it.
 | Capability | Present | Note |
 | :--- | :--- | :--- |
 | `kvm` | yes | |
-| `tpm2` | yes | discrete TPM 2.0; swtpm also installed for virtual machines |
+| `tpm2` | yes | discrete TPM 2.0; swtpm also installed for virtual machines; re-read 2026-09-28: the developer account is in group tss and an unprivileged `tpm2_pcrread sha256:7` exits 0, where on 2026-09-13 it ran privileged |
 | `iommu` | yes | AMD-Vi (ivhd0); VFIO is available as a module |
 | `rapl_energy_counters` | yes | package counters exist; /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 and root-readable only, so P13 telemetry needs a privileged daemon or a root test |
 | `sched_ext` | yes | the host kernel runs a sched_ext scheduler at probe time; scx_cake, the scheduler P07 proposes, is installed as a distribution package alongside scx_rusty, scx_bpfland and scx_lavd |
@@ -30,17 +30,17 @@ evidences it.
 | `btf` | yes | CO-RE eBPF programs can be compiled against the host kernel |
 | `pci_p2pdma` | yes | kernel support is compiled in; device-level support still needs proving per device |
 | `erofs_dm_verity` | yes | both available as modules |
-| `realtime_kernel` | no | the running kernel is PREEMPT_DYNAMIC, but the distribution ships linux-rt 7.2.5.rt3.arch1-1; this is an operator action, not a missing capability |
-| `secure_boot_enrolment` | no | disabled in the running firmware; the maintainer can enable it and enrol keys in UEFI setup, and OVMF with Secure Boot support is installed for virtual machine tests; this is an operator action, not a missing capability |
+| `realtime_kernel` | no | the running kernel is PREEMPT_DYNAMIC, but the distribution ships linux-rt 7.2.8.rt3.arch1-1 (7.2.5.rt3.arch1-1 on 2026-09-13); this is an operator action, not a missing capability |
+| `secure_boot_enrolment` | no | disabled in the running firmware and not enrolled on the host; re-read 2026-09-28: the firmware is in setup mode (SetupMode 1) with no PK, KEK, db or dbx, which the maintainer reports clearing before a firmware update (no exact date given), where on 2026-09-13 it carried vendor keys with SetupMode 0; guest enrolment is proven with a virt-fw-vars variable store and OVMF_CODE.secboot (D62); host enrolment is an operator action, not a missing capability |
 | `resizable_bar` | yes | already enabled in firmware: 32 GiB BAR1 on the discrete NVIDIA card and an 8 GiB prefetchable region on the Intel card, which is the firmware prerequisite for peer DMA |
-| `gpu_dma_buf_and_peer_memory` | yes | NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.3.1 present; the Intel and AMD cards provide DMA-BUF through their in-tree drivers |
+| `gpu_dma_buf_and_peer_memory` | yes | NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.4.2 present (13.3.1 on 2026-09-13); the Intel and AMD cards provide DMA-BUF through their in-tree drivers |
 | `vaapi_decode` | yes | recorded 2026-09-28: with LIBVA_DRIVER_NAME=iHD, vainfo on the Arc A380 (renderD129) reports iHD 26.2.4 with VLD for MPEG-2, JPEG, H.264, HEVC, VP9 and AV1; the session sets LIBVA_DRIVER_NAME=nvidia, and with that session value the same call on renderD129 loads the NVIDIA driver (with the variable unset, libva selects iHD), so every run pins the driver; no committed gate has decoded a frame yet (M27) |
 | `wayland_layer_shell` | yes | recorded 2026-09-28: the host session's KDE KWin 6.7.5 advertises zwlr_layer_shell_v1 version 5; it is not P04, so a run against it is the client half only (D79) |
 | `compositor_dmabuf_import` | yes | recorded 2026-09-28: KWin advertises zwp_linux_dmabuf_v1 version 5 with main device renderD129 (the Arc A380) and NV12 and P010, each with LINEAR, INTEL_X_TILED, INTEL_4_TILED and DRM_FORMAT_MOD_INVALID (implicit modifier), and neither with INTEL_4_TILED_DG2_RC_CCS or INTEL_4_TILED_DG2_RC_CCS_CC; no committed gate exercises it yet (M27 will) |
 
 The two capabilities recorded as absent are operator actions, not missing
-hardware: Secure Boot is a firmware setting the maintainer enables in UEFI
-setup, and the distribution ships a realtime kernel package. Both are listed
+hardware: host Secure Boot needs keys enrolled in the firmware and the setting
+enabled, and the distribution ships a realtime kernel package. Both are listed
 under operator actions in the machine-readable record together with the packages
 that the remaining milestones need.
 
@@ -80,16 +80,25 @@ toolchain (D61).
 - `nvidia-fs` would not make GPUDirect Storage demonstrable, because that path
   is gated to datacentre cards.
 
+Re-read on 2026-09-28: `systemctl`, `systemd-repart`, `bootctl` and `ukify`
+report 262 (262-1-arch). systemd 262 installs `systemd-sysupdate` only at
+`/usr/lib/systemd/systemd-sysupdate`, off `PATH`, which is where
+`make verify-systemd` now finds it. Node reads v26.10.0 and CUDA 13.4.2. A
+second cosign, the distribution package 3.1.3 at `/usr/bin/cosign`, was
+installed on 2026-09-16 beside the user-local v2.6.3; a bare `cosign` runs
+v2.6.3 only because `~/go/bin` comes first on the developer account's `PATH`.
+`planning/hardware-profile.json` records each beside the value it replaced.
+
 ## Component requirements against the profile
 
 | Component | Requirement | Status | Evidence |
 | :--- | :--- | :--- | :--- |
 | P01 | TPM2 chip (or swtpm emulator for CI) | satisfied | cat /sys/class/tpm/tpm0/tpm_version_major -> 2; swtpm --version -> 0.10.2; swtpm_setup pre |
-| P01 | UEFI Secure Boot firmware (PK/KEK/db/MOK hierarchy) | partial | efivars list PK, KEK, db, dbx; but od SecureBoot-*-> 0 (disabled) and SetupMode-* -> 0 (N |
+| P01 | UEFI Secure Boot firmware (PK/KEK/db/MOK hierarchy) | partial | re-read 2026-09-28: efivars list no PK, KEK, db or dbx, only the firmware's PKDefault, KEKDefault, dbDefault and dbxDefault; od `SecureBoot-*` -> 0 (disabled) and `SetupMode-*` -> 1 (setup mode; the maintainer reports clearing the keys before a firmware update, no exact date); on 2026-09-13 PK, KEK, db and dbx were enrolled and `SetupMode-*` read 0 |
 | P01 | x86-64 CPU with KVM virtualization support for headless QEMU/OVMF boot | satisfied | ls -la /dev/kvm; lsmod grep kvm_amd (loaded); /sys/module/kvm_amd/parameters/nested -> 1 |
 | P01 | erofs/btrfs/dm-verity-capable Linux kernel/storage stack for root-a (e | satisfied | zgrep /proc/config.gz -> CONFIG_EROFS_FS=m, CONFIG_BTRFS_FS=y, CONFIG_DM_VERITY=m (+FEC, R |
 | P02 | TPM2 security chip | satisfied | /sys/class/tpm/tpm0 present, version 2, pcr-sha256 banks populated; CONFIG_TCG_TPM=y, CONF |
-| P02 | UEFI Secure Boot chain | partial | bootctl status -> 'Secure Boot: disabled', 'Measured UKI: no', 'Measured OS: no'; SetupMod |
+| P02 | UEFI Secure Boot chain | partial | bootctl status -> 'Secure Boot: disabled (setup)', 'Measured UKI: no', 'Measured OS: no' (2026-09-28); `SetupMode-*` -> 1 with no PK, KEK, db or dbx enrolled |
 | P02 | Hardware watchdog timer | partial | ls /sys/class/watchdog -> empty and no /dev/watchdog; /proc/cmdline contains 'nowatchdog'; |
 | P02 | NVRAM variable support for A/B slot priority swap | satisfied | grep efivarfs /proc/mounts -> mounted rw; bootctl reports UEFI 2.90 firmware; BootOrder/Lo |
 | P03 | IOMMU (Intel VT-d / AMD-Vi) enabling VFIO group isolation and IOMMU do | satisfied | ls /sys/kernel/iommu_groups wc -l -> 38; AMD-Vi ivhd0; modinfo vfio_pci/vfio_iommu_type1 |
@@ -99,7 +108,7 @@ toolchain (D61).
 | P03 | TPM2 | satisfied | /sys/class/tpm/tpm0 version 2 |
 | P04 | GPU (NVIDIA or AMD) for the wlroots rendering backend | satisfied | 3 DRM cards: i915 card0, nvidia card1, amdgpu card2 (lspci -nnk). Note D08/ADR-0001 supers |
 | P04 | cgroups v2 system.slice + Seccomp BPF isolation for the compositor pro | satisfied | stat -fc %T /sys/fs/cgroup -> cgroup2fs; cgroup.controllers -> cpuset cpu io memory hugetl |
-| P04 | systemd sandboxing directives requiring a populated /run and /var tree | satisfied | systemctl --version -> systemd 261 (261.3-1-arch) running as PID 1; capsh --print shows th |
+| P04 | systemd sandboxing directives requiring a populated /run and /var tree | satisfied | systemctl --version -> systemd 262 (262-1-arch) running as PID 1 (261.3-1-arch on 2026-09-13); capsh --print shows th |
 | P04 | TPM2 chip | satisfied | /sys/class/tpm/tpm0 version 2 |
 | P05 | cgroups v2 kernel support for the app.slice hierarchy enforcing the 20 | partial | cgroup v2 hierarchy and controllers confirmed (cgroup2fs, memory+cpu+cpuset present), so s |
 | P05 | Linux namespace/seccomp support for Bubblewrap sandboxing | satisfied | command -v bwrap -> /usr/bin/bwrap; CONFIG_USER_NS=y; CONFIG_SECCOMP=y |
@@ -123,7 +132,7 @@ toolchain (D61).
 | P11 | TPM2 security chip: PCR-sealed credentials and hash-linked, TPM2-signe | satisfied | /sys/class/tpm/tpm0 version 2 with pcr-sha256 banks; swtpm 0.10.2 for the VM path. tpm2-to |
 | P11 | FIDO2-capable authenticator | missing | lsusb grep -iE 'yubi fido solo token nitro' -> no match; no security-key device enumerat |
 | P11 | GPU with DMA-BUF / zero-copy export support (SPA_DATA_DmaBuf) | satisfied | CONFIG_DMA_SHARED_BUFFER=y, CONFIG_UDMABUF=y with /dev/udmabuf, CONFIG_DMABUF_HEAPS=y with |
-| P12 | (no hardware_requirements entries; needs_hardware false) | satisfied | jq '.components[] select(.id=="P12") .hardware_requirements' -> empty; Node v26.8.2, p |
+| P12 | (no hardware_requirements entries; needs_hardware false) | satisfied | jq '.components[] select(.id=="P12") .hardware_requirements' -> empty; Node v26.10.0 (v26.8.2 on 2026-09-13), p |
 | P13 | Intel RAPL (Running Average Power Limit) MSR/sysfs counters for real ( | partial | Package and core ARE real and live: sudo cat energy_uj twice 2 s apart gave 3489923310 -> |
 | P13 | ACPI power interfaces as a fallback/alternative to RAPL | missing | No ACPI power_meter (ACPI000D) device; hwmon names are amdgpu, asus, asusec, enp15s0, i915 |
 | P13 | cgroups v2 kernel support for per-slice attribution (system.slice/app. | satisfied | stat -fc %T /sys/fs/cgroup -> cgroup2fs; controllers include cpu, cpuset, memory, io for a |
