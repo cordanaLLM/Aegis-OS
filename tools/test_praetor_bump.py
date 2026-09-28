@@ -689,7 +689,7 @@ class GateListTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as base:
             tree, cache = Path(base) / "tree", Path(base) / "cache"
             (tree / "docs").mkdir(parents=True)
-            (tree / bump.DOCS_REQUIREMENTS).write_text("mkdocs==1.6.1\n", encoding="utf-8")
+            (tree / bump.DOCS_REQUIREMENTS).write_bytes(b"mkdocs==1.6.1\n")
             session = bump.Session(args(cache=str(cache)), stream=io.StringIO())
             failed = bump.Result(("pip",), 1, "", "ERROR: no network\n")
             with mock.patch.object(bump, "run", return_value=failed) as run:
