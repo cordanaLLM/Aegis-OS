@@ -66,9 +66,11 @@ ADOPT_PROFILE = "os-image"
 # Every bump is force-pushed to this one branch, so at most one bump pull
 # request is ever open, and a newer bump replaces an older one in place.
 ROLLING_BRANCH = "chore/praetor-pin-auto"
-# The line naming the full target commit in the commit message and the pull
-# request body; the idempotency check reads it back from the open pull request.
+# The lines naming the full target commit and the Aegis main commit the bump
+# was built on, in the commit message and the pull request body; the
+# idempotency check reads both back from the open pull request.
 TARGET_MARKER = "Target: praetor "
+BASE_MARKER = "Base: aegis "
 
 # The gitignored state ledgers `praetorctl flavor audit` reads. They are copied
 # from the primary checkout, never symlinked: audit rejects a symlinked
@@ -163,6 +165,7 @@ SHA = re.compile(r"[0-9a-f]{40}")
 PIN_LINE = re.compile(r'^(\s*PRAETOR_COMMIT:\s*")([^"\n]*)(")', re.MULTILINE)
 STATUS_DATE = re.compile(r"^(Status: .*current as of )\d{4}-\d{2}-\d{2}$", re.MULTILINE)
 MARKER_LINE = re.compile(r"^" + re.escape(TARGET_MARKER) + r"([0-9a-f]{40})\s*$", re.MULTILINE)
+BASE_LINE = re.compile(r"^" + re.escape(BASE_MARKER) + r"([0-9a-f]{40})\s*$", re.MULTILINE)
 FAILURE_LINE = re.compile(r"FAIL|ERROR|[Ee]rror[:\[]|would reformat|^\S+:\d+:\d+: [A-Z]\d+")
 PULL_URL = re.compile(r"/pull/(\d+)\s*$")
 ADMISSION_ROW = "| praetorctl |"
@@ -409,20 +412,31 @@ def proposed_target(body):
     return match.group(1) if match else None
 
 
-def decide(pin, target, prs):
+def proposed_base(body):
+    """Return the Aegis main commit a bump pull request body was built on, or None."""
+    match = BASE_LINE.search(body or "")
+    return match.group(1) if match else None
+
+
+def decide(pin, target, base, prs):
     """Return (action, pull request number) for this run.
 
     "up-to-date": main already pins `target`. "proposed": an open bump pull
-    request already names `target`, so there is nothing to do. "update": the
-    open bump pull request names an older target and is rewritten. "create": no
-    bump pull request is open.
+    request already names `target` built on Aegis `base`, so there is nothing to
+    do. "update": the open bump pull request names an older target or an older
+    Aegis main, and is rebuilt on `base`; a pull request built on an older main
+    can no longer merge under the up-to-date rule, and a rebase made on the forge
+    is an unsigned commit the signature rule refuses. "create": no bump pull
+    request is open.
     """
     require_sha(pin, "the current pin")
     require_sha(target, "the Praetor head")
+    require_sha(base, "Aegis main")
     if pin == target:
         return "up-to-date", None
     for pr in prs:
-        if proposed_target(pr.get("body")) == target:
+        body = pr.get("body")
+        if proposed_target(body) == target and proposed_base(body) == base:
             return "proposed", pr["number"]
     if prs:
         return "update", prs[0]["number"]
@@ -573,6 +587,7 @@ def commit_message(plan, commits, kept, reverted):
         *change_lines(kept, reverted),
         "",
         f"{TARGET_MARKER}{plan.target}",
+        f"{BASE_MARKER}{plan.base}",
     ]
     return "\n".join(body) + "\n"
 
@@ -622,6 +637,7 @@ def pr_body(plan, report):
             *checklist(plan.target),
             "",
             f"{TARGET_MARKER}{plan.target}",
+            f"{BASE_MARKER}{plan.base}",
             "",
         ]
     )
@@ -768,14 +784,17 @@ def survey(session):
     target = praetor_head(session)
     base, pin = aegis_pin(session)
     prs = open_bump_prs(session)
-    action, number = decide(pin, target, prs)
+    action, number = decide(pin, target, base, prs)
     if action == "up-to-date":
         session.note(f"up to date: Aegis main already pins praetor {target[:7]}")
         if prs:
             session.note(f"note: pull request #{prs[0]['number']} from {ROLLING_BRANCH} is open")
         return None, 0
     if action == "proposed":
-        session.note(f"up to date: pull request #{number} already proposes praetor {target[:7]}")
+        session.note(
+            f"up to date: pull request #{number} already proposes praetor {target[:7]} "
+            f"on Aegis {base[:7]}"
+        )
         return None, 0
     plan = Plan(target, pin, base)
     marker = failure_marker(session.cache, plan)
