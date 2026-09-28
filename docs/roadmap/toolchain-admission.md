@@ -34,7 +34,7 @@ Two rules follow from the clause and are applied below:
 | clippy | 0.1.98 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.9.0-stable | `rust-toolchain.toml`, same `components` list | the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | praetorctl | source commit `80b228bd067df563ed19155507a30542966c7ffa` | `.github/workflows/ci.yml`, `PRAETOR_COMMIT`, verified with `git rev-parse` before the build | the previous pin, source commit `a5ecb6fd998c59920e8432b27edbfb8fd36a7aa2`; the pin follows Praetor's `main` (see below) | M00 |
-| Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; it is a build input for praetorctl, not a gate of its own | M00 |
+| Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; a build input for praetorctl and, since M09, for the imago `make contract-fetch` builds, held to imago's own floor below | M00; M09 for the imago build |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
 | reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, run through `pipx run` | nothing | M00 |
 | markdownlint-cli2 | 0.23.2 | `.github/workflows/ci.yml`, `MARKDOWNLINT_VERSION`, run through `npx --yes`; separately locked by Praetor's `tools/markdownlint/package-lock.json` for `make docs-lint`, which `praetorctl audit` requires byte-for-byte | nothing | M00; the Praetor gate with the `7e7746a` pin |
@@ -476,6 +476,30 @@ What these rows do **not** claim: that the host's Playwright browser cache is
 pinned. `~/.cache/ms-playwright` held chromium-1228 on 2026-09-13 and
 chromium-1243 on 2026-09-28, written by Praetor's figure engine; the gate never
 reads it. `docs/build/accessibility-harness.md` records the run.
+
+## The contract pair's toolchain and producer pins (M09)
+
+Every row below is a program `tools/verify_contract_pair.py` starts, or a
+producer commit it runs against, read back on the reference profile on
+2026-09-28. `tools/test_contract_pair.py` reads this table back and requires the
+Go floor and both commits to be the ones `build/contract/producers.pin.json`
+records, and a row for every program the gate may start. The last-but-one column
+is the D69 comparison, read on 2026-09-28 from `go.dev/dl` and from the tags of
+`github.com/git/git`, and for the producers from `git ls-remote --heads`.
+
+| Tool or producer | Pinned version or commit | How it is pinned | Latest upstream, read 2026-09-28 | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| `go` | floor 1.27.1, from imago's `go.mod` (`go 1.27.1`); reference profile go1.27.1 (`go 2:1.27.1-2`); CI 1.27.1 | `imago.go` in the pin, checked against the cached `go.mod`; every go command runs with `GOTOOLCHAIN=local`, so a Go below the floor is refused by the fetch rather than replaced by a download. CI's Go is the M00 row above: setup-go resolves Praetor's `go 1.27` to the newest 1.27 patch, 1.27.1, which meets the floor | 1.27.1 (stable), `go.dev/dl` | `make contract-fetch`: `go mod download`, `go mod verify` and the `-trimpath -buildvcs=true` build; the gate: `go version -m` and the offline stand-in build, with `GOPROXY=off` |
+| `git` | reference profile 2.55.0 (`git 2.55.0-1.1`) | recorded, not pinned; no source this gate relies on declares a minimum beyond the 2.32 that `GIT_CONFIG_GLOBAL` needs | 2.56.0, tag `v2.56.0`; the distribution ships 2.55.0 | `make contract-fetch`: `ls-remote --heads`, the depth-1 fetch and checkout; the gate: `rev-parse`, `status --untracked-files=all --ignored`, `ls-files -v` and `log` of the imago checkout, `rev-parse` and `status` of this repository, and the stand-in's commit. Every git command, and go's own git calls, run with `GIT_CONFIG_NOSYSTEM=1`, an empty `GIT_CONFIG_GLOBAL` and no inherited `GIT_*` variable |
+| `cordanaLLM/imago` | commit `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` | `imago.commit` in the pin; fetched by commit into a fresh directory, checked by `git rev-parse HEAD`, by the binary's `vcs.revision`, `vcs.time` and module version, and by the binary sha256 the fetch recorded | `main` at `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` | consumes both M18 payloads (`pkg/aegis`, `pkg/kernel`) |
+| `cordanaLLM/nucleus` | commit `8672247ff1bd22ed6b6b89d498116f20ff00c2ab` | `nucleus.commit` in the pin; identity only, read with `git ls-remote --heads` | `main` at `8672247ff1bd22ed6b6b89d498116f20ff00c2ab` | none in M09: reads no Aegis payload (D92) |
+
+A producer's `main` moving past its pin is recorded by the fetch, not followed:
+the gate runs the pinned commit until the pin is edited, and a pin edit leaves a
+cache fetched for another pin, which the gate reports as a FAIL that names
+`make contract-fetch` (D93: only an absent cache skips). The imago binary is
+built from source to run the contract and is not a release artifact;
+`docs/build/contract-pair.md` records the runs.
 
 ## Proposed for M27: the display slice's crates and build tools (D80)
 

@@ -17,7 +17,8 @@ guest reported from inside itself, and what a pass here does **not** mean.
 was signed, nothing was installed, no bootloader entry was written, no module
 was loaded on the host, and no device was touched. Construction returns to
 Nucleus, which owns it under `docs/integration/stack.md`, once Nucleus returns
-real artifacts against the M09 contract. Until then this is development evidence
+real artifacts against the contract M09 pinned; the kernel result is M10's under
+D92. Until then this is development evidence
 on one workstation, and it closes no boot, hardware or release gate.
 
 ## What is tracked, and what is not
@@ -207,9 +208,10 @@ build says so; only reading the produced configuration back does.
 
 - Development evidence on the reference profile recorded in
   `planning/hardware-profile.json`. It qualifies no hardware.
-- It is **not** a substitute for the Nucleus contract in M09. M09 pins one
-  request/result pair against a real producer; this milestone builds a kernel
-  locally because that producer is a scaffold.
+- It is **not** a substitute for the Nucleus contract. M09 pinned the
+  consumption contract against the real producer that reads the payloads, and
+  under D92 a Nucleus-built kernel and its digests are M10's to record; this
+  milestone builds a kernel locally because that producer is a scaffold.
 - No boot gate is closed. The guest boot here is a configuration read-back, not
   a measured boot: no UKI, no Secure Boot, no TPM measurement, no
   `bootctl status` evidence.

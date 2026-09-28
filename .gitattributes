@@ -13,6 +13,14 @@ LICENSES/* text eol=lf
 # systemd reads the user units the praetor bump installs (docs/build/praetor-bump.md).
 tools/praetor-bump/* text eol=lf
 
+# The M09 contract pin hashes these payloads byte for byte against the copies
+# cordanaLLM/imago vendors (build/contract/producers.pin.json); a host-dependent
+# line ending would change the bytes the pin names.
+build/product-input.json text eol=lf
+build/kernel-requirement.json text eol=lf
+build/kernel-requirement.reference.json text eol=lf
+build/contract/*.json text eol=lf
+
 # BEGIN praetor managed attributes (praetorctl adopt)
 # praetorctl audit hashes these files; keep their checkout bytes the same on every platform.
 tools/figures/** text eol=lf

@@ -34,7 +34,7 @@
         "blueprints/[Report P01] Project Fabrica - OS Build System & UKI Synthesis.md"
       ],
       "activation_blockers": [
-        "Imago/Nucleus request and artifact contracts",
+        "Imago/Nucleus result and artifact contracts (M09 pinned the request half: imago consumes both M18 payloads, D92; the Imago result is M11's and the Nucleus kernel result M10's)",
         "pinned image/kernel inputs",
         "real artifact and boot evidence",
         "real hardware or emulator evidence for each listed hardware requirement"
@@ -96,7 +96,7 @@
         "blueprints/[Report P02] Project Janus & Vallum - Partition Geometry & Storage Security.md"
       ],
       "activation_blockers": [
-        "Imago/Nucleus request and artifact contracts",
+        "Imago/Nucleus result and artifact contracts (M09 pinned the request half: imago consumes both M18 payloads, D92; the Imago result is M11's and the Nucleus kernel result M10's)",
         "pinned image/kernel inputs",
         "real artifact and boot evidence",
         "real hardware or emulator evidence for each listed hardware requirement"

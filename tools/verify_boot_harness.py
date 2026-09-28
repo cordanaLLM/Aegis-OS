@@ -53,8 +53,9 @@ logs live under ``AEGIS_BOOT_HARNESS_DIR`` (default
 
 The pin schema implements one signature scheme, a clearsigned CHECKSUM verified
 by key fingerprint, and M24 is proven on the upstream kind of artifact it
-covers. An Imago return's signature form is not pinned yet (M09); under
-decision D85, M11 adds that scheme to this harness once M09 pins it.
+covers. An Imago return's signature form is not pinned yet; under decision
+D85, M11 adds that scheme to this harness once it is pinned, which D92 moved
+from M09 to M11 with the Imago result itself.
 """
 
 import argparse
