@@ -1337,7 +1337,7 @@
         "Negative: an artifact whose digest does not match the pinned value is refused before boot, and a guest that fails to reach the login prompt within the recorded timeout fails the harness",
         "Boundary: the harness is exercised at its timeout, one second under and one second over, and reports the two outcomes differently",
         "A pass here is development evidence on the reference profile. It closes no image, boot, hardware or release gate, and it is not evidence for M11",
-        "ukify 261, sbsigntools 0.9.5, erofs-utils 1.9.4 and virt-firmware 26.9 are installed on the reference profile for the guest-side key store and unified kernel image signing",
+        "ukify 262 (262-1-arch, re-read 2026-09-28; ukify 261 on 2026-09-13), sbsigntools 0.9.5, erofs-utils 1.9.4 and virt-firmware 26.9 are installed on the reference profile for the guest-side key store and unified kernel image signing",
         "The guest key store is generated from the shipped OVMF variables with virt-fw-vars and the unified kernel image is signed with sbsigntools, so no host firmware setting is changed; the host's own Secure Boot state is recorded but is not this milestone's subject"
       ],
       "cheapest_exit": "Boot a pinned upstream image headless under QEMU with OVMF and swtpm, and retain the console log and PCR readback. No image is constructed.",
@@ -1398,7 +1398,7 @@
         "Toolchain admission: Node, pnpm, Playwright browsers and Svelte are selected through the template matrix with pinned versions (D10: latest stable versions at activation, fast adoption through Renovate, sveltesentio adopted now at its published per-package versions) before any UI gate runs; package manifests and lockfiles are committed for ui/concordia-tokens",
         "The Playwright and axe-core suite runs headless in a container with zero violations on the default state; it fails when the focus outline is removed; the focus width and contrast boundary follows D16",
         "D17 (Bootstrap fork versus no monolithic CSS) is recorded; no `|| true` in the accessibility gate",
-        "The admitted Node, pnpm, Playwright and Svelte versions are committed as lockfiles and the admission explicitly resolves the M01 drift-register row: the reference profile runs Node v26.8.2 and pnpm 10.29.3, neither of which is the register's Node 20 or Node 22, so the row is closed with an exact pin and not inherited (D65).",
+        "The admitted Node, pnpm, Playwright and Svelte versions are committed as lockfiles and the admission explicitly resolves the M01 drift-register row: the reference profile runs Node v26.10.0 (v26.8.2 on 2026-09-13) and pnpm 10.29.3, neither of which is the register's Node 20 or Node 22, so the row is closed with an exact pin and not inherited (D65).",
         "The Playwright browser revision is pinned to the version actually exercised; the reference profile has chromium-1228 cached, and the gate must fail rather than silently download a different revision.",
         "The Node major is the latest release line (26.x on the reference profile) and is tracked forward by Renovate rather than pinned to an older line (D65)",
         "D81: the gate runs the WCAG 2.2 AA tag set (wcag2a, wcag2aa, wcag21a, wcag21aa, wcag22aa) and asserts from its own results that the target-size rule executed; its report names the EN 301 549 V4.1.1 clause and the V3.2.1 clause for each criterion an executed rule evaluated, with 'none in V3.2.1' for 11.2.5.8 (target-size), and lists 11.2.4.11 and 11.2.5.7, which no rule in the admitted axe-core version evaluates (4.13.0 has none), as not covered by this gate. The gate also covers REQ-P12-08, whose WCAG 2.2 AA pairing the tag set matches; D81 does not re-rule that row's edition.",
@@ -1439,7 +1439,7 @@
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
-        "rationale": "Down two places, 13 -> 15, score 0.500. It is category 2 (Node, pnpm, Playwright and Svelte must be installed at pinned versions and committed as lockfiles), so it sorts below the category-1 block that now includes M19 and M21. The profile does not make it cheaper so much as it makes one register row urgent: the machine runs Node v26.8.2, which is NEITHER of the M01 drift register's 'Node 20 vs 22' options, so the row closes with an exact pin read back from the profile and a major tracked forward by Renovate, not with an inherited floor (D65)."
+        "rationale": "Down two places, 13 -> 15, score 0.500. It is category 2 (Node, pnpm, Playwright and Svelte must be installed at pinned versions and committed as lockfiles), so it sorts below the category-1 block that now includes M19 and M21. The profile does not make it cheaper so much as it makes one register row urgent: the machine runs Node v26.10.0 (v26.8.2 on 2026-09-13), which is NEITHER of the M01 drift register's 'Node 20 vs 22' options, so the row closes with an exact pin read back from the profile and a major tracked forward by Renovate, not with an inherited floor (D65)."
       }
     },
     {
@@ -1878,7 +1878,7 @@
         "The A/B sysupdate transfer is exercised once between root-a and root-b, and observed transitions are compared with the M15 state machine",
         "The M24 harness is reused unchanged and the only new input is the Imago artifact; a criterion states that no second boot apparatus is built here.",
         "The artifact's digest and signature are verified with the pinned cosign (2.6.3 on the reference profile) before the boot runs, and a tampered-digest negative case is exercised.",
-        "The Secure Boot position is restated explicitly so it cannot be lost between milestones: a QEMU/OVMF boot proves the image boots, not that it boots signed, unless the guest VARS store was enrolled per D62; the reference profile's host firmware cannot verify it (SecureBoot 0, SetupMode 0).",
+        "The Secure Boot position is restated explicitly so it cannot be lost between milestones: a QEMU/OVMF boot proves the image boots, not that it boots signed, unless the guest VARS store was enrolled per D62; the reference profile's host firmware cannot verify it (SecureBoot 0; SetupMode 1 with no PK, KEK or db enrolled, re-read 2026-09-28).",
         "One criterion states that one boot on one developer workstation is development evidence only: it does not qualify hardware, does not close the hardware or release gate, and the retained logs must say so on their face.",
         "The image half of ADR-0002 is checked here, because M08 could not check it: that milestone proved the crate builds without the Steamworks SDK and this repository built no image (DSP-26). A negative test sweeps the image content list and the built image for the SDK package, its shared library and a vendored copy of its source, and fails on any of them. It is a check over those names and not a proof that no proprietary component is present."
       ],
@@ -2025,7 +2025,7 @@
         "The emulated and the physical TPM2 are recorded as two distinct measurements and never conflated: a swtpm quote proves the code path, not a hardware root of trust.",
         "One criterion states that a pass on the reference profile is development evidence only: it does not qualify hardware, does not close the hardware or release gate, and attestation rooted in a firmware-verified boot chain is not claimed.",
         "The quote covers PCR 0, 4, 7 and 11, while the unseal policy binds PCR 0, 4 and 11 only: on the reference profile Secure Boot is disabled, so a PCR 7 policy would attest to that state rather than to a trusted chain (D63)",
-        "tpm2-tools 5.8 is installed on the reference profile; /dev/tpm0 and /dev/tpmrm0 are group tss, so the PCR read runs privileged unless the developer account joins that group",
+        "tpm2-tools 5.8 is installed on the reference profile; /dev/tpmrm0 is group tss and the developer account is a member (re-read 2026-09-28), so the PCR read runs unprivileged",
         "PCR 7 is measured inside a guest booted against an enrolled variable store, so the value attests a key set rather than recording that Secure Boot was off"
       ],
       "cheapest_exit": "Use the M11 VM with swtpm. No physical TPM is required for this milestone.",

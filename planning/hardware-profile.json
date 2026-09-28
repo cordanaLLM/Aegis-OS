@@ -2,6 +2,8 @@
   "schema_version": 1,
   "role": "reference development machine",
   "recorded_on": "2026-09-13",
+  "refreshed_on": "2026-09-28",
+  "refresh_note": "Every read-only evidence command in this file was re-run unprivileged on 2026-09-28, and each toolchain row was re-read with the tool's own version command. One command was not repeated: the virt-fw-vars command of capabilities.secure_boot_enrolment writes a variable store and carries <guid> placeholders, so its guest_enrolment_proven reading stands from 2026-09-13 (D62) and that row's recorded_on covers its host-firmware text only. A row whose reading changed carries recorded_on 2026-09-28 and states what it read before; a row first recorded that day carries the same date; a row without its own recorded_on read the same on both dates. The kernel block is the one exception and says why.",
   "evidence_class": "Development evidence only. A check that passes on this profile does not qualify hardware, does not close a blocked gate, and is not release evidence. Hardware qualification needs more than one machine and the acceptance recorded in the milestone.",
   "cpu": {
     "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
@@ -16,7 +18,9 @@
     "evidence_command": "lscpu; uname -m; /lib/ld-linux-x86-64.so.2 --help | grep supported",
     "architecture_note": "architecture is recorded in the mkosi Architecture= spelling x86-64, which is what the product input manifest and the kernel requirement carry; uname -m prints the same machine as x86_64"
   },
-  "memory_bytes": 64910954496,
+  "memory_bytes": 64946429952,
+  "memory_evidence_command": "free -b; grep MemTotal /proc/meminfo",
+  "memory_note": "MemTotal as the running kernel reports it, read 2026-09-28 under 7.2.8-1-cachyos; it read 64910954496 bytes under 7.2.4-1-cachyos on 2026-09-13",
   "kernel": {
     "release": "7.2.4-1-cachyos",
     "preemption": "PREEMPT_DYNAMIC",
@@ -49,13 +53,22 @@
       "CONFIG_VFIO_IOMMU_TYPE1": "m",
       "CONFIG_KVM": "m"
     },
-    "evidence_command": "uname -r; zgrep -E '^(# )?(CONFIG_PREEMPT|CONFIG_HZ_1000|CONFIG_SCHED_CLASS_EXT|CONFIG_BPF_|CONFIG_CGROUP_BPF|CONFIG_DEBUG_INFO_BTF|CONFIG_POWERCAP|CONFIG_INTEL_RAPL|CONFIG_X86_MSR|CONFIG_IOMMU_API|CONFIG_AMD_IOMMU|CONFIG_VFIO|CONFIG_KVM|CONFIG_EROFS_FS|CONFIG_DM_VERITY|CONFIG_BTRFS_FS|CONFIG_TCG_TPM|CONFIG_PCI_P2PDMA)' /proc/config.gz"
+    "evidence_command": "uname -r; zgrep -E '^(# )?(CONFIG_PREEMPT|CONFIG_HZ_1000|CONFIG_SCHED_CLASS_EXT|CONFIG_BPF_|CONFIG_CGROUP_BPF|CONFIG_DEBUG_INFO_BTF|CONFIG_POWERCAP|CONFIG_INTEL_RAPL|CONFIG_X86_MSR|CONFIG_IOMMU_API|CONFIG_AMD_IOMMU|CONFIG_VFIO|CONFIG_KVM|CONFIG_EROFS_FS|CONFIG_DM_VERITY|CONFIG_BTRFS_FS|CONFIG_TCG_TPM|CONFIG_PCI_P2PDMA)' /proc/config.gz",
+    "recorded_on": "2026-09-13",
+    "reread_on": "2026-09-28",
+    "running_release": "7.2.8-1-cachyos",
+    "reread_note": "The same evidence command on 2026-09-28 printed 7.2.8-1-cachyos and read every symbol in config in the state recorded here. release stays the 2026-09-13 reading because build/kernel-requirement.reference.json pins its module ABI to it, M18 recorded its evidence against it, and the M19 BPF gate names it as REFERENCE_PROFILE_KERNEL. As D73 decided for the latency figure, a recorded reading keeps the kernel that produced it; re-recording release means re-checking that payload and those gates."
   },
   "firmware": {
     "efi": true,
     "secure_boot_enabled": false,
+    "setup_mode": true,
     "tpm2_firmware_support": true,
-    "evidence_command": "bootctl status"
+    "evidence_command": "bootctl status; od -An -t u1 /sys/firmware/efi/efivars/SetupMode-8be4df61-93ca-11d2-aa0d-00e098032b8c; od -An -t u1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c; ls /sys/firmware/efi/efivars/ | grep -E '^(PK|KEK|db|dbx)(Default)?-'",
+    "recorded_on": "2026-09-28",
+    "observed": "bootctl status prints 'Firmware: UEFI 2.90 (American Megatrends 5.26)', 'Secure Boot: disabled (setup)' and 'TPM2 Support: yes'; od prints 6 0 0 0 1 for SetupMode and 6 0 0 0 0 for SecureBoot (four attribute bytes, then the value); no PK, KEK, db or dbx variable exists, while the firmware's PKDefault, KEKDefault, dbDefault and dbxDefault do",
+    "previous": "on 2026-09-13 SetupMode and SecureBoot both read 6 0 0 0 0 and the vendor PK, KEK, db and dbx were enrolled (D62)",
+    "operator_action_reported": "The maintainer reports having cleared the Secure Boot keys before a firmware update; reported 2026-09-28, with no exact date. This file records the report, not an observation of the clearing or of the update."
   },
   "capabilities": {
     "kvm": {
@@ -64,8 +77,9 @@
     },
     "tpm2": {
       "present": true,
-      "evidence_command": "cat /sys/class/tpm/tpm0/tpm_version_major",
-      "note": "discrete TPM 2.0; swtpm also installed for virtual machines; /dev/tpm0 and /dev/tpmrm0 are group tss and the developer account is not a member, so tpm2-tools reads run privileged (a root read of PCR 7 succeeded)"
+      "evidence_command": "cat /sys/class/tpm/tpm0/tpm_version_major; ls -l /dev/tpm0 /dev/tpmrm0; id -nG; tpm2_pcrread sha256:7",
+      "note": "discrete TPM 2.0; swtpm also installed for virtual machines. /dev/tpmrm0 is root:tss and /dev/tpm0 is tss:root, both mode 0660; the developer account is in group tss, and an unprivileged tpm2_pcrread sha256:7 exits 0 through the default device TCTI. On 2026-09-13 the account was not a member and the same read ran privileged",
+      "recorded_on": "2026-09-28"
     },
     "iommu": {
       "present": true,
@@ -105,12 +119,14 @@
     "realtime_kernel": {
       "present": false,
       "evidence_command": "zgrep CONFIG_PREEMPT_RT /proc/config.gz; pacman -Ss linux-rt",
-      "note": "the running kernel is PREEMPT_DYNAMIC, and this stays present:false because it is a reading of the HOST. The distribution ships linux-rt 7.2.5.rt3.arch1-1, which would be an operator action rather than a missing capability; milestone M23 did not take it. It boots the kernel this repository builds in M26 (CONFIG_PREEMPT_RT=y, release 7.2.5-aegis-m26) as a guest kernel instead, so a realtime measurement was obtained with no installation and no bootloader entry (D57, D70). The negative half of that fixture depends on this row staying false, and `make verify-latency` re-reads both kernels with one probe on every run"
+      "recorded_on": "2026-09-28",
+      "note": "the running kernel is PREEMPT_DYNAMIC, and this stays present:false because it is a reading of the HOST. The distribution ships linux-rt 7.2.8.rt3.arch1-1 (7.2.5.rt3.arch1-1 on 2026-09-13), which would be an operator action rather than a missing capability; milestone M23 did not take it. It boots the kernel this repository builds in M26 (CONFIG_PREEMPT_RT=y, release 7.2.5-aegis-m26) as a guest kernel instead, so a realtime measurement was obtained with no installation and no bootloader entry (D57, D70). The negative half of that fixture depends on this row staying false, and `make verify-latency` re-reads both kernels with one probe on every run"
     },
     "secure_boot_enrolment": {
       "present": false,
       "evidence_command": "virt-fw-vars --input /usr/share/edk2/x64/OVMF_VARS.4m.fd --output vars.secboot.fd --set-pk <guid> pk.crt --add-kek <guid> pk.crt --add-db <guid> pk.crt --secure-boot",
-      "note": "disabled in the running firmware, and the host carries vendor keys with SetupMode off, so host enrolment needs a firmware-setup visit. That does not gate guest work: a variable store with platform key, KEK and db enrolled and SecureBootEnable set was generated here from the shipped OVMF_VARS with virt-fw-vars, and OVMF_CODE.secboot is installed",
+      "recorded_on": "2026-09-28",
+      "note": "disabled in the running firmware and not enrolled on the host. Re-read 2026-09-28: the host firmware is in setup mode with no PK, KEK, db or dbx enrolled (see firmware); on 2026-09-13 it carried vendor keys with SetupMode off. No key has been enrolled on the host, and whether this firmware accepts enrolment from the running OS in setup mode has not been tried. That does not gate guest work: a variable store with platform key, KEK and db enrolled and SecureBootEnable set was generated here from the shipped OVMF_VARS with virt-fw-vars, and OVMF_CODE.secboot is installed",
       "guest_enrolment_proven": true
     },
     "resizable_bar": {
@@ -121,7 +137,8 @@
     "gpu_dma_buf_and_peer_memory": {
       "present": true,
       "evidence_command": "modinfo nvidia | grep -E '^(version|license)'; modinfo -n nvidia_peermem",
-      "note": "NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.3.1 present; the Intel and AMD cards provide DMA-BUF through their in-tree drivers; the Arc A380 is bound to i915 at probe time, and the same kernel ships xe with a PCI alias for 8086:56a5 (CONFIG_DRM_XE=m), so rebinding it to xe for drm_sched is supported here"
+      "recorded_on": "2026-09-28",
+      "note": "NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.4.2 present (13.3.1 on 2026-09-13); the Intel and AMD cards provide DMA-BUF through their in-tree drivers; the Arc A380 is bound to i915 at probe time, and the same kernel ships xe with a PCI alias for 8086:56a5 (CONFIG_DRM_XE=m), so rebinding it to xe for drm_sched is supported here"
     },
     "vaapi_decode": {
       "present": true,
@@ -180,11 +197,22 @@
     },
     "systemd-repart": {
       "present": true,
-      "version": "systemd 261 (261.3-1-arch)"
+      "version": "systemd 262 (262-1-arch)",
+      "recorded_on": "2026-09-28",
+      "previous": "systemd 261 (261.3-1-arch) on 2026-09-13"
+    },
+    "systemd-sysupdate": {
+      "present": true,
+      "version": "systemd 262 (262-1-arch)",
+      "path": "/usr/lib/systemd/systemd-sysupdate",
+      "recorded_on": "2026-09-28",
+      "note": "not on PATH: systemd 262 moved it from bindir back to libexecdir (NEWS, CHANGES WITH 262), and the 261.3 package had installed /usr/bin/systemd-sysupdate (pacman -Qo; bsdtar -tf on the cached package). make verify-systemd looks on PATH first, then in /usr/lib/systemd, and prints the copy it ran"
     },
     "bootctl": {
       "present": true,
-      "version": "systemd 261 (261.3-1-arch)"
+      "version": "systemd 262 (262-1-arch)",
+      "recorded_on": "2026-09-28",
+      "previous": "systemd 261 (261.3-1-arch) on 2026-09-13"
     },
     "clang": {
       "present": true,
@@ -204,7 +232,9 @@
     },
     "node": {
       "present": true,
-      "version": "v26.8.2"
+      "version": "v26.10.0",
+      "recorded_on": "2026-09-28",
+      "previous": "v26.8.2 on 2026-09-13"
     },
     "pnpm": {
       "present": true,
@@ -213,8 +243,17 @@
     },
     "cosign": {
       "present": true,
-      "version": "{",
-      "provenance": "user-local install, not distribution-managed"
+      "version": "cosign v2.6.3",
+      "path": "~/go/bin/cosign",
+      "provenance": "user-local install, not distribution-managed",
+      "evidence_command": "type -a cosign; ~/go/bin/cosign version; /usr/bin/cosign version; pacman -Q cosign; grep 'installed cosign' /var/log/pacman.log",
+      "recorded_on": "2026-09-28",
+      "second_copy": {
+        "version": "cosign v3.1.3 (GitVersion v3.1.3+dirty)",
+        "path": "/usr/bin/cosign",
+        "provenance": "distribution package cosign 3.1.3-1.1, installed 2026-09-16 according to /var/log/pacman.log"
+      },
+      "note": "Two copies are installed. A bare cosign resolves to the user-local v2.6.3 only because ~/go/bin precedes /usr/bin in the developer account's PATH; under a PATH without ~/go/bin the same command runs the distribution 3.1.3. On 2026-09-13 only the user-local copy was recorded, and its value '{' was the first line of cosign version --json rather than a version. A gate that relies on the pinned cosign (2.6.3) must call it by path"
     },
     "mkosi": {
       "present": true,
@@ -230,7 +269,9 @@
     },
     "tpm2_pcrread": {
       "present": true,
-      "version": "tool=\"tpm2_pcrread\" version=\"5.8\" tctis=\"libtss2-tctildr\" tcti-default"
+      "version": "tool=\"tpm2_pcrread\" version=\"5.8\" tctis=\"libtss2-tctildr\" tcti-default=tcti-device",
+      "recorded_on": "2026-09-28",
+      "note": "the same tool version as on 2026-09-13; that recording stopped after tcti-default"
     },
     "scx_schedulers": {
       "present": true,
@@ -242,7 +283,10 @@
     },
     "cuda": {
       "present": true,
-      "version": "13.3.1"
+      "version": "13.4.2",
+      "recorded_on": "2026-09-28",
+      "previous": "13.3.1 on 2026-09-13",
+      "note": "distribution package cuda 13.4.2-1 (pacman -Q cuda); nvcc --version reports release 13.4, V13.4.92"
     },
     "nvidia_fs": {
       "present": false,
@@ -271,7 +315,9 @@
     },
     "ukify": {
       "present": true,
-      "version": "ukify 261 (261.3-1-arch)"
+      "version": "ukify 262 (262-1-arch)",
+      "recorded_on": "2026-09-28",
+      "previous": "ukify 261 (261.3-1-arch) on 2026-09-13"
     },
     "rustup": {
       "present": true,
@@ -289,17 +335,19 @@
     },
     "systemd": {
       "present": true,
-      "version": "261 (261.3-1-arch)"
+      "version": "262 (262-1-arch)",
+      "recorded_on": "2026-09-28",
+      "previous": "261 (261.3-1-arch) on 2026-09-13"
     }
   },
   "operator_actions": [
     {
-      "action": "Enable Secure Boot and enrol keys in UEFI setup",
+      "action": "Enrol Secure Boot keys (PK, KEK, db and dbx) on the host firmware and enable Secure Boot; as read on 2026-09-28 the firmware holds no PK, KEK, db or dbx (SetupMode=1), and the maintainer reports clearing them before a firmware update (no exact date)",
       "unblocks": "signature verification on real firmware for P01 and P02",
       "kind": "firmware setting"
     },
     {
-      "action": "Install the distribution realtime kernel (extra/linux-rt 7.2.5.rt3.arch1-1)",
+      "action": "Install the distribution realtime kernel (extra/linux-rt 7.2.8.rt3.arch1-1)",
       "unblocks": "P07 and P08 latency work on a PREEMPT_RT kernel without waiting for Nucleus",
       "kind": "package install"
     },
@@ -309,14 +357,9 @@
       "kind": "module or package"
     },
     {
-      "action": "Pin the toolchain versions that are already installed (Rust 1.98.1, clang, bpftool, QEMU, swtpm, systemd 261, Node, pnpm, cosign) through the template matrix",
+      "action": "Pin the toolchain versions that are already installed (Rust 1.98.1, clang, bpftool, QEMU, swtpm, Node, pnpm, cosign) through the template matrix; systemd is already admitted as floor 261 at M03 (docs/roadmap/toolchain-admission.md) and the host runs 262",
       "unblocks": "every activation milestone, which must name a pinned toolchain before its gate runs",
       "kind": "governance"
-    },
-    {
-      "action": "Add the developer account to the tss group, or run TPM checks privileged",
-      "unblocks": "unprivileged tpm2-tools reads for M20; a privileged read already works",
-      "kind": "system setting"
     },
     {
       "action": "Rebind the Arc A380 from i915 to xe when drm_sched is needed from the Intel card",

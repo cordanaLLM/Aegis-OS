@@ -1500,7 +1500,7 @@
       "proposed_pin": "unpinned package names only",
       "source_id": "export-049",
       "sha256": "4d9043f4af305e2e0866587587d37b3f2195cc382a66fde2fc0e3ef7782a2144",
-      "current_upstream": "261.3, released 2026-09-10; the workstation runs the same major",
+      "current_upstream": "261.3, released 2026-09-10; the workstation ran the same major on 2026-09-13 and runs systemd 262 (262-1-arch) since 2026-09-25",
       "drift": "unpinned with no floor, although the definition syntax has changed across recent majors; the imported CI suppresses the validator's exit code",
       "milestone": "M03 (floor) and M18"
     },

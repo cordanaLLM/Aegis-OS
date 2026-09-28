@@ -1211,9 +1211,9 @@ Exit criteria:
   accessibility gate
 - The admitted Node, pnpm, Playwright and Svelte versions are committed as
   lockfiles and the admission explicitly resolves the M01 drift-register row:
-  the reference profile runs Node v26.8.2 and pnpm 10.29.3, neither of which is
-  the register's Node 20 or Node 22, so the row is closed with an exact pin and
-  not inherited (D65).
+  the reference profile runs Node v26.10.0 (v26.8.2 on 2026-09-13) and pnpm
+  10.29.3, neither of which is the register's Node 20 or Node 22, so the row is
+  closed with an exact pin and not inherited (D65).
 - The Playwright browser revision is pinned to the version actually exercised;
   the reference profile has chromium-1228 cached, and the gate must fail rather
   than silently download a different revision.
@@ -2341,7 +2341,8 @@ Exit criteria:
 - The Secure Boot position is restated explicitly so it cannot be lost between
   milestones: a QEMU/OVMF boot proves the image boots, not that it boots signed,
   unless the guest VARS store was enrolled per D62; the reference profile's host
-  firmware cannot verify it (SecureBoot 0, SetupMode 0).
+  firmware cannot verify it (SecureBoot 0; SetupMode 1 with no PK, KEK or db
+  enrolled, re-read 2026-09-28).
 - One criterion states that one boot on one developer workstation is development
   evidence only: it does not qualify hardware, does not close the hardware or
   release gate, and the retained logs must say so on their face.
@@ -3029,6 +3030,13 @@ Open decisions:
   booted under QEMU' from 'the UKI's signature was verified', and both tools
   that close it are packaged. It also determines that PCR 7 on this profile
   attests to an unsigned configuration, which is why D63 exists.
+  **Host reading (2026-09-28):** SecureBoot still reads 0, but SetupMode now
+  reads 1 and no PK, KEK, db or dbx variable exists; the maintainer reports
+  clearing the keys before a firmware update, with no exact date.
+  `planning/hardware-profile.json` records the reading and the report. The
+  decision is unchanged: Secure Boot evidence stays guest-side, host enrolment
+  stays an operator action, and PCR 7 on the host still attests to an unsigned
+  configuration.
 - **D63** Does M20's swtpm attestation slice re-blocker onto the new M24 harness
   instead of M11, and which PCRs does the unseal policy bind? Recommended: Keep
   M20 blocked on M11 as its own BLOCKED-until clause states, but pre-prove the
