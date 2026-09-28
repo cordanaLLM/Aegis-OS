@@ -698,12 +698,13 @@ class GateListTests(unittest.TestCase):
                     "the pinned mkdocs was not installed (exit 1): ERROR: no network",
                 )
                 digest = bump.hashlib.sha256(b"mkdocs==1.6.1\n").hexdigest()
-                venv = cache / "mkdocs-venv"
-                (venv / "bin").mkdir(parents=True)
-                (venv / "bin" / "python").write_text("", encoding="utf-8")
+                venv = session.cache / "mkdocs-venv"
+                python = venv.joinpath(*bump.VENV_PYTHON)
+                python.parent.mkdir(parents=True)
+                python.write_text("", encoding="utf-8")
                 (venv / "requirements.sha256").write_text(digest + "\n", encoding="utf-8")
                 run.reset_mock()
-                self.assertEqual(bump.mkdocs_python(session, tree), (venv / "bin" / "python", None))
+                self.assertEqual(bump.mkdocs_python(session, tree), (python, None))
                 run.assert_not_called()
             (tree / bump.DOCS_REQUIREMENTS).unlink()
             self.assertIsNone(bump.mkdocs_python(session, tree)[0])

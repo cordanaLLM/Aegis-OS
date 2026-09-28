@@ -976,7 +976,11 @@ def gate_commands(binary, markdownlint, mkdocs=None, site=None):
     """
     black = ["black", "--check", "--line-length", "100", "tools", ".config/agent/hooks"]
     gates = (
-        ("make verify-all", ["make", "verify-all", f"PRAETORCTL={binary}"], DEADLINE_VERIFY_ALL),
+        (
+            "make verify-all",
+            ["make", "verify-all", f"PRAETORCTL={host.target(binary)}"],
+            DEADLINE_VERIFY_ALL,
+        ),
         ("compile-context --verify", [binary, "compile-context", "--verify"], DEADLINE_QUICK),
         ("audit", [binary, "audit"], DEADLINE_QUICK),
         ("flavor audit", [binary, "flavor", "audit", "."], DEADLINE_QUICK),
@@ -992,6 +996,12 @@ def gate_commands(binary, markdownlint, mkdocs=None, site=None):
     return gates + (("mkdocs build --strict", portal, DEADLINE_LINT),)
 
 
+# Where `python -m venv` puts the interpreter: bin/python on POSIX, Scripts\python.exe on
+# Windows. The bump runs on the Linux workstation; the Windows spelling keeps the unit
+# tests honest on the Platform Neutrality legs (HISS-21).
+VENV_PYTHON = ("Scripts", "python.exe") if sys.platform == "win32" else ("bin", "python")
+
+
 def mkdocs_python(session, tree):
     """Return (the Python of a venv holding `DOCS_REQUIREMENTS`, None), or (None, reason).
 
@@ -1005,7 +1015,7 @@ def mkdocs_python(session, tree):
         return None, f"{DOCS_REQUIREMENTS} is absent"
     digest = hashlib.sha256(requirements.read_bytes()).hexdigest()
     venv = session.cache / "mkdocs-venv"
-    python, stamp = venv / "bin" / "python", venv / "requirements.sha256"
+    python, stamp = venv.joinpath(*VENV_PYTHON), venv / "requirements.sha256"
     if python.is_file() and stamp.is_file() and read_exact(stamp).strip() == digest:
         return python, None
     shutil.rmtree(venv, ignore_errors=True)
