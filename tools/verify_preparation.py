@@ -18,8 +18,16 @@ LICENSE_TEXTS = {
     "LICENSE": "57fb42fbcd0b037ce528ed8f72f1ec095d67bc6825ecf1448ff39be1fe68a4b4",
     "LICENSES/EUPL-1.2.txt": "57fb42fbcd0b037ce528ed8f72f1ec095d67bc6825ecf1448ff39be1fe68a4b4",
     "LICENSES/CC-BY-SA-4.0.txt": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5",
+    "LICENSES/MIT.txt": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
 }
 LICENSE_IDS = {"EUPL-1.2", "CC-BY-SA-4.0"}
+# Vendored third-party trees and the only identifier REUSE.toml may give each.
+# Each is an override table after the whole-tree table; the split-licence
+# identifiers above stay exact for everything else.
+VENDORED_LICENSES = {
+    "tools/figures/third_party/interfig/upstream/**": "MIT",
+    "tools/figures/dist/**": "EUPL-1.2 AND MIT",
+}
 ROADMAP_STATES = {"done", "ready", "blocked"}
 # A component is a proposal until it carries the evidence ACTIVATION_EVIDENCE
 # names. "activated" is the only advanced status this tool admits: it means the
@@ -264,13 +272,40 @@ def verify_licensing():
         if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
             raise ValueError(f"Licence text differs from the pinned canonical text: {name}")
     reuse = tomllib.loads((ROOT / "REUSE.toml").read_text())
-    declared = {row.get("SPDX-License-Identifier") for row in reuse.get("annotations", [])}
+    rows = reuse.get("annotations", [])
+    own = [row for row in rows if not vendored_path(row)]
+    declared = {row.get("SPDX-License-Identifier") for row in own}
     if reuse.get("version") != 1 or declared != LICENSE_IDS:
         raise ValueError(
             "REUSE.toml must declare version 1 with exactly the split-licence identifiers"
         )
+    verify_vendored(rows)
     if not (ROOT / "LICENSING.md").is_file():
         raise ValueError("LICENSING.md explains the split licence and must exist")
+
+
+def vendored_path(row):
+    """Return the vendored tree an annotation table labels alone, or None."""
+    paths = row.get("path")
+    if isinstance(paths, list) and len(paths) == 1 and paths[0] in VENDORED_LICENSES:
+        return paths[0]
+    return None
+
+
+def verify_vendored(rows):
+    """Each vendored tree present on disk has its override after the whole-tree table."""
+    whole = [index for index, row in enumerate(rows) if row.get("path") == ["**"]]
+    for tree, identifier in VENDORED_LICENSES.items():
+        found = [index for index, row in enumerate(rows) if vendored_path(row) == tree]
+        if not found:
+            if (ROOT / tree.removesuffix("/**")).exists():
+                raise ValueError(f"REUSE.toml labels no licence on the vendored tree {tree}")
+            continue
+        row = rows[found[-1]]
+        if len(found) > 1 or row.get("SPDX-License-Identifier") != identifier:
+            raise ValueError(f"REUSE.toml must label {tree} once, as {identifier}")
+        if row.get("precedence") != "override" or any(index > found[-1] for index in whole):
+            raise ValueError(f"REUSE.toml must label {tree} by an override after the ** table")
 
 
 MILESTONE_FIELDS = {"id", "title", "rank", "state", "blocked_by", "cost", "exit_criteria", "epics"}

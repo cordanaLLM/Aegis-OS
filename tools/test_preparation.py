@@ -291,7 +291,7 @@ class PreparationTests(unittest.TestCase):
             check.verify_components()
         self.assertIn("names no milestone", str(caught.exception))
 
-    def write_licensing(self, texts, identifiers=("EUPL-1.2", "CC-BY-SA-4.0")):
+    def write_licensing(self, texts, identifiers=("EUPL-1.2", "CC-BY-SA-4.0"), extra=""):
         digests = {}
         for name, body in texts.items():
             path = self.root / name
@@ -302,7 +302,7 @@ class PreparationTests(unittest.TestCase):
             f'[[annotations]]\npath = ["**"]\nSPDX-License-Identifier = "{i}"\n'
             for i in identifiers
         )
-        (self.root / "REUSE.toml").write_text("version = 1\n" + tables)
+        (self.root / "REUSE.toml").write_text("version = 1\n" + tables + extra)
         (self.root / "LICENSING.md").write_text("split licence")
         return digests
 
@@ -325,6 +325,56 @@ class PreparationTests(unittest.TestCase):
             (self.root / "LICENSING.md").unlink()
             with self.assertRaises(ValueError):
                 check.verify_licensing()
+
+    VENDORED = "tools/figures/third_party/interfig/upstream/**"
+
+    def vendored_table(self, path=VENDORED, identifier="MIT", precedence="override"):
+        return (
+            f'[[annotations]]\npath = ["{path}"]\nprecedence = "{precedence}"\n'
+            f'SPDX-License-Identifier = "{identifier}"\n'
+        )
+
+    def assert_vendored(self, extra, accepted):
+        digests = self.write_licensing({"LICENSE": b"eupl"}, extra=extra)
+        with patch.object(check, "LICENSE_TEXTS", digests):
+            if accepted:
+                check.verify_licensing()
+                return
+            with self.assertRaises(ValueError):
+                check.verify_licensing()
+
+    def test_a_vendored_tree_keeps_its_upstream_licence(self):
+        """Positive: an override after the whole-tree table labels the vendored tree MIT."""
+        (self.root / self.VENDORED.removesuffix("/**")).mkdir(parents=True)
+        self.assert_vendored(self.vendored_table(), accepted=True)
+
+    def test_a_third_party_licence_elsewhere_is_refused(self):
+        """Negative: MIT on an own path, a wrong identifier or an aggregate table fails."""
+        cases = {
+            "own path": self.vendored_table(path="src/**"),
+            "identifier": self.vendored_table(identifier="EUPL-1.2"),
+            "precedence": self.vendored_table(precedence="aggregate"),
+            "twice": self.vendored_table() + self.vendored_table(),
+        }
+        for name, extra in cases.items():
+            with self.subTest(case=name):
+                self.assert_vendored(extra, accepted=False)
+
+    def test_a_vendored_override_before_the_whole_tree_table_is_refused(self):
+        """Negative: REUSE applies the last matching table, so ** would relabel the tree."""
+        digests = self.write_licensing({"LICENSE": b"eupl"})
+        reuse = self.root / "REUSE.toml"
+        body = reuse.read_text().removeprefix("version = 1\n")
+        reuse.write_text("version = 1\n" + self.vendored_table() + body)
+        with patch.object(check, "LICENSE_TEXTS", digests):
+            with self.assertRaises(ValueError):
+                check.verify_licensing()
+
+    def test_a_vendored_tree_needs_a_label_only_when_present(self):
+        """Boundary: an absent tree needs no table; a present, unlabelled one fails."""
+        self.assert_vendored("", accepted=True)
+        (self.root / self.VENDORED.removesuffix("/**")).mkdir(parents=True)
+        self.assert_vendored("", accepted=False)
 
     def write_register(self):
         digest = "a" * 64

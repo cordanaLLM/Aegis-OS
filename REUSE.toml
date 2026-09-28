@@ -23,3 +23,26 @@ path = ["docs/requirements.txt"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Lusoris <lusoris@proton.me>"
 SPDX-License-Identifier = "EUPL-1.2"
+
+# Vendored third-party material keeps its upstream terms. These override tables
+# must stay after the "**" table above; tools/verify_preparation.py rejects them
+# anywhere else. VENDOR.md and vendor.json sit outside upstream/ and stay
+# EUPL-1.2.
+[[annotations]]
+path = ["tools/figures/third_party/interfig/upstream/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2025 Vectorize AI, Inc."
+SPDX-License-Identifier = "MIT"
+
+# The figure player bundles Praetor's loader and player code (EUPL-1.2) with
+# interfig, React, react-dom and scheduler (MIT);
+# tools/figures/dist/THIRD-PARTY-LICENSES.txt carries the MIT texts.
+[[annotations]]
+path = ["tools/figures/dist/**"]
+precedence = "override"
+SPDX-FileCopyrightText = [
+  "2026 Lusoris <lusoris@proton.me>",
+  "2025 Vectorize AI, Inc.",
+  "Meta Platforms, Inc. and affiliates",
+]
+SPDX-License-Identifier = "EUPL-1.2 AND MIT"
