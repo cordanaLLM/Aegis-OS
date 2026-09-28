@@ -4,10 +4,41 @@ Status: draft requiring review
 
 ## Requirements
 
-Each requirement cites a source id and the first 12 hex characters of its
-sha256; the verbatim quote is held privately. Requirement text is limited to
+Each requirement cites a source id and, unless every source it cites is a
+decision, the first 12 hex characters of that source's sha256; the verbatim
+quote of a notebook source is held privately. Requirement text is limited to
 what the cited span states. Repository facts and inferences are kept in the
 roadmap and plan prose, not in the requirement text.
+
+Four source classes are cited. The first three carry their full digest in the
+digest list at the end of `docs/roadmap/README.md`; decisions are cited by their
+`Dnn` and carry no digest:
+
+- `export-NNN`: a file of the private notebook bundle (sha256 `8186bf0336e1`);
+  `make verify-sources` re-hashes each one.
+- `desktop-spec`: the private desktop environment specification (sha256 prefix
+  `a41f6c9e825d`), which is outside that bundle. Nothing re-hashes it
+  mechanically, so its prefix rests on review.
+- Standards, cited by edition: `en301549-v4.1.1`, `en301549-v3.2.1` and
+  `wcag-2.2`, each followed by the clause or success criterion. They are public,
+  and anyone can re-hash them from the URLs recorded beside their digests. A
+  standards row states what the clause requires, applied to the surface a
+  decision named; it names that decision in its Source cell, and it names the
+  V3.2.1 clause beside the V4.1.1 one (D81). Where V3.2.1 splits a software
+  clause into open and closed functionality, the row names the
+  open-functionality sub-clause. A WCAG success criterion is applied to non-web
+  software as clause 11 of EN 301 549 applies it, with the WCAG2ICT reading
+  that V4.1.1 cites as [i.25].
+- Decisions: `Dnn`, recorded in `docs/roadmap/README.md`; ADR-0003 is the public
+  record of D74, D75 and D77. A decision row states what the decision fixes and
+  nothing more.
+
+Rows whose source is a standard or a decision are grouped under "Accessibility
+and display rows (standards and decisions)" below, not under their component
+headings, and carry a fourth column, the test shape: the positive, negative and
+boundary case (HISS-15). A row that no milestone tests closes with "No milestone
+tests this yet" and, where one is recorded, the reason; REQ-P12-10 says which
+of its cases a milestone runs.
 
 ### P01 aegis-fabrica
 
@@ -68,7 +99,7 @@ roadmap and plan prose, not in the requirement text.
 | ID | Requirement | Source |
 | --- | --- | --- |
 | REQ-P05-01 | Every process in the Forum shell must be assigned to a cgroup enforcing strict energy and memory limits within the 20-watt facility budget. | export-014 659691a2d7d0 |
-| REQ-P05-02 | The shell requires a high-throughput IPC backbone synchronizing state between the Svelte/Wry frontend and the Rust/C backend. | export-014 659691a2d7d0 |
+| REQ-P05-02 | The shell requires a high-throughput IPC backbone synchronizing state between the Svelte/Wry frontend and the Rust/C backend. The frontend's engine is open decision D82 (ADR-0003), and the IPC framing is D77. | export-014 659691a2d7d0 |
 | REQ-P05-03 | Managed processes move through a typed lifecycle: Eligible but Inactive, Activated, Rate-Limited, Quarantined, or Deleted. | export-014 659691a2d7d0 |
 | REQ-P05-04 | The shell must implement the coordination-without-a-privileged-clock D-Bus interaction model defined in Figure 10. | export-014 659691a2d7d0 |
 | REQ-P05-05 | On mount the shell connects to the compositor over a Unix domain socket and to the StatusNotifierWatcher over D-Bus. | export-043 e3dbfa226e54 |
@@ -164,7 +195,7 @@ roadmap and plan prose, not in the requirement text.
 | REQ-P12-05 | The focus-ring design token defines a 3px stroke width for the EN 301 549 Clause 11 focus indication rule. | export-042 411fb8c2d731 |
 | REQ-P12-06 | The automated accessibility scan must check the Forum Shell UI against WCAG 2.x tags and assert zero violations. | export-023 a0d06b6b8e6c |
 | REQ-P12-07 | Concordia targets coherent digital services across 22,000 public administrations through design tokens and a Bootstrap fork with better accessibility. | export-004 15831276a058 |
-| REQ-P12-08 | The developer guide maps ui/concordia-tokens/ to P12 Concordia: EN 301 549 V3.2.1 / WCAG 2.2 AA design tokens and AT-SPI2 D-Bus bridges. | export-007 84f43472c536 |
+| REQ-P12-08 | The developer guide maps ui/concordia-tokens/ to P12 Concordia: EN 301 549 V3.2.1 / WCAG 2.2 AA design tokens and AT-SPI2 D-Bus bridges. D81 sets EN 301 549 V4.1.1 / WCAG 2.2 AA for the new canvas, heads-up theme and display-runtime rows; this row's pairing is not re-ruled. | export-007 84f43472c536 |
 | REQ-P12-09 | The trade-off matrix records Concordia's core choice as design tokens with monolithic CSS libraries as the discarded alternative, cognitive load as primary impact and EN 301 549 as constraint. | export-004 15831276a058 |
 
 ### P13 aegis-tellus
@@ -221,6 +252,16 @@ roadmap and plan prose, not in the requirement text.
 | REQ-P16-09 | The only ledger reference implementation hashes records with SHA-256 although the Athena sources name a BLAKE3 ledger; the algorithm must be pinned before the Rust port. | export-040 84b1ca13cc33 |
 | REQ-P16-10 | The subsystem graph assigns Athena a 500ms candidate-check latency budget. | export-062 1ce919ed54bb |
 
+### P17 aegis-scaena
+
+| ID | Requirement | Source |
+| --- | --- | --- |
+| REQ-P17-01 | Generic webview embedders such as WebKitGTK and Wry wrap browser runtimes in GTK container windows, which on Wayland introduces window realization timing locks with zwlr_layer_shell_v1 and wl_shm buffer accumulation on transparent surfaces. | desktop-spec a41f6c9e825d |
+| REQ-P17-02 | The display runtime binds its renderer (WebRender in the specification) directly to Wayland wl_surface and wl_subsurface handles created with wayland-client or smithay, bypassing GTK window wrappers, and mounts surfaces through zwlr_layer_shell_v1. Resolved in part by D75: P17 mounts the shell engine and each video stream on separate surfaces, and the engine is D82. | desktop-spec a41f6c9e825d |
+| REQ-P17-03 | Hardware video decoders (VA-API or NVDEC) output DMA-BUF file descriptors, which the specification imports into wgpu textures through VK_EXT_external_memory_dma_buf at 60 FPS with zero CPU memcpy and zero wl_shm growth. Superseded in part by D75: the descriptors go to the compositor through zwp_linux_dmabuf_v1 instead of into wgpu. | desktop-spec a41f6c9e825d |
+| REQ-P17-04 | All inter-component communication runs over local Unix domain sockets as line-delimited JSON-RPC 2.0 for light command and status messages, while video frames and raw telemetry never cross the sockets and pass by shared memory (DMA-BUF or Iceoryx pools) with pointer-only transfers. Resolved by D77: DMA-BUF descriptors travel as SCM_RIGHTS, and iceoryx2 only serves a future stream that is not a GPU buffer. | desktop-spec a41f6c9e825d |
+| REQ-P17-05 | The web engine shares a single Tokio event loop with the local Praetor governance daemons and system IPC sockets. Superseded by D75: the first slice has no engine, and servo 0.6.0 starts its own runtime. | desktop-spec a41f6c9e825d |
+
 ### Boot evidence
 
 | ID | Requirement | Source |
@@ -274,6 +315,25 @@ roadmap and plan prose, not in the requirement text.
 | --- | --- | --- |
 | REQ-WS-01 | The proposed Cargo workspace lists ten member crates beginning with aegis-compositor; the Vulcan and Hestia Rust candidates are not members and cannot build under a workspace-wide cargo invocation. | export-006 6e694e01e136 |
 
+### Accessibility and display rows (standards and decisions)
+
+| ID | Requirement | Source | Test shape |
+| --- | --- | --- | --- |
+| REQ-P05-09 | Every canvas node, instrument and surrogate, and every canvas operation (pan, zoom, select, move, resize, instrument manipulation), is operable from the keyboard in a focus order that preserves meaning, except input that depends on the path of the pointer's movement; focusing a node outside the viewport or culled moves the camera to reveal it; single-character shortcuts can be turned off or remapped. | D74; en301549-v4.1.1 636914c5c18d cl. 11.2.1.1, 11.2.4.3, 11.2.1.4; en301549-v3.2.1 1eee3a1841a9 cl. 11.2.1.1.1, 11.2.4.3, 11.2.1.4.1; wcag-2.2 6e3c5fe39725 SC 2.1.1 (A), 2.4.3 (A), 2.1.4 (A) | Positive: a keyboard-only walk over a seeded canvas reaches every node and invokes every action, ending in the same store state as the pointer path. Negative: an instrument with only a pointer handler fails the walk. Boundary: a culled node reached by Tab ends inside the viewport; a disabled single-letter shortcut no longer fires. |
+| REQ-P05-10 | Instruments that replace modal dialogs, nested surrogates and transcluded fragments never trap focus: Escape returns focus to the owning node, and Tab and Shift+Tab can leave the canvas. | D74; en301549-v4.1.1 636914c5c18d cl. 11.2.1.2; en301549-v3.2.1 1eee3a1841a9 cl. 11.2.1.2; wcag-2.2 6e3c5fe39725 SC 2.1.2 (A) | Positive: from each instrument, Escape restores focus to its node and Tab reaches the next shell region. Negative: a transcluded fragment that swallows Tab fails. Boundary: from the deepest nesting level, focus is back at canvas level after exactly that many Escape presses. |
+| REQ-P05-11 | Viewport culling changes only what is painted: every canvas node stays in the accessibility tree with its role, name, bounds and an off-screen state, and stays in the focus order. | D74; en301549-v4.1.1 636914c5c18d cl. 11.1.3.1, 11.5.2.5; en301549-v3.2.1 1eee3a1841a9 cl. 11.1.3.1.1, 11.5.2.5; wcag-2.2 6e3c5fe39725 SC 1.3.1 (A), 4.1.2 (A) | Positive: 1,000 seeded nodes with 10 in view yield 1,000 named nodes in the exported snapshot. Negative: culling by removing nodes leaves 10 and fails. Boundary: a node exactly on the cull boundary and one straddling the viewport edge are both present; an empty canvas exposes a labelled empty state. |
+| REQ-P05-12 | Each instrument and surrogate exposes a role, an accessible name, its states and its value, with minimum and maximum for rotatable or slidable handles, and its changes are notified to assistive technology. | D74; en301549-v4.1.1 636914c5c18d cl. 11.4.1.2, 11.5.2.5, 11.5.2.7, 11.5.2.15; en301549-v3.2.1 1eee3a1841a9 cl. 11.4.1.2.1, 11.5.2.5, 11.5.2.7, 11.5.2.15; wcag-2.2 6e3c5fe39725 SC 4.1.2 (A) | Positive: a slidable handle exposes role slider, a name, a value, a minimum and a maximum, and a keyboard increment updates the value with a change notification. Negative: a handle painted without a role fails. Boundary: the value at its minimum and at its maximum. No milestone tests this yet. |
+| REQ-P05-13 | The focus indicator is drawn in screen space, unscaled by the camera, meets the D16 floor (2px, token 3px) and 3:1 contrast at every camera scale, and a focused node is never entirely hidden by panels, heads-up layers or the viewport edge. | D74, D16; en301549-v4.1.1 636914c5c18d cl. 11.2.4.7, 11.2.4.11; en301549-v3.2.1 1eee3a1841a9 cl. 11.2.4.7, none in V3.2.1 for 11.2.4.11; wcag-2.2 6e3c5fe39725 SC 2.4.7 (AA), 2.4.11 (AA) | Positive: at the minimum, 1.0 and maximum camera scale the measured ring is at least 2 px and 3:1. Negative: a ring inside the scaled layer renders 1.5 px at scale 0.5 and fails; a focused node fully under a panel fails. Boundary: 2.0 px passes and 1.9 px fails; a partly covered focused node passes. |
+| REQ-P05-14 | Every drag, pinch or path operation (pan, zoom, lens drag, node move and resize, handle rotation) has a single-pointer alternative without dragging and a keyboard alternative; single-pointer activation completes on the up-event and can be aborted; pointer targets stay at least 24 by 24 CSS px at every camera scale or become inert while an equivalent control remains. | D74; en301549-v4.1.1 636914c5c18d cl. 11.2.5.1, 11.2.5.2, 11.2.5.7, 11.2.5.8; en301549-v3.2.1 1eee3a1841a9 cl. 11.2.5.1, 11.2.5.2, none in V3.2.1 for 11.2.5.7 and 11.2.5.8; wcag-2.2 6e3c5fe39725 SC 2.5.1 (A), 2.5.2 (A), 2.5.7 (AA), 2.5.8 (AA) | Positive: with dragging intercepted, every drag function completes through click-only controls with the same resulting state. Negative: a rotate handle that works only by drag fails. Boundary: at the minimum camera scale the target-size rule passes or the node reports inert with an equivalent control; press, move off target and release aborts without side effect. No milestone tests this yet. |
+| REQ-P05-15 | Canvas text scales to 200% through the platform setting without loss of content or function, and a linear list mode presents every node and instrument without two-dimensional scrolling; the canvas does not re-lay out or auto-pan nodes without a user request. | D74; en301549-v4.1.1 636914c5c18d cl. 11.1.4.4, 11.1.4.10; en301549-v3.2.1 1eee3a1841a9 cl. 11.1.4.4.1, 11.1.4.10; wcag-2.2 6e3c5fe39725 SC 1.4.4 (AA), 1.4.10 (AA) | Positive: at 200% platform text scale no panel clips, and list mode at 320 CSS px shows every node with no horizontal scrollbar. Negative: a panel that clips at 200% fails. Boundary: exactly 200%; a telemetry update moves no node. No milestone tests this yet. |
+| REQ-P12-10 | The heads-up theme is opt-in over the Concordia base tokens and the base theme is the default; with the portal's contrast or reduced-motion preference set, the heads-up shader layers are not attached; the theme cannot lower the focus-ring width or contrast below D16. | D76, D16; en301549-v4.1.1 636914c5c18d cl. 11.7, 11.6.2; en301549-v3.2.1 1eee3a1841a9 cl. 11.6.2, 11.7 (contrast only: the V3.2.1 list names units of measurement, colour, contrast, font type, font size and focus cursor and not motion, so the reduced-motion half rests on V4.1.1); wcag-2.2 6e3c5fe39725 SC 1.4.11 (AA) | Positive: a fresh profile renders the base theme, opting in renders the heads-up theme, and with contrast set no shader layer is attached. Negative: a theme token that sets the focus ring to 1 px fails the D16 boundary test. Boundary: a runtime theme switch keeps focus and camera position. M04's D76 exit criterion runs the negative with a stub override; no milestone tests the positive or boundary yet: the D76 theme has no milestone. |
+| REQ-P12-11 | Every shader, animation and camera transition jumps to its end state while the reduced-motion preference REQ-P12-02 reads is set; any moving, blinking or scrolling effect that starts automatically, lasts more than five seconds and is shown beside other content, decorative ones included, has a keyboard-reachable pause, stop or hide control. | D76; en301549-v4.1.1 636914c5c18d cl. 11.2.2.2, whose NOTE 5 counts decorative motion; en301549-v3.2.1 1eee3a1841a9 cl. 11.2.2.2; wcag-2.2 6e3c5fe39725 SC 2.2.2 (A), 2.3.3 (AAA, informative) | Positive: with reduced motion set, a zoom from 1 to 4 reaches its target with no intermediate frame, and pause stops the shader frame counter. Negative: an interpolated trajectory with two or more intermediate scales fails; a scanline loop still advancing after pause fails. Boundary: flipping the preference mid-pan snaps to the target within one frame without reload; an auto-starting effect of exactly 5 s without a control passes and 5.1 s fails. No milestone tests this yet: the D76 theme has no milestone. |
+| REQ-P12-12 | Each security state (unverified, gate active, verified, fault) is distinguishable without colour, by frame shape and a visible text label, and is programmatically determinable; frame edges reach 3:1 against adjacent colours, labels 4.5:1, and a state change is announced as a status message without moving focus. | D76; en301549-v4.1.1 636914c5c18d cl. 11.1.4.1, 11.1.4.11, 11.1.4.3, 11.4.1.3; en301549-v3.2.1 1eee3a1841a9 cl. 11.1.4.1, 11.1.4.11, 11.1.4.3, 11.4.1.3.1; wcag-2.2 6e3c5fe39725 SC 1.4.1 (A), 1.4.11 (AA), 1.4.3 (AA), 4.1.3 (AA) | Positive: grayscale captures of the four states differ pairwise in the frame region, and each state exposes a distinct state string. Negative: two states that differ only by hue fail; a 50%-opacity label below 4.5:1 fails. Boundary: a frame edge at exactly 3:1 passes and 2.99:1 fails; ten transitions within one second announce the final state. No milestone tests this yet: the D76 theme has no milestone. |
+| REQ-P12-13 | No heads-up element, the fault frame and alert triangles included, flashes more than three times in any one-second period, and under reduced motion the fault indicator is steady. | D76; en301549-v4.1.1 636914c5c18d cl. 11.2.3.1, 4.2.9, which makes the minimizing mode the default; en301549-v3.2.1 1eee3a1841a9 cl. 11.2.3.1, 4.2.9, which asks for such a mode without making it the default; wcag-2.2 6e3c5fe39725 SC 2.3.1 (A) | Positive: the fault animation stepped at 60 Hz for one second counts at most three flashes in every one-second window. Negative: a planted 4 Hz blink fails. Boundary: exactly three flashes per second passes and four fails; a token with a flash period under 333 ms is refused. No milestone tests this yet: the D76 theme has no milestone. |
+| REQ-P17-06 | No engine renders P05's primary surface until the accessibility tree it exposes passes an exposure suite covering interactive roles, accessible names, focus tracking, actions, hidden state for unrendered nodes, bounds and incremental updates. | D74; en301549-v4.1.1 636914c5c18d cl. 11.5.2.5, 11.5.2.13, 11.5.2.15; en301549-v3.2.1 1eee3a1841a9 cl. 11.5.2.5, 11.5.2.13, 11.5.2.15; wcag-2.2 6e3c5fe39725 SC 4.1.2 (A) | Positive: a fixture button is exposed with role button, a name and a click action, and the focused element is reported as focused. Negative: the same button exposed as a generic container fails. Boundary: a hidden subtree is reported hidden; an assistive technology started after the surface maps still receives the full tree. No milestone tests this yet: the engine is open decision D82. |
+| REQ-P17-07 | A decoded frame reaches P17 as a DMA-BUF fd passed in SCM_RIGHTS with a line-delimited JSON-RPC 2.0 descriptor over AF_UNIX. | D75, D77 | Positive: a descriptor and one fd round-trip over a socketpair and the received fd has the sender's (st_dev, st_ino). Negative: a memfd is refused at attach because its fstatfs magic is not DMA_BUF_MAGIC; a descriptor line whose jsonrpc member is not "2.0" is refused. Boundary: a descriptor line at the byte bound is accepted and one byte longer refused. The descriptor's fields, its fd count and its plane bounds are fixed by M27's exit criteria, not by the cited decisions, and E27-1 tests them. |
+| REQ-P17-08 | Where P17 presents video that has synchronized audio together with subtitles or captions, each subtitle is displayed within 100 ms of the timecode attached to it. | D75; en301549-v4.1.1 636914c5c18d cl. 7.1.2 (Subtitle synchronization); en301549-v3.2.1 1eee3a1841a9 cl. 7.1.2 (Captioning synchronization, within 100 ms of the caption's time stamp) | Positive: a fixture clip with a timed subtitle track presents each subtitle within 100 ms of its timecode, measured against the wp_presentation timestamp of the frame it accompanies. Negative: a subtitle presented 150 ms late fails. Boundary: 100 ms passes and 101 ms fails. No milestone tests this yet: the M27 fixtures carry no audio and no subtitle track. |
+
 ## Interfaces and behavior
 
 Graph of record: export-062 (subsystem_graph.json). An edge counts as connected
@@ -292,7 +352,7 @@ contract milestone is named.
 | P04_Mercurius | P10_Vesta | DISPATCH_MCP_SIDECARS | MCP JSON-RPC over Stdio/SSE | M07 | |
 | P05_Forum | P12_Concordia | CONSUMES_DESIGN_TOKENS | CSS Custom Properties / ARIA Bridges | M16 | D05 direction |
 | P06_Justitia | P09_Minerva | ACTION_GATE_INTERCEPT | eBPF action_gate.bpf.c / D-Bus | M14 | D03 direction/transport |
-| P06_Justitia | P05_Forum | DISPATCH_DECISION_REQUEST | D-Bus / Unix Socket | M14 | |
+| P06_Justitia | P05_Forum | DISPATCH_DECISION_REQUEST | D-Bus / Unix Socket | M14 | D77: line-delimited JSON-RPC 2.0 over AF_UNIX |
 | P06_Justitia | P16_Athena | AUDIT_RECONSTRUCTIVE_CANDIDATE | BLAKE3 Checkpoint Ledger | M14 | |
 | P07_Lictor | P04_Mercurius | PRIORITIZE_COMPOSITOR_THREAD | Linux sched_ext struct_ops / scx_cake | M07 | |
 | P07_Lictor | P08_Calliope | ENFORCE_REALTIME_RTPRIO | Linux cgroups v2 / RLIMIT_RTPRIO | M07 | |
@@ -305,12 +365,16 @@ contract milestone is named.
 | P11_Ludus | P02_Janus_Vallum | ATTEST_GAME_TRANSACTION | Hardware TPM2 PCR Quote | M08 | |
 | P11_Ludus | P04_Mercurius | DISPATCH_RICH_PRESENCE | Local Unix Domain Socket /tmp/discord-ipc-0 | M08 | |
 | P12_Concordia | P15_Hestia | ENFORCE_A11Y_STANDARDS | Playwright axe-core CI Gate / Svelte CSS | M04 | |
-| P13_Tellus | P07_Lictor | SPATIOTEMPORAL_TASK_SHIFT | D-Bus / kepler_power.bpf | M05 | |
-| P13_Tellus | P05_Forum | EMIT_CARBON_TELEMETRY | D-Bus Signal org.aegisos.Tellus1 | M05 | |
+| P13_Tellus | P07_Lictor | SPATIOTEMPORAL_TASK_SHIFT | D-Bus / kepler_power.bpf | M05 | D77: line-delimited JSON-RPC 2.0 over AF_UNIX |
+| P13_Tellus | P05_Forum | EMIT_CARBON_TELEMETRY | D-Bus Signal org.aegisos.Tellus1 | M05 | D77: line-delimited JSON-RPC 2.0 over AF_UNIX |
 | P14_Hephaestus | P15_Hestia | RENDER_GEOMETRY_MICROFRONTEND | Svelte 5 Micro-Frontend / PGlite OPFS | M08 | |
 | P15_Hestia | P04_Mercurius | REGISTER_PIP_OVERLAY | wlr-layer-shell Overlay Surface Protocol | M17 | |
 | P16_Athena | P02_Janus_Vallum | TRIGGER_SYSUPDATE_ROLLBACK | systemd-sysupdate / systemd-boot NVRAM | M05 | |
 | P16_Athena | P13_Tellus | EVALUATE_CANDIDATE_CARBON_SCI | ISO/IEC 21031:2024 SCI Rate Calculation | M05 | |
+| P17_Scaena | P04_Mercurius | MOUNT_LAYER_SURFACE | Wayland zwlr_layer_shell_v1 and zwp_linux_dmabuf_v1 | M27 (client half against the host compositor, D79) | not in export-062 (D75) |
+| P08_Calliope | P17_Scaena | STREAM_DECODED_FRAME | DMA-BUF fd as SCM_RIGHTS with a line-delimited JSON-RPC 2.0 descriptor over AF_UNIX (D77) | M27 (a P17 test fixture stands in for P08) | not in export-062 (D75) |
+| P05_Forum | P17_Scaena | MOUNT_SHELL_CANVAS | line-delimited JSON-RPC 2.0 over AF_UNIX (D77) | none yet (D82) | not in export-062 (D74, D75) |
+| P12_Concordia | P17_Scaena | ENFORCE_RUNTIME_A11Y | accessibility exposure suite (REQ-P17-06) | none yet (D82) | not in export-062 (D81; D05 direction; D30 open) |
 | P06_Justitia | P10_Vesta | SYSCALL_INTERCEPT (export-002 only) | eBPF action_gate | M14 record, M06 tests | D04 not in graph of record |
 | P15_Hestia | P02_Janus_Vallum | PGLITE_OPFS_STORAGE (export-002 only) | Btrfs @pglite subvolume | M17 | REQ-GRAPH-03 not in graph of record |
 

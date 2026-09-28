@@ -122,6 +122,27 @@
       "present": true,
       "evidence_command": "modinfo nvidia | grep -E '^(version|license)'; modinfo -n nvidia_peermem",
       "note": "NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.3.1 present; the Intel and AMD cards provide DMA-BUF through their in-tree drivers; the Arc A380 is bound to i915 at probe time, and the same kernel ships xe with a PCI alias for 8086:56a5 (CONFIG_DRM_XE=m), so rebinding it to xe for drm_sched is supported here"
+    },
+    "vaapi_decode": {
+      "present": true,
+      "evidence_command": "LIBVA_DRIVER_NAME=iHD vainfo --display drm --device /dev/dri/by-path/pci-0000:03:00.0-render; vainfo --display drm --device /dev/dri/by-path/pci-0000:03:00.0-render; env -u LIBVA_DRIVER_NAME vainfo --display drm --device /dev/dri/by-path/pci-0000:03:00.0-render; readlink -f /sys/bus/pci/devices/0000:03:00.0/driver; ls -l /dev/dri/by-path; cat /sys/bus/pci/devices/0000:03:00.0/vendor /sys/bus/pci/devices/0000:03:00.0/device; pacman -Q libva intel-media-driver",
+      "recorded_on": "2026-09-28",
+      "observed": "with LIBVA_DRIVER_NAME=iHD: 'Intel iHD driver for Intel(R) Gen Graphics - 26.2.4' on the Arc A380 (8086:56a5, i915, /dev/dri/by-path/pci-0000:03:00.0-render -> renderD129), listing VAEntrypointVLD for VAProfileMPEG2Main, VAProfileJPEGBaseline, VAProfileH264High, VAProfileHEVCMain, VAProfileVP9Profile0 and VAProfileAV1Profile0, and VAEntrypointVideoProc; banner 'VA-API version: 1.24 (libva 2.24.0)' from package libva 2.24.1-1.1. With the session's LIBVA_DRIVER_NAME=nvidia the same call on the same node reports 'VA-API NVDEC driver [direct backend]'; with the variable unset it reports the iHD driver 26.2.4. The sysfs vendor and device files read 0x8086 and 0x56a5, and pacman -Q reports libva 2.24.1-1.1 and intel-media-driver 26.2.4-1.1",
+      "note": "the driver must be pinned per run: /etc/environment.d/85-nvidia-vaapi.conf sets LIBVA_DRIVER_NAME=nvidia for the session, and the call above that inherits the session environment loads the NVIDIA driver even when the Intel render node is named. renderD numbers follow probe order, and the PCI path is the stable name. This row records what the driver advertises; no committed gate has decoded a frame (M27)"
+    },
+    "wayland_layer_shell": {
+      "present": true,
+      "evidence_command": "wayland-info -i zwlr_layer_shell_v1; kwin_wayland --version; pacman -Q kwin",
+      "recorded_on": "2026-09-28",
+      "observed": "interface zwlr_layer_shell_v1 version 5, advertised by the host session compositor, kwin 6.7.5 (package kwin 6.7.5-1.1)",
+      "note": "this is the host desktop session's compositor, not P04 aegis-compositor, which serves no Wayland protocol; a run against it is development evidence for the client half only (D79). kwin_wayland --version and pacman -Q report the installed kwin, not which process served the session socket; that the session compositor is that kwin is inferred"
+    },
+    "compositor_dmabuf_import": {
+      "present": true,
+      "evidence_command": "wayland-info -i zwp_linux_dmabuf_v1; wayland-info -i wp_presentation; stat -L -c '%t:%T' /dev/dri/by-path/pci-0000:03:00.0-render",
+      "recorded_on": "2026-09-28",
+      "observed": "interface zwp_linux_dmabuf_v1 version 5 with main device 0xE281 (device number e2:81, /dev/dri/renderD129, the Arc A380; wayland-info also names the same GPU's primary node /dev/dri/card2); its feedback lists NV12 (0x3231564e) and P010, each with LINEAR, INTEL_X_TILED, INTEL_4_TILED and DRM_FORMAT_MOD_INVALID (implicit modifier), and neither with INTEL_4_TILED_DG2_RC_CCS or INTEL_4_TILED_DG2_RC_CCS_CC; wp_presentation version 2 on CLOCK_MONOTONIC",
+      "note": "advertised by KDE KWin 6.7.5 and not exercised by any committed gate; M27 is the gate that does. Decoding on the compositor's main device avoids a cross-device import, which nothing here has tested (D79)"
     }
   },
   "gpus": [
@@ -175,11 +196,11 @@
     },
     "rustc": {
       "present": true,
-      "version": "rustc 1.98.1 (distribution package, no rustup)"
+      "version": "rustc 1.98.1 (48a229cea 2026-09-01), materialised by rustup from rust-toolchain.toml (D61)"
     },
     "cargo": {
       "present": true,
-      "version": "cargo 1.98.1 (797e8a9bc 2026-08-05) (Arch Linux rust 1:1.98.1-1.1)"
+      "version": "cargo 1.98.1 (797e8a9bc 2026-08-05), materialised by rustup from rust-toolchain.toml (D61)"
     },
     "node": {
       "present": true,
@@ -253,9 +274,9 @@
       "version": "ukify 261 (261.3-1-arch)"
     },
     "rustup": {
-      "present": false,
-      "version": null,
-      "note": "deliberately not installed: it conflicts with the distribution rust package; the pinned-toolchain choice is decision D61"
+      "present": true,
+      "version": "rustup 1.29.1 (2026-09-01)",
+      "note": "distribution package cachyos-extra-znver4/rustup 1.29.1-1.1, installed 2026-09-13 when the distribution rust package was removed; the pinned-toolchain choice is decision D61 and docs/roadmap/toolchain-admission.md records it"
     },
     "sbctl": {
       "present": false,

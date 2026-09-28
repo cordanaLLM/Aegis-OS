@@ -47,6 +47,12 @@ ACTIVATED_STATUS = "activated"
 # milestone does not require editing it. `make readiness` prints which
 # components and milestones are where; this field records no count.
 DECLARED_STAGE = "activation"
+# The inventory is exact, not a floor: the concept's sixteen subsystems P01-P16
+# plus P17 aegis-scaena, the display runtime decision D75 added and ADR-0003
+# records as the one addition to the concept's subsystem set. A seventeenth id
+# is therefore a recorded decision, and an eighteenth, a gap or a missing row
+# still fails.
+COMPONENT_COUNT = 17
 ACTIVATION_EVIDENCE = (
     "component_path",
     "manifest_path",
@@ -95,6 +101,11 @@ PROFILE_CAPABILITIES = {
     "gpu_dma_buf_and_peer_memory",
     "realtime_kernel",
     "secure_boot_enrolment",
+    # Recorded 2026-09-28 for M27 (D75, D79): hardware decode on the render node
+    # the host compositor imports from, and what that compositor advertises.
+    "vaapi_decode",
+    "wayland_layer_shell",
+    "compositor_dmabuf_import",
 }
 PROFILE_IDENTIFIERS = ("hostname", "serial", "uuid", "macaddress", "ip_address")
 QUOTE_LIMIT = 200
@@ -206,9 +217,12 @@ def read_json(path):
 def verify_components():
     data = read_json(ROOT / "planning/components.json")
     components = data["components"]
-    if data["stage"] != DECLARED_STAGE or len(components) != 16:
-        raise ValueError(f"Expected stage declared exactly as {DECLARED_STAGE!r} and 16 components")
-    expected = {f"P{i:02}" for i in range(1, 17)}
+    if data["stage"] != DECLARED_STAGE or len(components) != COMPONENT_COUNT:
+        raise ValueError(
+            f"Expected stage declared exactly as {DECLARED_STAGE!r} "
+            f"and {COMPONENT_COUNT} components"
+        )
+    expected = {f"P{i:02}" for i in range(1, COMPONENT_COUNT + 1)}
     if {row["id"] for row in components} != expected:
         raise ValueError("Missing or duplicate subsystem IDs")
     tracked = None

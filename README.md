@@ -24,7 +24,9 @@ Praetor manages this repository's declared governance policy. This managed block
 4.0](https://img.shields.io/badge/original%20content-CC%20BY--SA%204.0-b85c00.svg)](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSING.md)
 
 This repository develops Aegis OS, an image-based Linux operating system. The
-original sixteen-subsystem concept is preserved, not redesigned; components are
+original sixteen-subsystem concept is preserved, not redesigned, and changes
+only through ADRs: ADR-0001 and ADR-0002 supersede parts of two blueprints, and
+ADR-0003 adds a seventeenth subsystem (P17, the display runtime). Components are
 activated one at a time against recorded evidence, and `make readiness` lists
 which components are activated and which are still proposals.
 

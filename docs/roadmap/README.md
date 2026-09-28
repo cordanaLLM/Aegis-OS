@@ -5,12 +5,14 @@ Status: reviewed draft; decisions D01-D20 recorded by the maintainer on
 
 ## Outcome and scope
 
-Aegis OS is an image-based Linux OS with sixteen subsystems (P01-P16):
-Rust host daemons, kernel-space eBPF programs,
+Aegis OS is an image-based Linux OS with seventeen subsystems: the concept's
+sixteen (P01-P16) and P17 aegis-scaena, the display runtime that ADR-0003 adds
+under decision D75. They are Rust host daemons, kernel-space eBPF programs,
 mkosi/systemd-repart/systemd-sysupdate image definitions, and Svelte UI
-packages. The concept is preserved unchanged. This roadmap orders repository
-preparation and component activation so that each step yields verifiable
-evidence at the lowest cost.
+packages. P17 is the one change to the concept's subsystem set; ADR-0001 and
+ADR-0002 supersede parts of the P04 and P11 blueprints. This roadmap orders
+repository preparation and component activation so that each step yields
+verifiable evidence at the lowest cost.
 
 Outcome: a ranked, dependency-explicit path from the current state to a first
 real image with retained artifact, signature and boot evidence, then to
@@ -26,11 +28,12 @@ verification on a local fixture and on the Nucleus kernel; a minimal image;
 hardware-backed slices; release and remote delivery.
 
 Scope exclusions (from the sources and governance): architectural redesign of
-the sixteen subsystems; activation of imported CI, release or integration
-workflows (they suppress failures and print simulated success, see REQ-CI-01,
-REQ-CI-02 and REQ-BOOT-02); any claim derived from proposal narrative or
-benchmark figures; imported dependency versions treated as active pins; owners
-or dates beyond repository names and dates present in the sources.
+the subsystems beyond what an ADR records (ADR-0003 adds P17); activation of
+imported CI, release or integration workflows (they suppress failures and print
+simulated success, see REQ-CI-01, REQ-CI-02 and REQ-BOOT-02); any claim derived
+from proposal narrative or benchmark figures; imported dependency versions
+treated as active pins; owners or dates beyond repository names and dates
+present in the sources.
 
 Current verified state at revision time:
 
@@ -42,14 +45,17 @@ Current verified state at revision time:
   on `main` and reads back as deletion and non-fast-forward protection, linear
   history, pull requests, and the required `Verification gate` status check.
 - Every milestone and epic is mirrored as a GitHub milestone and a `roadmap`
-  issue; `planning/roadmap.json` stays the source of truth.
+  issue except M27, its epics E27-1 to E27-3, and E16-3, which this revision
+  adds and which are not mirrored yet; `planning/roadmap.json` stays the source
+  of truth.
 - The private readiness matrix records the Imago/Nucleus edges as declared but
   unverified, and the configured producer origins as not resolving.
 
 ## Method
 
-Dependency DAG built from the sixteen activation cards in
-planning/components.json: subsystem edges from the subsystem graph (export-062),
+Dependency DAG built from the seventeen activation cards in
+planning/components.json (the concept's sixteen plus P17, which D75 and
+ADR-0003 add): subsystem edges from the subsystem graph (export-062),
 external producers (Imago, Nucleus, Golusoris, upstream), toolchain admissions
 and hardware needs. Milestones are bounded, verifiable states. Each is costed
 (trivial=1, small=2, medium=4, large=8), scored by the number of milestones it
@@ -97,6 +103,9 @@ version before any gate runs. The admissions are:
 - M20: TPM2 tools
 - M21: Firecracker
 - M12: GPU stack
+- M27: the VA-API binding's build tools (bindgen, libclang, pkgconf and the
+  libva headers, D80) and the Wayland and socket crates M27 proposes
+  (smithay-client-toolkit, rustix; D78 permits Wayland crates in P17)
 
 Milestones that only reuse an admitted toolchain say so.
 
@@ -143,7 +152,7 @@ score.
 | 9 | M05 | Evolution loop logic: P13 Tellus SCI and P16 Athena lifecycle | done | small | no | no | not-hardware | M14 | M19, M21 |
 | 10 | M06 | Agent execution chain logic: P09 Minerva and P10 Vesta | done | small | no | no | not-hardware | M14 | M08, M22 |
 | 11 | M08 | Leaf slices dependent on the agent chain: P11 Ludus and P14 Hephaestus | done | small | no | no | not-hardware | M06 | M25 |
-| 12 | M07 | Real-time control plane: P04, P07 and P08 logic | done | medium | no | no | not-hardware | M02 | M19, M23 |
+| 12 | M07 | Real-time control plane: P04, P07 and P08 logic | done | medium | no | no | not-hardware | M02 | M19, M23, M27 |
 | 13 | M19 | eBPF objects loaded through the verifier on the host kernel | done | medium | no | no | full | M05, M07 | M10 |
 | 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | done | medium | yes | no | full | M07, M26 | M10 |
 | 15 | M24 | Local boot harness over an externally supplied artifact | ready | large | yes | no | full | M15 | M11 |
@@ -152,12 +161,13 @@ score.
 | 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
 | 19 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
 | 20 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
-| 21 | M09 | Cross-repository contract pin: one local request/result pair | ready | small | no | yes | partial | M18 | M11, M10 |
-| 22 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | medium | yes | yes | partial | M09, M24 | M13, M20, M12 |
-| 23 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | blocked | medium | yes | yes | partial | M09, M19, M23 | M12 |
-| 24 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
-| 25 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | partial | M25, M10, M11 | - |
-| 26 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
+| 21 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | ready | medium | yes | no | full | M07 | - |
+| 22 | M09 | Cross-repository contract pin: one local request/result pair | ready | small | no | yes | partial | M18 | M11, M10 |
+| 23 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | medium | yes | yes | partial | M09, M24 | M13, M20, M12 |
+| 24 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | blocked | medium | yes | yes | partial | M09, M19, M23 | M12 |
+| 25 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
+| 26 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | partial | M25, M10, M11 | - |
+| 27 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
 
 The reference profile column records what the machine in
 `planning/hardware-profile.json` can evidence for that milestone. A pass there
@@ -917,7 +927,7 @@ Epics:
 
 Rank 12. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
-not-hardware. Blocked by: M02. Unblocks: M19, M23.
+not-hardware. Blocked by: M02. Unblocks: M19, M23, M27.
 
 Exit criteria:
 
@@ -1205,6 +1215,18 @@ Exit criteria:
   than silently download a different revision.
 - The Node major is the latest release line (26.x on the reference profile) and
   is tracked forward by Renovate rather than pinned to an older line (D65)
+- D81: the gate runs the WCAG 2.2 AA tag set (wcag2a, wcag2aa, wcag21a,
+  wcag21aa, wcag22aa) and asserts from its own results that the target-size rule
+  executed; its report names the EN 301 549 V4.1.1 clause and the V3.2.1 clause
+  for each criterion an executed rule evaluated, with 'none in V3.2.1' for
+  11.2.5.8 (target-size), and lists 11.2.4.11 and 11.2.5.7, which no rule in the
+  admitted axe-core version evaluates (4.13.0 has none), as not covered by this
+  gate. The gate also covers REQ-P12-08, whose WCAG 2.2 AA pairing the tag set
+  matches; D81 does not re-rule that row's edition.
+- D76: every colour, stroke and motion value in the committed token file is a
+  custom property, so the optional heads-up theme can override it without a
+  second token source; a stub override that sets the focus-ring width below the
+  D16 2px floor fails the existing boundary test (REQ-P12-10).
 
 Cheapest exit: Build the token file plus one Svelte component and run the axe
 suite in a container. No compositor and no daemons.
@@ -1238,9 +1260,22 @@ Exit criteria:
   Justitia and Tellus inputs stubbed
 - The DecisionRequest consumer is typed against the M14 schema; the P05/P12
   token-edge direction (D05) is recorded
+- D77 framing: the two stubbed inbound edges D77 moves off D-Bus,
+  DISPATCH_DECISION_REQUEST from P06 and EMIT_CARBON_TELEMETRY from P13, each
+  arrive as one line-delimited JSON-RPC 2.0 message on a mocked AF_UNIX stream;
+  a line that is not valid JSON-RPC 2.0 is answered with a JSON-RPC error and
+  the stream continues; the StatusNotifierWatcher, the portal settings and
+  AT-SPI2 stay on D-Bus mocks; SYNC_DESKTOP_SHELL from P04 keeps the Unix socket
+  stream the graph records, whose endpoint and budget stay open under D32.
+- D74 canvas state: the canvas node registry, camera and QuadTree cull bounds
+  are part of the tested shell state, and culling changes only what is painted:
+  with 1,000 seeded nodes and 10 in view the exported accessibility snapshot
+  still lists all 1,000 in focus order (REQ-P05-11), and moving focus to a
+  culled node moves the camera to reveal it (REQ-P05-09).
 
-Cheapest exit: Unit-test the Svelte store and lifecycle logic with mocked socket
-and D-Bus connections.
+Cheapest exit: Unit-test the Svelte store and lifecycle logic with mocked
+sockets, the two edges D77 moves framed as line-delimited JSON-RPC 2.0, and
+D-Bus mocks only for the platform interfaces.
 
 Epics:
 
@@ -1253,6 +1288,24 @@ Epics:
   REQ-GRAPH-01, REQ-P13-04, REQ-P06-08. Acceptance: Positive: DecisionRequest
   and Tellus telemetry payloads parse. Negative: an unknown schema version is
   rejected. Boundary: a telemetry update with zero watts renders without error.
+- **E16-3 Canvas state and D77 framing**. Requirements: REQ-P05-09, REQ-P05-10,
+  REQ-P05-11, REQ-P05-13, REQ-P17-04. Acceptance: Positive: a keyboard-only walk
+  over a seeded canvas reaches every node and invokes every action, ending in
+  the same store state as the pointer path; from each instrument Escape restores
+  focus to its node and Tab reaches the next shell region; at the minimum, 1.0
+  and maximum camera scale the measured focus ring is at least 2 px and 3:1; and
+  a DecisionRequest and a telemetry update each arrive as one JSON-RPC 2.0 line.
+  Negative: culling implemented by removing nodes from the snapshot fails the
+  1,000-node check, an instrument with only a pointer handler fails the walk, a
+  transcluded fragment that swallows Tab fails, a focus ring drawn inside the
+  scaled layer (1.5 px at scale 0.5) fails, a focused node fully under a panel
+  fails, and a line with jsonrpc other than "2.0" is refused with an error while
+  the stream continues. Boundary: a node exactly on the cull boundary and a node
+  straddling the viewport edge are both listed; a 2.0 px focus ring passes and
+  1.9 px fails; a partly covered focused node passes; Escape from the deepest
+  nested instrument returns focus to canvas level in exactly that many presses;
+  a disabled single-letter shortcut no longer fires; an empty canvas exposes a
+  labelled empty state.
 
 ### M25 - GPU DMA-BUF sharing and VFIO passthrough slices
 
@@ -1925,9 +1978,264 @@ Evidence:
   started, no audio device was opened and no eBPF program was loaded. The
   image, kernel-artifact, boot, hardware and release gates remain blocked
 
+### M27 - P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS
+
+Rank 21. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: full.
+Blocked by: M07. Unblocks: nothing.
+
+The first milestone of P17 aegis-scaena, added by D75 and ADR-0003. It is the
+cheapest slice that yields runtime evidence for the D75 and D77 paths: each
+decoded frame is checked against a content oracle on its surface, and that
+surface travels as a DMA-BUF over SCM_RIGHTS and the compositor composites it.
+On the reference profile that compositor is the host session's KDE KWin, so
+every pass is the client half only (D79). The first slice decodes baseline
+Motion-JPEG and one MPEG-2 intra frame, the codec the maintainer chose on
+2026-09-28 (D80); H.264, HEVC and AV1 follow once a bitstream parser is
+admitted. M27 unblocks no milestone: on 2026-09-28 the maintainer kept it a leaf
+rather than a blocker of M12, and whether the built image re-runs its display
+path is decided when M12 is planned. No milestone plans a P04 that serves the
+protocols it uses (D79).
+
+Exit criteria:
+
+- Toolchain admission before any gate runs (D80): cros-libva from git rev
+  59384456ac2ae78c0c3e5515f41ef1efd9b802cf (package 0.0.13, BSD-3-Clause),
+  smithay-client-toolkit 0.21.1 with default-features = false and rustix 1.1.5
+  with the net, fs and event features (event polls the Wayland connection fd
+  under a deadline) are declared once in [workspace.dependencies] and locked;
+  bindgen 0.70.1 (cros-libva's build dependency at that revision), libclang
+  (clang 22.1.8), pkgconf 3.0.7 and the libva 2.24.1 headers (VA-API 1.24.0) are
+  recorded in docs/roadmap/toolchain-admission.md with a floor and a reference
+  value read back before the gate runs; the Verification gate's runner
+  (ubuntu-24.04, whose apt libva-dev is 2.20.0) provides libva headers at or
+  above the admitted floor, either by building libva at the reference version or
+  by showing that the pinned revision compiles against apt's 2.20.0, which then
+  sets the floor; the gate reads that version back, `cargo build --locked`
+  covers the crate there, and `cargo tree --locked -p aegis-scaena` shows the
+  git source at that revision. The second major versions this resolves beside
+  the workspace's thiserror 2 and syn 3 (thiserror 1 through cros-libva, syn 2
+  through bindgen) are named in the admission.
+- crates/aegis-scaena is a written-out workspace member with a Cargo.lock entry
+  and [lints] workspace = true, so unsafe_code = "forbid" is inherited, and its
+  hygiene test finds no `unsafe` token in its sources. The workspace
+  rust-version is raised only as far as the highest rust-version the resolved
+  graph declares, read back from `cargo metadata --locked`
+  (smithay-client-toolkit 0.21.1 declares 1.86 against today's 1.85); the three
+  tests that assert `rust-version = "1.85"` literally,
+  crates/aegis-hephaestus/tests/manifest_hygiene.rs:262,
+  crates/aegis-ludus/tests/manifest_hygiene.rs:248 and
+  crates/aegis-minerva/tests/manifest_hygiene.rs:199, move to the new value in
+  the same change, and rust-toolchain.toml stays at 1.98.1. The two tests that
+  compare lock-entry dependency lines literally,
+  the_lock_entry_names_exactly_five_dependencies
+  (crates/aegis-athena/tests/manifest_hygiene.rs:161) and
+  the_lock_entry_names_exactly_three_dependencies
+  (crates/aegis-tellus/tests/manifest_hygiene.rs:162), change in the same
+  change: once cros-libva locks thiserror 1 beside thiserror 2, Cargo writes
+  each thiserror 2 dependency line version-qualified ("thiserror 2.x"), so both
+  strip the version suffix Cargo appends before they compare package names, and
+  keep their exact name lists.
+- D78 lands in the same change as P17's first Wayland or VA-API dependency, not
+  before: the six lock-wide negative sweeps,
+  no_hash_crate_but_the_one_d02_admits_is_resolved
+  (crates/aegis-athena/tests/manifest_hygiene.rs:88),
+  the_lock_file_contains_no_md5_implementation
+  (crates/aegis-justitia/tests/manifest_hygiene.rs:25),
+  the_lock_resolves_no_multimedia_or_async_crate
+  (crates/aegis-calliope/tests/manifest_hygiene.rs:190,
+  crates/aegis-compositor/tests/manifest_hygiene.rs:202,
+  crates/aegis-lictor/tests/manifest_hygiene.rs:197) and
+  no_new_third_party_crate_is_resolved
+  (crates/aegis-tellus/tests/manifest_hygiene.rs:141), keep their forbidden
+  lists verbatim and read their own crate's dependency closure instead of the
+  whole lock. The closure comes from `cargo metadata --format-version 1 --locked
+  --offline --all-features` without --filter-platform, starts at the one
+  workspace member with the crate's name, follows every
+  resolve.nodes[].deps[].pkg edge whatever its dep_kinds, marks a node visited
+  when it is pushed so the loop is bounded by resolve.nodes.len() iterations,
+  and matches package names exactly. It fails closed on a spawn error, a
+  non-zero exit, a missed deadline (HISS-02), unparsable output, a null resolve,
+  or zero or several start nodes, and the offline failure names `cargo fetch
+  --locked` as the cure. P17's own sweep refuses servo, webrender, mozjs,
+  mozjs_sys, wgpu, wgpu-hal, smithay, wayland-server, tokio, zbus, zenoh,
+  iceoryx2, md5, md-5, blake3 and blake2 in its closure. Of the six, only the
+  compositor sweep (wayland-backend) and the lictor sweep (memmap2) refuse a
+  name P17's closure resolves today. What D78 gives up is recorded with it: no
+  test forbids md5 or tokio workspace-wide any more, and each guarantee holds
+  per crate.
+- The D77 planes are typed and tested without hardware inside make verify-all,
+  over a socketpair and a memfd: schema aegis.p08-p17.decoded-frame.v1, owned by
+  aegis-scaena as the consumer under the M14 rule
+  (crates/aegis-compositor/src/chain.rs:7-10), carries schema, correlation_id,
+  fourcc, modifier, width, height and planes[{offset, pitch}] in one
+  line-delimited JSON-RPC 2.0 request with exactly one fd in SCM_RIGHTS, sent
+  with rustix sendmsg and received with recvmsg and MSG_CMSG_CLOEXEC into an
+  OwnedFd; every receive and every send has a deadline (SO_RCVTIMEO,
+  SO_SNDTIMEO), a send that misses it is refused with a typed error, and every
+  line has a byte bound (HISS-02). The attach step refuses an fd whose fstatfs
+  magic is not DMA_BUF_MAGIC 0x444d4142, a JSON line that names a
+  file-descriptor number is refused, and after 1,000 refused messages the
+  process's open-descriptor count, read from /proc/self/fd, equals its baseline;
+  that case is the only test in its own integration-test binary
+  (crates/aegis-scaena/tests/fd_leak.rs), so no concurrent test perturbs the
+  count.
+- Positive on the reference profile: `make verify-display`, a new target outside
+  make verify-all like verify-latency, runs with LIBVA_DRIVER_NAME=iHD set for
+  that process only, on the render node whose dev_t equals the compositor's
+  zwp_linux_dmabuf_v1 main device (the Arc A380 today). The codec is the one the
+  maintainer chose on 2026-09-28, baseline Motion-JPEG plus one MPEG-2 intra
+  frame (D80). Decode is checked against content, not exit status. The one intra
+  frame of cros-libva's libva_utils_mpeg2vldemo test data decodes to CRC-32
+  0xa5713e52 over its visible NV12 lines, the value cros-libva asserts at the
+  pinned revision (lib/src/lib.rs, crc_nv12_image); that value is upstream's and
+  is not re-recorded here: a driver that yields another fails the case, which
+  names the driver version, and adopting a new value is a recorded decision.
+  Each of the 60 frames of a committed baseline Motion-JPEG fixture (sha256
+  pinned in the test) decodes through VAProfileJPEGBaseline and VAEntrypointVLD,
+  and its content is checked against the fixture rather than against an earlier
+  run of the same decoder: the fixture's generator draws each frame's index as a
+  row of black and white 16 x 16 luma blocks on the MCU grid between one white
+  and one black guard block, and the test reads the blocks back from the decoded
+  surface with create_image before that surface is exported, thresholding each
+  block's mean luma at 128, so a blank frame, a frame out of order or a frame
+  whose blocks do not read back fails, and a planted zero-filled surface fails.
+  The per-frame CRC-32 the test records when M27 first passes is a regression
+  pin only; a driver update that changes one is re-measured and recorded with
+  the driver version, the D73 pattern. Each checked surface is exported with
+  export_prime (NV12, composed layers), passed over the socketpair and attached
+  to a zwlr_layer_shell_v1 surface through zwp_linux_dmabuf_v1 create: 60
+  created events, 0 failed events, a wp_presentation presented event for every
+  committed frame, and every received fd has the (st_dev, st_ino) of the
+  exported one; Aegis code never maps the received fd. Every Wayland wait (the
+  registry roundtrip, the first configure, each created or failed event and each
+  presented or discarded event) runs under its own deadline, polled on the
+  connection fd, and a missed deadline fails the case and names the event it
+  waited for (HISS-02). The decode wait has a deadline too: cros-libva's sync
+  wraps vaSyncSurface, which takes no timeout, and vaSyncSurface2 is reachable
+  only through its generated unsafe bindings, so before it calls sync or
+  create_image the test polls Surface::query_status until VASurfaceReady under a
+  deadline with a bounded number of polls, and a missed deadline fails the case
+  and names the surface (HISS-02). The run prints rustc, libva, the VA vendor
+  string, the compositor it ran against and the modifier the driver chose.
+- Negative on the reference profile, each refused before anything is attached:
+  (a) the session's own LIBVA_DRIVER_NAME=nvidia, because the VA vendor string
+  does not name the iHD driver, and a decode's exit status alone does not show
+  which GPU decoded; (b) a decode node whose dev_t differs from the compositor's
+  zwp_linux_dmabuf_v1 main device (the amdgpu render node today), resolved
+  through /sys/class/drm and never from a hard-coded renderD number; (c) a
+  format and modifier pair missing from the compositor's feedback for the
+  surface, such as NV12 with INTEL_4_TILED_DG2_RC_CCS, refused client-side with
+  a typed error while the next valid frame still presents. The test asserts the
+  client-side refusal, not the compositor's reply: linux-dmabuf-v1.xml:248-249
+  requires the invalid_format protocol error from version 4, and a client test
+  does not rest on one compositor's conformance. Because a compositor cannot
+  detect a modifier that misstates the layout, the descriptor carries the
+  modifier export_prime returned, unchanged, and a test pins that.
+- Boundary: 1 and 4 planes are accepted and 0 and 5 refused; a plane whose
+  offset + pitch x plane height equals the object size read with lseek(SEEK_END)
+  is accepted and one byte more refused; an attach before the layer surface's
+  first ack_configure is refused by the surface state machine; the first and the
+  sixtieth fixture frame both present; a line exactly at the byte bound is
+  accepted and one byte longer refused; a silent peer fails the receive at its
+  deadline, a peer that stops reading fails the send at its deadline, and a
+  Wayland peer that accepts the connection and never answers the registry
+  roundtrip fails at its deadline.
+- Fixture licensing: the Motion-JPEG fixture is generated for Aegis, its ffmpeg
+  command, which draws the index blocks, recorded as provenance, and carries the
+  project licence. The MPEG-2 frame data is third-party (BSD-3-Clause through
+  cros-libva, adapted from libva-utils, MIT), and because verify_licensing()
+  holds every REUSE.toml annotation to exactly EUPL-1.2 and CC-BY-SA-4.0, that
+  file carries file-level SPDX headers with its upstream copyright, the
+  LICENSES/ texts it names are added, and `reuse lint` passes.
+- Labelling (D79): every recorded pass names the compositor that served it and
+  says client half only; nothing here is evidence that P04 serves
+  zwlr_layer_shell_v1 or zwp_linux_dmabuf_v1. No Servo, wgpu, SpiderMonkey or
+  iceoryx2 crate is resolved, the layer surface takes no keyboard focus
+  (keyboard_interactivity none), and a pass is development evidence on the
+  reference profile that closes no hardware or accessibility gate. HISS-03 is
+  not claimed on the frame path, and the reason is known rather than unmeasured:
+  cros-libva at the pinned revision heap-allocates for every decoded picture
+  (Picture::new boxes its state, lib/src/picture.rs:118; each JPEG and MPEG-2
+  parameter buffer is a Box, lib/src/buffer/jpeg_baseline.rs:53 and
+  lib/src/buffer/mpeg2.rs:74). No per-frame allocation count is produced unless
+  an allocation counter is admitted, because a counting global allocator needs
+  an unsafe GlobalAlloc implementation the crate may not contain, and D83
+  records that allocation as a scoped deviation limited to the pinned decoder
+  binding: P17's own frame loop allocates nothing per frame.
+- The crate texts that name M12 as the display, layer-shell or pacing milestone
+  are corrected in the same change:
+  crates/aegis-compositor/src/surface.rs:17-18,
+  crates/aegis-compositor/src/lib.rs:42-43,
+  crates/aegis-compositor/src/pacing.rs:40-41,
+  crates/aegis-compositor/tests/pacing_constant.rs:16-17,
+  crates/aegis-hestia/src/contracts/graph.rs:46-47,
+  crates/aegis-hestia/src/contracts/mod.rs:19-20 and the admitted_at texts at
+  crates/aegis-compositor/src/decision.rs:294-295 and :324 say that M27
+  exercises the client half against the host compositor and that no milestone
+  yet plans a P04 that drives a display or serves zwlr_layer_shell_v1 (D79), and
+  the assertion at crates/aegis-compositor/tests/decision_register.rs:214 moves
+  to the new text.
+- Without the reference profile's capabilities the gate prints `SKIP: <reason>;
+  the display slice gate did not run.` and exits 0, the convention
+  verify-latency uses, so an exit 0 is evidence only with the case lines above
+  it; docs/build/display.md records the run that is evidence.
+
+Cheapest exit: Decode the reference MPEG-2 frame and the fixture stream once on
+the reference profile with the driver and device pinned, export, pass and attach
+them, and test the descriptor codec, the SCM_RIGHTS path and the surface state
+machine on a socketpair and a memfd inside make verify-all.
+
+Epics:
+
+- **E27-1 D77 planes over a socketpair: decoded-frame descriptor, JSON-RPC 2.0
+  lines and SCM_RIGHTS**. Requirements: REQ-P17-04, REQ-P17-07. Acceptance:
+  Positive: a descriptor and one memfd round-trip over a socketpair, and the
+  received fd, taken with MSG_CMSG_CLOEXEC into an OwnedFd, has the sender's
+  (st_dev, st_ino). Negative: the attach step refuses the memfd because its
+  fstatfs magic is not DMA_BUF_MAGIC; a message carrying zero or two fds for one
+  descriptor is refused and the surplus fd is closed; a line whose jsonrpc
+  member is not "2.0" is refused; a line that names a file-descriptor number is
+  refused. Boundary: 1 and 4 planes accepted, 0 and 5 refused; a plane ending
+  exactly at the end of its object accepted and one byte further refused; a line
+  at the byte bound accepted and one byte over refused; a silent peer fails at
+  its receive deadline; a peer that stops reading fails the send at its
+  deadline; a Wayland peer that never answers the registry roundtrip fails at
+  its deadline; after 1,000 refused messages the open-descriptor count read from
+  /proc/self/fd equals its baseline, in a test binary that holds only that case.
+- **E27-2 VA-API frames to a layer surface on the reference profile, driver and
+  device pinned**. Requirements: REQ-P17-02, REQ-P17-03. Acceptance: Positive:
+  the reference MPEG-2 frame decodes to CRC-32 0xa5713e52 and each of the 60
+  fixture frames reads back the index blocks drawn into it on the Arc A380 with
+  the iHD driver, and each fixture frame yields a created event and a presented
+  event on a zwlr_layer_shell_v1 surface of the host compositor. Negative: the
+  session's LIBVA_DRIVER_NAME=nvidia, a decode node that is not the compositor's
+  main device, and an unadvertised format and modifier pair are each refused
+  before anything is attached, and a planted zero-filled surface fails the
+  content check. Boundary: an attach before the first ack_configure is refused;
+  the first and the sixtieth frame both present; a presented event that does not
+  arrive fails at its deadline and names the event; a decoded surface that does
+  not reach VASurfaceReady fails at its deadline and names the surface; the
+  recorded pass names the compositor and says client half only (D79).
+- **E27-3 Workspace membership, lock sweeps on each crate's own closure and
+  toolchain admission (D78, D80)**. Requirements: REQ-WS-01. Acceptance:
+  Positive: `cargo build --locked` builds aegis-scaena on the reference profile
+  and on the Verification gate's runner, and each of the six re-scoped sweeps
+  reports on the pre-M27 lock exactly what the lock-wide sweep reported.
+  Negative: a forbidden crate planted in a crate's own closure (tokio as a
+  dev-dependency of aegis-compositor) fails that crate's sweep; a failing,
+  timed-out or node-less `cargo metadata` fails closed; a manifest that omits
+  aegis-scaena from the written-out member list fails the membership test.
+  Boundary: wayland-backend in Cargo.lock but outside aegis-compositor's closure
+  passes; a name that only shares a prefix (tokio-macros) is not a hit; the
+  workspace rust-version equals the highest rust-version the resolved graph
+  declares, not one release more, and the three tests that pinned 1.85 read the
+  new value; the athena and tellus lock-entry tests pass with thiserror 1 and 2
+  both locked and keep their exact name lists.
+
 ### M09 - Cross-repository contract pin: one local request/result pair
 
-Rank 21. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 22. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: yes. Reference profile: partial.
 Blocked by: M18. Unblocks: M11, M10.
 
@@ -2001,7 +2309,7 @@ Epics:
 
 ### M11 - Minimal image build with artifact, signature and boot evidence
 
-Rank 22. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 23. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M24. Unblocks: M13, M20, M12.
 
@@ -2070,7 +2378,7 @@ Epics:
 
 ### M10 - eBPF objects re-verified against the Nucleus-pinned kernel in a VM
 
-Rank 23. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 24. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M19, M23. Unblocks: M12.
 
@@ -2117,7 +2425,7 @@ Epics:
 
 ### M20 - TPM2 attestation slice on swtpm: audit-record signing and /var unseal
 
-Rank 24. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 25. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: full.
 Blocked by: M11, M14. Unblocks: nothing.
 
@@ -2171,7 +2479,7 @@ Epics:
 
 ### M12 - GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths
 
-Rank 25. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 26. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M25, M10, M11. Unblocks: nothing.
 
@@ -2226,7 +2534,7 @@ Epics:
 
 ### M13 - Release signing and remote delivery (stack.md step 5)
 
-Rank 26. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 27. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: yes. Reference profile: partial.
 Blocked by: M11. Unblocks: nothing.
 
@@ -2890,23 +3198,29 @@ Open decisions:
   PREEMPT_RT reading and a non-empty sample. Re-recording REFERENCE_HOST means
   a new measurement, recorded under the kernel that produced it.
 
-### Decisions from the desktop environment concept (2026-09-27)
+### Decisions from the desktop environment specification (2026-09-27)
 
 Source: `.workingdir/aegis-desktop-environment-specification.md` (private,
-sha256 prefix `a41f6c9e825d`), a notebook export (version 2.0.0-DEV) and
-therefore proposal data. On 2026-09-27 the maintainer selected four of its
-pillars for the design; each is an open decision below, and nothing is
-activated. Three rows of its status table are wrong: `crates/aegis-ipc` and
+sha256 prefix `a41f6c9e825d`, cited elsewhere as source id `desktop-spec`), a
+notebook export (version 2.0.0-DEV) and therefore proposal data; this section
+calls it the specification. On 2026-09-27 the maintainer selected four of its
+pillars for the design and decided D74 to D77 below, revising D75 on 2026-09-28.
+D78 to D80 record what that revision required, D81 sets the accessibility target
+of the new requirements, D82 is open, and D83 scopes HISS-03 on P17's frame
+path. The change to the concept is ADR-0003
+(public:docs/adr/0003-display-runtime-p17-scaena.md `706676855b65`): P17
+aegis-scaena is recorded as a proposal, and nothing is activated. Three rows of
+the specification's status table are wrong: `crates/aegis-ipc` and
 `crates/praetor` are marked implemented and neither exists (Praetor is the
 separate Go repository cordanaLLM/praetor), and there is no
-`crates/aegis-shell`; the recorded shell is P05 aegis-forum-shell. Its seL4
-memory-limit example does not apply to a Linux system. Not selected: 6DOF hand
-terminals with bare-hand gesture input, and TEE attestation beyond TPM2 (TDX,
-SEV-SNP, CCA).
+`crates/aegis-shell`; the recorded shell is P05 aegis-forum-shell. The
+specification's seL4 memory-limit example does not apply to a Linux system. Not
+selected: 6DOF hand terminals with bare-hand gesture input, and TEE attestation
+beyond TPM2 (TDX, SEV-SNP, CCA).
 
-- **D74** Does P05 Forum shell adopt the concept's post-WIMP spatial canvas:
-  interaction instruments and surrogate objects in place of menus and modal
-  dialogs, QuadTree viewport culling, space-scale pan and zoom with
+- **D74** Does P05 Forum shell adopt the specification's post-WIMP spatial
+  canvas: interaction instruments and surrogate objects in place of menus and
+  modal dialogs, QuadTree viewport culling, space-scale pan and zoom with
   focus+context magnification, and DOM-fragment transclusion? Options: the
   canvas as P05's primary surface; the canvas as one workspace inside a
   conventional P05 shell; P05 as recorded. Recommended: the canvas as one P05
@@ -2917,9 +3231,22 @@ SEV-SNP, CCA).
   UI code yet (`ui/` holds only its README) and M16 is blocked on M04 and M14;
   under D10's 2026-09-16 decision its UI builds on `@sveltesentio` packages,
   which require Svelte 5 or later. Every UI component carries a P12 edge
-  (REQ-P12-01, REQ-P12-03, REQ-P12-05, REQ-P12-06), and the concept names none.
-  `@sveltesentio/shell` 0.2.0 provides device-class layout and D-pad focus, not
-  a spatial canvas, so the canvas would be built here.
+  (REQ-P12-01, REQ-P12-03, REQ-P12-05, REQ-P12-06), and the specification names
+  none. `@sveltesentio/shell` 0.2.0 provides device-class layout and D-pad
+  focus, not a spatial canvas, so the canvas would be built here.
+  **Decision (2026-09-27):** The first option, not the recommendation: the
+  spatial canvas is P05's primary surface and replaces the conventional shell
+  entirely (ADR-0003). The recommendation's preconditions were not part of the
+  choice; the accessibility rows the canvas needs are derived from the D81
+  target and recorded in `docs/roadmap/requirements.md`: REQ-P05-09 to
+  REQ-P05-15 cover keyboard reach, no focus trap, paint-only culling, instrument
+  and surrogate semantics, focus under camera zoom, pointer alternatives, and
+  text resize with a linear mode for magnifier users. As planning that follows
+  the answer, not as part of it, M16 holds the canvas state and tests four of
+  those rows. REQ-P05-11 makes culling paint-only, which overrides the
+  specification's culling of off-screen nodes from layout, so every node stays
+  reachable by assistive technology. Which engine renders the canvas is D82,
+  still open.
 - **D75** Does Aegis build a Rust-native display runtime (Servo, WebRender,
   wgpu) that mounts shell surfaces through `zwlr_layer_shell_v1` and imports
   hardware-decoded video as DMA-BUF without copies? Options: a new component on
@@ -2931,12 +3258,34 @@ SEV-SNP, CCA).
   not the multi-planar NV12 buffers VA-API and NVDEC produce (gfx-rs/wgpu#9801,
   open). Why: no recorded component owns a web runtime. Servo records Linux
   assistive-technology detection as unreliable (servo/servo#46834, open),
-  against REQ-P12-03 and REQ-P12-08. The concept names smithay for surface
+  against REQ-P12-03 and REQ-P12-08. The specification names smithay for surface
   binding, which D08 checked and did not admit at M07 (0.7.0 is still current);
   a layer-shell client needs `wayland-client` and `smithay-client-toolkit`
   (0.21.1), which no decision has checked.
-- **D76** Is the concept's heads-up visual language the design language for P12
-  Concordia: security states as colour and frame style (amber dashed for
+  **Decision (2026-09-28, revising the answer of 2026-09-27):** A new component,
+  P17 aegis-scaena, in which the compositor composes (ADR-0003). The 2026-09-27
+  answer, one Servo, WebRender and wgpu scene built now, did not survive
+  verification: webrender 0.70 renders through OpenGL (gleam) and not wgpu, wgpu
+  cannot import the multi-planar NV12 buffers decoders produce
+  (gfx-rs/wgpu#9801), Servo runs its own event loop, which is not Send, and its
+  own tokio runtime, and both paths need unsafe code the workspace forbids with
+  no per-crate override (error E0453, reproduced). Instead the shell engine and
+  each video stream own separate Wayland surfaces, and decoded video reaches the
+  compositor as DMA-BUF descriptors over the D77 SCM_RIGHTS path to
+  `zwp_linux_dmabuf_v1`, which composites it without a copy. The no-Servo video
+  slice comes first, within the ban on unsafe code, and the shell engine is
+  chosen later behind a fixed surface contract (D82). As planning that follows
+  the answer, not as part of it, that slice is M27: VA-API decode on the Arc
+  A380 (iHD, the device the compositor imports from) with the driver and render
+  node pinned per run, export through cros-libva (D80), the fd sent with rustix
+  `sendmsg` over a socketpair with one JSON-RPC 2.0 descriptor line, and the
+  receiver attaching it to a smithay-client-toolkit layer surface, with no wgpu;
+  SpiderMonkey provenance is deferred with the engine. The graph of record is
+  unchanged, so D38's recommendation to keep the sixteen-node shape of
+  export-062 still holds: P17 and its four edges are recorded beside that graph,
+  marked 'not in export-062' in `docs/roadmap/requirements.md`, not inside it.
+- **D76** Is the specification's heads-up visual language the design language
+  for P12 Concordia: security states as colour and frame style (amber dashed for
   unverified, cyan double line while a gate runs, blue with corner brackets once
   verified, crimson hazard frame on fault), scanline, chromatic-aberration and
   Fresnel depth shaders, and diegetic panels anchored in the canvas? Options:
@@ -2947,9 +3296,19 @@ SEV-SNP, CCA).
   already requires the UI to follow through `org.freedesktop.portal.Settings`,
   and the fault flash held under WCAG 2.3.1's three-flash limit. Why: M04 owns
   the only accessibility gate (axe-core and Playwright, the D16 focus ring,
-  D17's rule against monolithic CSS). The concept cites MIL-STD-1472H for its
-  colours, and that citation has not been checked against the standard. Which
-  recorded state feeds which frame is part of this decision.
+  D17's rule against monolithic CSS). The specification cites MIL-STD-1472H for
+  its colours, and that citation has not been checked against the standard.
+  Which recorded state feeds which frame is part of this decision.
+  **Decision (2026-09-27):** As recommended: an optional theme over the
+  Concordia base tokens M04 creates, never the default. Each state is told apart
+  by frame shape and text as well as colour, every shader and animation sits
+  behind the reduced-motion preference REQ-P12-02 reads from
+  `org.freedesktop.portal.Settings`, and the fault flash stays under the
+  three-flash limit of WCAG 2.2 SC 2.3.1 (REQ-P12-10 to REQ-P12-13). As planning
+  that follows the answer, not as part of it, M04 keeps every token overridable
+  so the theme needs no second token source. Which recorded state feeds which
+  frame stays open until the theme has a milestone, and the MIL-STD-1472H
+  citation stays unchecked.
 - **D77** Do shell, compositor and daemons talk over line-delimited JSON-RPC 2.0
   on Unix sockets for control, with video frames and telemetry kept off the
   sockets? Options: that control plane with iceoryx2 (0.10.0, MIT OR Apache-2.0)
@@ -2964,6 +3323,127 @@ SEV-SNP, CCA).
   descriptor travels. `@sveltesentio/ipc-sockmap` 0.2.0 frames length-prefixed
   messages on a Node-to-Go edge, not JSON-RPC, so it does not supply this
   contract.
+  **Decision (2026-09-27; internal edges 2026-09-28):** As recommended:
+  line-delimited JSON-RPC 2.0 over AF_UNIX for control, DMA-BUF descriptors
+  passed as `SCM_RIGHTS` messages for data, and iceoryx2 only if a high-rate
+  stream appears that is not a GPU buffer. On 2026-09-28 the maintainer moved
+  the three Aegis-internal D-Bus edges the question named to JSON-RPC:
+  DISPATCH_DECISION_REQUEST (P06 to P05), EMIT_CARBON_TELEMETRY (P13 to P05) and
+  SPATIOTEMPORAL_TASK_SHIFT (P13 to P07). The platform D-Bus interfaces stay on
+  D-Bus: the freedesktop portal (REQ-P12-02), AT-SPI2 (REQ-P12-03) and the
+  StatusNotifierWatcher (REQ-P05-05). Wayland keeps its own protocol for P17 to
+  P04. The option chosen on 2026-09-27 deferred the formal decision to M16; the
+  2026-09-28 answer recorded the edge move "as part of D77's closure", so D77
+  closes here, and M16 applies the framing rather than deciding it. M27 is the
+  first milestone that exercises the planes, and M16's stubs for the two moved
+  edges it consumes use the framing. D77 does not rule on the edges it did not
+  name: SYNC_DESKTOP_SHELL keeps the Unix socket stream the graph records, with
+  its endpoint and budget still open under D32, the Zenoh-recorded P04 Tier-2
+  mesh and FOCUS_SWITCH_NOTIFY are unchanged, and ACTION_GATE_INTERCEPT (P06 to
+  P09), whose transport stays open under D26 (DSP-03), is not moved by D77.
+- **D78** How do the lock-wide negative sweeps stay meaningful once one crate
+  needs a dependency another crate's sweep refuses? Options: keep every sweep
+  lock-wide and keep Wayland and VA-API crates out of the workspace; give P17
+  its own workspace and lock; re-scope each sweep to its own crate's dependency
+  closure. Why: smithay-client-toolkit 0.21.1 resolves wayland-backend and
+  memmap2, which `crates/aegis-compositor/tests/manifest_hygiene.rs` and
+  `crates/aegis-lictor/tests/manifest_hygiene.rs` refuse anywhere in
+  `Cargo.lock` although neither crate would depend on them, and weakening those
+  tests without a record would be evasion.
+  **Decision (2026-09-28):** As recommended, the third option. Every crate's
+  lock-wide negative sweep reads that crate's own dependency closure from `cargo
+  metadata --locked`, so P17 may depend on Wayland and VA-API crates while every
+  other crate keeps its guarantee. The change belongs to M27, the milestone that
+  first adds such a dependency; M27's exit criteria name the six sweeps, the
+  closure rule and the fail-closed causes, and show that on the pre-M27 lock
+  each re-scoped sweep reports exactly what the lock-wide sweep reported. What
+  the decision gives up: after the re-scope no test forbids md5 or tokio
+  workspace-wide, so each guarantee holds per crate, and P17's own sweep carries
+  D02's hash exclusion and the async-runtime exclusion into the new crate.
+- **D79** What does a run against the host session's compositor count as?
+  Options: development evidence for the client half only; no evidence until P04
+  serves the protocols. Why: the reference profile's compositor is KDE KWin
+  6.7.5, which advertises `zwlr_layer_shell_v1` version 5 and
+  `zwp_linux_dmabuf_v1` version 5, while P04 serves no Wayland protocol and its
+  tests refuse a server library.
+  **Decision (2026-09-28):** As recommended, the first option. A run against the
+  host session's compositor is development evidence on the reference profile,
+  labelled client half only. P04 serving layer shell and DMA-BUF import is
+  separate work that no milestone yet plans, and such a run closes no hardware
+  gate.
+  **M27 as a leaf (2026-09-28):** As recommended, M27 stays a leaf and unblocks
+  no milestone; whether M12 re-runs its display path in the built image is
+  decided when M12 is planned.
+- **D80** Which VA-API binding does P17 use? Options: cros-libva git-pinned at
+  the merge of chromeos/cros-libva#37; the single-author fork `libva` 0.1.4;
+  bindings generated in this repository. Why: cros-libva 0.0.13 from crates.io
+  (2024-12-06), the latest release, fails to compile against the reference
+  profile's libva 2.24.1, and #37, which fixes that, is merged but unreleased.
+  Every option needs bindgen, libclang, pkg-config and the libva headers at
+  build time.
+  **Decision (2026-09-28):** As recommended, the first option: cros-libva at git
+  revision 59384456ac2ae78c0c3e5515f41ef1efd9b802cf (#37, merged 2026-09-01),
+  refreshed to a crates.io release once one carries the fix (D69). Its build
+  tools are proposed rows in `docs/roadmap/toolchain-admission.md` and are
+  admitted by M27.
+  **Codec (2026-09-28):** As recommended, M27 decodes baseline Motion-JPEG
+  through VAProfileJPEGBaseline plus one MPEG-2 intra frame, the fixture
+  generated once with ffmpeg and pinned by sha256. cros-libva has no bitstream
+  parser, and cros-codecs 0.0.6, which has one, requires exactly cros-libva
+  0.0.12 and so cannot use the git pin; H.264, HEVC and AV1 follow once a parser
+  is admitted. A consequence recorded beside the answer, not put to the
+  maintainer: cros-libva at that revision heap-allocates for every decoded
+  picture, so M27 does not claim HISS-03 on the frame path, and whether that
+  allocation is accepted or removed is not decided.
+- **D81** Which accessibility standard do the new canvas, heads-up theme and
+  display-runtime requirements target? Options: EN 301 549 V4.1.1 (2026-09),
+  which reflects WCAG 2.2, with WCAG 2.2 AA; EN 301 549 V3.2.1 (2021-03), which
+  reflects WCAG 2.1, with WCAG 2.1 AA. Why: D74 makes an unconventional canvas
+  the primary surface, where the WCAG 2.2 additions on focus visibility,
+  dragging and target size apply directly. Context recorded beside the question,
+  not put to the maintainer: REQ-P12-08 pairs V3.2.1 with WCAG 2.2 AA, which no
+  single edition does; D81 does not re-rule that row.
+  **Decision (2026-09-28):** As recommended, V4.1.1 and WCAG 2.2 AA are the
+  target of the new rows. Every standards-derived requirement also names the
+  V3.2.1 (WCAG 2.1) clause, which stays the harmonised legal baseline until
+  V4.1.1 is cited in the Official Journal, and says 'none in V3.2.1' for the
+  WCAG 2.2 additions V4.1.1 carries into clause 11 (11.2.4.11, 11.2.5.7,
+  11.2.5.8, 11.3.3.7 and 11.3.3.8; 11.3.2.6 is Void). Where V3.2.1 splits a
+  software clause into open and closed functionality, the row names the
+  open-functionality sub-clause (for example 11.2.1.1.1).
+- **D82** Which engine renders P05's canvas behind P17's surface contract?
+  Options: Servo (servo 0.6.0, MPL-2.0: paints through OpenGL with webrender
+  0.70 and surfman, starts its own tokio runtime, fetches a prebuilt
+  SpiderMonkey at build time unless the archive is pinned, and records Linux
+  assistive-technology detection as unreliable in servo/servo#46834); WPE WebKit
+  through its WPEPlatform API (C and GObject); a native Rust toolkit that paints
+  the canvas itself and exposes AccessKit. Recommended: decide once P17's
+  surface contract for the engine is fixed, which no milestone plans yet (M27
+  fixes only the decoded-frame descriptor and the layer-surface attach path), on
+  the engine's own accessibility exposure (REQ-P17-06) and on the no-unsafe
+  rule, not on Chromium results. Why: D74 makes the canvas
+  the primary surface, so the engine's exposure decides whether the shell can be
+  used with a screen reader at all, and the D75 revision removed the engine from
+  the first slice so that this can be decided on evidence.
+- **D83** Does HISS-03 (no dynamic heap allocation in hot loops) bind the
+  third-party decoder that P17's frame path calls? Options: a scoped deviation,
+  where HISS-03 binds Aegis-authored code and the decoder's own allocation is
+  recorded; the allocation must be removed before M27 can pass; decide at M27
+  activation once allocations can be counted. Why: cros-libva at the revision
+  D80 pins heap-allocates for every decoded picture (`Picture::new` boxes its
+  state, and each JPEG and MPEG-2 parameter buffer is a `Box`), and counting
+  allocations needs an unsafe `GlobalAlloc` the crate may not contain.
+  **Decision (2026-09-28):** As recommended, a scoped deviation. HISS-03 binds
+  the code Aegis writes: P17's own frame loop allocates nothing per frame.
+  cros-libva's per-picture allocation is a named deviation limited to the
+  decoder binding D80 pins, and it is reviewed whenever that binding is replaced
+  or re-pinned. The deviation grants nothing to Aegis-authored code and waives
+  no other invariant.
+
+## Evidence
+
+Bundle sha256: 8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6.
+Sources cited by requirements (id, sha256):
 
 - export-001 f32a74743af5ab85c0682a5384cf01b71b0e9e2878d8f8ce09a6d592211e4ea5
 - export-002 7e0c95f4ea0570ea620952a4f69d45580a73956643eda3353b3f2ca273405a91
@@ -3015,6 +3495,21 @@ SEV-SNP, CCA).
 - export-056 39af243568ad90f2a9f26d25522143ab7159c6e00f1fad619b864b791ffdb2d2
 - export-062 1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853
 - export-063 b284bb77c19f33a6674357a28f26f183984ee59707bd8c9dfd572da4dbf768a2
+- desktop-spec a41f6c9e825d7ef8bc51d88ef4f3f020a88e3afa7bbda2f8778e107ff5653884
+  (private, 11183 bytes, outside the notebook bundle)
+- en301549-v4.1.1
+  636914c5c18dc58cf7716b8935502f1471de05caf5e1e6ae32469eed929cb824, ETSI EN
+  301 549 V4.1.1 (2026-09),
+  <https://www.etsi.org/deliver/etsi_en/301500_301599/301549/04.01.01_60/en_301549v040101p.pdf>
+- en301549-v3.2.1
+  1eee3a1841a94567da8e59f3b19a782ce9ab081c386b6a2a763b8cde13ff5b49, ETSI EN
+  301 549 V3.2.1 (2021-03),
+  <https://www.etsi.org/deliver/etsi_en/301500_301599/301549/03.02.01_60/en_301549v030201p.pdf>
+- wcag-2.2 6e3c5fe397257cae509a2fb4752b73062cf8cbeb92c2cec618989b17e4cf7057,
+  W3C Recommendation 12 December 2024,
+  <https://www.w3.org/TR/2024/REC-WCAG22-20241212/>
 
 The verbatim quotes are held in the private generation result
-(`notebook-result.json`). This public document reproduces none of them.
+(`notebook-result.json`). This public document reproduces none of them. The
+three standards are public and were re-hashed from the URLs above on
+2026-09-28.

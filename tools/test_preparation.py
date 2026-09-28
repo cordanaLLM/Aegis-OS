@@ -45,7 +45,7 @@ class PreparationTests(unittest.TestCase):
                     "status": "proposal",
                     "activation_blockers": ["real test"],
                 }
-                for i in range(1, 17)
+                for i in range(1, check.COMPONENT_COUNT + 1)
             ],
         }
 
@@ -58,7 +58,50 @@ class PreparationTests(unittest.TestCase):
 
     def test_exact_inventory_passes(self):
         self.write_components()
-        self.assertEqual(len(check.verify_components()), 16)
+        self.assertEqual(len(check.verify_components()), check.COMPONENT_COUNT)
+
+    def test_the_inventory_count_is_the_one_adr_0003_records(self):
+        """Positive: the count is pinned as a literal here as well as in the gate,
+        so moving it takes a reviewed edit to both and never a one-line change."""
+        self.assertEqual(check.COMPONENT_COUNT, 17)
+
+    def test_the_tracked_inventory_holds_exactly_the_declared_count(self):
+        """Positive: the tracked planning/components.json carries one row per id
+        from P01 to the recorded count, so the constant and the register the
+        gate reads cannot drift apart, and the added row is the one ADR-0003
+        names (D75)."""
+        repo = Path(check.__file__).resolve().parent.parent
+        tracked = json.loads((repo / "planning/components.json").read_text())
+        names = {row["id"]: row["name"] for row in tracked["components"]}
+        expected = [f"P{i:02}" for i in range(1, check.COMPONENT_COUNT + 1)]
+        self.assertEqual(sorted(names), expected)
+        self.assertEqual(names["P17"], "aegis-scaena")
+
+    def test_the_inventory_before_the_recorded_addition_fails(self):
+        """Negative: the sixteen-row inventory that preceded D75 is refused, so
+        dropping the added component is a failure and not a quiet rollback."""
+        self.data["components"] = self.data["components"][: check.COMPONENT_COUNT - 1]
+        self.write_components()
+        with self.assertRaises(ValueError) as caught:
+            check.verify_components()
+        self.assertIn(f"{check.COMPONENT_COUNT} components", str(caught.exception))
+
+    def test_one_more_id_or_a_gap_at_the_count_fails(self):
+        """Boundary: one row past the count fails on the count, so the count is
+        exact rather than a floor, and a set of the right size that skips the
+        last id and names the next one instead fails on the ids."""
+        extra = dict(self.data["components"][0], id=f"P{check.COMPONENT_COUNT + 1:02}")
+        rows = self.data["components"]
+        cases = (
+            (rows + [extra], f"{check.COMPONENT_COUNT} components"),
+            (rows[:-1] + [extra], "subsystem IDs"),
+        )
+        for candidate, message in cases:
+            self.data["components"] = candidate
+            self.write_components()
+            with self.assertRaises(ValueError) as caught:
+                check.verify_components()
+            self.assertIn(message, str(caught.exception))
 
     def test_the_tracked_inventory_declares_the_required_stage(self):
         """Positive: the literal this gate requires is the literal the tracked
@@ -87,7 +130,8 @@ class PreparationTests(unittest.TestCase):
                 check.verify_components()
 
     def test_missing_and_duplicate_subsystems_fail(self):
-        for rows in [self.data["components"][:-1], [self.data["components"][0]] * 16]:
+        duplicated = [self.data["components"][0]] * check.COMPONENT_COUNT
+        for rows in [self.data["components"][:-1], duplicated]:
             self.data["components"] = rows
             self.write_components()
             with self.assertRaises(ValueError):
@@ -296,7 +340,7 @@ class PreparationTests(unittest.TestCase):
                     "lockfile_present": False,
                     "sources": [{"id": "export-001", "sha256": digest}],
                 }
-                for i in range(1, 17)
+                for i in range(1, check.COMPONENT_COUNT + 1)
             ],
             "contradictions": [
                 {
@@ -359,7 +403,7 @@ class PreparationTests(unittest.TestCase):
         with patch.object(sys, "argv", argv), patch.object(check, "LICENSE_TEXTS", {}):
             with contextlib.redirect_stdout(out):
                 check.main()
-        self.assertEqual(out.getvalue().count(": proposal; real test"), 16)
+        self.assertEqual(out.getvalue().count(": proposal; real test"), check.COMPONENT_COUNT)
         self.assertIn("M00 [READY]", out.getvalue())
 
     def test_blocked_targets_fail_closed(self):
@@ -617,7 +661,7 @@ class PreparationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             check.verify_components()
         self.activate(test_command="cargo test --locked -p sub-1")
-        self.assertEqual(len(check.verify_components()), 16)
+        self.assertEqual(len(check.verify_components()), check.COMPONENT_COUNT)
 
     def test_source_integrity_and_inventory_drift(self):
         source = self.root / ".workingdir/notebookllmprep"
@@ -657,7 +701,9 @@ class RegisterTests(unittest.TestCase):
         self.patch.start()
         self.addCleanup(self.patch.stop)
         (self.root / "planning").mkdir()
-        self.components = [{"id": f"P{i:02}", "status": "proposal"} for i in range(1, 17)]
+        self.components = [
+            {"id": f"P{i:02}", "status": "proposal"} for i in range(1, check.COMPONENT_COUNT + 1)
+        ]
 
     def side(self, source_id="export-062"):
         return {"source_id": source_id, "sha256": self.DIGEST, "summary": "a side"}
@@ -675,7 +721,7 @@ class RegisterTests(unittest.TestCase):
                     "lockfile_present": False,
                     "sources": [{"id": "export-001", "sha256": self.DIGEST}],
                 }
-                for i in range(1, 17)
+                for i in range(1, check.COMPONENT_COUNT + 1)
             ],
             "contradictions": [
                 {
@@ -701,7 +747,8 @@ class RegisterTests(unittest.TestCase):
 
     def test_complete_register_passes(self):
         self.register()
-        self.assertEqual(len(check.verify_candidates(self.components)["candidates"]), 16)
+        candidates = check.verify_candidates(self.components)["candidates"]
+        self.assertEqual(len(candidates), check.COMPONENT_COUNT)
 
     def test_pinned_bundle_and_schema_are_required(self):
         for key, value in (("schema_version", 2), ("source_bundle_sha256", self.DIGEST)):
@@ -933,6 +980,33 @@ class HardwareProfileTests(unittest.TestCase):
         self.write(hostname="workstation")
         with self.assertRaises(ValueError):
             check.verify_hardware_profile([])
+
+    def test_the_tracked_profile_records_exactly_the_declared_capabilities(self):
+        """Positive: the tracked reference profile carries every declared
+        capability, and each display capability M27 relies on names the command
+        that established it (D79)."""
+        repo = Path(check.__file__).resolve().parent.parent
+        tracked = json.loads((repo / "planning/hardware-profile.json").read_text())
+        capabilities = tracked["capabilities"]
+        self.assertEqual(set(capabilities), check.PROFILE_CAPABILITIES)
+        for name, tool in (
+            ("vaapi_decode", "vainfo"),
+            ("wayland_layer_shell", "wayland-info"),
+            ("compositor_dmabuf_import", "wayland-info"),
+        ):
+            self.assertIn(tool, capabilities[name]["evidence_command"])
+
+    def test_an_absent_display_capability_refuses_a_full_claim(self):
+        """Boundary: the same display claim is refused as full and accepted as
+        partial once the profile records the capability as absent."""
+        data = self.write()
+        for name in ("vaapi_decode", "wayland_layer_shell", "compositor_dmabuf_import"):
+            data["capabilities"][name]["present"] = False
+        self.write(capabilities=data["capabilities"])
+        claim = ["vaapi_decode", "wayland_layer_shell", "compositor_dmabuf_import"]
+        with self.assertRaises(ValueError):
+            check.verify_hardware_profile(self.milestone("full", claim))
+        self.assertTrue(check.verify_hardware_profile(self.milestone("partial", claim)))
 
     def test_milestone_claims_are_bounded_by_the_profile(self):
         self.write()

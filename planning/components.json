@@ -202,6 +202,10 @@
         {
           "from": "P15",
           "relation": "REGISTER_PIP_OVERLAY"
+        },
+        {
+          "from": "P17",
+          "relation": "MOUNT_LAYER_SURFACE"
         }
       ],
       "sends_to": [
@@ -225,7 +229,7 @@
       ],
       "activation_blockers": [
         "a P04 component daemon; crates/aegis-compositor holds the surface registry, the Tier-1 client table, a mocked Tier-2 mesh and the pinned pacing constant, and opens no display and no transport",
-        "a compositor backend: no Wayland connection, no libinput device, no XKB map, no layer-shell binding and no DRM output, all absent by design at M07; D08 selects pure Rust at M07 and admits no library, and M12 is where a display path would be demonstrated",
+        "a compositor backend: no Wayland connection, no libinput device, no XKB map, no layer-shell binding and no DRM output, all absent by design at M07; D08 selects pure Rust at M07 and admits no library. M27 exercises the client half of a display path against the host session's compositor (D79), and no milestone yet makes P04 serve zwlr_layer_shell_v1 or zwp_linux_dmabuf_v1",
         "a Tier-2 transport: MockedMesh is an in-process retained-sample table, and the zenoh crate version was read from current upstream at M07 and deliberately not admitted",
         "a Tier-3 sidecar dispatcher: dispute DSP-21 leaves the owner of sidecar dispatch unsettled, so nothing here dispatches one",
         "real hardware or emulator evidence for each listed hardware requirement; no latency, jitter, throughput or frame-time figure is produced at M07, because the reference profile runs PREEMPT_DYNAMIC rather than PREEMPT_RT"
@@ -239,7 +243,9 @@
       },
       "decisions": [
         "D08 / ADR-0001: pure Rust compositor, recorded and applied at M07; the C wlroots mandate is superseded and no compositor library is admitted",
-        "D32: the P04 to P05 endpoint and budget stay open; M07 declares no P04 to P05 schema and binds no socket"
+        "D32: the P04 to P05 endpoint and budget stay open; M07 declares no P04 to P05 schema and binds no socket",
+        "D75 / ADR-0003: P17 is a Wayland client of P04 through MOUNT_LAYER_SURFACE (zwlr_layer_shell_v1 plus zwp_linux_dmabuf_v1); ADR-0001 governs how P04 is built and is not extended to P17's client libraries",
+        "D79: evidence gathered against the host session's compositor is the client half only and is not evidence that P04 serves either protocol"
       ]
     },
     {
@@ -278,6 +284,10 @@
         {
           "to": "P12",
           "relation": "CONSUMES_DESIGN_TOKENS"
+        },
+        {
+          "to": "P17",
+          "relation": "MOUNT_SHELL_CANVAS"
         }
       ],
       "candidate_sources": [
@@ -289,6 +299,7 @@
         "real positive, negative and boundary tests",
         "pinned shared integration contract",
         "UI package manifest, lockfile, and axe-core test setup absent",
+        "the canvas rows REQ-P05-09 to REQ-P05-15 (keyboard reach, no focus trap, paint-only culling, instrument semantics, focus under camera zoom, pointer alternatives, text resize) have no test yet",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],
       "cheapest_first_slice": {
@@ -300,7 +311,9 @@
       },
       "decisions": [
         "D05: consumes Concordia tokens",
-        "D10: latest stable UI toolchain; sveltesentio adopted now, pinned per @sveltesentio/* package version"
+        "D10: latest stable UI toolchain; sveltesentio adopted now, pinned per @sveltesentio/* package version",
+        "D74 / ADR-0003: the post-WIMP spatial canvas is P05's primary surface, rendered by the engine P17 hosts (D82 open); REQ-P05-09 to REQ-P05-15 state what the D81 accessibility target requires of that surface, and M16 tests four of them",
+        "D77: DISPATCH_DECISION_REQUEST from P06 and EMIT_CARBON_TELEMETRY from P13 move from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; the StatusNotifierWatcher (REQ-P05-05), the portal settings (REQ-P12-02) and AT-SPI2 (REQ-P12-03) stay on D-Bus"
       ]
     },
     {
@@ -362,7 +375,8 @@
       "decisions": [
         "D01: first component promoted end-to-end",
         "D02: SHA-256 ledger behind a trait",
-        "D03: intercepts actions proposed by P09"
+        "D03: intercepts actions proposed by P09",
+        "D77: DISPATCH_DECISION_REQUEST to P05 moves from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; the M14 payload schema is unchanged, only its framing and transport"
       ],
       "milestone": "M02",
       "activation_evidence": {
@@ -440,7 +454,8 @@
       },
       "decisions": [
         "D40: the eBPF toolchain stays unadmitted; REQ-P07-03 and REQ-P07-05 are recorded as deferred to M19",
-        "REQ-P01-07: the imported aya and aya-bpf versions are recorded as proposal data and are not inherited"
+        "REQ-P01-07: the imported aya and aya-bpf versions are recorded as proposal data and are not inherited",
+        "D77: SPATIOTEMPORAL_TASK_SHIFT from P13 moves from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; the transport for FOCUS_SWITCH_NOTIFY is not re-ruled by D77"
       ]
     },
     {
@@ -476,6 +491,10 @@
         {
           "to": "P11",
           "relation": "REMOTE_PLAY_CAPTURE"
+        },
+        {
+          "to": "P17",
+          "relation": "STREAM_DECODED_FRAME"
         }
       ],
       "candidate_sources": [
@@ -498,7 +517,8 @@
       },
       "decisions": [
         "D29: the P08/P11 capture direction stays unresolved; settling it means owning an encode budget, and M07 measures no time",
-        "REQ-P08-06: the scaffold's four-character code, its stride and its comment cannot all hold; M07 admits the two formats the comment names and refuses the literal"
+        "REQ-P08-06: the scaffold's four-character code, its stride and its comment cannot all hold; M07 admits the two formats the comment names and refuses the literal",
+        "D75 and D77: decoded video reaches P17 as a DMA-BUF fd in SCM_RIGHTS with a JSON-RPC 2.0 descriptor {fourcc, modifier, planes[{offset, pitch}], width, height}; P17 owns that schema as the consumer under the M14 rule. It is not a new version of the P08 to P04 descriptor, which carries one stride and no plane offset or modifier and so cannot describe a two-plane NV12 export; that descriptor is unchanged. The M27 decoder is a P17 test fixture standing in for P08, not a P08 daemon"
       ]
     },
     {
@@ -710,6 +730,10 @@
         {
           "to": "P15",
           "relation": "ENFORCE_A11Y_STANDARDS"
+        },
+        {
+          "to": "P17",
+          "relation": "ENFORCE_RUNTIME_A11Y"
         }
       ],
       "candidate_sources": [
@@ -732,7 +756,9 @@
       "decisions": [
         "D05: token producer",
         "D16: 3px token, 2px floor",
-        "D17: tokens without a monolithic CSS library"
+        "D17: tokens without a monolithic CSS library",
+        "D76: the heads-up visual language is an optional theme over the Concordia base tokens M04 creates; states differ by frame shape and text as well as colour, shaders and animation sit behind the reduced-motion preference (REQ-P12-02), and the fault flash stays within WCAG 2.2 SC 2.3.1 (REQ-P12-10 to REQ-P12-13)",
+        "D81: the new canvas, heads-up theme and display-runtime rows target EN 301 549 V4.1.1 / WCAG 2.2 AA, and each also names the EN 301 549 V3.2.1 (WCAG 2.1) clause, today's harmonised legal baseline; REQ-P12-08's pairing is not re-ruled. ENFORCE_RUNTIME_A11Y to P17 follows D05's producer-to-consumer direction (open decision D30 recommends the same direction for P12 to P15)"
       ]
     },
     {
@@ -777,7 +803,7 @@
         "a P13 component daemon; crates/aegis-tellus holds the ISO/IEC 21031:2024 SCI rate arithmetic, the spatiotemporal defer threshold, the bounded cgroup slice table and the zone-list wattage seam, and is neither the Kepler telemetry probe nor the daemon that carries it (M05)",
         "the kepler_power eBPF probe is not compiled, loaded, verified or attached; kernel ABI pin and verifier evidence absent (M19, M10)",
         "no RAPL or ACPI counter is read: /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 on the reference profile, so a measured delta needs a privileged reader (M21)",
-        "no D-Bus transport for EMIT_CARBON_TELEMETRY (M16) or SPATIOTEMPORAL_TASK_SHIFT; the payloads are typed at M05 and carried by nothing",
+        "no transport for EMIT_CARBON_TELEMETRY (M16) or SPATIOTEMPORAL_TASK_SHIFT, both of which D77 moves from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; the payloads are typed at M05 and carried by nothing",
         "no individual blueprint report; evidence limited to architecture documents and trade-off guide",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],
@@ -789,7 +815,8 @@
         "verification": "Positive: calculate_sci_rate(0.0025, 1.0) with default grid intensity 220.0 and embodied carbon 0.05 yields the documented ISO/IEC 21031:2024 SCI formula result (E*I+M)/R, asserted against a hand-computed value. Negative: functional_units <"
       },
       "decisions": [
-        "D60: P13 measures the package and core zones only; the reference profile has no dram and no psys zone, DRAM energy is modelled and labelled as modelled, and a request for an absent zone fails explicitly rather than returning zero. Applied at M05 as a zone list on the wattage seam"
+        "D60: P13 measures the package and core zones only; the reference profile has no dram and no psys zone, DRAM energy is modelled and labelled as modelled, and a request for an absent zone fails explicitly rather than returning zero. Applied at M05 as a zone list on the wattage seam",
+        "D77: EMIT_CARBON_TELEMETRY to P05 and SPATIOTEMPORAL_TASK_SHIFT to P07 move from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX"
       ],
       "milestone": "M05"
     },
@@ -894,7 +921,7 @@
         "a real PGlite instance, its WebAssembly runtime and the Btrfs @pglite subvolume, all absent by design at M17",
         "UI package manifest, lockfile, and axe-core test setup absent; D09 makes P15 two halves and only the Rust half exists",
         "UI toolchain pin (D10)",
-        "a transport for the P04 overlay registration, stubbed until M12",
+        "a transport for the P04 overlay registration, stubbed since M17: it needs a P04 that serves zwlr_layer_shell_v1, which no milestone yet plans (D79)",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],
       "cheapest_first_slice": {
@@ -965,9 +992,84 @@
         "D02: SHA-256 ledger behind a trait; MD5 excluded, BLAKE3 only through a later recorded decision. Applied at M05 by making the checkpoint ledger generic over aegis_justitia::LedgerHasher rather than declaring a second hashing boundary"
       ],
       "milestone": "M05"
+    },
+    {
+      "id": "P17",
+      "name": "aegis-scaena",
+      "proposed_domain": "Display runtime: shell and video surfaces handed to the compositor, which composites decoded DMA-BUF video without a copy",
+      "layer": "Display Runtime & Surface Composition",
+      "status": "proposal",
+      "owner": "aegis",
+      "external_producers": [
+        "Golusoris",
+        "Imago",
+        "Nucleus",
+        "upstream"
+      ],
+      "needs_hardware": true,
+      "hardware_requirements": [
+        "a GPU whose VA-API driver decodes and exports DMA-BUF (vaExportSurfaceHandle, DRM PRIME 2) on the DRM device the compositor names as its zwp_linux_dmabuf_v1 main device",
+        "a Wayland compositor exposing zwlr_layer_shell_v1 and zwp_linux_dmabuf_v1 version 4 or later, which refuses a format and modifier pair it did not advertise",
+        "a kernel with DMA-BUF support (CONFIG_DMA_SHARED_BUFFER) and AF_UNIX SCM_RIGHTS"
+      ],
+      "receives_from": [
+        {
+          "from": "P05",
+          "relation": "MOUNT_SHELL_CANVAS"
+        },
+        {
+          "from": "P08",
+          "relation": "STREAM_DECODED_FRAME"
+        },
+        {
+          "from": "P12",
+          "relation": "ENFORCE_RUNTIME_A11Y"
+        }
+      ],
+      "sends_to": [
+        {
+          "to": "P04",
+          "relation": "MOUNT_LAYER_SURFACE"
+        }
+      ],
+      "candidate_sources": [],
+      "concept_source": {
+        "id": "desktop-spec",
+        "sha256": "a41f6c9e825d7ef8bc51d88ef4f3f020a88e3afa7bbda2f8778e107ff5653884",
+        "bytes": 11183,
+        "note": "outside the pinned notebook bundle and outside candidate_source_root; cited by id and digest only, never by path"
+      },
+      "activation_blockers": [
+        "a P17 component crate: crates/aegis-scaena does not exist yet, and M27 creates it",
+        "the lock-sweep re-scope D78 records: crates/aegis-compositor/tests/manifest_hygiene.rs refuses wayland-backend and crates/aegis-lictor/tests/manifest_hygiene.rs refuses memmap2 anywhere in Cargo.lock, and smithay-client-toolkit resolves both",
+        "the lock-entry tests crates/aegis-athena/tests/manifest_hygiene.rs:161 and crates/aegis-tellus/tests/manifest_hygiene.rs:162 compare dependency lines literally, and once cros-libva locks thiserror 1 beside thiserror 2, Cargo writes those lines version-qualified; M27 changes both in the same change",
+        "the VA-API binding D80 records is not admitted: cros-libva git-pinned at 59384456ac2a needs bindgen, libclang, pkg-config and the libva headers at build time, and the Verification gate's ubuntu-24.04 runner lacks the libva headers: its image ships pkg-config 1.8.1 and clang 16-18 (with libclang1-18) but no libva-dev, no workflow step installs one, and bindgen arrives as a Cargo build dependency",
+        "no shell engine is chosen behind the surface contract (D82): no Servo, WPE WebKit or native-toolkit dependency is admitted, and no engine's exposed accessibility tree has been tested (REQ-P17-06)",
+        "P04 serves no Wayland protocol, so evidence against the host session's compositor covers the client half only (D79)",
+        "real hardware evidence for each listed hardware requirement: planning/hardware-profile.json records the three display capabilities as advertised, not exercised"
+      ],
+      "cheapest_first_slice": {
+        "description": "Decode on VA-API on the render node the host compositor imports from (the Arc A380, iHD driver pinned per run): one reference MPEG-2 frame and a committed baseline Motion-JPEG fixture, the codec the maintainer chose on 2026-09-28. Export each surface as a DMA-BUF with cros-libva export_prime, pass the fd over a socketpair as SCM_RIGHTS with one line-delimited JSON-RPC 2.0 descriptor message, and on the receiving side attach it to a zwlr_layer_shell_v1 surface through zwp_linux_dmabuf_v1, so the compositor composites the frames. No Servo, no wgpu and no unsafe code (D75, D77). The descriptor codec, the SCM_RIGHTS path and the surface state machine are also tested without hardware inside make verify-all.",
+        "cost": "medium",
+        "needs_hardware": true,
+        "needs_external_contract": false,
+        "verification": "Positive: the reference MPEG-2 frame decodes to CRC-32 0xa5713e52, the value cros-libva's own test asserts; each of the 60 fixture frames reads back the frame-index blocks drawn into it, checked on the decoded surface before export, and yields a zwp_linux_buffer_params_v1 created event and a wp_presentation presented event on the reference profile; and the fd the receiver attaches names the same inode as the one export_prime returned. Negative: an unpinned VA driver, a decode node other than the compositor's main device, an unadvertised format and modifier pair, a memfd offered as a DMA-BUF and a message whose fd count disagrees with its descriptor are each refused before anything is attached, and a planted zero-filled surface fails the content check. Boundary: 1 and 4 planes accepted, 0 and 5 refused; a plane ending exactly at the end of its buffer accepted, one byte further refused; the first and the sixtieth frame both present."
+      },
+      "decisions": [
+        "D74: P05's primary surface is the spatial canvas; P17 hosts the engine that renders it on its own layer surface once D82 chooses one",
+        "D75 / ADR-0003: a new display-runtime component where the compositor composes. The shell engine and each video stream own separate Wayland surfaces, decoded video reaches the compositor as DMA-BUF through zwp_linux_dmabuf_v1, and the first slice uses no Servo, no wgpu and no unsafe code",
+        "D77: control plane line-delimited JSON-RPC 2.0 over AF_UNIX; data plane DMA-BUF descriptors passed as SCM_RIGHTS; iceoryx2 only for a future high-rate stream that is not a GPU buffer",
+        "D78: every other crate's lock-wide negative sweep reads that crate's own dependency closure, so P17's Wayland and VA-API dependencies do not trip it; implemented at M27",
+        "D79: a run against the host session's compositor is development evidence on the reference profile for the client half only and closes no hardware gate",
+        "D79, 2026-09-28: M27 stays a leaf and unblocks no milestone; whether M12 re-runs its display path in the built image is decided when M12 is planned",
+        "D80: VA-API through cros-libva git-pinned at the chromeos/cros-libva #37 merge commit 59384456ac2ae78c0c3e5515f41ef1efd9b802cf, refreshed to a crates.io release once one carries the fix (D69)",
+        "D80, codec, 2026-09-28: M27 decodes baseline Motion-JPEG through VAProfileJPEGBaseline plus one MPEG-2 intra frame; cros-libva has no bitstream parser and cros-codecs 0.0.6 requires exactly cros-libva 0.0.12, so H.264, HEVC and AV1 follow once a parser is admitted",
+        "D83: HISS-03 binds Aegis-authored code, so P17's frame loop allocates nothing per frame; cros-libva's per-picture allocation is a named deviation limited to the pinned binding (D80), reviewed when the binding is replaced"
+      ],
+      "milestone": "M27"
     }
   ],
   "candidate_source_root": ".workingdir/prepared (private, gitignored; paths are relative to it)",
   "graph_source_sha256": "1ce919ed54bbeb6383a9cdf8170f1643d6282f398de762acc1d0fc4c7aff2853",
-  "source_ids_note": "export-NNN identifiers refer to the private source bundle (sha256 8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6); see docs/roadmap/requirements.md"
+  "source_ids_note": "export-NNN identifiers refer to the private source bundle (sha256 8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6). desktop-spec refers to the private desktop environment specification (sha256 a41f6c9e825d7ef8bc51d88ef4f3f020a88e3afa7bbda2f8778e107ff5653884, 11183 bytes), which is outside that bundle. Decision and standards source classes are defined in docs/roadmap/requirements.md"
 }

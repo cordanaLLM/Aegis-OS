@@ -29,7 +29,7 @@ Two rules follow from the clause and are applied below:
 
 | Tool | Pinned version | How it is pinned | Replaces | Admitted by |
 | :--- | :--- | :--- | :--- | :--- |
-| rustup | 1.29.1 | distribution package `extra/rustup 1.29.1-1.1` on the reference profile; CI uses the runner's rustup | nothing; rustup was absent before D61 | M02 (D61) |
+| rustup | 1.29.1 | distribution package `cachyos-extra-znver4/rustup 1.29.1-1.1` on the reference profile; CI uses the runner's rustup | nothing; rustup was absent before D61 | M02 (D61) |
 | Rust (`rustc`, `cargo`) | 1.98.1 | `rust-toolchain.toml`, `channel = "1.98.1"`, materialised by rustup | distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.98 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.9.0-stable | `rust-toolchain.toml`, same `components` list | the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
@@ -317,6 +317,40 @@ fragments are applied in order by the kernel's own
 2. `build/kernel/50-aegis-requirement.config` -- byte-identical to what
    `KernelRequirement::config_fragment` renders from
    `build/kernel-requirement.json`. It is generated, not written.
+
+## Proposed for M27: the display slice's crates and build tools (D80)
+
+These rows are proposals, not admissions. Milestone M27 admits them when its
+gate reads each one back before it runs, the shape M19 and M23 use; until then
+no gate may cite them. They are recorded now because decision D80 fixes the
+VA-API binding, and the binding decides the build tools.
+
+| Tool or crate | Reference-profile version | Proposed pin or floor | Role |
+| :--- | :--- | :--- | :--- |
+| cros-libva | git rev `59384456ac2ae78c0c3e5515f41ef1efd9b802cf` (package 0.0.13, BSD-3-Clause), the merge of chromeos/cros-libva#37 | that revision, as a git source with `rev =` in `[workspace.dependencies]`, locked | VA-API decode and DMA-BUF export through `Surface::export_prime` |
+| smithay-client-toolkit | 0.21.1 (MIT), `default-features = false` | 0.21.1 | the layer surface and the `zwp_linux_dmabuf_v1` client, over wayland-client's pure-Rust backend |
+| rustix | 1.1.5, features `net`, `fs` and `event` | 1.1.5 | safe `sendmsg` and `recvmsg` with `SCM_RIGHTS` and send and receive deadlines, `fstatfs`, `seek`, `poll` on the Wayland connection fd under a deadline and, in tests, `memfd_create` |
+| bindgen | the version cros-libva's build dependency resolves (`bindgen = "0.70.1"` at the pinned revision) | as locked | generates the libva bindings at build time |
+| libclang | 22.1.8, `/usr/lib/libclang.so` from `cachyos-znver4/clang 22.1.8-2` | the floor bindgen 0.70 declares, read at admission | loaded by bindgen |
+| pkgconf (`pkg-config`) | 3.0.7, `pkgconf 3.0.7-1.1` | read at admission | locates libva for cros-libva's build script |
+| libva (headers and library) | 2.24.1, `libva 2.24.1-1.1`; `pkg-config --modversion libva` prints the VA-API version, 1.24.0 | the lowest libva the pinned revision compiles against, measured on the reference profile and on the Verification gate's runner | the VA-API loader |
+| intel-media-driver (iHD) | 26.2.4, `intel-media-driver 26.2.4-1.1` | recorded, not pinned: a host driver the gate reads back through the VA vendor string before it decodes | decode on the Arc A380 |
+
+Three things are deliberately absent from the table. `vainfo` and
+`wayland-info` established the three display capabilities in
+`planning/hardware-profile.json`, but they are probes, not gate tools. ffmpeg
+n9.0.2 generates the committed Motion-JPEG fixture once, drawing the frame-index
+blocks M27 reads back; the gate never runs it, so it is recorded as the
+fixture's provenance rather than admitted. The CRC-32 (the computation
+cros-libva's own test uses, `crc_nv12_image` in `lib/src/lib.rs` at the pinned
+revision), which checks the MPEG-2 frame and pins the Motion-JPEG frames against
+regression, is either written in the test or taken from a crate that M27 admits
+in its own row; this page does not choose.
+
+What these rows do **not** claim: that the pinned revision compiles against the
+runner's libva, which nobody has checked, or that any frame was decoded. The
+upstream fix is unreleased on crates.io (0.0.13, 2024-12-06, fails against libva
+2.24.1), so the git pin is refreshed to a release once one carries it (D69).
 
 ## Not yet admitted
 

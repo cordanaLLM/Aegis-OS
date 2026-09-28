@@ -34,6 +34,9 @@ evidences it.
 | `secure_boot_enrolment` | no | disabled in the running firmware; the maintainer can enable it and enrol keys in UEFI setup, and OVMF with Secure Boot support is installed for virtual machine tests; this is an operator action, not a missing capability |
 | `resizable_bar` | yes | already enabled in firmware: 32 GiB BAR1 on the discrete NVIDIA card and an 8 GiB prefetchable region on the Intel card, which is the firmware prerequisite for peer DMA |
 | `gpu_dma_buf_and_peer_memory` | yes | NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.3.1 present; the Intel and AMD cards provide DMA-BUF through their in-tree drivers |
+| `vaapi_decode` | yes | recorded 2026-09-28: with LIBVA_DRIVER_NAME=iHD, vainfo on the Arc A380 (renderD129) reports iHD 26.2.4 with VLD for MPEG-2, JPEG, H.264, HEVC, VP9 and AV1; the session sets LIBVA_DRIVER_NAME=nvidia, and with that session value the same call on renderD129 loads the NVIDIA driver (with the variable unset, libva selects iHD), so every run pins the driver; no committed gate has decoded a frame yet (M27) |
+| `wayland_layer_shell` | yes | recorded 2026-09-28: the host session's KDE KWin 6.7.5 advertises zwlr_layer_shell_v1 version 5; it is not P04, so a run against it is the client half only (D79) |
+| `compositor_dmabuf_import` | yes | recorded 2026-09-28: KWin advertises zwp_linux_dmabuf_v1 version 5 with main device renderD129 (the Arc A380) and NV12 and P010, each with LINEAR, INTEL_X_TILED, INTEL_4_TILED and DRM_FORMAT_MOD_INVALID (implicit modifier), and neither with INTEL_4_TILED_DG2_RC_CCS or INTEL_4_TILED_DG2_RC_CCS_CC; no committed gate exercises it yet (M27 will) |
 
 The two capabilities recorded as absent are operator actions, not missing
 hardware: Secure Boot is a firmware setting the maintainer enables in UEFI
@@ -53,6 +56,7 @@ that the remaining milestones need.
 | M19 | full | ANSWER TO Q1 AND Q2: yes to both | Two honest limits |
 | M20 | partial | Once an M11 image exists, the full slice runs here: a real swtpm PCR quote signing one M14 audit record, and /var unsealing under an enrolled PCR policy | Attestation rooted in a firmware-verified boot chain, for the PCR 7 reason above |
 | M21 | full | Measured RAPL energy deltas can replace the simulated wattage in the M05 engine today, and an AF_VSOCK candidate evaluation can round-trip | ACCURACY CAVEAT, and it is a real one |
+| M27 | full | VA-API decode on the Arc A380, the DMA-BUF passed over SCM_RIGHTS, and the host compositor importing and presenting it on a layer surface | That P04 serves either protocol: the compositor is KDE KWin, so a pass is the client half only (D79) |
 
 Milestones not listed need nothing from the profile: they are Rust, schema or
 documentation work that runs on any developer machine.
@@ -67,10 +71,10 @@ that were already present. Each is still admitted through the template matrix
 with a pinned version before the gate that uses it runs; installation is not
 admission.
 
-Three remain deliberately absent:
+Two remain deliberately absent, and a third changed: `rustup` 1.29.1 replaced
+the distribution Rust package on 2026-09-13 and materialises the pinned
+toolchain (D61).
 
-- `rustup` conflicts with the distribution Rust package. Which one provides the
-  pinned toolchain is decision D61.
 - `sbctl` is an alternative to virt-firmware for the OVMF variable store, which
   is already installed.
 - `nvidia-fs` would not make GPUDirect Storage demonstrable, because that path
@@ -126,7 +130,10 @@ Three remain deliberately absent:
 | P14 | (no hardware_requirements entries; needs_hardware false) | satisfied | jq '.components[] select(.id=="P14") .hardware_requirements' -> empty; z3 is present a |
 | P15 | NVMe SSD with PCIe BAR / memory-mapped DMA path (P03 Vulcan dependency | partial | 3 NVMe controllers present and BAR resources readable via /sys/bus/pci/devices/*/resource, |
 | P15 | GPU with VA-API or NVDEC hardware decode support for the zero-copy vid | satisfied | Verified by running vainfo per render node: Intel iHD 26.2.4 on renderD129 with VLD for MP |
-| P15 | Wayland compositor with wlr-layer-shell protocol support for pinned Pi | partial | No wlroots compositor installed (command -v sway weston -> absent) and the current session |
+| P15 | Wayland compositor with wlr-layer-shell protocol support for pinned Pi | satisfied (host compositor, D79) | wayland-info -i zwlr_layer_shell_v1 -> version 5 from the host session's KDE KWin 6.7.5 (2026-09-28); development evidence only, and P04 serves no Wayland protocol |
 | P15 | GPU scheduler exposing drm_sched priority tiers so Lictor can guarante | partial | Kernel 7.2.4 with amdgpu/i915/xe on drm_sched (DRM 3.64 reported by radeonsi) satisfies th |
 | P15 | Btrfs-capable block storage for the @pglite subvolume snapshot/rollbac | satisfied | findmnt -no FSTYPE,SOURCE / -> btrfs /dev/nvme0n1p2[/@] (already a subvolume layout); CONF |
 | P16 | (no hardware_requirements entries; needs_hardware false) | satisfied | jq '.components[] select(.id=="P16") .hardware_requirements' -> empty; pure Rust logic |
+| P17 | a GPU whose VA-API driver decodes and exports DMA-BUF on the DRM device the compositor names as its main device | partial | LIBVA_DRIVER_NAME=iHD vainfo on renderD129 -> iHD 26.2.4 with MPEG-2, JPEG, H.264, HEVC, VP9 and AV1 VLD; KWin's zwp_linux_dmabuf_v1 main device 0xE281 is renderD129; decode advertised, export not yet exercised by a committed gate (M27) |
+| P17 | a Wayland compositor exposing zwlr_layer_shell_v1 and zwp_linux_dmabuf_v1 version 4 or later, which refuses a format and modifier pair it did not advertise | partial (host compositor, D79) | wayland-info -> zwlr_layer_shell_v1 version 5 and zwp_linux_dmabuf_v1 version 5 advertised by KDE KWin 6.7.5; refusal of an unadvertised pair not exercised by a committed gate (M27 asserts the client-side refusal only) |
+| P17 | a kernel with DMA-BUF support and AF_UNIX SCM_RIGHTS | satisfied | zgrep /proc/config.gz -> CONFIG_DMA_SHARED_BUFFER=y, CONFIG_UNIX=y, CONFIG_SYNC_FILE=y (7.2.8-1-cachyos, 2026-09-28) |

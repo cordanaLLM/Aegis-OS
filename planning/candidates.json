@@ -188,7 +188,7 @@
       ],
       "missing": [
         "a P04 component daemon (aegis-compositor holds the registry, the bounds, the key expressions and the pinned pacing constant and opens no display)",
-        "a compositor library, a Wayland connection and a DRM output, all absent by design at M07: D08 selects pure Rust as a language boundary and admits no package, and M12 is where a display path would be demonstrated",
+        "a compositor library, a Wayland connection and a DRM output, all absent by design at M07: D08 selects pure Rust as a language boundary and admits no package; M27 exercises the client half of a display path against the host session's compositor (D79), and no milestone yet makes P04 serve zwlr_layer_shell_v1 or zwp_linux_dmabuf_v1",
         "a Tier-2 mesh transport: the zenoh crate's current upstream version was read at activation and deliberately not admitted, because the M07 acceptance is a mocked transport test",
         "a Tier-3 sidecar dispatcher, whose owner dispute DSP-21 leaves unsettled",
         "real hardware or emulator evidence: no latency, jitter, throughput or frame-time figure is produced at M07, and the P04 to P05 endpoint and budget stay open as decision D32"
@@ -580,7 +580,7 @@
       "missing": [
         "a P15 component daemon (aegis-hestia models the store and the overlay and is neither)",
         "a real PGlite instance, its WebAssembly runtime and the Btrfs @pglite subvolume, all absent by design at M17",
-        "a Wayland connection and a wlr-layer-shell binding; the transport stays stubbed until M12",
+        "a Wayland connection and a wlr-layer-shell binding; the transport stays stubbed: it needs a P04 that serves zwlr_layer_shell_v1, which no milestone yet plans (D79)",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],
       "note": "Boundary row at M01: absent from export-006; export-007 maps P15 to ui/hestia-app only. Rust half of D09, delivered at M17 together with the typed boundary the decision asks for (HestiaView). Settled at M17 by acting on open decision D22: crates/aegis-hestia is a written-out member of the workspace root Cargo.toml and Cargo.lock carries the crate. manifest_present stays false because verify_candidates() reads that flag as a component-activation claim rather than as a filesystem fact, and P15 is not activated: D09 makes it two halves and the Svelte half has no package manifest, lockfile or accessibility test."
@@ -643,6 +643,34 @@
         "signed audit-record schema (M14)"
       ],
       "note": "Member 10 of the export-006 members array; REQ-P16-07 states the membership explicitly, and milestone M05 acts on it: crates/aegis-athena is a written-out member of the workspace root Cargo.toml and Cargo.lock carries the crate. manifest_present stays false because verify_candidates() reads that flag as a component-activation claim rather than as a filesystem fact, and P16 is not activated: the crate holds the lifecycle, the Pareto gate and the hash chain, and executes no candidate and deploys no update."
+    },
+    {
+      "candidate_id": "C18",
+      "component": "P17",
+      "language": "rust",
+      "proposed_paths": [
+        "crates/aegis-scaena/src/",
+        "crates/aegis-scaena/tests/"
+      ],
+      "in_proposed_workspace": false,
+      "manifest_present": false,
+      "lockfile_present": false,
+      "sources": [
+        {
+          "id": "desktop-spec",
+          "sha256": "a41f6c9e825d7ef8bc51d88ef4f3f020a88e3afa7bbda2f8778e107ff5653884",
+          "title": "aegis-desktop-environment-specification.md (version 2.0.0-DEV)",
+          "bytes": 11183
+        }
+      ],
+      "missing": [
+        "crates/aegis-scaena/Cargo.toml, a written-out workspace member entry and a Cargo.lock entry (M27)",
+        "the lock-sweep re-scope D78 records, in the same change that adds the first Wayland or VA-API crate to the shared Cargo.lock",
+        "toolchain admission for cros-libva at git rev 59384456ac2a and its build tools bindgen, libclang, pkg-config and the libva headers (D80), including the Verification gate runner",
+        "a shell engine behind the surface contract (open decision D82) and its accessibility exposure test (REQ-P17-06)",
+        "a P04 that serves zwlr_layer_shell_v1 and zwp_linux_dmabuf_v1; until one exists, evidence covers the client half only (D79)"
+      ],
+      "note": "Added by D75 (ADR-0003), not by M01: its source is the private desktop environment specification, which is outside the pinned notebook bundle, so this row cites it by id and full digest and records no path. The specification names crates/aegis-web; the recorded name is aegis-scaena, after the Latin for stage, to match the other components. in_proposed_workspace is false because export-006 predates the component. manifest_present and lockfile_present stay false while P17 is a proposal."
     }
   ],
   "contradictions": [

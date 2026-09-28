@@ -6,12 +6,17 @@ consistently in `planning/`, `docs/`, and the governance files.
 
 - **Concept**: the original sixteen-subsystem operating-system design captured
   in the private source archive. It is preserved, not redesigned; changing it
-  requires an ADR.
-- **Subsystem (P01–P16)**: one of the sixteen parts of the OS design,
+  requires an ADR. ADR-0001 and ADR-0002 supersede parts of the P04 and P11
+  blueprints, and ADR-0003 adds a seventeenth subsystem, P17, the one change to
+  the subsystem set.
+- **Subsystem (P01–P17)**: one of the seventeen parts of the OS design,
   identified by its `P` number and `aegis-*` name in `planning/components.json`.
+  P01–P16 come from the concept archive; P17 aegis-scaena, the display runtime,
+  comes from ADR-0003.
 - **Blueprint**: the private per-subsystem report from the concept archive.
-  Thirteen exist; P09, P13, and P16 are described only by the architecture
-  documents and the trade-off guide.
+  Thirteen exist; P09, P13 and P16 are described only by the architecture
+  documents and the trade-off guide, and P17 by ADR-0003 and the private desktop
+  specification.
 - **Component**: a subsystem as a unit of activation with an owner, candidate
   sources, and activation blockers.
 - **Proposal**: a component that has not yet met the activation bar. Its
@@ -43,8 +48,11 @@ consistently in `planning/`, `docs/`, and the governance files.
 - **Unblocking value**: what a milestone makes ready downstream. The roadmap
   ranks milestones by unblocking value per cost, cheapest first.
 - **Epic**: a group of tasks inside one milestone that cites requirement IDs.
-- **Requirement**: a statement cited to a source ID, its SHA-256, and a verbatim
-  quote, validated by `praetorctl notebook validate`.
+- **Requirement**: a statement cited to a source ID and, unless every source
+  it cites is a decision, the first 12 hex characters of that source's SHA-256
+  (`docs/roadmap/requirements.md`). A notebook-bundle row's verbatim quote is
+  held privately and validated by `praetorctl notebook validate`; a row whose
+  only sources are decisions cites their `Dnn` and no digest.
 - **Verification gate**: `make verify-all`, and the GitHub status check of the
   same name that runs it on a pull request. The `verify-all` recipe in the
   `Makefile` is the authoritative list of what the local target runs, and
