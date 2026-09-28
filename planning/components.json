@@ -743,7 +743,7 @@
       "activation_blockers": [
         "activation binding: tools/verify_preparation.py binds activation evidence to a Cargo manifest, so the package.json and pnpm-lock.yaml M04 committed under ui/concordia-tokens cannot be admitted as activation evidence; M04 records evidence only and does not change the validator (D86)",
         "pinned shared integration contract: the P05 consumer of the tokens (D05) is typed at M16",
-        "the portal (REQ-P12-02), AT-SPI2 (REQ-P12-03) and UKI-gating (REQ-P12-01) halves, whose CSS level M04 covers in browser emulation only, and REQ-P12-06's scan of the Forum Shell, which M04 runs on the P12 component only (D89): open and owned by no milestone, since D89 names M16 and M27 but no milestone's criteria or epics carry them yet",
+        "the portal half of REQ-P12-02 and the AT-SPI2 half of REQ-P12-03, whose CSS level M04 covers in browser emulation only (D89): open and owned by no milestone until a live-session P05 milestone is planned (D91); D91 assigns REQ-P12-06's Forum Shell scan to M16 (E16-4) and REQ-P12-01's UKI gating to M11 (E11-6)",
         "the D76 heads-up theme, which no milestone plans yet; M04 runs only its stub-override negative (REQ-P12-10)"
       ],
       "cheapest_first_slice": {

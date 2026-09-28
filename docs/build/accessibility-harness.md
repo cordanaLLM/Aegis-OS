@@ -355,10 +355,14 @@ milestone carries them yet: M16's epics list none of the three, and its D77
 criterion keeps the portal settings and AT-SPI2 on D-Bus mocks; M27 is the P17
 VA-API slice; and M11 says only that the accessibility gate attaches when the
 UI enters an image. The same holds for REQ-P12-06's scan of the Forum Shell,
-which M04 runs on the P12 component only. Until a recorded decision adds them
-to a milestone's criteria and epics they are open and owned by no milestone,
+which M04 runs on the P12 component only. Decision D91
+(`docs/roadmap/README.md`) since assigns REQ-P12-06 to M16 (epic E16-4, the
+same gate over `ui/forum-shell`) and REQ-P12-01 to M11 (epic E11-6, no
+image/UKI build request without a PASS here). The portal half of REQ-P12-02
+and the AT-SPI2 half of REQ-P12-03 stay open and owned by no milestone,
 listed with P12's activation blockers in `planning/components.json` and P12's
-row in `docs/roadmap/inventory.md`.
+row in `docs/roadmap/inventory.md`, until a live-session P05 milestone is
+planned.
 
 ## Renovate tracks the pins forward
 

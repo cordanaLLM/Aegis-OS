@@ -480,7 +480,7 @@
       "missing": [
         "P12 activation: tools/verify_preparation.py binds activation evidence to a Cargo manifest, which ui/concordia-tokens/package.json is not, and M04 does not change that (D86)",
         "the P05 consumer of the tokens (D05), typed at M16",
-        "the portal, AT-SPI2 and UKI halves of REQ-P12-01 to REQ-P12-03, which M04 covers at the CSS level in browser emulation only, and REQ-P12-06's scan of the Forum Shell, which M04 runs on the P12 component only (D89): open and owned by no milestone, since D89 names M16 and M27 but no milestone's criteria or epics carry them yet",
+        "the portal half of REQ-P12-02 and the AT-SPI2 half of REQ-P12-03, which M04 covers at the CSS level in browser emulation only (D89): open and owned by no milestone until a live-session P05 milestone is planned (D91); REQ-P12-06's Forum Shell scan is M16's (E16-4) and REQ-P12-01's UKI gating is M11's (E11-6)",
         "the D76 heads-up theme, which no milestone plans yet"
       ],
       "note": "Not applicable to export-006: no JavaScript package manifest exists in any source. Settled at M04: ui/concordia-tokens/package.json and pnpm-lock.yaml, the token file with every colour, stroke and motion value as a custom property and the 3px focus ring D16 bounds at a 2px floor, one Svelte 5 component, and the Playwright and axe-core suite that tools/verify_a11y.py runs are committed, with no monolithic CSS library (D17); export-023 stays quarantined and was not used. manifest_present and lockfile_present stay false because verify_candidates() reads each flag as a component-activation claim rather than as a filesystem fact, and P12 stays a proposal (D86)."
