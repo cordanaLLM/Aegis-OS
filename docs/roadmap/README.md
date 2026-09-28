@@ -42,14 +42,18 @@ Current verified state at revision time:
   (42a23c8).
 - `origin` resolves to <https://github.com/cordanaLLM/Aegis-OS.git>, read back
   with `git ls-remote`. The hosted ruleset `praetor-main-protection` is active
-  on `main` and reads back as deletion and non-fast-forward protection, linear
-  history, pull requests, and the required `Verification gate` status check.
+  on `main` and reads back (`gh api repos/cordanaLLM/Aegis-OS/rulesets`) as
+  deletion and non-fast-forward protection, linear history, signed commits,
+  pull requests with no required approval (`review_mode: single_maintainer` in
+  `.standards.yaml`), and five required status checks: `Verification gate`,
+  `Platform Neutrality (Linux)`, `Platform Neutrality (macOS)`,
+  `Platform Neutrality (Windows)` and `Documentation Governance`.
 - Every milestone and epic is mirrored as a GitHub milestone and a `roadmap`
-  issue except M27, its epics E27-1 to E27-3, and E16-3, which this revision
-  adds and which are not mirrored yet; `planning/roadmap.json` stays the source
-  of truth.
-- The private readiness matrix records the Imago/Nucleus edges as declared but
-  unverified, and the configured producer origins as not resolving.
+  issue; M27 is GitHub milestone 28, and E27-1 to E27-3 and E16-3 are issues
+  #125 to #128. `planning/roadmap.json` stays the source of truth.
+- cordanaLLM/imago and cordanaLLM/nucleus resolve and decode the M18 payloads,
+  and neither builds an image or a kernel yet (M09's disclosure of 2026-09-27).
+  The private readiness matrix is a superseded 2026-09-13 snapshot.
 
 ## Method
 
