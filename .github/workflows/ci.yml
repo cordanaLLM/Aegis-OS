@@ -27,7 +27,7 @@ env:
   FLAKE8_VERSION: "7.3.0"
   BLACK_VERSION: "26.5.1"
   # Published Praetor commit that builds the praetorctl this gate pins.
-  PRAETOR_COMMIT: "4ac59ce0e610abb0820f3c8122a1bbfea68b7ed2"
+  PRAETOR_COMMIT: "a5ecb6fd998c59920e8432b27edbfb8fd36a7aa2"
 
 jobs:
   verify:
