@@ -12,3 +12,11 @@ LICENSES/* text eol=lf
 
 # systemd reads the user units the praetor bump installs (docs/build/praetor-bump.md).
 tools/praetor-bump/* text eol=lf
+
+# BEGIN praetor managed attributes (praetorctl adopt)
+# praetorctl audit hashes these files; keep their checkout bytes the same on every platform.
+tools/figures/** text eol=lf
+docs/figures/*.ts text eol=lf
+docs/assets/figures/* text eol=lf
+tools/figures/third_party/interfig/upstream/** -text
+# END praetor managed attributes
