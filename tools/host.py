@@ -21,8 +21,14 @@ by a test rather than by a Linux user reading a broken unit file.
 
 import os
 import pathlib
+import signal
 import tempfile
 from pathlib import PurePosixPath
+
+try:  # POSIX-only; `exclusive_lock()` reports its absence instead of raising.
+    import fcntl
+except ImportError:  # pragma: no cover - exercised on the Windows leg
+    fcntl = None
 
 # A scalar bound on the path length this helper will render (HISS-02). Linux caps
 # a path at PATH_MAX; anything longer is a caller defect, not a value to pass on.
@@ -137,3 +143,59 @@ def readonly_directory_blocks_removal():
         "this host removes a file from a read-only directory, so a refusal cannot be "
         "provoked here; this case is covered on the Linux leg of the platform matrix"
     )
+
+
+def exclusive_lock(handle):
+    """Take an exclusive, non-blocking lock on the open file `handle`.
+
+    Returns `(True, None)` when this process now holds the lock, and
+    `(False, reason)` when it does not -- because another process holds it, or
+    because the host has no `flock` at all. Both refusals are a skip with a
+    stated reason (HISS-21), never an exception: the caller prints the reason
+    and does nothing. The lock lives as long as `handle` stays open.
+
+    Positive: the first lock on a file is taken. Negative: a second open file
+    description on the same file is refused while the first holds it.
+    Boundary: a host without `fcntl` is refused with a reason naming it.
+    """
+    if fcntl is None:
+        return False, (
+            "fcntl.flock() is POSIX-only and absent on this host, so two runs cannot be "
+            "kept from overlapping; this tool runs on the Linux workstation only"
+        )
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return False, f"another run holds the lock on {handle.name}"
+    return True, None
+
+
+def end_session(pid):
+    """Kill every process still in the session that `pid` leads.
+
+    A child started with `start_new_session=True` leads its own session and
+    process group, so what it started -- `make` starting `cargo`, `cargo`
+    starting `rustc` -- dies with it when a deadline expires, instead of
+    outliving the tool that gave up on it. Returns `(True, None)` when nothing
+    of the group is left, and `(False, reason)` where the host cannot signal a
+    group (`os.killpg` and `signal.SIGKILL` are both POSIX-only) or refuses to;
+    the caller then falls back to killing the one child it holds.
+
+    Positive: a running group is killed. Negative: a host without `os.killpg`
+    or without `signal.SIGKILL` answers with a reason. Boundary: a group that
+    already ended is not an error.
+    """
+    killpg = getattr(os, "killpg", None)
+    sigkill = getattr(signal, "SIGKILL", None)
+    if killpg is None or sigkill is None:
+        return False, (
+            "os.killpg() and signal.SIGKILL are POSIX-only and absent on this host, so "
+            "only the direct child can be stopped"
+        )
+    try:
+        killpg(pid, sigkill)
+    except ProcessLookupError:
+        return True, None
+    except PermissionError as error:
+        return False, f"the process group {pid} could not be signalled: {error}"
+    return True, None

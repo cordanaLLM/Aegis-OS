@@ -65,19 +65,25 @@ rule, which this paragraph records, is that `PRAETOR_COMMIT` in
 moves. Between two bumps the pin lags `main`, so the praetorctl CI builds can
 be older than a workstation build of the current head.
 
-Each bump lands as its own pull request and updates the praetorctl row above.
-It runs `praetorctl adopt --force` from the new commit and keeps only the
-changes that `praetorctl audit`, `praetorctl compile-context --verify` and
-`praetorctl flavor audit` fail without. For the bump to `7325896` those were
-the archetypes under `.config/archetypes/` and `.standards.lock`, the
-documentation gate assets under `tools/markdownlint/` and
-`.github/workflows/praetor-docs.yml`, the governance block in `README.md`, and
-the text-register block in `AGENTS.md` with the projections
-`praetorctl compile-context` compiles from it. Every other file adopt rewrites
-goes back to its previous content, including the hand-maintained hook and
-editor settings, the lefthook scripts, the Paperclip harness, `renovate.json`
-and the rest of `AGENTS.md`, whose rule table carries corrections that apply
-to this repository.
+Bumps are automated. `tools/praetor_bump.py`, run on the maintainer's
+workstation by the systemd user units `make install-praetor-bump` installs,
+moves the pin whenever Praetor's `main` has a new head; see
+[Praetor pin auto-bump](../build/praetor-bump.md). Each bump lands as a pull
+request from the one rolling branch `chore/praetor-pin-auto` and updates the
+praetorctl row above, where the previous pin becomes the "Replaces" value. It
+runs `praetorctl adopt --force` from the new commit and puts every
+hand-maintained file adopt rewrites back to its content on `main`: the hook and
+editor settings, `lefthook.yml` and the evasion interceptor. It restores
+`AGENTS.md`, whose rule table carries corrections that apply to this
+repository, and recompiles only its text-register block and the projections.
+Of the remaining changes it keeps only those that `praetorctl audit`,
+`praetorctl compile-context --verify` and `praetorctl flavor audit` fail
+without, and the pull request lists each kept and each reverted file. The
+bump's own local gate decides only whether a pull request is proposed: it runs
+the workstation's linters and Go toolchain, listed under
+[Not yet admitted](#not-yet-admitted), and only the pull request's
+Verification gate runs the versions pinned above. The bumps to `7e7746a` (#122)
+and `7325896` (#130) were made by hand under the same rule.
 
 ## Crates the workspace pins
 
@@ -400,6 +406,14 @@ rather than admissions:
 - `node`, which `make docs-lint` (part of `make verify-all`) runs directly, is
   the runner's or the workstation's; `.github/workflows/praetor-docs.yml` asks
   `actions/setup-node` for major version 24. Praetor supplies both files.
+- The praetor pin auto-bump (`tools/praetor_bump.py`) runs `yamllint`,
+  `flake8`, `black` and `reuse` as the workstation installs them, not through
+  `pipx` at the versions above, and builds the documentation portal with the
+  workstation's Python. It builds `praetorctl` with the workstation's `go`
+  under its own `GOTOOLCHAIN` setting, whereas CI installs the Go version
+  Praetor's `go.mod` declares and sets `GOTOOLCHAIN=local`. These versions
+  decide only whether a bump pull request is proposed; its CI re-runs the
+  pinned tools.
 
 Pinning them is a separate decision, not an implicit part of M02. Until it is
 taken, no milestone may cite them as admitted toolchain.

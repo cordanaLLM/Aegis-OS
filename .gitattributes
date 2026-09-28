@@ -9,3 +9,6 @@ LICENSES/* text eol=lf
 *.sh text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+
+# systemd reads the user units the praetor bump installs (docs/build/praetor-bump.md).
+tools/praetor-bump/* text eol=lf

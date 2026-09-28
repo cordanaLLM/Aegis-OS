@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+#
+# The daily fallback for aegis-praetor-bump.path: Praetor main can move without
+# praetorctl being reinstalled here. Persistent=true catches up on a run missed
+# while the machine was off.
+[Unit]
+Description=Daily Aegis-OS praetorctl pin bump
+Documentation=file://@AEGIS_REPO@/docs/build/praetor-bump.md
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=30min
+Unit=aegis-praetor-bump.service
+
+[Install]
+WantedBy=timers.target
