@@ -1,9 +1,9 @@
 SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
-.PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-a11y a11y-fetch verify-kernel \
-	verify-bpf verify-latency verify-boot verify-sources verify-reuse readiness test build boot \
-	release install-praetor-bump uninstall-praetor-bump
+.PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-a11y a11y-fetch verify-contract \
+	contract-fetch verify-kernel verify-bpf verify-latency verify-boot verify-sources verify-reuse \
+	readiness test build boot release install-praetor-bump uninstall-praetor-bump
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
 # too: a repository whose instructions say "run make verify-all" must not have a
@@ -19,6 +19,7 @@ verify-all:
 	$(MAKE) --no-print-directory verify-systemd
 	$(MAKE) --no-print-directory verify-mkosi
 	$(MAKE) --no-print-directory verify-a11y
+	$(MAKE) --no-print-directory verify-contract
 	$(PRAETORCTL) compile-context --verify
 	$(PRAETORCTL) audit
 	@if [ -f Cargo.toml ]; then \
@@ -93,6 +94,45 @@ verify-a11y:
 
 a11y-fetch:
 	python3 tools/verify_a11y.py --fetch
+
+# The contract pair gate (M09, D92, D93): Aegis's two M18 payloads,
+# build/product-input.json and build/kernel-requirement.json, are run through
+# cordanaLLM/imago built from the commit build/contract/producers.pin.json names.
+# Each is accepted, a tampered copy is refused with an error carrying the
+# payload's correlation id, and each bound imago enforces is exercised at the
+# bound and one above it; an empty feature list is refused explicitly. A stand-in
+# binary rebuilt from other sources that prints imago's output byte for byte is
+# refused because it lacks the pinned build provenance. cordanaLLM/nucleus reads
+# no Aegis payload and is recorded by identity only (D92).
+#
+# It IS part of verify-all, the D88 placement D93 applies: the gate never touches
+# the network, and CI runs `make contract-fetch` before `make verify-all`. With no
+# go or git on PATH, or without the cached checkout, binary or identity record, it
+# prints 'SKIP: <reason>; the contract pair gate did not run.' and exits 0, so an
+# exit 0 is evidence only when the case lines are above it. A cache that is
+# present but wrong is a FAIL naming `make contract-fetch`, not a skip: an
+# identity record fetched for another pin, a checkout with anything the pinned
+# commit lacks (a tracked change, an untracked or ignored file, a hidden index
+# entry), a binary whose sha256 is not the one the fetch recorded or whose
+# `go version -m` is not the pinned build. Every git and go command runs with the
+# system and user git configuration shut out and no inherited GIT_* variable. It
+# never suppresses a failure.
+#
+# `make contract-fetch` is the one networked step: `git ls-remote --heads` against
+# both producers, a depth-1 fetch of imago at the pinned commit into a fresh
+# directory, `go mod download` and `go mod verify`, and GOTOOLCHAIN=local
+# CGO_ENABLED=0 go build -trimpath -buildvcs=true, refusing a binary whose
+# `go version -m` is not the pinned build and recording the sha256 of the one it
+# keeps. The cache and the retained logs live under AEGIS_CONTRACT_DIR, default
+# ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-contract; nothing is written into the
+# repository and nothing is sent to either producer. A pass is consumption
+# evidence: no product result, image or kernel comes back (M11, M10). See
+# docs/build/contract-pair.md.
+verify-contract:
+	python3 tools/verify_contract_pair.py
+
+contract-fetch:
+	python3 tools/verify_contract_pair.py --fetch
 
 # The kernel build gate (M26, D70): the pinned linux source is verified, the
 # tracked fragments are applied to x86_64_defconfig, the result is compiled and

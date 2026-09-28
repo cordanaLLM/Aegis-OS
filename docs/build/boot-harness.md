@@ -17,7 +17,8 @@ image can prove, and recorded the four implementation choices this page follows.
 
 **M24 is `done`, for the upstream kind of artifact it proves (D85).**
 Verifying an Imago return's signature before boot moved to M11, which adds that
-pin scheme once M09 pins the signature form of the Imago result; the section
+pin scheme once the signature form of the Imago result is pinned; under D92 that
+form is pinned in M11 with the result itself, not in M09. The section
 [What moved to M11](#what-moved-to-m11) says why.
 
 **Aegis constructs no image here, and nothing here is release evidence.** The
@@ -369,15 +370,17 @@ return". This harness proves that for the upstream kind only:
   `load_pin` refuses any other scheme, and a unit test holds that refusal.
 - The Imago return's signature form is not pinned. Imago's proposed result
   schema, `imago.p01.product-result.v1` (its ADR-0020), carries an
-  `image-digest` and a `signature-ref` string and is to be agreed in M09, which
-  waits on producer builds; nothing produces a result yet. A scheme added here
-  would guess a contract M09 has not pinned.
+  `image-digest` and a `signature-ref` string. It was to be agreed in M09;
+  under D92 (2026-09-28) M09 closed on the consumption contract and the result
+  moved to M11, because nothing produces a result yet (cordanaLLM/imago#46). A
+  scheme added here would guess a contract nobody has pinned.
 
 Decision D85 (2026-09-28) closes M24 on the upstream kind. Criterion 2 and
 E24-1 are restated for it, and verifying an Imago return's signature before
 boot moved to M11: an exit criterion and the acceptance of E11-1, whose
 requirements are E24-1's. M11 adds the pin scheme for the Imago result's
-signature form once M09 pins it, with its own positive, negative and boundary
+signature form once that form is pinned, in M11 itself since D92, with its own
+positive, negative and boundary
 cases, and the `gpg-clearsigned-checksum` pin recorded here must keep verifying
 unchanged. Adding a scheme changes the harness, which M11's E11-2 and sixth
 criterion forbade; both now except that one scheme and still fail M11 on any

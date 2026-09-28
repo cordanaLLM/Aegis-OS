@@ -1,0 +1,37 @@
+{
+  "schema": "aegis.m09.contract-pin.v1",
+  "note": "M09 development evidence only (D92, D93). The consumption contract is pinned against each producer's main branch: cordanaLLM/imago decodes both Aegis payloads at the commit named here, and cordanaLLM/nucleus is recorded by identity only, because it consumes no Aegis payload. `make contract-fetch` retains `git ls-remote --heads` for both producers, clones imago at this commit into a cache outside the repository and builds it with GOTOOLCHAIN=local CGO_ENABLED=0 go build -trimpath -buildvcs=true; the gate inside `make verify-all` never touches the network. Nothing is published to either producer from here.",
+  "imago": {
+    "repository": "https://github.com/cordanaLLM/imago.git",
+    "commit": "16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee",
+    "go": "1.27.1",
+    "main-package": "github.com/cordanaLLM/imago/cmd/imago",
+    "bounds": {
+      "source": "pkg/aegis/aegis.go",
+      "MaxRetryAttempts": 10,
+      "MaxPackages": 256
+    },
+    "fixtures": [
+      {
+        "aegis": "build/product-input.json",
+        "imago": "pkg/aegis/testdata/product-input.json",
+        "sha256": "f17b6e32c300f07063f22caee2229633e0feaed46b510d235c03e632cb869793"
+      },
+      {
+        "aegis": "build/kernel-requirement.json",
+        "imago": "pkg/kernel/testdata/aegis-kernel-requirement.json",
+        "sha256": "d796c408b4db5dd9e5f22d35c109a8dccadcdb14f3f68ce7de2cddc594d47adb"
+      },
+      {
+        "aegis": "build/kernel-requirement.reference.json",
+        "imago": "pkg/kernel/testdata/aegis-kernel-requirement.reference.json",
+        "sha256": "9acc717c0f3fc27ea5d1edef875f15c7fd4c24c90086f1bc9476d6add191a8c6"
+      }
+    ]
+  },
+  "nucleus": {
+    "repository": "https://github.com/cordanaLLM/nucleus.git",
+    "commit": "8672247ff1bd22ed6b6b89d498116f20ff00c2ab",
+    "role": "identity only: publishes the imago.nucleus.kernel-artifact.v1 manifest to imago and reads no Aegis payload (its AGENTS.md, 'The contract with imago'); the kernel result is M10's under D92"
+  }
+}

@@ -13,6 +13,46 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (contract pair against the pinned imago, milestone M09)
+
+- **The first run of an Aegis payload through a producer's own code, built from
+  its pinned commit.** `make verify-contract` (`tools/verify_contract_pair.py`)
+  runs `build/product-input.json` through `imago aegis validate` and
+  `build/kernel-requirement.json` through `imago kernel requirement validate`,
+  with cordanaLLM/imago built from `16f964b` by `make contract-fetch`, the one
+  networked step, which CI runs first. It runs inside `make verify-all`, offline;
+  without go, git or its cache it prints why it did not run.
+  `docs/build/contract-pair.md` is the evidence.
+- **Accepted, refused with the payload's correlation id, and bounded.** Both
+  payloads are accepted, and the product input is printed back field by field.
+  Seven one-field tamperings each exit 1 with
+  `Error: <prefix> <correlation-id>: <field>: <reason>`. `retries.max-attempts`
+  is accepted at 10 and refused at 11, the packages count at 256 and 257, and an
+  empty feature list is refused with `feature list is empty` while one feature
+  is accepted. Every case asserts the exit code and the text.
+- **Output alone is not evidence.** The binary counts only when it hashes to
+  the sha256 the fetch recorded and `go version -m` reads the pinned
+  `vcs.revision`, its commit time, the module version go stamps at that commit
+  and `vcs.modified=false` out of it. A stand-in rebuilt from other sources
+  that claims imago's module path and replays its stdout byte for byte is built
+  offline and refused. The checkout must hold nothing but the pinned commit --
+  no untracked or ignored file, no hidden index entry -- and every git and go
+  command runs with the workstation's git configuration and a hook's `GIT_DIR`
+  shut out. A cache fetched for another pin fails rather than skips (D93).
+- **Identity retained, fixtures byte-identical.** `git ls-remote --heads` of both
+  producers is kept with every fetch: imago `16f964b` and nucleus `8672247` were
+  each producer's `main` on 2026-09-28. The three fixtures imago vendors hash to
+  the digests `build/contract/producers.pin.json` records, and the payloads are
+  kept LF on every platform.
+- **Decision D92 closes M09 on the consumption contract.** Nothing produces
+  imago's `imago.p01.product-result.v1` yet (cordanaLLM/imago#46) and nucleus
+  reads no Aegis payload and builds no kernel, so the Imago product result moves
+  to M11 (a criterion and E11-7) and the Nucleus kernel result to M10 (its first
+  criterion and E10-4); E09-2 now names imago's `pkg/kernel` as the consumer.
+  All three milestones disclose the rewrites. **D93** places the gate as D88
+  placed the accessibility gate. M09 is done; M11 and M10 are ready by rule,
+  and each states that its external BLOCKED-until criterion still holds.
+
 ### Added (UI accessibility harness over the P12 Concordia tokens, milestone M04)
 
 - **The first accessibility gate, and it runs inside `make verify-all`.**

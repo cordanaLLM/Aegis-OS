@@ -52,11 +52,15 @@ Current verified state at revision time:
   issue; M27 is GitHub milestone 28, and E27-1 to E27-3 and E16-3 are issues
   #125 to #128. E11-5 and E20-3, which D84 adds, are issues #139 and #140;
   #52 and #53 carry the E11-1 and E11-2 text of D84 and D85, and #79 and #80
-  (E24-1, E24-2) are closed with M24 (read back 2026-09-28).
-  `planning/roadmap.json` stays the source of truth.
-- cordanaLLM/imago and cordanaLLM/nucleus resolve and decode the M18 payloads,
-  and neither builds an image or a kernel yet (M09's disclosure of 2026-09-27).
-  The private readiness matrix is a superseded 2026-09-13 snapshot.
+  (E24-1, E24-2) are closed with M24; E16-4 and E11-6, which D91 adds, are
+  issues #147 and #148 (read back 2026-09-28). E11-7 and E10-4, which D92 adds,
+  and E10-5, which D94 adds, are issues #149 to #151; #49 to #51 (E09-1 to
+  E09-3) carry the D92 text and are closed with M09. `planning/roadmap.json`
+  stays the source of truth.
+- cordanaLLM/imago and cordanaLLM/nucleus resolve. imago decodes both M18
+  payloads at the commit M09 pins (16f964b), nucleus reads neither, and neither
+  producer builds an image or a kernel yet (M09, D92). The private readiness
+  matrix is a superseded 2026-09-13 snapshot.
 
 ## Method
 
@@ -163,15 +167,15 @@ score.
 | 13 | M19 | eBPF objects loaded through the verifier on the host kernel | done | medium | no | no | full | M05, M07 | M10 |
 | 14 | M23 | P07 and P08 latency fixtures on a realtime kernel guest | done | medium | yes | no | full | M07, M26 | M10 |
 | 15 | M24 | Local boot harness over an externally supplied artifact | done | large | yes | no | full | M15 | M11 |
-| 16 | M04 | UI accessibility harness: P12 Concordia tokens | done | medium | no | no | not-hardware | M02 | M16 |
-| 17 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | ready | small | no | no | not-hardware | M04, M14 | - |
-| 18 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
-| 19 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
-| 20 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
-| 21 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | ready | medium | yes | no | full | M07 | - |
-| 22 | M09 | Cross-repository contract pin: one local request/result pair | ready | small | no | yes | partial | M18 | M11, M10 |
-| 23 | M11 | Minimal image build with artifact, signature and boot evidence | blocked | medium | yes | yes | partial | M09, M24 | M13, M20, M12 |
-| 24 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | blocked | medium | yes | yes | partial | M09, M19, M23 | M12 |
+| 16 | M04 | UI accessibility harness: P12 Concordia tokens | done | medium | no | no | not-hardware | M02 | M16, M11 |
+| 17 | M09 | Cross-repository contract pin: one local request/result pair | done | small | no | yes | partial | M18 | M11, M10 |
+| 18 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | ready | small | no | no | not-hardware | M04, M14 | - |
+| 19 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
+| 20 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
+| 21 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
+| 22 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | ready | medium | yes | no | full | M07 | - |
+| 23 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
+| 24 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | ready | medium | yes | yes | partial | M09, M19, M23 | M12 |
 | 25 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
 | 26 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | partial | M25, M10, M11 | - |
 | 27 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
@@ -179,6 +183,12 @@ score.
 The reference profile column records what the machine in
 `planning/hardware-profile.json` can evidence for that milestone. A pass there
 is development evidence only; see `docs/roadmap/hardware.md`.
+
+M11 and M10 are `ready` by rule (5): every milestone they are blocked by is
+done. Each still carries an external BLOCKED-until criterion that holds -- M11
+waits for Imago to return an image/UKI and its product result, M10 for a
+Nucleus-published kernel manifest (D92) -- so neither can close yet, and
+`ready` there is a register state, not an unblocking.
 
 ## Milestone exit criteria and epics
 
@@ -1079,7 +1089,7 @@ Epics:
 
 ### M21 - Workstation hardware slices: RAPL counters and KVM sandboxing
 
-Rank 18. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 19. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full
 (privileged read). Blocked by: M05. Unblocks: nothing.
 
@@ -1400,7 +1410,7 @@ Epics:
 
 ### M16 - P05 Forum shell state and lifecycle with stubbed IPC
 
-Rank 17. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 18. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M04, M14. Unblocks: nothing.
 
@@ -1471,7 +1481,7 @@ Epics:
 
 ### M25 - GPU DMA-BUF sharing and VFIO passthrough slices
 
-Rank 19. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 20. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M08, M17. Unblocks: M12.
 
@@ -1520,7 +1530,7 @@ Epics:
 
 ### M22 - P10 microVM sandbox measurements on KVM
 
-Rank 20. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 21. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M06. Unblocks: nothing.
 
@@ -2142,7 +2152,7 @@ Evidence:
 
 ### M27 - P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS
 
-Rank 21. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 22. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M07. Unblocks: nothing.
 
@@ -2397,19 +2407,30 @@ Epics:
 
 ### M09 - Cross-repository contract pin: one local request/result pair
 
-Rank 22. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 17. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: yes. Reference profile: partial.
 Blocked by: M18. Unblocks: M11, M10.
 
 Exit criteria:
 
-- The M18 schemas are proposed to cordanaLLM/imago and cordanaLLM/nucleus;
-  acceptance is recorded only when each producer consumes the payload, not a
-  fixed symbol list
-- One request/result pair is executed locally against pinned local imago and
-  nucleus checkouts, with a positive result, a negative result (rejected payload
-  with a correlated error) and a boundary result (empty requirement list
-  rejected explicitly)
+- The M18 schemas are consumed by the producer that reads them, and acceptance
+  is recorded only from that consumption, not from a fixed symbol list:
+  cordanaLLM/imago at the pinned commit decodes build/product-input.json (`imago
+  aegis validate`, pkg/aegis) and build/kernel-requirement.json (`imago kernel
+  requirement validate`, pkg/kernel). cordanaLLM/nucleus consumes no Aegis
+  payload -- its AGENTS.md ('The contract with imago') names its inbound as
+  imago's own kernel/requirement.json and its outbound as the
+  imago.nucleus.kernel-artifact.v1 manifest -- and is recorded by identity and
+  that documented outbound role only (D92)
+- Each payload is run locally through imago built from the pinned commit, with
+  the binary's build provenance read back, for a positive result (accepted, and
+  printed back field by field), a negative result (a rejected payload whose
+  error carries the payload's correlation-id) and a boundary result (an empty
+  feature list rejected explicitly with ErrEmptyRequirement's 'feature list is
+  empty'; retries.max-attempts and the packages count exactly at imago's bound
+  accepted and one above refused). Under D92 the result legs moved: the Imago
+  product result (imago.p01.product-result.v1) to M11 and the Nucleus kernel
+  result to M10
 - Canonical producer identities are confirmed with the verifying command and its
   output retained: `git ls-remote --heads
   https://github.com/cordanaLLM/imago.git` and the same for nucleus. Both
@@ -2432,7 +2453,9 @@ Exit criteria:
 Cheapest exit: Run the pair against the pinned local checkouts without any
 hosted dispatch.
 
-Evidence:
+Evidence (the 2026-09-27 and D92 disclosures, the scope and the closing summary;
+every entry is in `planning/roadmap.json`, and the run is on
+`docs/build/contract-pair.md`):
 
 - Disclosure, in the shape M18 recorded, because a milestone that edits its own
   bar must say so where the bar is judged: before any delivery, three exit
@@ -2451,27 +2474,98 @@ Evidence:
   repository has a release. E09-1's and E09-2's positive halves therefore wait
   on producer work; their negative and boundary halves are reachable against the
   producers' decoders now.
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: under decision D92 (2026-09-28),
+  during this delivery and before the state moved to done, exit criteria 1 and 2
+  and the acceptance of E09-1 and E09-2 were rewritten and E09-2's title
+  changed. Criterion 1 read 'The M18 schemas are proposed to cordanaLLM/imago
+  and cordanaLLM/nucleus; acceptance is recorded only when each producer
+  consumes the payload, not a fixed symbol list'. It now records acceptance from
+  the one producer that consumes the payloads, imago, and records nucleus by
+  identity and outbound role; that narrows 'each producer', and it is disclosed
+  as a narrowing: nucleus reads no Aegis payload at 8672247, so no nucleus
+  acceptance exists to record. Criterion 2 read 'One request/result pair is
+  executed locally against pinned local imago and nucleus checkouts, with a
+  positive result, a negative result (rejected payload with a correlated error)
+  and a boundary result (empty requirement list rejected explicitly)'. It now
+  runs each payload through the pinned imago and moves the result legs out: this
+  is a relaxation of what M09 proves, disclosed as one, and neither leg is
+  dropped -- the Imago product result is M11's new criterion and E11-7, the
+  Nucleus kernel result M10's reworded first criterion and E10-4. E09-1 read
+  'Positive: an accepted request returns image digest, signature reference and
+  boot-evidence fields. Negative: a malformed manifest is rejected with a
+  correlated error. Boundary: a retry at the bound is recorded, and one above is
+  refused.'. Its positive sentence moved verbatim to E11-7; its negative stands;
+  its boundary is replaced by the bound imago enforces, retries.max-attempts 10
+  accepted and 11 refused, with the packages count at 256 and 257 added. No
+  producer executes a retry today, so a retry that is executed and recorded is
+  observed nowhere, and D92 assigns it to no milestone: that is a narrowing,
+  disclosed as one. E09-2 was titled 'Nucleus consumption of the kernel
+  requirement payload' and read 'Positive: a result returns kernel
+  version/config digest, artifact digest and provenance. Negative: an
+  unsatisfiable feature is rejected with a correlated error. Boundary: an empty
+  requirement list is rejected explicitly.'. Its positive sentence moved
+  verbatim to E10-4; its consumer is now imago's pkg/kernel, the one reader of
+  the payload; its negative reads 'a feature imago cannot accept' for 'an
+  unsatisfiable feature', because imago checks a feature's shape and vocabulary
+  and has no kernel to satisfy it against, and no producer checks the
+  requirement against a built kernel; rejecting a feature a built kernel does
+  not satisfy, with the requirement's correlation-id, was left to no milestone
+  by D92 and is assigned to M10 by D94 (its criterion and E10-5), so it moved
+  rather than narrowed; its boundary stands and gains the one-feature
+  acceptance. E09-3's text is unchanged; under D92 its 'retained pair' is each
+  request and imago's recorded response to it. Criteria 3 to 6 are unchanged.
+  M09's rank moved 22 -> 17 because a done milestone keeps its place among the
+  done ones, by the ranking rule, not by a decision.
+- Scope: consumption evidence on the reference profile. No product result,
+  image, UKI or kernel came back from either producer, and none was built here;
+  the imago binary is a decoder built from source to run the contract, not a
+  release artifact. P01 and P02 stay proposals in planning/components.json;
+  their activation blockers now read the result and artifact contracts, the
+  request half being pinned here. M11 and M10 become ready under the register
+  rule, every milestone in their blocked_by now done, but each keeps an external
+  BLOCKED-until criterion that still holds -- M11 waits for Imago to return an
+  image/UKI and the product result (imago#46), M10 for a Nucleus-published
+  kernel manifest (nucleus #18, #20) -- so 'ready' there is a register state and
+  not an unblocking.
+- Done, as D92 scopes the bar, and each part by the entry named: criteria 1 and
+  5 by the consumption entry; criterion 2, E09-1 and E09-2 by the recorded-run
+  entry; criteria 3 and 6 by the identity entry; criterion 4 and E09-3 by the
+  simulated-output entry. Each rests on the recorded runs or on
+  tools/test_contract_pair.py inside `make verify-all`, and none on simulated
+  output.
 
 Epics:
 
 - **E09-1 Imago consumption of the product input manifest**. Requirements:
   REQ-P01-01, REQ-P01-02, REQ-P01-03, REQ-P01-04, REQ-P01-06, REQ-P01-10.
-  Acceptance: Positive: an accepted request returns image digest, signature
-  reference and boot-evidence fields. Negative: a malformed manifest is rejected
-  with a correlated error. Boundary: a retry at the bound is recorded, and one
-  above is refused.
-- **E09-2 Nucleus consumption of the kernel requirement payload**. Requirements:
-  REQ-P01-09, REQ-P07-01, REQ-P06-05, REQ-P13-02. Acceptance: Positive: a result
-  returns kernel version/config digest, artifact digest and provenance.
-  Negative: an unsatisfiable feature is rejected with a correlated error.
-  Boundary: an empty requirement list is rejected explicitly.
+  Acceptance: Positive: imago at the pinned commit accepts
+  build/product-input.json and prints back the build request it maps it to,
+  every field as sent. Negative: a malformed manifest is rejected with a
+  correlated error. Boundary: retries.max-attempts exactly at imago's bound
+  (MaxRetryAttempts, 10) is accepted and one above is refused, and the packages
+  count likewise at MaxPackages (256) and one above. The result half -- image
+  digest, signature reference and boot-evidence fields -- moved to M11's E11-7
+  under D92.
+- **E09-2 Imago consumption of the kernel requirement payload (re-scoped from
+  Nucleus by D92)**. Requirements: REQ-P01-09, REQ-P07-01, REQ-P06-05,
+  REQ-P13-02. Acceptance: Positive: imago at the pinned commit (pkg/kernel)
+  accepts build/kernel-requirement.json and
+  build/kernel-requirement.reference.json and lists every feature each declares.
+  Negative: a feature imago cannot accept -- a state other than built-in or
+  module, an unknown probe, a duplicated symbol -- is rejected with an error
+  carrying the payload's correlation-id. Boundary: an empty requirement list is
+  rejected explicitly (ErrEmptyRequirement), and a one-feature list is accepted.
+  cordanaLLM/nucleus reads no Aegis payload and is recorded by identity and its
+  outbound role only; the kernel result -- kernel version/config digest,
+  artifact digest and provenance -- moved to M10's E10-4 under D92.
 - **E09-3 Pair evidence and identity status**. Requirements: REQ-BOOT-02,
   REQ-GOV-02. Acceptance: The retained pair shows correlation id and exact
   revisions. Simulated output is refused. Identity status is recorded.
 
 ### M11 - Minimal image build with artifact, signature and boot evidence
 
-Rank 23. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 23. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M24, M04. Unblocks: M13, M20, M12.
 
@@ -2521,13 +2615,28 @@ Exit criteria:
   carries no verity root, and M24 constructs no image, so the acceptance can
   only be judged on this milestone's artifact.
 - Moved here from M24's criterion 2 and E24-1 by D85: the M24 harness verifies
-  the Imago return's digest and signature before any boot. Once M09 pins the
-  signature form of the Imago result (the signature-ref of
-  imago.p01.product-result.v1), this milestone adds that form to the harness's
-  pin schema as a second signature scheme, with its own positive, negative and
-  boundary cases, and the gpg-clearsigned-checksum scheme M24 proved keeps
-  verifying the upstream pin unchanged. M24 proved the upstream kind only, and a
-  scheme added before M09 pins the form would guess its contract.
+  the Imago return's digest and signature before any boot. Once the signature
+  form of the Imago result is pinned (the signature-ref of
+  imago.p01.product-result.v1, which D92 moved from M09 to this milestone with
+  the result itself), this milestone adds that form to the harness's pin schema
+  as a second signature scheme, with its own positive, negative and boundary
+  cases, and the gpg-clearsigned-checksum scheme M24 proved keeps verifying the
+  upstream pin unchanged. M24 proved the upstream kind only, and a scheme added
+  before that form is pinned would guess its contract.
+- Moved here from M09's E09-1 by D92: for the request M09 proved imago accepts,
+  Imago returns an imago.p01.product-result.v1 result carrying the request's
+  correlation-id, the image digest, the signature reference and the
+  boot-evidence reference, and imago's Result.Validate accepts it. Nothing
+  produces that result at the imago commit M09 pinned (16f964b; its ADR-0020
+  says 'Nothing produces a result yet'), and cordanaLLM/imago#46, opened
+  2026-09-28, tracks the emitter. The signature form D85 waits for is this
+  result's signature-ref, so it is pinned here and not in M09.
+- D53 (decided 2026-09-28): the image determinism seed is derived from the
+  released revision, never a fixed constant. Positive: two builds of the same
+  revision carry identical partition identifiers. Negative: an image whose
+  partition identifiers derive from an all-zero seed is refused. Boundary: two
+  revisions that differ only in their last commit carry different partition
+  identifiers
 
 Cheapest exit: No cheaper exit exists: this is the first real artifact. Keep it
 to one image and one boot, and retain every log.
@@ -2578,6 +2687,28 @@ Evidence:
   rationale, which records why M24 was split out, keeps its wording and gains a
   dated sentence saying so. Nothing else changed. M24 is done, so M09 is the one
   blocker left, and this entry is not evidence that any criterion is met.
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, on 2026-09-28
+  under decision D92, one exit criterion and epic E11-7 were added and the D85
+  criterion and E11-1's acceptance were reworded. The added criterion and E11-7
+  are not relaxations: they take over E09-1's positive half, 'an accepted
+  request returns image digest, signature reference and boot-evidence fields',
+  which M09 could not prove because nothing produces imago.p01.product-result.v1
+  at imago 16f964b (cordanaLLM/imago#46); E11-7's negative and boundary are new
+  and use the bounds imago's Result type declares. The D85 criterion read '...
+  Once M09 pins the signature form of the Imago result (the signature-ref of
+  imago.p01.product-result.v1), this milestone adds that form ... and a scheme
+  added before M09 pins the form would guess its contract.', and E11-1 read '...
+  through the pin scheme this milestone adds once M09 pins the signature form of
+  the Imago result: ...'; both now say the form is pinned here, with the result
+  itself, and nothing else in either changed. The reference-profile rationale's
+  D85 sentence, ending 'which M11 adds once M09 pins it', keeps its wording and
+  gains a dated sentence saying the form is pinned here under D92. M09 is done,
+  so every milestone in blocked_by is done and the register rule makes M11
+  ready. That is a register state, not an unblocking: the first exit criterion,
+  'BLOCKED until: Imago accepts the M09 manifest and returns an image/UKI with
+  digest and signature', still holds -- imago accepts the manifest (M09) and
+  returns nothing -- and this entry is not evidence that any criterion is met.
 
 Epics:
 
@@ -2586,11 +2717,12 @@ Epics:
   locally. Negative: a tampered image digest or bad signature is rejected.
   Boundary: a producer version exactly at the floor is accepted, and one below
   is rejected. Under decision D85 this runs in the M24 harness before any boot,
-  through the pin scheme this milestone adds once M09 pins the signature form of
-  the Imago result: the Imago return's digest and signature verify before the
-  boot, a tampered digest or a bad signature is refused before boot and not
-  during it, and the upstream pin M24 recorded still verifies unchanged. This
-  half moved from M24's criterion 2 and E24-1, whose requirements it shares.
+  through the pin scheme this milestone adds once the signature form of the
+  Imago result is pinned here (E11-7, D92): the Imago return's digest and
+  signature verify before the boot, a tampered digest or a bad signature is
+  refused before boot and not during it, and the upstream pin M24 recorded still
+  verifies unchanged. This half moved from M24's criterion 2 and E24-1, whose
+  requirements it shares.
 - **E11-2 The Imago artifact runs through the M24 harness, changed only by the
   D85 pin scheme**. Requirements: REQ-P01-05, REQ-P01-01. Acceptance: Positive:
   the Imago artifact is fed to the M24 harness with no change to the harness
@@ -2619,20 +2751,37 @@ Epics:
   allows.
 - **E11-6 UKI compilation gated on the accessibility pass (D91)**. Requirements:
   REQ-P12-01. Acceptance: Positive: with the M04 gate passing on the commit, the
-  build request is sent and its record names the accessibility run id.
-  Negative: a planted accessibility violation stops the request before it is
-  sent. Boundary: a gate that printed SKIP stops it too; a skip is not a pass.
+  build request is sent and its record names the accessibility run id. Negative:
+  a planted accessibility violation stops the request before it is sent.
+  Boundary: a gate that printed SKIP stops it too; a skip is not a pass.
+- **E11-7 Imago product result for the M09 request (moved from E09-1 by D92)**.
+  Requirements: REQ-P01-01, REQ-P01-06. Acceptance: Positive: an accepted
+  request returns image digest, signature reference and boot-evidence fields:
+  imago emits an imago.p01.product-result.v1 document for the request M09's gate
+  proves it accepts, its correlation-id is the request's, and imago's
+  Result.Validate accepts it at the pinned commit. Negative: a result whose
+  image-digest is not 'sha256:' and 64 lowercase hex digits is refused by
+  Result.Validate, and one whose correlation-id is not the request's is refused
+  by the integration adapter, each with a correlated error. Boundary: a
+  signature-ref and a boot-evidence-ref of exactly 512 characters (imago's
+  MaxReferenceLen) are accepted, and 513 are refused. Moved from M09's E09-1
+  under D92; cordanaLLM/imago#46 tracks the emitter.
 
 ### M10 - eBPF objects re-verified against the Nucleus-pinned kernel in a VM
 
-Rank 24. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 24. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M19, M23. Unblocks: M12.
 
 Exit criteria:
 
-- BLOCKED until: the M09 pair delivers a Nucleus kernel whose version/config
-  digest is recorded
+- BLOCKED until: Nucleus publishes an imago.nucleus.kernel-artifact.v1 manifest
+  for a kernel it built, and that kernel's version/config digest, artifact
+  digest and provenance are verified and recorded (moved here from M09's E09-2
+  by D92). At the nucleus commit M09 pinned (8672247) the forge compiles no
+  kernel (nucleus #18) and verify-requirements checks a hardcoded symbol list
+  rather than the Aegis kernel requirement (nucleus #20), so no such manifest
+  exists
 - Hardware: a KVM-capable host is required to boot the Nucleus kernel in a VM
   (KVM was present on the workstation at revision time; that is not qualifying
   evidence by itself)
@@ -2647,6 +2796,12 @@ Exit criteria:
   host value (CONFIG_SCHED_CLASS_EXT=y, bpf in the active LSM list,
   /sys/kernel/btf/vmlinux present) so that a capability the host happened to
   supply cannot be silently assumed of the kernel under test.
+- D94: every feature of the Aegis kernel requirement
+  (build/kernel-requirement.json) is checked against the Nucleus kernel's own
+  config inside the VM before any M19 object loads, and a feature that config
+  does not satisfy is rejected with the requirement's correlation-id and the
+  symbol named; this is the check M09's E09-2 negative could not run, since
+  imago has no built kernel to check against (D92)
 - One criterion restates that the M19 host-kernel fixture does not close this
   milestone and that a pass here on the reference profile's VM is development
   evidence only, closing neither the hardware nor the release gate.
@@ -2654,6 +2809,27 @@ Exit criteria:
 Cheapest exit: Boot the Nucleus kernel directly in QEMU/KVM with a minimal
 initramfs and repeat the M19 loads. The M19 host-kernel fixture does not close
 this milestone.
+
+Evidence:
+
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, on 2026-09-28
+  under decision D92, the first exit criterion was reworded and epic E10-4
+  added. The criterion read 'BLOCKED until: the M09 pair delivers a Nucleus
+  kernel whose version/config digest is recorded'. It now waits on a
+  Nucleus-published imago.nucleus.kernel-artifact.v1 manifest for a built
+  kernel, because D92 closed M09 on the consumption contract and moved E09-2's
+  positive half, 'a result returns kernel version/config digest, artifact digest
+  and provenance', here as E10-4, whose negative and boundary are new. Neither
+  is a relaxation: the kernel M10 boots is still a Nucleus kernel with its
+  digests recorded. The reference-profile rationale, which ends 'the only
+  genuinely external input left here is the Nucleus kernel M09 has to obtain',
+  keeps its wording and gains a dated sentence saying that kernel is now this
+  milestone's own first criterion and E10-4. M09 is done, and with M19 and M23
+  done the register rule makes M10 ready. That is a register state, not an
+  unblocking: the first exit criterion still holds, because nucleus has
+  published no kernel manifest (nucleus #18, #20), and this entry is not
+  evidence that any criterion is met.
 
 Epics:
 
@@ -2669,6 +2845,26 @@ Epics:
   Acceptance: Positive: the tracepoint attaches. Negative: a missing tracepoint
   is reported, not ignored. Boundary: zero energy delta over an idle interval is
   recorded as a value, not an error.
+- **E10-4 Nucleus kernel result recorded (moved from E09-2 by D92)**.
+  Requirements: REQ-P01-09, REQ-P07-01. Acceptance: Positive: a result returns
+  kernel version/config digest, artifact digest and provenance: a
+  Nucleus-published imago.nucleus.kernel-artifact.v1 manifest for a kernel
+  Nucleus built is accepted by `imago kernel artifact verify` at a pinned imago
+  commit against the release assets it names, and its kernel.release,
+  kernel.config_digest, each artifact's sha256 and the provenance revision are
+  recorded before any M19 object loads on that kernel. Negative: a manifest
+  whose artifact digest does not match the downloaded artifact is refused before
+  the kernel boots. Boundary: a kernel whose release is exactly the kernel
+  requirement's abi.minimum-release (6.12) is accepted, and one below it is
+  refused. Moved from M09's E09-2 under D92.
+- **E10-5 Kernel requirement satisfied by the built Nucleus kernel (D94)**.
+  Requirements: REQ-P07-01, REQ-P01-09. Acceptance: Positive: every feature of
+  the kernel requirement is satisfied by the Nucleus kernel's config and each
+  symbol's state is recorded. Negative: a requirement feature the config does
+  not satisfy, such as a required symbol set to n, is rejected with the
+  requirement's correlation-id and that symbol named. Boundary: a feature
+  required as a module is satisfied by m, and a feature required built-in is not
+  satisfied by m.
 
 ### M20 - TPM2 attestation slice on swtpm: audit-record signing and /var unseal
 
@@ -2885,9 +3081,11 @@ roadmap through a reviewed change.
 
 Risks, recorded from the cards and the private readiness matrix:
 
-- Cross-repository contracts are declared but unverified. Both producer
-  repositories resolve and decode the M18 payloads, but neither builds an image
-  or a kernel yet, so Aegis cannot close M09 alone.
+- Cross-repository contracts are verified for consumption only. M09 pins
+  imago's decoding of both M18 payloads (D92), but neither producer builds an
+  image or a kernel yet, so the results M11 and M10 wait for depend on producer
+  work Aegis cannot do: cordanaLLM/imago issue 46 and cordanaLLM/nucleus issues
+  18 and 20.
 - Imported workflows suppress failures (REQ-CI-01, REQ-CI-02), and the imported
   integration script prints boot/TPM2 success without executing anything
   (REQ-BOOT-02). They stay inactive, and any activated gate must be rewritten.
@@ -3922,6 +4120,125 @@ delivered.
   the AT-SPI2 half of REQ-P12-03 stay open and owned by no milestone, listed
   with P12's activation blockers, until a live-session P05 milestone is
   planned.
+
+### Decisions from the M09 delivery (2026-09-28)
+
+The maintainer decided D92 and D93 on 2026-09-28, before M09's implementation,
+from the research that preceded it. D92 changes the acceptance of M09, M11 and
+M10, and each of the three discloses it in its evidence; D93 records where M09's
+gate runs.
+
+- **D92** What does M09 close on, when imago decodes both Aegis payloads but
+  nothing produces imago's result type and nucleus reads no Aegis payload?
+  Options, from M09's research: close M09 on the consumption contract that is
+  provable against the pinned producers and move the result legs to the
+  milestones that already wait for them, the Imago product result to M11 and the
+  Nucleus kernel result to M10, the way D84 and D85 moved M24's halves to M11;
+  keep M09 ready until imago emits `imago.p01.product-result.v1` and nucleus
+  publishes a kernel manifest; drop the result legs from the roadmap. Why: at
+  imago 16f964b both validators accept the real payloads, refuse tampered ones
+  with the payload's correlation id and refuse an empty feature list with
+  ErrEmptyRequirement, against fixtures byte-identical to this repository's; but
+  imago's ADR-0020 records that nothing produces a result, nucleus's forge
+  compiles no kernel (nucleus #18) and its verify-requirements checks a
+  hardcoded list (nucleus #20), and nucleus's own AGENTS.md names imago, not
+  nucleus, as the payload's reader. M11 already waits for Imago's image/UKI and
+  for the signature form D85 moved there, and M10 for a Nucleus kernel.
+  **Decision (2026-09-28):** the first option. M09 closes on consumption: imago
+  at 16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee consumes
+  `build/product-input.json` through `imago aegis validate` and
+  `build/kernel-requirement.json` through `imago kernel requirement validate`,
+  each with a positive acceptance, a negative rejection carrying the payload's
+  correlation-id and, for the kernel requirement, a boundary rejection of an
+  empty feature list. E09-1's positive half, the Imago product result
+  (image-digest, signature-ref and boot-evidence-ref of
+  `imago.p01.product-result.v1`), moves to M11 as a criterion and epic E11-7.
+  E09-2's positive half, the Nucleus kernel result, moves to M10, whose first
+  criterion now waits on a Nucleus-published `imago.nucleus.kernel-artifact.v1`
+  manifest for a built kernel, and to epic E10-4. E09-2 is re-scoped to its real
+  consumer, imago's `pkg/kernel`; nucleus is recorded by identity, with `git
+  ls-remote`, and by its documented outbound role only. E09-1's boundary, 'a
+  retry at the bound is recorded, and one above is refused', is replaced by a
+  bound imago enforces in `pkg/aegis`: exactly at the bound accepted, one above
+  refused. Every rewritten criterion and acceptance is disclosed in the evidence
+  of the milestone it belongs to, in the shape M18 recorded.
+  cordanaLLM/imago#46, filed 2026-09-28, tracks the missing product-result
+  emitter. M11 and M10 change state by the register rule, ready once every
+  blocker is done, and each says in its text that its external BLOCKED-until
+  criterion still holds, so 'ready' is not read as unblocked.
+
+  **Recorded with D92 (2026-09-28, at the delivery).** Two bounds are run:
+  `retries.max-attempts` at 10 and 11, the bound imago's ADR-0020 records as an
+  acceptance criterion of its own step-aegis-schema-pin ('a retry count at the
+  bound is accepted while one above it is refused'), and the packages count at
+  256 and 257. imago's bounds are wider than the Aegis crate's -- 256 packages
+  and 10 attempts against 64 and 5, and a backoff from 0 s rather than 1 s -- so
+  every payload Aegis can emit is inside them, and the gate sends one at the
+  Aegis maxima. D53, the image determinism seed in `docs/roadmap/inventory.md`,
+  asked to be decided before M09; the pinned product input carries no seed and
+  no producer was asked to reproduce an image, and the maintainer decided it at
+  this delivery: the seed derives from the released revision, recorded in place
+  in `docs/roadmap/inventory.md` and carried by an M11 criterion.
+
+  Two pointers written before D92 are read, not rewritten. M24 is done, and its
+  criterion 2 and E24-1, which say M11 'adds that pin scheme once M09 pins the
+  signature form of the Imago result', keep their wording and now read as M11
+  pinning that form itself, with the result (E11-7); the D85 record above keeps
+  its wording for the same reason, and M11's and M10's reference-profile
+  rationales gain dated D92 sentences. E09-2's negative, 'an unsatisfiable
+  feature is rejected with a correlated error', is re-scoped to a feature imago
+  cannot accept; rejecting a feature a built kernel does not satisfy, with the
+  requirement's correlation-id, was left to no milestone by D92 and D94 assigns
+  it to M10. The executed retry stays with no milestone, and M09 discloses it as
+  a narrowing.
+- **D93** Where does the contract gate run? Options: the D88 pattern -- a fetch
+  target, `make contract-fetch`, as the only networked step, which runs `git
+  ls-remote` against both producers and keeps the output, clones imago at the
+  pinned commit into a cache outside the repository and builds it with
+  `GOTOOLCHAIN=local CGO_ENABLED=0 go build -trimpath -buildvcs=true` so that
+  `go version -m` carries the revision, and an offline gate inside `make
+  verify-all` that skips with a printed reason when go, git or the cached
+  checkout or binary is absent and fails when the cache is present but wrong,
+  with CI running the fetch before `make verify-all`; a separate target outside
+  `make verify-all`, as the kernel and boot gates are; a gate that clones and
+  builds on demand. Why: the gate needs only go and git, which the CI runner
+  has, so like the accessibility gate and unlike the kernel and boot gates it
+  can run where CI runs; keeping the network out of the gate lets it run
+  offline, and building the binary in the fetch is what gives the
+  simulated-output check a provenance to compare against. **Decision
+  (2026-09-28):** the first option. `make contract-fetch` and `make
+  verify-contract`, the gate wired into `make verify-all`, and
+  `.github/workflows/ci.yml` running the fetch before the gate on the Go that
+  `actions/setup-go` installs from Praetor's `go.mod`. That Go satisfies imago's
+  `go 1.27.1` under `GOTOOLCHAIN=local`: Praetor declares `go 1.27`, which
+  setup-go resolves to the newest 1.27 patch, go1.27.1 on 2026-09-28, so the
+  workflow's Go setup is unchanged.
+- **D94** Who rejects a kernel-requirement feature that a built kernel does not
+  satisfy, which E09-2's negative named and D92 left to no milestone? Options:
+  M10, which boots the Nucleus kernel and reads its config inside the VM, gains
+  a criterion and epic E10-5; leave it unowned as a disclosed narrowing. Why:
+  imago checks a feature's shape and vocabulary but has no kernel to check it
+  against, and M10 is the first milestone holding a Nucleus kernel's config, so
+  it is the first place the check can run. **Decision (2026-09-28):** the first
+  option. M10 checks every feature of `build/kernel-requirement.json` against
+  the Nucleus kernel's config before any M19 object loads, and rejects an
+  unsatisfied feature with the requirement's correlation-id and the symbol
+  named.
+- **D95** Criterion 3 of M09 makes a non-canonical identity in a producer's
+  builder workflows a blocker. At nucleus 8672247 no workflow names one, but
+  other files do: `scripts/setup-remote-repository.sh` creates `lusoris/nucleus`,
+  `mkdocs.yml` and `SUPPORT.md` name `lusoris.github.io/nucleus`,
+  `docker/Dockerfile.builder` labels its source `lusoris/lusoris-kernel-forge`,
+  and ADR-0004 and `docs/packaging.md` push to `ghcr.io/lusoris/kernels`. How
+  are they treated? Options: non-blocking, recorded, with one nucleus issue
+  listing them; non-blocking, recorded only; a blocker, reading the builder
+  container as a builder identity. Why: no workflow builds or runs that
+  container, pushes to that registry or runs the script, so none is on a path
+  that produces an artifact today; they become blocking once a workflow uses
+  them. `@lusoris` in CODEOWNERS and MAINTAINERS is the maintainer's account and
+  the `-lusoris1` localversion is a kernel name, so neither is a repository
+  identity. **Decision (2026-09-28):** the first option;
+  cordanaLLM/nucleus#28 lists each file and line.
 
 ## Evidence
 

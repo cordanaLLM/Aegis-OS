@@ -4,7 +4,8 @@
 # target carries, plus the licence, lint and sign-off steps listed below. It
 # builds no product image, boots nothing and publishes no release: the image,
 # boot, hardware, accessibility and release gates stay blocked. The M04
-# accessibility harness it runs covers the P12 token component only.
+# accessibility harness it runs covers the P12 token component only, and the M09
+# contract pair gate covers imago's consumption of the two Aegis payloads only.
 name: Verification gate
 
 on:
@@ -114,6 +115,17 @@ jobs:
       # The runner has podman and docker; the gate prefers podman.
       - name: Fetch the accessibility gate's pinned inputs
         run: make a11y-fetch
+
+      # The contract pair gate inside make verify-all never touches the network
+      # either (M09, D93). This is its one networked step: git ls-remote against
+      # both producers, a depth-1 fetch of cordanaLLM/imago at the commit
+      # build/contract/producers.pin.json names, and a GOTOOLCHAIN=local build
+      # with -buildvcs=true, refused unless the binary carries that revision. The
+      # Go set up above for praetorctl builds it: Praetor's go.mod declares go
+      # 1.27, which setup-go resolves to the newest 1.27 patch (1.27.1 when this
+      # was written), at or above the go 1.27.1 imago's go.mod requires.
+      - name: Fetch the contract pair's pinned producer
+        run: make contract-fetch
 
       # make verify-all runs the crate gate itself once a workspace manifest is
       # present, so the cargo evidence sits inside this one job. That is

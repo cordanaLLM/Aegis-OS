@@ -43,26 +43,33 @@ owning repository once it returns real artifacts against the contract pinned in
 M09. Ownership in the table above is unchanged; only who currently does the work
 is.
 
-The two producer edges are not at the same stage, and M09 should not treat them
-as one step.
+The two producer edges are not at the same stage, and M09 did not treat them as
+one step (D92).
 
-The Imago edge accepts this repository's schema today. `cordanaLLM/imago`
-ADR-0020 implements `pkg/aegis` against `aegis.p01.product-input.v1` and vendors
-`build/product-input.json` byte for byte; both copies hash to
-`f17b6e32c300f07063f22caee2229633e0feaed46b510d235c03e632cb869793`. Running its
-validator against this repository's live file accepts it, refuses a manifest with
-no correlation id, accepts `retries.max-attempts` at 10 and refuses 11 — the
-three criteria that ADR names for M09:
+The Imago edge consumes both of this repository's payloads, and M09 pins that.
+`cordanaLLM/imago` ADR-0020 implements `pkg/aegis` against
+`aegis.p01.product-input.v1`, and ADR-0021 implements `pkg/kernel` against
+`aegis.p01-nucleus.kernel-requirement.v1`; imago vendors `build/product-input.json`
+and the kernel requirement pair byte for byte, and
+`build/contract/producers.pin.json` names the imago commit and the sha256 of each
+copy (`f17b6e32c300f07063f22caee2229633e0feaed46b510d235c03e632cb869793` for the
+product input). `make verify-contract` runs both validators, built from that
+commit, against this repository's live files: each payload is accepted, a
+tampered copy is refused with the payload's correlation id,
+`retries.max-attempts` at 10 and the packages count at 256 are accepted and one
+above each is refused, and an empty feature list is refused explicitly
+([the contract pair](../build/contract-pair.md)):
 
 ```console
 $ imago aegis validate build/product-input.json
 ✓ Aegis product-input aegis-m18-product-input-0001 accepted (aegis.p01.product-input.v1).
 ```
 
-That is the request half of M09 demonstrated against a real consumer rather than
-inferred. It is not the whole milestone: Imago's ADR records that nothing
-produces a result yet, so no artifact, digest or boot evidence has returned, and
-`imago.p01.product-result.v1` is proposed by Imago rather than agreed here.
+That is the consumption contract, and under D92 it is all of M09. It does not
+make the edge connected: Imago's ADR records that nothing produces a result
+yet, so no artifact, digest or boot evidence has returned.
+`imago.p01.product-result.v1` is proposed by Imago and moved with the result to
+M11, and `cordanaLLM/imago` issue 46 tracks its emitter.
 
 The Nucleus edge is not connected at all. `cordanaLLM/nucleus` has no surface
 reading `aegis.p01-nucleus.kernel-requirement.v1`; its `verify-requirements.yml`
@@ -73,6 +80,9 @@ including `CONFIG_DEBUG_INFO_BTF`, which the P06 eBPF gate needs, and
 `CONFIG_KVM`, where Nucleus sets the guest-side `CONFIG_KVM_GUEST` instead — are
 absent. Reported as `cordanaLLM/nucleus` issue 20. Until that edge reads the
 document, D70 building the kernel locally is not a stopgap but the only path.
+M09 records nucleus by identity and by its outbound role, the
+`imago.nucleus.kernel-artifact.v1` manifest imago verifies; a Nucleus-built
+kernel and its digests are M10's to record (D92).
 
 Activation order: the ranked, blocking-state roadmap in `docs/roadmap/README.md`
 and `planning/roadmap.json` is authoritative (`make readiness` lists the ready
@@ -88,7 +98,8 @@ verified.
 2. Promote one component end-to-end with manifests, locks, template selection,
    and real tests (M02), then the other hardware-free slices.
 3. Author the Aegis-side product input and kernel requirement schemas (M18),
-   then pin the Imago/Nucleus schemas and test one request/result pair (M09).
+   then pin the producers' consumption of them (M09; under D92 the result legs
+   are M11's and M10's).
 4. Build one minimal image and retain artifact, signature and boot evidence
    (M11).
 5. Enable release signing and remote delivery only after publication settings

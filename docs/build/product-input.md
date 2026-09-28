@@ -65,8 +65,10 @@ symbol in code at all. Every symbol lives in a JSON row of the form
 
 so a consumer adds a feature by adding a row, not by changing this repository.
 The private readiness matrix records that Nucleus currently validates a fixed
-symbol list; this payload is the shape Aegis proposes instead, and M09 is where
-that proposal is made.
+symbol list; this payload is the shape Aegis proposes instead. M09 pinned the
+consumer that reads it: `cordanaLLM/imago`'s `pkg/kernel` decodes this payload
+at the pinned commit, and `cordanaLLM/nucleus` reads no Aegis payload (D92,
+[the contract pair](contract-pair.md)).
 
 ## The fragment M26 consumes
 
