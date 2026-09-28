@@ -1,14 +1,18 @@
+---
 version: 1
 pinned_version: v1.0.0
-digest: sha256:e5ca3302a426fecc5e1f3651b4d47249570b11c7b14f25ed24ffbe8b70bb4924
+digest: sha256:29cbf196ec6fcd9572028237107c3254f369f21fd6925b80ba743683b2ea6db2
 profiles:
-    - id: os-image
-      version: v1.0.0
-      digest: sha256:236ba3a1bb7dcdde43e86a46cb49dd935ef8070ecd39584045510df842ff136f
+  - id: os-image
+    version: v1.0.0
+    digest:
+      sha256:a12fad5cad3ba7c779ff9ec7430df26dad2c600fd06a7f1b36dc4612b480e3ce
 facets:
-    - id: agent:sandboxed
-      version: v1.0.0
-      digest: sha256:0ef3ebf5423873d200e12ba405ca93b3064c57eedf9091852f2d69316dfb7c63
-    - id: docs:seo-portal
-      version: v1.0.0
-      digest: sha256:3381e1b7ab5cfb1029fa1b96cd84c7d3d5a890bc2d1f340a7b4e8b5bf61e2256
+  - id: agent:sandboxed
+    version: v1.0.0
+    digest:
+      sha256:bc87486dea71e54d20549d6054dcf290d3d700e37b304cbdb6d6c1a2def895f2
+  - id: docs:seo-portal
+    version: v1.0.0
+    digest:
+      sha256:145722c161ed8e436369d573c2b736fe7f579b8a1e33a85119e3b10268563428

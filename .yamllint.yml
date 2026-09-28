@@ -7,10 +7,15 @@
 #   line-length 100: pinned action digests (`uses: owner/repo@<40 hex> # vX.Y`)
 #     and single-token values cannot be wrapped.
 #   ignored paths: .config/archetypes/** is digest-pinned by .standards.lock and
-#     must stay byte-identical; praetorctl audit requires the documentation gate
-#     assets (tools/markdownlint/, praetor-docs.yml) byte-for-byte; Praetor
-#     generates and rewrites the remaining ignored files, so their style is an
-#     upstream concern.
+#     must stay byte-identical; Praetor generates and rewrites the remaining
+#     ignored files, so their style is an upstream concern.
+#   linted Praetor assets: praetorctl audit locks tools/markdownlint/ and
+#     praetor-docs.yml byte for byte, and Praetor ships both clean under
+#     yamllint's strict defaults since cordanaLLM/praetor#517, which the rules
+#     here only relax. That change asks adopters to keep both out of their
+#     yamllint config because a bot that rewrites them breaks the lock; yamllint
+#     only reads, so linting them here cannot, and a later Praetor text that
+#     fails lint shows up in the pin bump that carries it.
 extends: default
 
 rules:
@@ -27,8 +32,6 @@ ignore: |
   .standards.yaml
   .standards.lock
   .config/labels.yaml
-  .github/workflows/praetor-docs.yml
-  tools/markdownlint/
   .workingdir/
   .workingdir2/
   site/

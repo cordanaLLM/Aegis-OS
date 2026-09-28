@@ -1,6 +1,6 @@
 # Toolchain admission matrix
 
-Status: recorded admissions, current as of 2026-09-13
+Status: recorded admissions, current as of 2026-09-28
 
 ## Purpose and limits
 
@@ -33,7 +33,7 @@ Two rules follow from the clause and are applied below:
 | Rust (`rustc`, `cargo`) | 1.98.1 | `rust-toolchain.toml`, `channel = "1.98.1"`, materialised by rustup | distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.98 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.9.0-stable | `rust-toolchain.toml`, same `components` list | the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
-| praetorctl | source commit `7e7746a324ab2e787b5604b435d396196dbf413c` | `.github/workflows/ci.yml`, `PRAETOR_COMMIT`, verified with `git rev-parse` before the build | nothing | M00 |
+| praetorctl | source commit `732589684b245fec347ae31c62bb59f4c40a2c9d` | `.github/workflows/ci.yml`, `PRAETOR_COMMIT`, verified with `git rev-parse` before the build | the previous pin, source commit `7e7746a324ab2e787b5604b435d396196dbf413c`; the pin follows Praetor's `main` (see below) | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; it is a build input for praetorctl, not a gate of its own | M00 |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
 | reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, run through `pipx run` | nothing | M00 |
@@ -58,6 +58,26 @@ channel or its components. `make verify-rust` reports
 `rustup show active-toolchain` and `rustup which rustc` before the gates run, so
 the evidence names the compiler that actually executed rather than a version
 string copied from this page.
+
+The praetorctl pin follows Praetor's `main` branch. The maintainer's standing
+rule, which this paragraph records, is that `PRAETOR_COMMIT` in
+`.github/workflows/ci.yml` moves to the head of Praetor's `main` whenever `main`
+moves. Between two bumps the pin lags `main`, so the praetorctl CI builds can
+be older than a workstation build of the current head.
+
+Each bump lands as its own pull request and updates the praetorctl row above.
+It runs `praetorctl adopt --force` from the new commit and keeps only the
+changes that `praetorctl audit`, `praetorctl compile-context --verify` and
+`praetorctl flavor audit` fail without. For the bump to `7325896` those were
+the archetypes under `.config/archetypes/` and `.standards.lock`, the
+documentation gate assets under `tools/markdownlint/` and
+`.github/workflows/praetor-docs.yml`, the governance block in `README.md`, and
+the text-register block in `AGENTS.md` with the projections
+`praetorctl compile-context` compiles from it. Every other file adopt rewrites
+goes back to its previous content, including the hand-maintained hook and
+editor settings, the lefthook scripts, the Paperclip harness, `renovate.json`
+and the rest of `AGENTS.md`, whose rule table carries corrections that apply
+to this repository.
 
 ## Crates the workspace pins
 
