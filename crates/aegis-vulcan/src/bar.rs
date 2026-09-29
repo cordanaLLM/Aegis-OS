@@ -55,7 +55,7 @@ impl BarAddress {
     /// Returns [`VulcanError::BarMisaligned`] when `address` is not a multiple
     /// of [`BAR_ALIGNMENT_BYTES`]. The address is refused, never rounded.
     pub const fn new(address: u64) -> Result<Self, VulcanError> {
-        if address % BAR_ALIGNMENT_BYTES != 0 {
+        if !address.is_multiple_of(BAR_ALIGNMENT_BYTES) {
             return Err(VulcanError::BarMisaligned { address });
         }
         Ok(Self(address))

@@ -292,7 +292,9 @@ pub const ZENOH_CHECK: UpstreamCheck = UpstreamCheck {
                          group_by(.optional) | map({optional: .[0].optional, count: length})'",
     admitted_here: false,
     admitted_at: "the milestone that first carries a payload between two processes; M23 for \
-                  the P07 and P08 timing path, M12 for the display path",
+                  the P07 and P08 timing path; for the display path, M27 exercises the client \
+                  half against the host compositor and no milestone yet plans a P04 that \
+                  drives a display or serves zwlr_layer_shell_v1 (D79)",
     reason: "the acceptance this milestone has to meet is a mocked transport test, and \
              MockedMesh is that mock. The dependency command reported 44 normal-kind direct \
              dependencies on the 1.10.1 release, of which 42 are required and 2 optional; \
@@ -321,7 +323,9 @@ pub const COMPOSITOR_LIBRARY_CHECK: UpstreamCheck = UpstreamCheck {
                          '[.dependencies[] | select(.kind == \"normal\")] | \
                          group_by(.optional) | map({optional: .[0].optional, count: length})'",
     admitted_here: false,
-    admitted_at: "the milestone that first drives a display, which is M12",
+    admitted_at: "the milestone that first drives a display from P04, which no milestone yet \
+                  plans: M27 exercises the client half against the host compositor, and no \
+                  milestone serves zwlr_layer_shell_v1 (D79)",
     reason: "M07's scope is the backend-agnostic registry and IPC state machine, and this \
              crate opens no display. The dependency command reported 44 normal-kind direct \
              dependencies on the 0.7.0 release -- the figure is the normal-kind total, not a \

@@ -123,7 +123,7 @@ fn seeded_node(index: u32, column: u32, row: u32) -> Result<CanvasNode, Geometry
         NODE_SIZE,
         NODE_SIZE,
     )?;
-    let levels = if number % INSTRUMENT_EVERY == 0 {
+    let levels = if number.is_multiple_of(INSTRUMENT_EVERY) {
         instrument(number)
     } else {
         Vec::new()

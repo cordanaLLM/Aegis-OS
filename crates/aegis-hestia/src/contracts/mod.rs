@@ -16,8 +16,9 @@
 //! Wayland connection, no `wlr-layer-shell` binding, no socket, no
 //! `SCM_RIGHTS` passing and no `DMA-BUF` import anywhere in this module or in
 //! the crate. A registration states the shape and the bounds of a payload;
-//! carrying one between two processes is later work, and the recorded roadmap
-//! keeps the transport stubbed until M12.
+//! carrying one between two processes is later work. Milestone M27 exercises
+//! the layer-shell client half against the host session's compositor, and no
+//! milestone yet plans a P04 that serves `zwlr_layer_shell_v1` (D79).
 //!
 //! # Versioning
 //!

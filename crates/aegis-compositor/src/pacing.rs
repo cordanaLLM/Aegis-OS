@@ -38,7 +38,9 @@
 //! and the reference kernel is `PREEMPT_DYNAMIC` rather than `PREEMPT_RT`:
 //! **no latency, jitter or frame-time figure is produced by this milestone.**
 //! Whether a compositor can hold a 6944 microsecond period is a question for
-//! real hardware at milestone M12 and for the latency fixtures at M23.
+//! a P04 that drives a display, which no milestone yet plans -- milestone M27
+//! exercises only the client half against the host session's compositor
+//! (D79) -- and for the latency fixtures at M23.
 
 use core::fmt;
 

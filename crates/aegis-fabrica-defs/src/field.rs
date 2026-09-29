@@ -555,7 +555,7 @@ impl TryFrom<String> for ArtifactSignature {
     fn try_from(value: String) -> Result<Self, FieldError> {
         bound("artifact-signature", &value, MAX_SIGNATURE_CHARS)?;
         charset("artifact-signature", &value, "[0-9a-f]", is_lower_hex)?;
-        if value.len() % 2 != 0 {
+        if !value.len().is_multiple_of(2) {
             return Err(shape(
                 "artifact-signature",
                 &value,

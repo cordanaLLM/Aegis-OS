@@ -2,7 +2,8 @@ SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
 .PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-a11y a11y-fetch verify-contract \
-	contract-fetch verify-kernel verify-bpf verify-latency verify-boot verify-sources verify-reuse \
+	contract-fetch verify-kernel verify-bpf verify-latency verify-boot verify-display verify-sources \
+	verify-reuse \
 	readiness test build boot release install-praetor-bump uninstall-praetor-bump
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
@@ -40,9 +41,18 @@ verify-all:
 # the D78 closure tests read `cargo metadata --locked --offline` without a
 # platform filter, which needs target-specific crates (libc, for cpufeatures
 # on aarch64) that a host build never fetches. It is a no-op once cached.
+#
+# Since M27 the workspace builds a C binding: crates/aegis-scaena's cros-libva
+# (D80) finds libva through pkg-config and generates its bindings with bindgen,
+# which loads libclang. None of the three is a Cargo input, so
+# tools/display_toolchain.py reads each back against the floor
+# docs/roadmap/toolchain-admission.md records before cargo builds anything; a
+# missing tool or a value below its floor fails the crate gate, as a missing
+# rustup does. CI builds the libva floor from its pinned release tarball first.
 verify-rust:
 	rustup show active-toolchain
 	rustup which rustc
+	python3 tools/display_toolchain.py
 	cargo fmt --check
 	cargo fetch --locked
 	cargo build --locked
@@ -322,6 +332,47 @@ verify-latency:
 # See docs/build/boot-harness.md.
 verify-boot:
 	python3 tools/verify_boot_harness.py
+
+# The display slice gate (M27, D79, D80, D83): crates/aegis-scaena's
+# aegis-scaena-display decodes cros-libva's reference MPEG-2 intra frame and
+# the committed 60-frame Motion-JPEG fixture through VA-API on the render node
+# whose device number is the compositor's zwp_linux_dmabuf_v1 main device,
+# checks every frame against content, exports it with export_prime, passes the
+# DMA-BUF over a socket pair as SCM_RIGHTS and presents it on a
+# zwlr_layer_shell_v1 surface of the host session's compositor. The gate sets
+# LIBVA_DRIVER_NAME in each child's environment only: iHD for the positive
+# run, nvidia for the probe that must be refused.
+#
+# It is deliberately NOT part of verify-all, for the reasons verify-latency and
+# verify-boot are not: it needs a GPU, a VA-API driver and a Wayland session,
+# which the CI runner does not have, so wiring it into verify-all would put a
+# step into CI that can only skip. A gate that always skips is not a gate.
+#
+# What CI does re-run is the half that needs no GPU: tools/test_display_slice.py
+# holds the fixture pin, the child environment, the skip rules and the set of
+# programs the gate may start, and crates/aegis-scaena's tests hold the
+# descriptor, the SCM_RIGHTS path, the attach checks, the JPEG reader, the
+# content check, the device resolution and the decode deadline. Both run inside
+# verify-all.
+#
+# A host that cannot run it -- not Linux, no Wayland session, no render node,
+# no iHD driver, no cargo, or a session logind reports locked -- prints
+# 'SKIP: <reason>; the display slice gate did not run.' and exits 0, the
+# convention the other hardware gates use. An exit 0 from this target is
+# therefore evidence only when the case lines are above it. It never
+# suppresses a failure.
+#
+# It attaches one 256 x 64 layer surface without keyboard focus to the host
+# session for about sixty frames and destroys it; nothing is installed, no
+# driver is bound or changed, and the compositor binary is never executed.
+# Each run prints a run id and keeps both children's output under
+# AEGIS_DISPLAY_DIR, default ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-display;
+# nothing is written into the repository but cargo's target directory.
+# A pass is development evidence on the reference profile for the client half
+# only (D79): the compositor is the host session's, not P04, and the pass closes
+# no hardware, accessibility or release gate. See docs/build/display.md.
+verify-display:
+	python3 tools/verify_display.py
 
 verify-sources:
 	python3 tools/verify_preparation.py --sources

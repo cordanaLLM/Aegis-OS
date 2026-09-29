@@ -43,8 +43,10 @@ impl EdgeId {
 
     /// Returns the transport the graph of record names for the edge.
     ///
-    /// Recorded, not implemented: no transport exists in this crate, and the
-    /// roadmap keeps it stubbed until M12.
+    /// Recorded, not implemented: no transport exists in this crate. Milestone
+    /// M27 exercises the layer-shell client half against the host session's
+    /// compositor, and no milestone yet plans a P04 that serves
+    /// `zwlr_layer_shell_v1` (D79).
     #[must_use]
     pub const fn recorded_transport(self) -> &'static str {
         match self {

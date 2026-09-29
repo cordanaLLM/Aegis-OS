@@ -15,7 +15,17 @@
 //! asserted is that this crate and its sibling are named, which is the claim
 //! this milestone actually makes.
 
+#[path = "../../dependency_closure.rs"]
+mod dependency_closure;
+
 use std::path::{Path, PathBuf};
+
+/// This crate's package name, the start of its closure (D78).
+const PACKAGE: &str = "aegis-tellus";
+
+/// The crates this crate's closure must not resolve: the list the lock-wide
+/// sweep carried before D78, kept verbatim.
+const FORBIDDEN: [&str; 7] = ["aya", "zbus", "tokio", "blake3", "md5", "nix", "procfs"];
 
 /// Returns the workspace root, two directories above this crate's manifest.
 fn workspace_root() -> Option<PathBuf> {
@@ -128,9 +138,13 @@ fn the_crate_declares_no_binary_target() {
 
 /// Negative: no new third-party crate is resolved by this milestone.
 ///
-/// The lock gains an entry for each new workspace member and nothing else: the
-/// two crates depend only on what the workspace already resolved, which is what
-/// keeps "no new toolchain and no new dependency" a checkable statement.
+/// The lock gained an entry for each new workspace member and nothing else:
+/// the two crates depend only on what the workspace already resolved, which is
+/// what keeps "no new toolchain and no new dependency" a checkable statement.
+/// Since M27 the sweep reads this crate's own dependency closure from
+/// `cargo metadata` (D78) rather than the whole lock, so P17's Wayland and
+/// VA-API crates in the shared lock do not trip it; the forbidden list is
+/// unchanged, and D02's hash must still be locked.
 ///
 /// `libc` is deliberately **not** on this list, and the omission is the
 /// finding rather than an oversight. It is already in the lock as a transitive
@@ -138,23 +152,19 @@ fn the_crate_declares_no_binary_target() {
 /// its absence would fail on a fact this milestone did not create. What is
 /// asserted instead is that this crate's own lock entry does not name it.
 #[test]
-fn no_new_third_party_crate_is_resolved() {
+fn no_new_third_party_crate_is_resolved() -> Result<(), String> {
+    let names = dependency_closure::own_closure(PACKAGE)?;
+    let found = dependency_closure::hits(&names, &FORBIDDEN);
+    assert!(
+        found.is_empty(),
+        "the closure of {PACKAGE} resolves {found:?}"
+    );
     let lock = read("Cargo.lock");
-    for absent in [
-        "name = \"aya\"",
-        "name = \"zbus\"",
-        "name = \"tokio\"",
-        "name = \"blake3\"",
-        "name = \"md5\"",
-        "name = \"nix\"",
-        "name = \"procfs\"",
-    ] {
-        assert!(!lock.contains(absent), "the lock resolved {absent}");
-    }
     assert!(
         lock.contains("name = \"sha2\""),
         "D02's hash must be locked"
     );
+    Ok(())
 }
 
 /// Negative: this crate's lock entry names exactly its three dependencies.
@@ -166,16 +176,32 @@ fn the_lock_entry_names_exactly_three_dependencies() {
         .find(|block| block.contains("name = \"aegis-tellus\""))
         .unwrap_or_default();
     assert!(!entry.is_empty(), "the lock must carry this crate");
-    let deps: Vec<&str> = entry
-        .lines()
-        .map(str::trim)
-        .filter(|line| line.starts_with('"') && line.ends_with("\","))
-        .collect();
+    let deps = dependency_names(entry);
     assert_eq!(
         deps,
-        vec!["\"serde\",", "\"serde_json\",", "\"thiserror\","],
+        vec!["serde", "serde_json", "thiserror"],
         "lock dependencies found: {deps:?}"
     );
+    assert!(
+        lock.contains("name = \"thiserror\"\nversion = \"1.")
+            && lock.contains("name = \"thiserror\"\nversion = \"2."),
+        "the case this strips a suffix for: thiserror 1 and 2 both locked"
+    );
+}
+
+/// The package names a lock entry's `dependencies` array lists.
+///
+/// Cargo writes a dependency line as `"name",` while one version of the name
+/// is locked and as `"name 2.0.20",` once two are (M27: cros-libva locks
+/// thiserror 1 beside the workspace's thiserror 2), so the version it appends
+/// is stripped before the names are compared.
+fn dependency_names(entry: &str) -> Vec<&str> {
+    entry
+        .lines()
+        .map(str::trim)
+        .filter_map(|line| line.strip_prefix('"')?.strip_suffix("\","))
+        .map(|dependency| dependency.split(' ').next().unwrap_or(dependency))
+        .collect()
 }
 
 // --- Boundary -------------------------------------------------------------

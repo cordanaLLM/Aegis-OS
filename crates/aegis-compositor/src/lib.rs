@@ -39,7 +39,9 @@
 //! reference kernel is `PREEMPT_DYNAMIC` rather than `PREEMPT_RT` besides.
 //! [`PINNED_FRAME_PERIOD_US`] is a [`DeclaredPeriodUs`] whose `Display` says
 //! it is unmeasured, and `tests/declared_literals.rs` fails to compile if it
-//! becomes a bare integer. Milestone M12 is the display path and M23 the
+//! becomes a bare integer. Milestone M27 exercises the display path's client
+//! half against the host session's compositor, no milestone yet plans a P04
+//! that drives a display or serves `zwlr_layer_shell_v1` (D79), and M23 is the
 //! latency fixtures.
 //!
 //! # Design invariants (see `AGENTS.md`)
