@@ -136,7 +136,7 @@ fn every_nested_struct_decodes_from_its_object_form() -> Fallible {
 fn both_reviewed_payloads_decode_through_serde_directly() -> Fallible {
     let kernel: KernelRequirement =
         serde_json::from_str(&reviewed_payload("kernel-requirement.json")?)?;
-    assert_eq!(kernel.features.len(), 13);
+    assert_eq!(kernel.features.len(), 14);
     let product: ProductInputManifest =
         serde_json::from_str(&reviewed_payload("product-input.json")?)?;
     assert_eq!(product.packages.len(), 3);

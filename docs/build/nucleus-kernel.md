@@ -47,11 +47,12 @@ PASS kepler_power/nucleus-idle-zero-delta-recorded
 The Nucleus kernel's verifier accepts `action_gate`, but the program cannot
 attach to its LSM hook: the kernel is built without `CONFIG_FUNCTION_TRACER`,
 so the BPF trampoline an LSM program attaches through has no entry point to
-patch. The Aegis kernel requirement asks for `CONFIG_BPF_LSM` and the kernel
-has it; the requirement does not ask for the trampoline, and neither does
-M26's own kernel have it. [The finding](#the-finding-bpf-lsm-present-but-not-attachable)
-below records the controlled comparison that confirms the cause. M10 is
-therefore not done.
+patch. The Aegis kernel requirement asked for `CONFIG_BPF_LSM`, which the
+kernel has, and not for the trampoline, and M26's own kernel lacked it too.
+[The finding](#the-finding-bpf-lsm-present-but-not-attachable) below records
+the controlled comparison that confirms the cause. M10 is therefore not done.
+Decision D107 has since added the trampoline's prerequisite to the requirement
+([below](#since-d107-the-requirement-asks-for-the-trampoline)).
 
 **Nothing here is a release artifact and nothing here qualifies hardware.**
 No package was installed, no module was loaded and no boot entry was written
@@ -116,7 +117,8 @@ hold that order inside `make verify-all`.
    tag commit and the tag as the certificate's workflow SHA and ref. A second
    identity under the same repository is refused, and so is a commit that
    differs in its last digit, so both are load-bearing. imago, the binary
-   M09's fetch built at `16f964b`, whose sha256 the gate checks against the
+   M09's fetch built at the commit M09 pins (`16f964b` for the runs recorded
+   here, `987b95a` since D107), whose sha256 the gate checks against the
    fetch's identity record, runs `imago kernel artifact verify` with the
    stream, tag and version the pin expects, and returns what M10 records. The
    record is written to the run's `release-record.json` when this stage ends.
@@ -200,7 +202,8 @@ the guest's reading alone. `CapabilityTests` holds that a guest without `bpf`
 fails although the host has it (E10-1's boundary), and that a guest without
 sched_ext is recorded as a Nucleus requirement defect (E10-2's boundary).
 The last two rows are the ones the host silently supplied: they are why the
-M19 attach passed on the host and the M10 attach does not.
+M19 attach passed on the host and the M10 attach does not. Since D107 the gate
+labels the second of them `required; decided by the requirement case`.
 
 ## D94: the requirement against the built kernel
 
@@ -299,6 +302,42 @@ prerequisite and a Nucleus release built to it. The row would name
 changes the M18 payload that imago and nucleus both vendor and M09 pins, so it
 is a recorded decision for the maintainer, not a change made here; see the
 M10 entry in `docs/roadmap/README.md`.
+
+## Since D107: the requirement asks for the trampoline
+
+Decision D107, taken by the maintainer on 2026-09-29, adds the row:
+`build/kernel-requirement.json` requires
+`CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS` built-in, probe `kernel-config`,
+required by REQ-P06-05. imago re-vendored the new bytes and nucleus enabled
+`CONFIG_FTRACE`, `CONFIG_FUNCTION_TRACER`, `CONFIG_DYNAMIC_FTRACE` and
+`CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS` on every stream, and M09 pins both
+([the contract pair](contract-pair.md)); M26's kernel carries the row too
+([the Aegis-built kernel](kernel.md)). The capability case now labels that
+symbol `required; decided by the requirement case`, and
+`CONFIG_FUNCTION_TRACER`, which the requirement does not name, stays
+`recorded, not required`.
+
+Against the new requirement, `v7.2.8-realtime-lusoris1` stops before any
+load. Run `r20260929T232643-b28e`, into a fresh cache that
+`make nucleus-kernel-fetch` filled and with M09's imago at `987b95a`, passed
+the release stage and the first two readback cases, then:
+
+```text
+FAIL nucleus/requirement-satisfied-before-any-load
+     rejected: correlation-id aegis-m18-kernel-requirement-0001:
+       CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS is required built-in
+       (REQ-P06-05) and the configuration has unobserved
+     the readback checks did not pass, so no M19 object was loaded
+```
+
+The negative and boundary cases of the requirement stage failed with it: each
+plants one defect into the guest's own configuration and expects exactly that
+one rejection, and this configuration already carries one. The gate is
+unchanged by D107; the kernel is what no longer conforms. Nucleus's ADR-0011,
+at `852be74`, re-releases all four streams as revision 2,
+`v7.2.8-realtime-lusoris2` among them; its release list, read on 2026-09-29,
+held revision 1 only. M10 closes only when a release built to the new
+requirement passes E10-1.
 
 ## Two things M19 never exercised
 

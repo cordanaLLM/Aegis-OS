@@ -51,13 +51,16 @@
       "CONFIG_IOMMU_API": "y",
       "CONFIG_AMD_IOMMU": "y",
       "CONFIG_VFIO_IOMMU_TYPE1": "m",
-      "CONFIG_KVM": "m"
+      "CONFIG_KVM": "m",
+      "CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS": "y"
     },
-    "evidence_command": "uname -r; zgrep -E '^(# )?(CONFIG_PREEMPT|CONFIG_HZ_1000|CONFIG_SCHED_CLASS_EXT|CONFIG_BPF_|CONFIG_CGROUP_BPF|CONFIG_DEBUG_INFO_BTF|CONFIG_POWERCAP|CONFIG_INTEL_RAPL|CONFIG_X86_MSR|CONFIG_IOMMU_API|CONFIG_AMD_IOMMU|CONFIG_VFIO|CONFIG_KVM|CONFIG_EROFS_FS|CONFIG_DM_VERITY|CONFIG_BTRFS_FS|CONFIG_TCG_TPM|CONFIG_PCI_P2PDMA)' /proc/config.gz",
+    "evidence_command": "uname -r; zgrep -E '^(# )?(CONFIG_PREEMPT|CONFIG_HZ_1000|CONFIG_SCHED_CLASS_EXT|CONFIG_BPF_|CONFIG_CGROUP_BPF|CONFIG_DEBUG_INFO_BTF|CONFIG_POWERCAP|CONFIG_INTEL_RAPL|CONFIG_X86_MSR|CONFIG_IOMMU_API|CONFIG_AMD_IOMMU|CONFIG_VFIO|CONFIG_KVM|CONFIG_EROFS_FS|CONFIG_DM_VERITY|CONFIG_BTRFS_FS|CONFIG_TCG_TPM|CONFIG_PCI_P2PDMA|CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS)' /proc/config.gz",
     "recorded_on": "2026-09-13",
     "reread_on": "2026-09-28",
     "running_release": "7.2.8-1-cachyos",
-    "reread_note": "The same evidence command on 2026-09-28 printed 7.2.8-1-cachyos and read every symbol in config in the state recorded here. release stays the 2026-09-13 reading because build/kernel-requirement.reference.json pins its module ABI to it, M18 recorded its evidence against it, and the M19 BPF gate names it as REFERENCE_PROFILE_KERNEL. As D73 decided for the latency figure, a recorded reading keeps the kernel that produced it; re-recording release means re-checking that payload and those gates."
+    "reread_note": "The same evidence command on 2026-09-28 printed 7.2.8-1-cachyos and read every symbol in config in the state recorded here. release stays the 2026-09-13 reading because build/kernel-requirement.reference.json pins its module ABI to it, M18 recorded its evidence against it, and the M19 BPF gate names it as REFERENCE_PROFILE_KERNEL. As D73 decided for the latency figure, a recorded reading keeps the kernel that produced it; re-recording release means re-checking that payload and those gates.",
+    "added_on": "2026-09-29",
+    "added_note": "CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS entered config on 2026-09-29 for D107, which adds it to build/kernel-requirement.json, and evidence_command gained it that day. The extended command printed 7.2.8-1-cachyos, CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS=y, and every other symbol in config in the state recorded here. That value is the 7.2.8-1-cachyos reading: 7.2.4-1-cachyos, the release above, is no longer on the reference profile (neither /usr/lib/modules nor the pacman package cache, which holds linux-cachyos 7.2.6-1 to 7.2.8-1, has it), so the symbol was not read on that kernel."
   },
   "firmware": {
     "efi": true,

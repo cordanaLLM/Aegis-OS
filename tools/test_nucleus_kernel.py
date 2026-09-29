@@ -402,6 +402,33 @@ class CapabilityTests(unittest.TestCase):
         self.assertTrue(passed, out)
         self.assertIn("CONFIG_FUNCTION_TRACER (recorded, not required): guest not set, host y", out)
 
+    def test_the_trampoline_row_the_requirement_names_is_labelled_required(self):
+        """Positive (D107): the label follows build/kernel-requirement.json, and this
+        case still passes, because the requirement case is the one that decides."""
+        passed, out = self.run_case(probe_lines(tracer="n"), probe_lines())
+        self.assertTrue(passed, out)
+        self.assertIn(
+            "CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS (required; decided by the requirement "
+            "case): guest absent from the configuration, host y",
+            out,
+        )
+
+    def test_a_requirement_without_the_row_labels_it_recorded_only(self):
+        """Boundary (D107): the payload of before D107, without the row, names neither."""
+        symbol = "CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS"
+        with tempfile.TemporaryDirectory() as base:
+            requirement = context_in(base).requirement
+        self.assertEqual(
+            gate.trampoline_role(requirement, symbol), "required; decided by the requirement case"
+        )
+        before = dict(
+            requirement,
+            features=[row for row in requirement["features"] if row["symbol"] != symbol],
+        )
+        self.assertEqual(len(before["features"]), len(requirement["features"]) - 1)
+        for name in gate.TRAMPOLINE_SYMBOLS:
+            self.assertEqual(gate.trampoline_role(before, name), "recorded, not required")
+
     def test_the_reference_profile_values_are_read_from_the_register(self):
         self.assertEqual(
             gate.profile_values(),
@@ -433,6 +460,15 @@ class RequirementCaseTests(unittest.TestCase):
         self.assertIn(
             "rejected: correlation-id aegis-m18-kernel-requirement-0001: CONFIG_BPF_LSM", out
         )
+
+    def test_a_guest_without_the_trampoline_row_is_rejected_before_any_load(self):
+        """Negative (D107): a configuration without DYNAMIC_FTRACE_WITH_DIRECT_CALLS, the
+        shape of v7.2.8-realtime-lusoris1's, fails the requirement, so nothing loads."""
+        symbol = "CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS"
+        config = gate.planted(conforming_config(), symbol, None)
+        passed, out = self.run_case(gate.requirement_case, config)
+        self.assertFalse(passed)
+        self.assertIn(f"rejected: correlation-id aegis-m18-kernel-requirement-0001: {symbol}", out)
 
     def test_the_negative_and_boundary_cases_pass_on_a_conforming_guest(self):
         self.assertTrue(self.run_case(gate.requirement_negative_case, conforming_config())[0])

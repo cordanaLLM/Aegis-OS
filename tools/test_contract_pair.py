@@ -14,12 +14,12 @@ checkouts that must hold nothing but the pinned commits, the environment every
 command runs in, the digest the fetch records, and what nucleus's report must
 say for each row (D106) -- and the surfaces the gate runs through: the
 Makefile, CI, the admission page and the evidence page. The recorded outputs
-below are what imago 16f964b printed on the reference profile on 2026-09-28,
-and what nucleus 82aa6b7's verifier wrote on 2026-09-29, kept as bytes;
-nucleus's reports are abridged by dropping fields and rows, never by adding or
-changing one, and a variant nucleus did not write is built inside its test and
-named synthetic there. The sweeps at the end hold the gate to HISS-02, HISS-04
-and HISS-08.
+below are what imago printed on the reference profile, at 16f964b on 2026-09-28
+and byte for byte again at 987b95a on 2026-09-29, and what nucleus 852be74's
+verifier wrote on 2026-09-29 (D107), kept as bytes; nucleus's reports are
+abridged by dropping fields and rows, never by adding or changing one, and a
+variant nucleus did not write is built inside its test and named synthetic
+there. The sweeps at the end hold the gate to HISS-02, HISS-04 and HISS-08.
 """
 
 import ast
@@ -53,19 +53,19 @@ BRANCHES = (ast.If, ast.For, ast.While, ast.IfExp, ast.ExceptHandler, ast.With, 
 ALLOWED_PROGRAMS = {"git", "go", "python3", "<binary>"}
 # The only functions that may reach the network, and the commands that do.
 NETWORK_FUNCTIONS = {"fetch_identity", "fetch_checkout", "fetch_build"}
-PIN_COMMIT = "16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee"
-NUCLEUS_COMMIT = "82aa6b7a3c68a42a6330370c81ec642482014c9f"
+PIN_COMMIT = "987b95a432e5c9aac1b4885b97fa2d3ff1b9d311"
+NUCLEUS_COMMIT = "852be742eb173700d5ef93b0c6f867b855f9c640"
 # The pinned commit's committer time as go writes vcs.time, and as `git log
 # --format=%ct` prints it.
-COMMITTED = "2026-09-16T13:01:55Z"
-COMMITTED_SECONDS = "1789563715"
-PSEUDO_VERSION = "v0.0.0-20260916130155-16f964b4dafa"
+COMMITTED = "2026-09-29T21:02:08Z"
+COMMITTED_SECONDS = "1790715728"
+PSEUDO_VERSION = "v0.0.0-20260929210208-987b95a432e5"
 
 # `go version -m` of the pinned build, abridged to three of its dep rows.
 BUILDINFO = (
     "/cache/bin/imago: go1.27.1-X:nodwarf5\n"
     "\tpath\tgithub.com/cordanaLLM/imago/cmd/imago\n"
-    "\tmod\tgithub.com/cordanaLLM/imago\tv0.0.0-20260916130155-16f964b4dafa\t\n"
+    "\tmod\tgithub.com/cordanaLLM/imago\tv0.0.0-20260929210208-987b95a432e5\t\n"
     "\tdep\tgithub.com/spf13/cobra\tv1.10.2\th1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU=\n"
     "\tdep\tgo.uber.org/fx\tv1.24.0\th1:wE8mruvpg2kiiL1Vqd0CC+tr0/24XIB10Iwp2lLWzkg=\n"
     "\tdep\tgolang.org/x/sys\tv0.48.0\th1:bbX/i/6MgT9BVLM9RT1thmxL04yeTAhbEz4SyadbXoo=\n"
@@ -77,7 +77,7 @@ BUILDINFO = (
     "\tbuild\tGOOS=linux\n"
     "\tbuild\tvcs=git\n"
     f"\tbuild\tvcs.revision={PIN_COMMIT}\n"
-    "\tbuild\tvcs.time=2026-09-16T13:01:55Z\n"
+    "\tbuild\tvcs.time=2026-09-29T21:02:08Z\n"
     "\tbuild\tvcs.modified=false\n"
 )
 # What `imago aegis validate build/product-input.json --json` printed.
@@ -103,7 +103,8 @@ EMPTY_STDERR = (
     "Error: kernel requirement aegis-m18-kernel-requirement-0001: features: "
     "feature list is empty\n" * 2
 )
-# nucleus 82aa6b7's versions.json downstream.requirements, as the checkout holds it.
+# nucleus's versions.json downstream.requirements at 82aa6b7 and, unchanged, at 852be74,
+# as the checkout holds it.
 VERSIONS = (
     b'{"downstream": {"repository": "cordanaLLM/imago", "requirements": ['
     b'{"label": "imago", "repository": "cordanaLLM/imago", "path": "kernel/requirement.json",'
@@ -112,29 +113,29 @@ VERSIONS = (
     b' "path": "build/kernel-requirement.json", "dispatched": false, "streams": ["realtime"]}'
     b"]}}"
 )
-# What `scripts/verify_kernel_requirement.py --report-json` wrote at 82aa6b7 for
+# What `scripts/verify_kernel_requirement.py --report-json` wrote at 852be74 for
 # build/kernel-requirement.json, without its policy, abi, artifact or streams.
 # Each report below is abridged by dropping fields, streams and rows only:
-# nothing is added or changed. Gate run r20260929T102414-7f8a kept the full
+# nothing is added or changed. Gate run r20260929T230816-7c75 kept the full
 # reports; a variant nucleus did not write is built inside its test and named
 # synthetic there.
 REPORT_HEAD = (
     b'{"schema": "nucleus.kernel-requirement-report.v1",'
-    b' "nucleus_revision": "82aa6b7a3c68a42a6330370c81ec642482014c9f",'
+    b' "nucleus_revision": "852be742eb173700d5ef93b0c6f867b855f9c640",'
     b' "evidence_level": "declared", '
 )
 PASS_REPORT = REPORT_HEAD + (
     b'"verdict": "PASS", "documents": [{"label": "aegis-os", "status": "PASS",'
     b' "source": {"label": "aegis-os", "repository": "cordanaLLM/Aegis-OS",'
     b' "path": "build/kernel-requirement.json", "ref": null,'
-    b' "sha256": "d796c408b4db5dd9e5f22d35c109a8dccadcdb14f3f68ce7de2cddc594d47adb"},'
+    b' "sha256": "92d74206ee5a4cc46bc9a8c209855c4a3d07a9ed47b003963fc73697ac8776ce"},'
     b' "correlation_id": "aegis-m18-kernel-requirement-0001", "architectures": ["x86-64"],'
     b' "bound_streams": ["realtime"], "held": ["realtime"], "reasons": [], "streams": []}]}'
 )
 # ... and for the requirement with CONFIG_AEGIS_CONTRACT_UNSET planted, abridged.
 FAIL_REPORT = REPORT_HEAD + (
     b'"verdict": "FAIL", "documents": [{"label": "aegis-os", "status": "FAIL",'
-    b' "source": {"sha256": "706ba4ec256d9e0a6d8cb68cc5defbc8db9d74a1f2ef416edcb76ac414b9bcd9"},'
+    b' "source": {"sha256": "ef59a22800442cfa8d33f9dcf10d8fd63cc391c578e452981a1b4e48d4a6f158"},'
     b' "correlation_id": "aegis-m18-kernel-requirement-0001",'
     b' "bound_streams": ["realtime"], "held": [], "reasons": ["aegis-m18-kernel-requirement-0001:'
     b" realtime x86_64: CONFIG_AEGIS_CONTRACT_UNSET (required-by REQ-P07-01) requires built-in,"
@@ -370,7 +371,7 @@ class ProvenanceTests(unittest.TestCase):
             ("-trimpath=true", "-trimpath=false", "-trimpath is"),
             ("imago/cmd/imago\n", "imago/cmd/other\n", "path is"),
             ("vcs=git", "vcs=hg", "vcs is"),
-            (COMMITTED, "2026-09-16T13:01:56Z", "vcs.time is"),
+            (COMMITTED, "2026-09-29T21:02:09Z", "vcs.time is"),
             (PSEUDO_VERSION, PSEUDO_VERSION + "+dirty", "mod version is"),
         )
         for old, new, needle in cases:
@@ -490,7 +491,9 @@ class KernelOutputTests(unittest.TestCase):
         self.assertTrue(
             gate.kernel_accepted_problems(result(0, "".join(printed[:-1])), requirement)
         )
-        wrong = "".join(printed).replace("Features: 13", "Features: 12")
+        count = len(requirement["features"])
+        wrong = "".join(printed).replace(f"Features: {count}", f"Features: {count - 1}")
+        self.assertNotEqual(wrong, "".join(printed))
         self.assertTrue(gate.kernel_accepted_problems(result(0, wrong), requirement))
         self.assertTrue(gate.kernel_accepted_problems(result(1, "".join(printed)), requirement))
 

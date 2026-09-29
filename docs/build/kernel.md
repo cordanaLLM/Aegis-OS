@@ -5,7 +5,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The Aegis-built kernel, and what the guest said about it
 
-Status: recorded observations from milestone M26, reference profile, 2026-09-13
+Status: recorded observations from milestone M26, reference profile,
+2026-09-13; rebuilt on 2026-09-29 for D107
 
 Decision D70 puts kernel construction in this repository while Nucleus is a
 scaffold, exactly as D56 keeps image-definition validation here while Imago is a
@@ -34,9 +35,10 @@ on one workstation, and it closes no boot, hardware or release gate.
 Not tracked, and deliberately so: the source tree, the object tree, the produced
 `.config`, `bzImage`, the modules, the initramfs and the guest console. They
 live under `AEGIS_KERNEL_BUILD_DIR`, default
-`${XDG_CACHE_HOME:-$HOME/.cache}/aegis-kernel`. A full `.config` is 5,520 lines
-of which thirteen are the requirement; tracking it would bury the requirement in
-the base configuration and make every upstream default a reviewed decision.
+`${XDG_CACHE_HOME:-$HOME/.cache}/aegis-kernel`. A full `.config` is 5,545 lines
+of which fourteen are the requirement (5,520 and thirteen before D107); tracking
+it would bury the requirement in the base configuration and make every upstream
+default a reviewed decision.
 
 ## The pinned source, and how it was verified
 
@@ -85,11 +87,13 @@ hand-written file.
 
 `10-base-support.config` carries only prerequisites, each with the Kconfig
 dependency it satisfies named above it: `CONFIG_EXPERT` for `PREEMPT_RT`,
-`BPF_JIT`/`SECURITY`/`SECURITYFS`/`KPROBES`/`PERF_EVENTS` for `BPF_LSM`, the
-"Debug information" choice for `DEBUG_INFO_BTF`, `PCI`/`IOSF_MBI` for
-`INTEL_RAPL`, an IOMMU driver so the non-selectable `IOMMU_API` can be `y`,
-`IKCONFIG_PROC` for the read-back, the serial and initrd options for the guest,
-and `CONFIG_LOCALVERSION="-aegis-m26"` with `LOCALVERSION_AUTO` off. It assigns
+`BPF_JIT`/`SECURITY`/`SECURITYFS`/`KPROBES`/`PERF_EVENTS` for `BPF_LSM`,
+`FTRACE`/`FUNCTION_TRACER`/`DYNAMIC_FTRACE` for
+`DYNAMIC_FTRACE_WITH_DIRECT_CALLS` (since D107), the "Debug information" choice
+for `DEBUG_INFO_BTF`, `PCI`/`IOSF_MBI` for `INTEL_RAPL`, an IOMMU driver so the
+non-selectable `IOMMU_API` can be `y`, `IKCONFIG_PROC` for the read-back, the
+serial and initrd options for the guest, and
+`CONFIG_LOCALVERSION="-aegis-m26"` with `LOCALVERSION_AUTO` off. It assigns
 no symbol the payload demands, and a test fails if it ever does -- otherwise a
 hand-written file could satisfy a schema row while the generated fragment said
 nothing.
@@ -165,8 +169,8 @@ before the read-back passes, and each is checked:
 
 1. the release the guest reports equals the release this build produced
    (`include/config/kernel.release`, `7.2.5-aegis-m26`) and is not the host's;
-2. every one of the thirteen requirement rows holds in the text the guest
-   printed;
+2. every requirement row holds in the text the guest printed: thirteen on
+   2026-09-13, fourteen since D107;
 3. that text is the produced `.config` **byte for byte** -- 5,520 lines. A
    read-back that came from anywhere but the running guest kernel could not
    reproduce it.
@@ -203,6 +207,68 @@ reach. kconfig neither honours the line nor complains about it: it resolves
 kernel **without** the feature rather than one carrying it as a module, and
 `CONFIG_BPF_LSM` and `CONFIG_SCHED_CLASS_EXT` disappear with it. Nothing in the
 build says so; only reading the produced configuration back does.
+
+## Rebuilt for D107 (2026-09-29)
+
+Decision D107 adds `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS`, built-in and
+required by REQ-P06-05, to `build/kernel-requirement.json`, because a BPF LSM
+program attaches through a BPF trampoline and `CONFIG_BPF_LSM` does not depend
+on the function tracer that trampoline needs ([the Nucleus kernel
+gate](nucleus-kernel.md)). `50-aegis-requirement.config` was rendered again
+from the payload and carries the row after `CONFIG_BPF_LSM`, fourteen
+assignments in all.
+
+The symbol has no prompt, and the chain it follows from was read out of the
+pinned source, `linux-7.2.5` hashed against the pin: in
+`kernel/trace/Kconfig` it is a `def_bool` that depends on
+`DYNAMIC_FTRACE_WITH_REGS || DYNAMIC_FTRACE_WITH_ARGS` and on
+`HAVE_DYNAMIC_FTRACE_WITH_DIRECT_CALLS`, both `WITH_` symbols are `def_bool`s
+over `DYNAMIC_FTRACE`, `DYNAMIC_FTRACE` depends on `FUNCTION_TRACER`, and
+`FUNCTION_TRACER` has no default and sits inside `if FTRACE`; under
+`config X86`, `arch/x86/Kconfig` selects every `HAVE_` symbol involved.
+`x86_64_defconfig` sets `CONFIG_DEBUG_KERNEL=y`, which turns `FTRACE` on by
+default, and no `FUNCTION_TRACER`. `10-base-support.config` therefore gains
+`CONFIG_FTRACE=y`, `CONFIG_FUNCTION_TRACER=y` and `CONFIG_DYNAMIC_FTRACE=y`,
+the three options M10's controlled comparison switched on, and
+`tools/test_kernel_build.py` requires all three. The fragment's comment also
+states what `BPF_LSM` itself depends on: `FTRACE`, through `BPF_EVENTS`, which
+sits inside `if FTRACE`, but none of `FUNCTION_TRACER`, `DYNAMIC_FTRACE` or
+`DYNAMIC_FTRACE_WITH_DIRECT_CALLS` (`kernel/bpf/Kconfig`).
+
+Without them the row does not survive. The same `defconfig`, merge and
+`olddefconfig`, run by hand over the pinned tree with the support fragment of
+before D107 and the new requirement fragment, produced `CONFIG_FTRACE=y`,
+`# CONFIG_FUNCTION_TRACER is not set` and no `DYNAMIC_FTRACE` line at all, and
+the gate's own check refused it with
+`CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS: REQ-P06-05 requires built-in,
+observed unrecorded`.
+
+With them it does. `make verify-kernel` ran into a fresh build directory,
+downloading the tarball and verifying its sha256 and signature again (from
+21:13:22 to 21:15:52 UTC), then over the same tree (21:23:38 to 21:26:30 UTC),
+and once more over it after the last edit of any file the gate reads, which
+narrowed the support fragment's comment on what `BPF_LSM` depends on and
+changed no assignment, and after this change was rebased onto `main` at
+`a28be4e` (21:53:55 to 21:57:34 UTC); a direct
+`python3 tools/verify_kernel_build.py` between the first two gave the same.
+Each read 14 requirement rows, passed all seven cases with the outcomes in the
+table above and exited 0. The last two each built a 16,954,368-byte `bzImage`
+and 19 modules as `7.2.5-aegis-m26`, in 142 and 126 seconds, and in each the
+guest's own `/proc/config.gz` was byte-identical to the produced `.config`:
+5,545 lines, sha256
+`90e08c39b2bcbacb257cb15e86d4e5d0fd82270105cd4b9d0c80d29f52088585`. The
+tracer, as the guest printed it, with the line each sits on in its dump:
+
+```text
+5396:CONFIG_FTRACE=y
+5399:CONFIG_FUNCTION_TRACER=y
+5404:CONFIG_DYNAMIC_FTRACE=y
+5406:CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS=y
+```
+
+The rebuild reads the configuration back; it attaches nothing. That a kernel
+built from M26's source with these three options attaches `action_gate` is
+M10's controlled comparison, not a case of this gate.
 
 ## Scope, and what a pass here does not mean
 

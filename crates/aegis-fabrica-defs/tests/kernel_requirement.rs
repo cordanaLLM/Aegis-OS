@@ -107,6 +107,7 @@ fn the_reviewed_requirement_lists_the_features_p06_p07_and_p13_need() -> Fallibl
         "CONFIG_HZ_1000",
         "CONFIG_SCHED_CLASS_EXT",
         "CONFIG_BPF_LSM",
+        "CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS",
         "CONFIG_DEBUG_INFO_BTF",
         "CONFIG_POWERCAP",
         "CONFIG_INTEL_RAPL",

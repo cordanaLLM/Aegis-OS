@@ -155,12 +155,14 @@ CAPABILITIES = (
     ("bpf in the active LSM list", "yes"),
     ("/sys/kernel/btf/vmlinux", "present"),
 )
-# Read beside criterion 6's three and recorded, not required: a BPF LSM program
-# attaches through a BPF trampoline, which on x86 patches the 5-byte nop that
-# -mfentry leaves at the hook's entry (arch/x86/net/bpf_jit_comp.c,
+# Read beside criterion 6's three and recorded, never decided here: a BPF LSM
+# program attaches through a BPF trampoline, which on x86 patches the 5-byte
+# nop that -mfentry leaves at the hook's entry (arch/x86/net/bpf_jit_comp.c,
 # __bpf_arch_text_poke, -EBUSY when the bytes differ). A kernel built without
-# the function tracer has no such nop, whatever CONFIG_BPF_LSM says, and
-# build/kernel-requirement.json does not name either symbol.
+# the function tracer has no such nop, whatever CONFIG_BPF_LSM says. Since D107
+# build/kernel-requirement.json requires CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS,
+# which the requirement case decides like every row; trampoline_role() labels
+# each symbol by whether the requirement names it.
 TRAMPOLINE_SYMBOLS = ("CONFIG_FUNCTION_TRACER", "CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS")
 SCHEDULER_UNREGISTERED = (
     'sched_ext: BPF scheduler "aegis_cake" disabled (unregistered from user space)'
@@ -902,8 +904,8 @@ def capability_case(context, guest, host):
     )
     for symbol in TRAMPOLINE_SYMBOLS:
         notes.append(
-            f"{symbol} (recorded, not required): guest {trampoline_state(guest, symbol)}, "
-            f"host {trampoline_state(host, symbol)}"
+            f"{symbol} ({trampoline_role(context.requirement, symbol)}): "
+            f"guest {trampoline_state(guest, symbol)}, host {trampoline_state(host, symbol)}"
         )
     context.guest_probe = guest
     return report(context, "nucleus/capabilities-read-in-guest-diffed-with-host", problems, notes)
@@ -912,6 +914,18 @@ def capability_case(context, guest, host):
 def trampoline_state(readings, symbol):
     """Return one trampoline prerequisite's state as a probe read it."""
     return readings["config"].get(symbol, "absent from the configuration")
+
+
+def trampoline_role(requirement, symbol):
+    """Return whether the requirement names one trampoline prerequisite (D107).
+
+    Only a label for the record: a named symbol is decided by the requirement
+    case, from the guest's configuration, and this case never decides either.
+    """
+    rows = requirement["features"][: requirement_check.MAX_FEATURES]
+    if any(row["symbol"] == symbol for row in rows):
+        return "required; decided by the requirement case"
+    return "recorded, not required"
 
 
 def requirement_case(context, text):
@@ -1281,7 +1295,7 @@ def lsm_attach_reason(context, result):
     return [
         "recorded reason: the BPF trampoline could not patch the LSM hook's entry (-EBUSY), and "
         f"the kernel under test reads {read}; CONFIG_BPF_LSM=y does not provide the -mfentry "
-        "nop the trampoline patches, and build/kernel-requirement.json does not require it"
+        "nop the trampoline patches"
     ]
 
 
