@@ -3,7 +3,7 @@ PRAETORCTL ?= praetorctl
 
 .PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-a11y a11y-fetch verify-contract \
 	contract-fetch verify-kernel verify-bpf verify-latency verify-boot verify-display verify-sources \
-	verify-reuse \
+	verify-nucleus-kernel nucleus-kernel-fetch verify-reuse \
 	readiness test build boot release install-praetor-bump uninstall-praetor-bump
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
@@ -373,6 +373,68 @@ verify-boot:
 # no hardware, accessibility or release gate. See docs/build/display.md.
 verify-display:
 	python3 tools/verify_display.py
+
+# The Nucleus kernel gate (M10, D92, D94): the kernel cordanaLLM/nucleus built
+# and published, pinned by build/kernel/nucleus-artifact.pin.json, is verified
+# and recorded before it boots, checked against build/kernel-requirement.json
+# from inside the guest before any M19 object loads, and then made to load and
+# attach action_gate, scx_cake and kepler_power through its own verifier.
+#
+# In order, in three stages. Each stage runs all of its cases, and no stage
+# starts until every case of the one before it passed, the negatives and
+# boundaries included. First the release: every cached asset hashes to the
+# pin; cosign verifies SHA256SUMS against the pinned keyless identity, with the
+# tag commit and tag as the certificate's workflow SHA and ref; imago, built at
+# the commit M09 pinned, accepts the manifest with `imago kernel artifact
+# verify` and the release, config digest, artifact digests and provenance
+# revision it returns are recorded; a copy whose kernel image differs by one
+# byte is refused by the pre-boot hash and by imago and is never booted; the
+# release floor is evaluated at its boundary. The record is written to the
+# run's release-record.json before any boot. Then two boots through M23's
+# boot() unchanged, with only the kernel image and the initramfs substituted.
+# The readback boot reads the kernel's own /proc/config.gz and the sched_ext,
+# BPF LSM and BTF probe, which is diffed against the same probe on the host,
+# and the requirement is decided against that configuration. The load boot
+# re-reads the configuration's sha256, loads nothing unless it is the one
+# checked, and runs the M19 loads as uid 65534 with CAP_BPF and CAP_PERFMON
+# only.
+#
+# It is deliberately NOT part of verify-all, for the reasons verify-latency and
+# verify-boot are not: it needs /dev/kvm, an emulator, the fetched release and
+# M09's imago, which the CI runner does not have, so wiring it into verify-all
+# would put a step into CI that can only skip. A gate that always skips is not
+# a gate. What CI does re-run is the half that needs no guest:
+# tools/test_nucleus_kernel.py and tools/test_kernel_requirement_check.py hold
+# the pin, the pre-boot refusal, the stage order, the signature binding, the
+# release floor, the D94 rules, the report parser, the capability diff, the
+# load checks, the skip rules, cosign's admitted range and the set of programs
+# the gate may start. Both run inside verify-all.
+#
+# A host that cannot run it -- not Linux, no read-write /dev/kvm, no
+# /proc/config.gz, a tool missing or outside its admitted range (cosign is
+# admitted from 2.6.3 up to below 3), no M09 contract cache or no fetched
+# release -- prints 'SKIP: <reason>; the Nucleus kernel gate did not
+# run.' and exits 0, the convention the other hardware gates use. An exit 0
+# from this target is therefore evidence only when the case lines are above
+# it. A cache that is present but wrong is a FAIL, not a skip, and so is any
+# case that does not match its contract. It never suppresses a failure.
+#
+# `make nucleus-kernel-fetch` is the one networked step: it downloads the
+# pinned assets with curl, refuses any whose sha256 or size differs, and runs
+# cosign verify-blob on SHA256SUMS with the same identity, commit and ref. It
+# skips with the reason when curl is missing or cosign is outside its range.
+# The release and every run's reports,
+# verifier logs and summary live under AEGIS_NUCLEUS_KERNEL_DIR, default
+# ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-nucleus-kernel. Nothing is written into
+# the repository, nothing is installed, and no module is loaded on the host.
+# A pass is development evidence on the reference profile: the M19 host-kernel
+# fixture does not close M10, and a pass here closes neither the hardware nor
+# the release gate. See docs/build/nucleus-kernel.md.
+verify-nucleus-kernel:
+	python3 tools/verify_nucleus_kernel.py
+
+nucleus-kernel-fetch:
+	python3 tools/verify_nucleus_kernel.py --fetch
 
 verify-sources:
 	python3 tools/verify_preparation.py --sources

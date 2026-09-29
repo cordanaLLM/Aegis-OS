@@ -754,6 +754,76 @@ first run over M04's suite found `ui/concordia-tokens/tests/probe.js` wrapped
 in a 170-line immediately invoked function; it is now a strict-mode block,
 with no change to what it measures.
 
+## The Nucleus kernel gate's toolchain, and the kernel it boots (M10)
+
+Every row below is a tool `tools/verify_nucleus_kernel.py` runs, read back
+from the tool before anything boots, on the reference profile on 2026-09-29.
+`tools/test_nucleus_kernel.py` reads this table back and requires it to state
+the same admission as the gate's own `TOOLCHAIN` list: the names are compared
+as a set, and each row's reference value and Floor cell against the gate's
+entry, so a row added here for a tool the gate never runs, or a value edited on
+this page alone, fails `make verify-all`. The same test holds the set of
+programs the gate may start at all.
+
+Eight rows are M23's admissions reused unchanged, because M10 boots its guest
+through M23's `boot()` and builds its initramfs through M23's helpers (the
+criterion that no second harness is built): the gate reads them from
+`tools/verify_latency_fixture.py`'s own list, and their reference values are
+the ones M23 recorded on 2026-09-13. A newer installed version prints beside
+the recorded one instead of being refused. The four eBPF rows reuse M19's
+floors from `tools/verify_bpf_objects.py`. QEMU is the version M24 admitted as
+well, so criterion 3's pinned emulator is shared rather than admitted twice.
+
+| Tool | Reference-profile version | Floor | Latest upstream, read 2026-09-29 | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| qemu-system-x86_64 | 11.1.1 | none declared | 11.1.1, as M24 records | both guests, `-enable-kvm`; the gate skips without a read-write `/dev/kvm` |
+| cpio | 2.15 | none declared | as M23 records | the two initramfs archives, through M23's `archive_tree` |
+| ldd | 2.44 | none declared | as M23 records | the guest userspace's library closure |
+| bash | 5.3.15 | 4.2 | as M23 records | the guest's PID 1 and the host half of the probe |
+| mount | 2.42.3 | 2.10 | as M23 records | proc, sysfs, securityfs, tracefs and cgroup2 in the guest |
+| coreutils | 9.11 | none declared | as M23 records | `cat`, `sha256sum`, `stat`, `mkdir`, `base64`, `sleep` and the marker binary in the guest |
+| grep | 3.12 | none declared | as M23 records | the probe and the attach poll in the guest |
+| gzip | 1.14 | none declared | as M23 records | `/proc/config.gz` and the retained verifier logs in the guest |
+| setpriv | 2.42.4 | none declared | 2.42.4, tag `v2.42.4` | every guest load, as uid 65534 with CAP_BPF and CAP_PERFMON only |
+| cosign | 2.6.3 | 2.6.3 | 3.1.3 of 2026-08-06; the 2.6 series is at 2.6.5 of the same day | verifies SHA256SUMS against the pinned keyless identity, tag commit and tag ref, `--offline` in the gate; admitted below 3, so the reference profile's second copy, 3.1.3, is refused |
+| clang | 22.1.8 | 19.0.0 | as M19 records | the objects and the loader, against the Nucleus kernel's own BTF |
+| bpftool | 7.8.0 | 7.4.0 | as M19 records | `btf dump` of the kernel image's own BTF into `vmlinux.h` |
+| llvm-strip | 22.1.8 | 19.0.0 | as M19 records | drops DWARF from each object and keeps BTF |
+| libbpf | 1.7.0 | 1.5 | as M19 records | the loader links it; the guest runs this host's copy |
+
+`curl` 8.22.0, M24's admission, runs only in `make nucleus-kernel-fetch`, and
+cosign runs there once without `--offline`, so its trust root may refresh. The
+gate itself never touches the network. cosign is behind upstream on two counts:
+the installed binary is 2.6.3 from `go install`, the 2.6 series has reached
+2.6.5, and upstream's current line is 3.x. Nothing here depends on a feature of
+either newer release; moving the row is a D69 refresh.
+
+The cosign row is the only one with a ceiling. The reference profile carries
+two copies, and a bare `cosign` names 2.6.3 only because `~/go/bin` precedes
+`/usr/bin` in the developer account's `PATH`
+(`planning/hardware-profile.json`). The other copy, the distribution's 3.1.3,
+prints `Flag --offline has been deprecated` for the flag the gate passes. The
+gate and the fetch therefore read the version back and refuse anything below
+2.6.3 or at 3 and above, with a printed reason, rather than trust the order of
+`PATH`. `tools/test_nucleus_kernel.py` holds the ceiling to this row.
+
+**The kernel is pinned by a file, not by a tool.**
+`build/kernel/nucleus-artifact.pin.json` names cordanaLLM/nucleus release
+`v7.2.8-realtime-lusoris1`, tag commit
+`9e050cf8fc2fb62de943229f22ab104dce455e92`, the
+`imago.nucleus.kernel-artifact.v1` manifest by sha256
+`c57416a1fc286eab54df65249d7502de1a6dbf601f1b064336b3abbf80cf0f4e`, every
+asset by sha256 and size, `kernel.release` `7.2.8-lusoris1-realtime`,
+`kernel.config_digest`
+`sha256:e9510d2d1928d4e153b19cf3312c4184ce44b4186ec6fde286e001060ffd731a`, and
+the keyless signer
+`https://github.com/cordanaLLM/nucleus/.github/workflows/publish-release.yml@refs/tags/v7.2.8-realtime-lusoris1`
+with issuer `https://token.actions.githubusercontent.com`. imago is the binary
+M09's `make contract-fetch` built at commit
+`16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee`; the gate checks its sha256
+against the fetch's identity record before running it, and passes imago's own
+`versions.json` from that checkout.
+
 ## Not yet admitted
 
 These are run by a gate but pinned by nothing, so they are gaps recorded here
@@ -826,6 +896,12 @@ taken, no milestone may cite them as admitted toolchain.
   pins to the `env:` block of `.github/workflows/ci.yml`. `make verify-rust`
   runs `tools/display_toolchain.py` before it builds, so the evidence names the
   pkgconf, libva and clang the crate was built with.
+- The M10 rows are checked by `tools/test_nucleus_kernel.py` the same way,
+  and that test also holds the programs the Nucleus kernel gate may start:
+  cosign, imago, bash, bpftool and, in the fetch only, curl. The emulator is
+  not among them, because the gate starts it only through M23's `boot()`.
+  `make verify-nucleus-kernel` then reads each version back before it boots
+  anything.
 - The M24 rows are checked by `tools/test_boot_harness.py` the same way, with
   the three OVMF images compared by digest. That test also holds the programs
   the boot harness may start, which contain nothing that writes a firmware

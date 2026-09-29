@@ -112,6 +112,7 @@ nav:
       - Contract pair against the pinned producers: build/contract-pair.md
       - P05 Forum shell model and tree check: build/forum-shell.md
       - P17 display slice, VA-API to a layer surface: build/display.md
+      - Nucleus kernel in a guest, M19 loads repeated: build/nucleus-kernel.md
   - Integration:
       - Shared ownership and contracts: integration/stack.md
   - Decisions:

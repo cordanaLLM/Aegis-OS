@@ -34,7 +34,7 @@
         "blueprints/[Report P01] Project Fabrica - OS Build System & UKI Synthesis.md"
       ],
       "activation_blockers": [
-        "Imago/Nucleus result and artifact contracts (M09 pinned the request half: imago consumes both M18 payloads, D92; the Imago result is M11's and the Nucleus kernel result M10's)",
+        "Imago/Nucleus result and artifact contracts (M09 pinned the request half: imago consumes both M18 payloads, D92; the Imago result is M11's; the Nucleus kernel result arrived on 2026-09-29 as release v7.2.8-realtime-lusoris1, which M10 verifies and records (run r20260929T195935-62a3), and M10 stays open on E10-1, D107)",
         "pinned image/kernel inputs",
         "real artifact and boot evidence",
         "real hardware or emulator evidence for each listed hardware requirement"
@@ -96,7 +96,7 @@
         "blueprints/[Report P02] Project Janus & Vallum - Partition Geometry & Storage Security.md"
       ],
       "activation_blockers": [
-        "Imago/Nucleus result and artifact contracts (M09 pinned the request half: imago consumes both M18 payloads, D92; the Imago result is M11's and the Nucleus kernel result M10's)",
+        "Imago/Nucleus result and artifact contracts (M09 pinned the request half: imago consumes both M18 payloads, D92; the Imago result is M11's; the Nucleus kernel result arrived on 2026-09-29 as release v7.2.8-realtime-lusoris1, which M10 verifies and records (run r20260929T195935-62a3), and M10 stays open on E10-1, D107)",
         "pinned image/kernel inputs",
         "real artifact and boot evidence",
         "real hardware or emulator evidence for each listed hardware requirement"
@@ -363,7 +363,7 @@
       ],
       "activation_blockers": [
         "pinned shared integration contract (consumer and hardened-unit schemas, M14)",
-        "kernel ABI pin and eBPF verifier evidence absent (M19, M10)",
+        "a kernel that attaches action_gate: M19's verifier evidence is a host fixture, and the Nucleus-built kernel M10 boots accepts the object but cannot attach it, because it has no function tracer for the BPF trampoline to patch (run r20260929T195935-62a3, decision D107 (decided 2026-09-29: add the requirement row))",
         "TPM2 record signing absent; the signer boundary fails closed (M20)",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],
@@ -805,7 +805,7 @@
       ],
       "activation_blockers": [
         "a P13 component daemon; crates/aegis-tellus holds the ISO/IEC 21031:2024 SCI rate arithmetic, the spatiotemporal defer threshold, the bounded cgroup slice table and the zone-list wattage seam, and is neither the Kepler telemetry probe nor the daemon that carries it (M05)",
-        "the kepler_power eBPF probe is not compiled, loaded, verified or attached; kernel ABI pin and verifier evidence absent (M19, M10)",
+        "kepler_power is compiled and verified (M19), and on the Nucleus-built kernel its tracepoint attaches and an idle cgroup's delta reads zero (M10, run r20260929T195935-62a3); what it accumulates is runtime times a declared TDP constant, not a counter reading",
         "no RAPL or ACPI counter is read: /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 on the reference profile, so a measured delta needs a privileged reader (M21)",
         "no transport for EMIT_CARBON_TELEMETRY or SPATIOTEMPORAL_TASK_SHIFT, both of which D77 moves from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; the task-shift payload is typed at M05 and the carbon telemetry payload at M16, which the P05 shell model consumes over a mocked socketpair only, and nothing carries either",
         "no individual blueprint report; evidence limited to architecture documents and trade-off guide",

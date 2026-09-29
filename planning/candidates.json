@@ -273,7 +273,7 @@
       ],
       "missing": [
         "consumer contract schemas and their version gate (M14)",
-        "eBPF compile and verifier evidence for action_gate (M19, M10)",
+        "an action_gate attach on a Nucleus-built kernel: that kernel's verifier accepts the object and the kernel cannot attach it (M10, D107)",
         "TPM2 record signing; the signer boundary ships unbound and fails closed (M20)",
         "the D-Bus transport",
         "a durable ledger sink; M02 ships the bounded in-memory sink only"
@@ -844,13 +844,13 @@
       },
       "side_b": {
         "source_id": "public:docs/integration/stack.md",
-        "sha256": "c75c856020d089a8fcad4be6b2ef9119a0e2b53122740cd65656e861e07f2a76",
+        "sha256": "32ec01f39ac47dc114b23c97ac6ca03e35575f74c446599c1d3577bc22a510f9",
         "summary": "The shared ownership table assigns kernel configuration, patch selection and artefact production to the Nucleus repository."
       },
       "affected_contract": "Aegis-side kernel requirement payload (LSM, sched_ext, BTF, RAPL, VFIO/IOMMU, KVM; ABI; architectures) and the image content list.",
       "milestone": "M18 (schema); consumed at M09 and M11; eBPF re-verification M10",
       "status": "resolved",
-      "resolution": "D07: both. The image boots a pinned distribution real-time kernel by default and a Nucleus artefact overrides it once M09 delivers one; under D92 that delivery is M10's E10-4. The version floor stays open (D55)."
+      "resolution": "D07: both. The image boots a pinned distribution real-time kernel by default and a Nucleus artefact overrides it once M09 delivers one; under D92 that delivery is M10's E10-4. The version floor stays open (D55). The first Nucleus artefact, release v7.2.8-realtime-lusoris1 (kernel 7.2.8-lusoris1-realtime), was verified and recorded by M10 on 2026-09-29 (run r20260929T195935-62a3)."
     },
     {
       "id": "DSP-11",
@@ -1114,7 +1114,7 @@
       },
       "side_b": {
         "source_id": "public:docs/integration/stack.md",
-        "sha256": "c75c856020d089a8fcad4be6b2ef9119a0e2b53122740cd65656e861e07f2a76",
+        "sha256": "32ec01f39ac47dc114b23c97ac6ca03e35575f74c446599c1d3577bc22a510f9",
         "summary": "Shared package reuse must respect language boundaries: a Go library is not a direct dependency of a Rust daemon without an adapter and contract tests."
       },
       "affected_contract": "Vesta capsule-execution contract and the crate dependency set; also the P09 -> P10 transport string.",

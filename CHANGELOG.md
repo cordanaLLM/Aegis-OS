@@ -13,6 +13,51 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (the Nucleus kernel in a guest, milestone M10, still open)
+
+- **The first Nucleus kernel is pinned, verified and recorded (E10-4).**
+  `build/kernel/nucleus-artifact.pin.json` pins cordanaLLM/nucleus release
+  `v7.2.8-realtime-lusoris1` by tag commit, manifest, every asset's sha256 and
+  size, and its keyless signer. `make nucleus-kernel-fetch` downloads and
+  checks the assets and the cosign signature, which binds the signer
+  identity, the tag commit and the tag; imago at M09's pinned commit accepts
+  the manifest. The kernel release, config digest, artifact digests and
+  provenance revision are printed and written to the run's
+  `release-record.json` before the first boot, and repeated in `summary.json`
+  when the run ends. A copy whose kernel image differs in one byte is refused
+  by the pre-boot hash and by imago and never booted.
+- **`make verify-nucleus-kernel`, outside `make verify-all`.** Two boots
+  through M23's `boot()` unchanged, with only the kernel image and initramfs
+  substituted: the first reads the kernel's own configuration and the sched_ext,
+  BPF LSM and BTF probe, diffed against the host; the second loads nothing
+  unless the configuration is the one checked. No stage starts until every
+  case of the one before it passed. Run `r20260929T203240-505f`, on the gate
+  as committed, passed seventeen of eighteen cases, as the first full run
+  `r20260929T195935-62a3` did. `docs/build/nucleus-kernel.md` is the evidence.
+- **The D94 check (E10-5).** `tools/kernel_requirement_check.py` decides
+  `build/kernel-requirement.json` against a kernel configuration by the M18
+  rules and rejects an unsatisfied row with the correlation id and the symbol
+  named; it also checks the release floor and a fixed `abi.module-abi`, and
+  refuses keys the schema does not name. On the Nucleus kernel all thirteen
+  features are satisfied.
+- **M19's loads on the Nucleus kernel.** `scx_cake` attaches as the guest's
+  scheduler and is unregistered cleanly, `kepler_power`'s tracepoint attaches,
+  a missing tracepoint is reported with its errno, an idle cgroup's delta is
+  recorded as zero, and both of M19's negatives are rejected by the verifier.
+  The loader gains a `tp-attach` mode and `--map-set`, which writes
+  `scx_cake`'s tier budget before the attach; without it the scheduler stalled
+  every task until the sched_ext watchdog ejected it.
+- **Found: BPF LSM present but not attachable (D107, open).** `action_gate`
+  loads on the Nucleus kernel and its attach fails with `-EBUSY`: the kernel
+  has no function tracer for the BPF trampoline to patch, which the kernel
+  requirement does not ask for. A controlled comparison on M26's source
+  confirmed the cause. M10 stays open until a requirement row and a release
+  built to it pass E10-1.
+- **cosign 2.6.3 is admitted, below 3**: the reference profile's second
+  copy, 3.1.3, is refused whichever `PATH` names it. M23's initramfs helpers
+  are split out as `install_programs` and `archive_tree` so M10 builds no
+  second harness.
+
 ### Added (P17 Scaena first slice, VA-API frames to a layer surface, milestone M27)
 
 - **P17 aegis-scaena joins the workspace (criteria 1 to 4).** cros-libva is

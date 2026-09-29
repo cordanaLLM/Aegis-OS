@@ -16,7 +16,11 @@
 //    which is a poll loop, not a command;
 //  * the P07 boundary case must attach a struct_ops link and then detach it
 //    from the same process, with the kernel's own `root/ops` read while the
-//    link is held.
+//    link is held;
+//  * M10's P13 cases attach the tracepoint program, read its per-cgroup map at
+//    the two ends of an interval from inside the attach window, and report a
+//    tracepoint that does not exist as a named failure rather than as a
+//    missing line (mode tp-attach).
 //
 // Bounds, because this runs against a live kernel. Every mode arms a SIGALRM
 // deadline and exits AEGIS_EXIT_DEADLINE rather than blocking; every loop has a
@@ -79,6 +83,16 @@
 // Upper bound on the sysfs scheduler-name read. SCX_OPS_NAME_LEN is 128 in the
 // running kernel's BTF; this is that bound with room for the trailing newline.
 #define AEGIS_OPS_NAME_BOUND 160
+// Bound on the category half of a caller-named tracepoint, "sched" in
+// "sched/sched_switch". The kernel's own TRACE_SYSTEM names are far shorter.
+#define AEGIS_TP_CATEGORY_BOUND 64
+#define AEGIS_TP_SECTION_PREFIX "tracepoint/"
+// Bound on the map name --map-set names. It is the object's own ELF name,
+// which libbpf keeps in full: the kernel truncates to BPF_OBJ_NAME_LEN (16,
+// NUL included), so a 16-byte name such as cake_tier_budget must fit here.
+#define AEGIS_MAP_NAME_BOUND 64
+#define AEGIS_STRING_OPTIONS 7
+#define AEGIS_NUMBER_OPTIONS 3
 
 // One private verifier-log buffer per program, sized so that a rejection
 // message is retained in full rather than truncated into an unusable excerpt.
@@ -106,8 +120,11 @@ struct aegis_options {
 	const char *mode;
 	const char *marker;
 	const char *nonce;
+	const char *tracepoint;
+	const char *map_set;
 	unsigned int deadline_s;
 	unsigned int hold_ms;
+	unsigned int settle_ms;
 };
 
 static void on_deadline(int signo)
@@ -417,6 +434,113 @@ static int mode_sops_attach(struct bpf_object *obj, const struct aegis_options *
 	return AEGIS_EXIT_OK;
 }
 
+// Sleep for `ms` in bounded slices. The slice count is clamped, so no caller
+// value can hold the probe past its own deadline by more than the clamp.
+static void hold_for(unsigned int ms)
+{
+	unsigned int slices = ms / AEGIS_HOLD_SLICE_MS;
+	unsigned int slice;
+
+	if (slices > AEGIS_MAX_HOLD_SLICES) {
+		slices = AEGIS_MAX_HOLD_SLICES;
+	}
+	for (slice = 0; slice < slices; slice++) {
+		usleep(AEGIS_HOLD_SLICE_MS * 1000);
+	}
+}
+
+// Print one line per row of the per-cgroup accounting map at a labelled point.
+// The walk is bounded by the map's own max_entries, and the runtime is the sum
+// of the fixed slot array. The value printed is the object's declared
+// pseudo-energy, runtime times a declared constant, never a meter reading.
+static int print_power_rows(struct bpf_map *map, const char *label)
+{
+	struct aegis_power_sample sample;
+	__u64 key = 0;
+	__u64 next = 0;
+	__u64 runtime;
+	int fd = bpf_map__fd(map);
+	int rows;
+	unsigned int slot;
+	int rc = bpf_map_get_next_key(fd, NULL, &next);
+
+	for (rows = 0; rc == 0 && rows < AEGIS_KEPLER_MAX_CGROUPS; rows++) {
+		key = next;
+		if (bpf_map_lookup_elem(fd, &key, &sample) == 0) {
+			runtime = 0;
+			for (slot = 0; slot < AEGIS_KEPLER_SLOTS; slot++) {
+				runtime += sample.runtime_ns[slot];
+			}
+			printf("power_%s cgroup_id=%llu runtime_ns=%llu "
+			       "pseudo_energy_uj_unmeasured=%llu\n",
+			       label, (unsigned long long)key, (unsigned long long)runtime,
+			       (unsigned long long)sample.pseudo_energy_uj_unmeasured);
+		}
+		rc = bpf_map_get_next_key(fd, &key, &next);
+	}
+	printf("power_%s_rows=%d\n", label, rows);
+	return rows;
+}
+
+// Attach to the caller-named "category/name" tracepoint, or to the one the
+// program's own section names when the caller names none. A malformed name is
+// EINVAL, so it is reported the way a missing tracepoint is.
+static struct bpf_link *attach_tracepoint(struct bpf_program *prog, const char *tracepoint)
+{
+	char category[AEGIS_TP_CATEGORY_BOUND];
+	const char *slash;
+	size_t length;
+
+	if (tracepoint == NULL) {
+		return bpf_program__attach(prog);
+	}
+	slash = strchr(tracepoint, '/');
+	length = slash == NULL ? 0 : (size_t)(slash - tracepoint);
+	if (length == 0 || length >= sizeof(category) || slash[1] == '\0') {
+		errno = EINVAL;
+		return NULL;
+	}
+	memcpy(category, tracepoint, length);
+	category[length] = '\0';
+	return bpf_program__attach_tracepoint(prog, category, slash + 1);
+}
+
+// M10's P13 cases. Positive: the tracepoint attaches and the map is read at the
+// start and the end of an interval inside the attach window, so a row that did
+// not move is a reading of zero, not an absent line. Negative: a tracepoint the
+// kernel does not have is printed as tracepoint_attach_failed with its errno and
+// exits AEGIS_EXIT_ATTACH_FAILED; it is never skipped.
+static int mode_tp_attach(struct bpf_object *obj, const struct aegis_options *options)
+{
+	struct bpf_program *prog = find_program(obj, AEGIS_TP_SECTION_PREFIX);
+	struct bpf_map *map = find_map(obj, BPF_MAP_TYPE_HASH);
+	const char *named = options->tracepoint;
+	struct bpf_link *link;
+	int saved;
+
+	if (prog == NULL || map == NULL) {
+		fprintf(stderr, "object carries no tracepoint program or no hash map\n");
+		return AEGIS_EXIT_ATTACH_FAILED;
+	}
+	if (named == NULL) {
+		named = bpf_program__section_name(prog) + strlen(AEGIS_TP_SECTION_PREFIX);
+	}
+	link = attach_tracepoint(prog, options->tracepoint);
+	if (link == NULL) {
+		saved = errno;
+		printf("tracepoint_attach_failed tracepoint=%s errno=%d (%s)\n", named, saved,
+		       strerror(saved));
+		return AEGIS_EXIT_ATTACH_FAILED;
+	}
+	printf("attached=tracepoint tracepoint=%s\n", named);
+	hold_for(options->settle_ms);
+	print_power_rows(map, "begin");
+	hold_for(options->hold_ms);
+	print_power_rows(map, "end");
+	printf("detach_rc=%d\n", bpf_link__destroy(link));
+	return AEGIS_EXIT_OK;
+}
+
 static int mode_sops_load(struct bpf_object *obj)
 {
 	struct bpf_map *map = find_map(obj, BPF_MAP_TYPE_STRUCT_OPS);
@@ -433,8 +557,45 @@ static int mode_sops_load(struct bpf_object *obj)
 	return AEGIS_EXIT_OK;
 }
 
+// Write one u32 at key 0 of the array map `assignment` names ("name=value"),
+// after the load and before any attach. scx_cake's dispatch walks as many
+// tiers as cake_tier_budget holds, and that row reads zero until a loader
+// writes it: attached with a zero budget, the scheduler dispatched nothing and
+// the sched_ext watchdog ejected it for a runnable-task stall (M10's first run
+// on the Nucleus kernel). M19 never attached it, so it never wrote the row.
+static int set_map_value(struct bpf_object *obj, const char *assignment)
+{
+	char name[AEGIS_MAP_NAME_BOUND];
+	const char *equals = strchr(assignment, '=');
+	size_t length = equals == NULL ? 0 : (size_t)(equals - assignment);
+	struct bpf_map *map;
+	__u32 key = 0;
+	__u32 value;
+
+	if (length == 0 || length >= sizeof(name)) {
+		return -1;
+	}
+	memcpy(name, assignment, length);
+	name[length] = '\0';
+	map = bpf_object__find_map_by_name(obj, name);
+	if (map == NULL || bpf_map__type(map) != BPF_MAP_TYPE_ARRAY ||
+	    bpf_map__value_size(map) != sizeof(value)) {
+		return -1;
+	}
+	value = (__u32)strtoul(equals + 1, NULL, 10);
+	if (bpf_map_update_elem(bpf_map__fd(map), &key, &value, BPF_ANY) != 0) {
+		return -1;
+	}
+	printf("map_set=%s value=%u\n", name, value);
+	return 0;
+}
+
 static int dispatch(struct bpf_object *obj, const struct aegis_options *options)
 {
+	if (options->map_set != NULL && set_map_value(obj, options->map_set) != 0) {
+		fprintf(stderr, "--map-set %s did not apply\n", options->map_set);
+		return AEGIS_EXIT_ATTACH_FAILED;
+	}
 	if (strcmp(options->mode, "load") == 0) {
 		return AEGIS_EXIT_OK;
 	}
@@ -447,30 +608,53 @@ static int dispatch(struct bpf_object *obj, const struct aegis_options *options)
 	if (strcmp(options->mode, "sops-attach") == 0) {
 		return mode_sops_attach(obj, options);
 	}
+	if (strcmp(options->mode, "tp-attach") == 0) {
+		return mode_tp_attach(obj, options);
+	}
 	fprintf(stderr, "unknown mode %s\n", options->mode);
 	return AEGIS_EXIT_USAGE;
 }
 
 static int parse_option(struct aegis_options *options, const char *name, const char *value)
 {
-	if (strcmp(name, "--object") == 0) {
-		options->object = value;
-	} else if (strcmp(name, "--log") == 0) {
-		options->log_path = value;
-	} else if (strcmp(name, "--mode") == 0) {
-		options->mode = value;
-	} else if (strcmp(name, "--marker") == 0) {
-		options->marker = value;
-	} else if (strcmp(name, "--nonce") == 0) {
-		options->nonce = value;
-	} else if (strcmp(name, "--deadline") == 0) {
-		options->deadline_s = (unsigned int)strtoul(value, NULL, 10);
-	} else if (strcmp(name, "--hold-ms") == 0) {
-		options->hold_ms = (unsigned int)strtoul(value, NULL, 10);
-	} else {
-		return -1;
+	static const char *const string_names[AEGIS_STRING_OPTIONS] = {
+		"--object", "--log", "--mode", "--marker", "--nonce", "--tracepoint", "--map-set",
+	};
+	static const char *const number_names[AEGIS_NUMBER_OPTIONS] = {
+		"--deadline",
+		"--hold-ms",
+		"--settle-ms",
+	};
+	// Parallel to string_names, entry for entry.
+	const char **strings[AEGIS_STRING_OPTIONS] = {
+		&options->object,
+		&options->log_path,
+		&options->mode,
+		&options->marker,
+		&options->nonce,
+		&options->tracepoint,
+		&options->map_set,
+	};
+	unsigned int *numbers[AEGIS_NUMBER_OPTIONS] = {
+		&options->deadline_s,
+		&options->hold_ms,
+		&options->settle_ms,
+	};
+	size_t index;
+
+	for (index = 0; index < AEGIS_STRING_OPTIONS; index++) {
+		if (strcmp(name, string_names[index]) == 0) {
+			*strings[index] = value;
+			return 0;
+		}
 	}
-	return 0;
+	for (index = 0; index < AEGIS_NUMBER_OPTIONS; index++) {
+		if (strcmp(name, number_names[index]) == 0) {
+			*numbers[index] = (unsigned int)strtoul(value, NULL, 10);
+			return 0;
+		}
+	}
+	return -1;
 }
 
 // The nonce goes into the log header, so it is bounded and restricted to an
@@ -497,6 +681,7 @@ static int parse(int argc, char **argv, struct aegis_options *options)
 
 	options->deadline_s = 30;
 	options->hold_ms = 0;
+	options->settle_ms = 0;
 	for (index = 1; index + 1 < argc; index += 2) {
 		if (parse_option(options, argv[index], argv[index + 1]) != 0) {
 			return -1;
@@ -550,8 +735,9 @@ int main(int argc, char **argv)
 	if (parse(argc, argv, &options) != 0) {
 		fprintf(stderr,
 			"usage: %s --object PATH --log PATH --mode "
-			"load|lsm-probe|sops-load|sops-attach --nonce ALNUM-OR-DASH "
-			"[--marker PATH] [--deadline S] [--hold-ms MS]\n",
+			"load|lsm-probe|sops-load|sops-attach|tp-attach --nonce ALNUM-OR-DASH "
+			"[--marker PATH] [--deadline S] [--hold-ms MS] [--settle-ms MS] "
+			"[--tracepoint CATEGORY/NAME] [--map-set ARRAY=U32]\n",
 			argv[0]);
 		return AEGIS_EXIT_USAGE;
 	}

@@ -75,28 +75,32 @@ M11, and `cordanaLLM/imago` issue 46 tracks its emitter.
 
 The Nucleus edge reads the kernel requirement since `cordanaLLM/nucleus` pull
 request 35, merged as `0a4eac9` on 2026-09-29, and M09 pins it under D106, at
-`82aa6b7` since that day's re-pin. Its
-`scripts/verify_kernel_requirement.py` decodes `build/kernel-requirement.json`
-the way `crates/aegis-fabrica-defs` does and holds it against the kconfig
-fragments of the streams its `versions.json` binds Aegis to, `realtime` alone,
-in place of the hardcoded symbol list its issue 20 reported; its ADR-0007, still
-Proposed, is the policy. `make verify-contract` runs that script from the pinned
-checkout and reads its JSON report: the requirement passes on `realtime`, a
-planted symbol no fragment sets is refused with the requirement's correlation
-id, an empty feature list is rejected, and the digest or correlation id of
-another document is rejected ([the contract pair](../build/contract-pair.md)).
-The evidence level is `declared`: the fragments as merged, not a built
-configuration, so `make olddefconfig` can still drop a declared symbol. Since
-`82aa6b7` the verifier also offers a `resolved` level, against a `.config`
-resolved from the stream's verified source, which needs the network, so the
-offline gate stays at `declared`; and the forge compiles and gates every leg
-(nucleus issues 18 and 31, closed by its pull request 37) but has published no
-release. Until one exists, D70 building the kernel locally is the only path to
-a kernel Aegis can use, and a Nucleus-published kernel, its configuration and
-its digests are M10's to record (D92, D94): E10-4 and E10-5 read the release
-asset `kernel-realtime-x86_64.config`, which the manifest pins by
+`82aa6b7` since that day's re-pin. Its `scripts/verify_kernel_requirement.py`
+decodes `build/kernel-requirement.json` the way `crates/aegis-fabrica-defs` does
+and holds it against the kconfig fragments of the streams its `versions.json`
+binds Aegis to, `realtime` alone, in place of the hardcoded symbol list its
+issue 20 reported; its ADR-0007, still Proposed, is the policy. `make
+verify-contract` runs that script from the pinned checkout and reads its JSON
+report: the requirement passes on `realtime`, a planted symbol no fragment sets
+is refused with the requirement's correlation id, an empty feature list is
+rejected, and the digest or correlation id of another document is rejected ([the
+contract pair](../build/contract-pair.md)). The evidence level is `declared`:
+the fragments as merged, not a built configuration, so `make olddefconfig` can
+still drop a declared symbol. Since `82aa6b7` the verifier also offers a
+`resolved` level, against a `.config` resolved from the stream's verified
+source, which needs the network, so the offline gate stays at `declared`; and
+the forge compiles and gates every leg (nucleus issues 18 and 31, closed by its
+pull request 37). A Nucleus-published kernel, its configuration and its digests
+are M10's to record (D92, D94): E10-4 and E10-5 read the release asset
+`kernel-realtime-x86_64.config`, which the manifest pins by
 `kernel.config_digest`. Nucleus's outbound role is unchanged: the
-`imago.nucleus.kernel-artifact.v1` manifest imago verifies.
+`imago.nucleus.kernel-artifact.v1` manifest imago verifies. Its first release,
+`v7.2.8-realtime-lusoris1`, was published on 2026-09-29 and M10 verifies and
+records it ([the Nucleus kernel gate](../build/nucleus-kernel.md)). That kernel
+satisfies the requirement as written and still cannot attach a BPF LSM program,
+because the requirement does not ask for the function tracer the BPF trampoline
+patches; whether it should was decision D107, decided on 2026-09-29: it should.
+D70's locally built kernel stays the interim for M23's latency fixture.
 
 Activation order: the ranked, blocking-state roadmap in `docs/roadmap/README.md`
 and `planning/roadmap.json` is authoritative (`make readiness` lists the ready

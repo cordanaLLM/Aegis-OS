@@ -49,7 +49,7 @@ that the remaining milestones need.
 | Milestone | Local support | What becomes possible | What still cannot be shown |
 | :--- | :--- | :--- | :--- |
 | M09 | partial | A positive, a negative (rejected payload with correlated error) and a boundary (empty requirement list rejected explicitly) result can all be produced against the two local checkou | Acceptance is recorded only when each producer consumes the payload |
-| M10 | partial | The mechanics are fully local: booting an arbitrary kernel under QEMU/KVM with a minimal initramfs and repeating the three verifier loads needs nothing this machine lacks | The kernel under test |
+| M10 | partial | The mechanics are fully local: booting an arbitrary kernel under QEMU/KVM with a minimal initramfs and repeating the three verifier loads needs nothing this machine lacks. Since 2026-09-29 the kernel under test exists: Nucleus release v7.2.8-realtime-lusoris1 boots here, and `make verify-nucleus-kernel` records it | A Nucleus kernel that attaches a BPF LSM program: this one passes every M10 case but E10-1's attach, because it has no function tracer for the BPF trampoline (D107) |
 | M11 | partial | Everything except the signature half | Firmware-verified Secure Boot of the UKI |
 | M12 | partial | Two of the three paths become local work | The P2PDMA path, honestly and completely |
 | M13 | partial | The cheapest_exit half is local and read-only: record hosted ruleset and label readback for the existing origin, keep the release workflow inactive | Release evidence |

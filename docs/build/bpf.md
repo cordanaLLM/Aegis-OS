@@ -442,7 +442,10 @@ stand down. Nothing is suppressed: a case that fails fails the target.
 
 - It does not close M10. M10 verifies these objects against a **Nucleus-built**
   kernel whose configuration this project controls. A stock distribution kernel
-  cannot stand in for that, however current its verifier.
+  cannot stand in for that, however current its verifier. M10's first run
+  showed why: this host's kernel has the function tracer the BPF trampoline
+  patches, the Nucleus kernel does not, and `action_gate` attaches here and not
+  there (`docs/build/nucleus-kernel.md`).
 - It does not build, boot or publish anything. Image, boot, hardware,
   accessibility and release remain separate blocked gates.
 - It measures nothing. No burst, latency, frame time, energy or power figure
