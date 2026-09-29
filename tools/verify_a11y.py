@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: EUPL-1.2
 """Run the M04 accessibility suite in the pinned Playwright container, offline.
 
-Milestone M04. The P12 Concordia token file and its one Svelte 5 component
-(``ui/concordia-tokens``) are installed from their lockfile, built and scanned
-inside the official Playwright image, named by digest in
+Milestone M04, and the D100 lint milestone M16 added. The P12 Concordia token
+file and its one Svelte 5 component (``ui/concordia-tokens``) are installed
+from their lockfile, linted for HISS with ESLint, built and scanned inside the
+official Playwright image, named by digest in
 ``ui/concordia-tokens/toolchain.pin.json``, with networking disabled and the
 repository bind-mounted read-only (REQ-P12-04). Node and pnpm are the pinned
 releases, not the image's own Node: the Node tarball is pinned by sha256 and the
@@ -27,12 +28,19 @@ Cases, with no simulation and no failure suppression:
   to be refused, and the full digest to be accepted;
 * ``a11y/image-present`` finds the image locally by its pinned digest;
 * ``a11y/lockfile-installs`` installs offline with ``--frozen-lockfile``;
+* ``a11y/hiss-lint`` runs ESLint over the package with zero warnings allowed
+  and requires every JavaScript and Svelte source to be linted clean (D100:
+  HISS-01, HISS-04 and HISS-08 until cordanaLLM/praetor#589 ships a scanner);
+  ``a11y/hiss-lint-<family>-refused`` lints one planted violation per rule
+  family and requires exactly its findings, and ``a11y/hiss-lint-at-the-limits``
+  requires a file sitting on every limit, a 60-line function among them, to
+  lint clean;
 * ``a11y/lockfile-mismatch-refused`` installs a copy whose package.json no
   longer matches the lockfile and requires pnpm to refuse it;
 * ``a11y/image-node-refused`` installs on the image's own Node and requires
   the exact engines pin to refuse it;
 * ``a11y/toolchain-readback`` reads every admitted version back from inside the
-  container and launches the pinned Chromium;
+  container, the lint's included, and launches the pinned Chromium;
 * ``a11y/browser-revision-absent-refused`` points Playwright at a browser
   directory without the pinned revision and requires the launch to fail;
 * ``a11y/build`` builds the static page;
@@ -48,8 +56,8 @@ Cases, with no simulation and no failure suppression:
 
 Nothing is written into the repository. The cache and the retained logs live
 under ``AEGIS_A11Y_DIR`` (default ``${XDG_CACHE_HOME:-$HOME/.cache}/aegis-a11y``).
-A pass is development evidence for the P12 token component; it closes no
-accessibility gate for the shell or the image.
+A pass is development evidence for the P12 token component and the lint; it
+closes no accessibility gate for the shell or the image.
 """
 
 import argparse
@@ -96,6 +104,7 @@ CACHE_VARIABLE = "AEGIS_A11Y_DIR"
 IN_REPO = "/repo"
 IN_PACKAGE = "/repo/ui/concordia-tokens"
 IN_WORK = "/work"
+IN_PKG = "/work/pkg"
 IN_NODE = "/opt/node"
 IN_PNPM = "/opt/pnpm"
 IN_OFFLINE = "/offline"
@@ -114,6 +123,8 @@ PACKAGE_ENTRIES = (
     "index.html",
     "vite.config.js",
     "playwright.config.js",
+    "eslint.config.js",
+    "hiss-lint",
     "src",
     "tests",
 )
@@ -139,6 +150,7 @@ MAX_ARCHIVE_MEMBERS = 20000
 MAX_SPECS = 256
 MAX_RETAINED_RUNS = 8
 MAX_PRUNED = 4096
+MAX_LINTED_FILES = 4096
 EXPECTED_TESTS = 11
 
 D81_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
@@ -171,6 +183,30 @@ PLANTS = (
         "focus indicator: every tab stop",
         "indicator 1px is below the D16 floor",
     ),
+)
+
+# D100: the HISS lint's planted violations under hiss-lint/plants/, one per
+# rule family, each with the exact findings it must produce, sorted. A finding
+# ESLint reports without a rule -- an inline directive the configuration
+# ignores -- reads as DIRECTIVE.
+DIRECTIVE = "<ignored inline directive>"
+LINT_PLANTS = (
+    ("function-length", "function-length.js", ["max-lines-per-function"]),
+    ("complexity", "complexity.js", ["complexity"]),
+    ("statements", "statements.js", ["max-statements"]),
+    ("dynamic-execution", "dynamic-execution.js", ["no-eval", "no-implied-eval", "no-new-func"]),
+    ("self-recursion", "self-recursion.js", ["aegis-hiss/no-self-recursion"] * 4),
+    ("svelte-component", "component.svelte", ["aegis-hiss/no-self-recursion", "no-eval"]),
+    ("inline-disable", "inline-disable.js", [DIRECTIVE, "no-eval"]),
+)
+# The boundary: a file whose functions sit exactly on each limit lints clean.
+LINT_BOUNDARY = "at-the-limits.js"
+LINT_PLANT_DIR = "hiss-lint/plants"
+# The lint's packages, as tests/readback.mjs reports them.
+LINT_READBACK = (
+    ("eslint", "eslint"),
+    ("eslintPluginSvelte", "eslint-plugin-svelte"),
+    ("svelteEslintParser", "svelte-eslint-parser"),
 )
 
 
@@ -776,6 +812,8 @@ def readback_problems(pin, manifest, found):
         wanted[key] = manifest["devDependencies"][name]
     for key in ("svelte", "vite"):
         wanted[key] = manifest["devDependencies"][key]
+    for key, name in LINT_READBACK:
+        wanted[key] = manifest["devDependencies"][name]
     shell = {"revision": browser["revision"], "browserVersion": browser["version"]}
     problems = [
         f"{key} is {found.get(key)!r}, pinned {value!r}"
@@ -805,6 +843,9 @@ def readback_case(context):
         f"chromium-headless-shell revision {found.get('headlessShell', {}).get('revision')} "
         f"in {found.get('browsersPath')}: present {found.get('revisionPresent')}; "
         f"launched {found.get('launched')}",
+        f"lint: eslint {found.get('eslint')}, "
+        f"eslint-plugin-svelte {found.get('eslintPluginSvelte')}, "
+        f"svelte-eslint-parser {found.get('svelteEslintParser')}",
     ]
     report("a11y/toolchain-readback", problems, notes)
     return problems
@@ -823,6 +864,124 @@ def browser_absent_case(context):
     return refusal_case(
         "a11y/browser-revision-absent-refused", code, text, "Executable doesn't exist", note
     )
+
+
+def lint_argv(output, target, no_ignore=False):
+    """Return the D100 lint's command line: JSON to `output`, zero warnings allowed."""
+    return [
+        "pnpm",
+        "exec",
+        "eslint",
+        "--max-warnings",
+        "0",
+        "--format",
+        "json",
+        "--output-file",
+        output,
+        *(["--no-ignore"] if no_ignore else []),
+        target,
+    ]
+
+
+def lint_run(context, label, target, no_ignore=False):
+    """Lint `target` inside the container; return (exit code, parsed report or None, output)."""
+    (context.work / "lint").mkdir(parents=True, exist_ok=True)
+    output = f"{IN_WORK}/lint/{label}.json"
+    code, text = step(context, label, lint_argv(output, target, no_ignore), STEP_TIMEOUT)
+    path = context.work / "lint" / f"{label}.json"
+    return code, (load_json(path) if path.is_file() else None), text
+
+
+def lint_findings(results):
+    """Return (linted paths under the package, sorted finding rule ids, suppressed count)."""
+    files, findings, suppressed = [], [], 0
+    for entry in list(results or [])[:MAX_LINTED_FILES]:
+        files.append(str(entry.get("filePath", "")).removeprefix(f"{IN_PKG}/"))
+        findings += [message.get("ruleId") or DIRECTIVE for message in entry.get("messages", [])]
+        suppressed += len(entry.get("suppressedMessages", []))
+    return files, sorted(findings), suppressed
+
+
+def lintable(root):
+    """Return the package-relative JavaScript and Svelte sources under `root`, bounded.
+
+    The same files the configuration lints, minus what it ignores, so a
+    source ESLint silently skipped is caught.
+    """
+    found, stack = [], [root]
+    skipped = {"node_modules", "dist", "test-output"}
+    for _ in range(MAX_LINTED_FILES):
+        if not stack:
+            break
+        directory = stack.pop()
+        for path in sorted(directory.iterdir())[:MAX_LINTED_FILES]:
+            relative = path.relative_to(root).as_posix()
+            if path.is_dir() and path.name not in skipped and relative != LINT_PLANT_DIR:
+                stack.append(path)
+            elif path.is_file() and path.suffix in {".js", ".mjs", ".cjs", ".svelte"}:
+                found.append(relative)
+    return sorted(found)
+
+
+def lint_problems(code, files, findings, suppressed, expected_files):
+    """Return why the package lint is not a clean pass over every source file."""
+    problems = [] if code == 0 else [f"ESLint exited {code}"]
+    if findings or suppressed:
+        problems.append(f"findings {findings[:MAX_PROBLEM_LINES]}, suppressed {suppressed}")
+    missed = sorted(set(expected_files) - set(files))
+    if missed:
+        problems.append(f"not linted: {missed[:MAX_PROBLEM_LINES]}")
+    if not any(name.endswith(".svelte") for name in files):
+        problems.append("no Svelte file was linted")
+    return problems
+
+
+def lint_case(context):
+    """Positive (D100): every JavaScript and Svelte file in the package lints clean."""
+    code, results, text = lint_run(context, "lint", ".")
+    files, findings, suppressed = lint_findings(results)
+    expected = lintable(context.work / "pkg")
+    problems = lint_problems(code, files, findings, suppressed, expected)
+    problems += [] if results is not None else ["ESLint wrote no report"] + tail(text)
+    svelte = sum(1 for name in files if name.endswith(".svelte"))
+    notes = [
+        f"eslint --max-warnings 0 over ui/concordia-tokens: exit {code}; {len(files)} files "
+        f"({len(files) - svelte} JavaScript, {svelte} Svelte), {len(findings)} findings, "
+        f"{suppressed} suppressed",
+        "rules: max-lines-per-function 60, complexity 10, max-statements 50, no-eval, "
+        "no-implied-eval, no-new-func, aegis-hiss/no-self-recursion; inline configuration off",
+    ]
+    report("a11y/hiss-lint", problems, notes)
+    return problems
+
+
+def lint_plant_case(context, family, file, expected):
+    """Negative per rule family, or the boundary when `expected` is empty (D100).
+
+    A plant must make ESLint exit 1 -- a finding, not a crash, which exits 2 --
+    with exactly `expected`; the boundary file must exit 0 with no finding.
+    """
+    code, results, text = lint_run(
+        context, f"lint-{family}", f"{LINT_PLANT_DIR}/{file}", no_ignore=True
+    )
+    files, findings, _suppressed = lint_findings(results)
+    wanted_code = 1 if expected else 0
+    problems = [] if code == wanted_code else [f"ESLint exited {code}, not {wanted_code}"]
+    if results is None or files != [f"{LINT_PLANT_DIR}/{file}"]:
+        problems += [f"the report does not cover exactly {file}: {files}"] + tail(text)
+    if findings != expected:
+        problems.append(f"findings {findings}; the file must produce exactly {expected}")
+    name = f"a11y/hiss-lint-{family}" + ("-refused" if expected else "")
+    report(name, problems, [f"{LINT_PLANT_DIR}/{file}: exit {code}; findings {findings}"])
+    return problems
+
+
+def lint_cases(context):
+    """The D100 lint: the package clean, each planted family refused, the limits admitted."""
+    outcomes = [lint_case(context)]
+    outcomes += [lint_plant_case(context, *plant) for plant in LINT_PLANTS]
+    outcomes.append(lint_plant_case(context, "at-the-limits", LINT_BOUNDARY, []))
+    return outcomes
 
 
 def build_case(context):
@@ -1291,6 +1450,7 @@ def run_cases(context):
     outcomes.append(install_case(context))
     if outcomes[-1]:
         raise GateError("the pinned lockfile did not install, so nothing else can run")
+    outcomes += lint_cases(context)
     outcomes += [mismatch_case(context), image_node_case(context)]
     outcomes += [readback_case(context), browser_absent_case(context), build_case(context)]
     if outcomes[-1]:
@@ -1368,9 +1528,10 @@ def gate_main(context):
         print(f"FAIL: {failed} accessibility case(s) did not match their recorded outcome.")
         return 1
     print(
-        "PASS: accessibility gate (M04) in the pinned container with networking disabled. "
-        "It covers the P12 token component; it closes no accessibility gate for the shell "
-        "or the image, and no portal, AT-SPI2 or UKI evidence."
+        "PASS: accessibility gate (M04) and HISS lint (M16, D100) in the pinned container "
+        "with networking disabled. It covers the P12 token component and its JavaScript and "
+        "Svelte; it closes no accessibility gate for the shell or the image, and no portal, "
+        "AT-SPI2 or UKI evidence."
     )
     return 0
 
@@ -1379,7 +1540,7 @@ def main(argv=None):
     """Load the pin, pick an engine, then fetch or run the gate."""
     options = parse_arguments(argv)
     install_signal_handlers()
-    print("Accessibility gate (M04, D16, D65, D76, D81; development evidence only).")
+    print("Accessibility gate (M04, D16, D65, D76, D81; M16, D100; development evidence only).")
     try:
         pin = load_pin()
     except GateError as error:

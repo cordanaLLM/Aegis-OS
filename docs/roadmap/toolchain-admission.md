@@ -103,14 +103,15 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | serde | 1.0.229 | `[workspace.dependencies]`, optional, behind the `jsonl` feature | JSON Lines rendering, off the hashing path | M02 |
 | serde_json | 1.0.151 | `[workspace.dependencies]`, optional, behind the `jsonl` feature | JSON Lines rendering, off the hashing path | M02 |
 | schemars | 1.2.2 | `[workspace.dependencies]`, `default-features = false`, `features = ["derive"]`; used by `crates/aegis-fabrica-defs` only | generates the JSON Schemas of both M18 contracts from their Rust types, committed under `build/` (D105) | D105, 2026-09-29 |
+| accesskit | 0.25.1 (MIT OR Apache-2.0), crate checksum `ad442f58ee04714aaa0ba0a2768c1ea1935b29507bb22ddece8cbbc76db02932` | `[workspace.dependencies]`, `default-features = false`, used only by `crates/aegis-forum-shell` | the accessibility tree's data model: the P05 canvas model is exported as an `accesskit::TreeUpdate`; no platform adapter | M16 (D101) |
 
-The resolved graph those six pull in is fixed by `Cargo.lock`:
-block-buffer 0.12.1, cfg-if 1.0.4, cpufeatures 0.3.1, crypto-common 0.2.2,
-digest 0.11.3, dyn-clone 1.0.20, hybrid-array 0.4.15, itoa 1.0.18, libc
-0.2.189, memchr 2.8.3, proc-macro2 1.0.107, quote 1.0.47, ref-cast 1.0.27,
-ref-cast-impl 1.0.27, schemars_derive 1.2.2, serde_core 1.0.229, serde_derive
-1.0.229, serde_derive_internals 0.30.0, syn 3.0.5, thiserror-impl 2.0.20,
-typenum 1.20.1, unicode-ident 1.0.24 and zmij 1.0.23.
+The resolved graph those seven pull in is fixed by `Cargo.lock`: block-buffer
+0.12.1, cfg-if 1.0.4, cpufeatures 0.3.1, crypto-common 0.2.2, digest 0.11.3,
+dyn-clone 1.0.20, hybrid-array 0.4.15, itoa 1.0.18, libc 0.2.189, memchr 2.8.3,
+proc-macro2 1.0.107, quote 1.0.47, ref-cast 1.0.27, ref-cast-impl 1.0.27,
+schemars_derive 1.2.2, serde_core 1.0.229, serde_derive 1.0.229,
+serde_derive_internals 0.30.0, syn 3.0.5, thiserror-impl 2.0.20, typenum 1.20.1,
+unicode-ident 1.0.24, uuid 1.26.1 and zmij 1.0.23.
 `crates/aegis-justitia/tests/manifest_hygiene.rs` asserts that the lock
 contains the SHA-256 implementation and no MD5 implementation under any
 spelling.
@@ -126,6 +127,18 @@ none is vendored into the repository, so REUSE is unchanged, and all of them
 resolve on the syn 3.0.5 already in the lock. `default-features = false` drops
 schemars' `std` feature, which implements schemas for standard-library
 collections these types do not use.
+
+accesskit 0.25.1, admitted by M16 on 2026-09-29, was the newest release on the
+crates.io API that day, published 2026-09-25. With its features off it
+resolves one crate more, uuid 1.26.1 (Apache-2.0 OR MIT, the newest release,
+published 2026-09-10), with no feature and no dependency of its own. Its
+`rust-version` is 1.87, above the workspace's declared 1.85; the pinned
+toolchain is 1.98.1, so every gate compiles it, and Cargo's MSRV-aware
+resolver picks it only because `0.25.1` is the lowest version the requirement
+admits. `crates/aegis-forum-shell/tests/manifest_hygiene.rs` asserts the
+declaration, the lock entry, and that the crate's own dependency closure
+(D78) holds no gpui, winit, wayland-client, zbus, atspi, accesskit_unix or
+tokio.
 
 ## The systemd floor, and why it is a floor rather than a pin
 
@@ -556,8 +569,10 @@ upstream fix is unreleased on crates.io (0.0.13, 2024-12-06, fails against libva
 ## Proposed for M16 and M28: the native shell's crates (D101, D102)
 
 These rows are proposals, not admissions, in the shape of the M27 rows above.
-M16 admits accesskit and M28 admits the rest, each when its gate reads the row
-back before it runs; until then no gate may cite them. They are recorded now
+M16 admitted accesskit on 2026-09-29, and its row moved to
+[Crates the workspace pins](#crates-the-workspace-pins); M28 admits the rest,
+each when its gate reads the row back before it runs; until then no gate may
+cite them. They are recorded now
 because decision D101 makes the P05 shell native Rust and D102 names its
 toolkit, gpui, git-pinned (ADR-0004), and because none of these crates is named
 anywhere else on this page. Each value was read on 2026-09-29 from the crates.io
@@ -565,7 +580,6 @@ API, from zed-industries/zed or from the reference profile's package manager.
 
 | Tool or crate | Reference version, read 2026-09-29 | Proposed pin or floor | Role |
 | :--- | :--- | :--- | :--- |
-| accesskit | 0.25.1 (MIT OR Apache-2.0), the newest release, published 2026-09-25 | 0.25.1 in `[workspace.dependencies]`, locked (M16) | the accessibility tree's data model; M16 exports the canvas model as an `accesskit::TreeUpdate` and uses no platform adapter |
 | gpui | zed-industries/zed `main` at `bd747337d7be`, `crates/gpui` version 0.2.2 (Apache-2.0); the crates.io release is 0.2.2 of 2025-10-22 | one zed commit with `rev =`, chosen and locked at M28 (D102) | the toolkit: the layer-shell surface, canvas painting and the AccessKit integration |
 | accesskit_unix | 0.22 as zed `main` resolves it; the newest release is 0.24.0 (MIT OR Apache-2.0) of 2026-09-25 | the version the pinned zed commit resolves, recorded as D69 drift while it lags (M28) | exports the AccessKit tree to AT-SPI over D-Bus |
 | zbus, atspi | 5.19.0 and 0.30.0 (both Apache-2.0 OR MIT), the newest releases; accesskit_unix 0.24.0 requires zbus ^5.19 and atspi ^0.29 | as the pinned accesskit_unix resolves them; atspi also for the tests that read the tree back (M28) | pure-Rust D-Bus and AT-SPI below accesskit_unix |
@@ -582,8 +596,52 @@ package it resolves. xdg-desktop-portal and the guest session M29 runs are M29's
 admission, not this page's yet.
 
 The D100 lint's packages, eslint, eslint-plugin-svelte and svelte-eslint-parser,
-are also M16's admission: they run in the pinned M04 container, and their exact
-pins are read when M16 admits them, so no version is proposed for them here.
+are M16's admission as well; M16 admitted them on 2026-09-29, and they are
+recorded in the next section.
+
+## The ui/ HISS lint's toolchain (M16, D100)
+
+`praetorctl audit` scans Go, Python and Rust for the HISS invariants and no
+JavaScript, TypeScript or Svelte (cordanaLLM/praetor#589, filed 2026-09-29: a
+planted recursion, an `eval` and a 73-line function all pass it). Until a
+scanner ships there, ESLint enforces HISS-01, HISS-04 and HISS-08 on the
+JavaScript and Svelte under `ui/`, which is `ui/concordia-tokens` today,
+offline, inside the accessibility gate's pinned container:
+`ui/concordia-tokens/eslint.config.js` sets `max-lines-per-function` 60,
+`complexity` 10, `max-statements` 50, `no-eval`, `no-implied-eval`,
+`no-new-func` and the local rule
+`ui/concordia-tokens/hiss-lint/no-self-recursion.js`, switches inline
+configuration off, and the gate runs it with `--max-warnings 0`. The local
+rule reports a function that calls itself by name, directly or from a closure
+inside it, and `this.name()` inside the method `name`. It does not detect
+mutual recursion, a cycle through two or more functions, because there is no
+call-graph check.
+
+The three packages are devDependencies of `ui/concordia-tokens/package.json`,
+exact, beside M04's six, and are locked in `ui/concordia-tokens/pnpm-lock.yaml`,
+which M04's pnpm 12.6.0 regenerated with `--lockfile-only`: every package
+M04 had locked kept its version and integrity, and the lint's closure was
+added. D99, the one pnpm workspace under `ui/`, was withdrawn by D101, so the
+lint has no workspace root of its own. `tools/test_a11y.py` reads this table
+back against the manifest, and the gate reads each version back from inside
+the container before it lints. The last-but-one column is the D69
+comparison, the npm registry's `latest` on 2026-09-29.
+
+| Tool | Pinned version | How it is pinned | Latest upstream, read 2026-09-29 | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| `eslint` | 10.11.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 10.11.0 of 2026-09-18 (`latest`); `maintenance` is 9.39.5 | runs the rules below over every `.js`, `.mjs`, `.cjs` and `.svelte` file of the package |
+| `eslint-plugin-svelte` | 3.23.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 3.23.0 of 2026-08-13 | its `base` configuration hands `.svelte` files to the parser and turns on only its two bookkeeping rules, `svelte/comment-directive` and `svelte/system` |
+| `svelte-eslint-parser` | 1.8.1 (MIT) | `package.json`, exact; pnpm-lock.yaml | 1.8.1 of 2026-08-15 | parses a Svelte component's script for the rules; its manifest declares `engines.pnpm` 10.34.5, which pnpm 12.6.0 does not enforce for a dependency, so `engineStrict` does not refuse it |
+
+The parser loads the `svelte` compiler M04 already admitted, 5.57.1, so no
+second Svelte enters the lockfile. Each rule family has a planted violation
+under `ui/concordia-tokens/hiss-lint/plants/` that the gate lints on its own
+and requires to produce exactly its findings, and `at-the-limits.js` sits
+exactly on the 60-line, complexity-10 and 50-statement limits and must lint
+clean, while `function-length.js` holds a 61-line function that must not. The
+first run over M04's suite found `ui/concordia-tokens/tests/probe.js` wrapped
+in a 170-line immediately invoked function; it is now a strict-mode block,
+with no change to what it measures.
 
 ## Not yet admitted
 

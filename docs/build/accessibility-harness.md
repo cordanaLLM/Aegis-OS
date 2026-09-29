@@ -5,7 +5,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The accessibility harness, and what the P12 tokens told it
 
-Status: recorded observations from milestone M04, reference profile, 2026-09-28
+Status: recorded observations from milestone M04, reference profile,
+2026-09-28; the D100 HISS lint from milestone M16, 2026-09-29
 
 Milestone M04 builds the first accessibility gate: the P12 Concordia token
 file, one Svelte 5 component that consumes it, and a Playwright and axe-core
@@ -56,6 +57,9 @@ token component, its CSS and its one Svelte 5 component.
 | `ui/concordia-tokens/tests/probe.js` | the in-page measurement axe-core cannot make |
 | `ui/concordia-tokens/tests/en301549-clauses.json` | WCAG criterion to EN 301 549 V4.1.1 and V3.2.1 clause (D81) |
 | `ui/concordia-tokens/tests/fixtures/stub-heads-up-theme.css` | the D76 stub, never part of the build |
+| `ui/concordia-tokens/eslint.config.js` | the D100 HISS lint's flat configuration (M16) |
+| `ui/concordia-tokens/hiss-lint/no-self-recursion.js` | the lint's local rule: a function calling itself by name (HISS-01) |
+| `ui/concordia-tokens/hiss-lint/plants/` | one planted violation per rule family, and the file on every limit |
 | `tools/verify_a11y.py` | the gate: `make verify-a11y`, `make a11y-fetch`, and a step of `make verify-all` |
 | `tools/test_a11y.py` | the half that needs no engine, inside `make verify-all` |
 
@@ -144,6 +148,9 @@ client does not end the container.
 | `a11y/truncated-digest-refused` | 64 hex digits pin; 63, 12 and the source's six-digit form are refused | E04-2, REQ-P12-04 |
 | `a11y/image-present` | the engine stores the pinned digest | 2, 5 |
 | `a11y/lockfile-installs` | `pnpm install --offline --frozen-lockfile --frozen-store` on the pinned Node and pnpm | E04-1 positive |
+| `a11y/hiss-lint` | every JavaScript and Svelte file of the package lints clean with zero warnings | M16 D100 positive |
+| `a11y/hiss-lint-<family>-refused` | each of seven planted violations fails with exactly its findings | M16 D100 negative |
+| `a11y/hiss-lint-at-the-limits` | a 60-line, complexity-10 and 50-statement function each lint clean | M16 D100 boundary |
 | `a11y/lockfile-mismatch-refused` | a `package.json` loosened to `^5.57.1` is refused with `ERR_PNPM_OUTDATED_LOCKFILE` | E04-1 negative |
 | `a11y/image-node-refused` | the image's Node 24.20.0 is refused with `ERR_PNPM_UNSUPPORTED_ENGINE` | 4, 6 |
 | `a11y/toolchain-readback` | every version read back inside the container; Chromium 153.0.8010.12 launches | 1, 5 |
@@ -408,6 +415,86 @@ applies. It cannot refresh the Node tarball's sha256, so such a pull request
 fails `make a11y-fetch` until someone records the new digest from the signed
 `SHASUMS256.txt`: Renovate proposes, the gate proves (D69).
 
+## The HISS lint (M16, D100)
+
+`praetorctl audit` scans no JavaScript or Svelte (cordanaLLM/praetor#589), so
+M16 runs ESLint over `ui/concordia-tokens` inside this gate, right after the
+offline install and before the build: `pnpm exec eslint --max-warnings 0
+--format json`, in the same digest-pinned container with the network off. The
+configuration, `eslint.config.js`, sets `max-lines-per-function` 60,
+`complexity` 10, `max-statements` 50, `no-eval`, `no-implied-eval`,
+`no-new-func` and the local rule `aegis-hiss/no-self-recursion`, and switches
+inline configuration off, so an `eslint-disable` comment is itself a finding.
+Mutual recursion is not detected: there is no call-graph check. The three
+packages are admitted on `docs/roadmap/toolchain-admission.md` and read back
+inside the container by `a11y/toolchain-readback`.
+
+The gate reads ESLint's JSON report rather than its exit code alone. The
+package case requires exit 0, no finding, no suppressed message, at least one
+Svelte file, and every `.js`, `.mjs`, `.cjs` and `.svelte` file of the package
+outside `node_modules`, `dist`, `test-output` and the plants among the linted
+files, so a source ESLint silently skipped fails. A plant case lints one file
+with `--no-ignore` and requires exit 1, a report covering exactly that file,
+and exactly the findings its row in `LINT_PLANTS` lists; a crash exits 2 and
+fails. The boundary file must exit 0 with none.
+
+Run `r20260929T085301-5dfc` on podman 6.1.2, 18 seconds, 22 PASS lines, the
+nine lint cases among them:
+
+```text
+PASS a11y/hiss-lint
+     eslint --max-warnings 0 over ui/concordia-tokens: exit 0; 10 files
+       (9 JavaScript, 1 Svelte), 0 findings, 0 suppressed
+PASS a11y/hiss-lint-function-length-refused
+     hiss-lint/plants/function-length.js: exit 1;
+       findings ['max-lines-per-function']
+PASS a11y/hiss-lint-complexity-refused
+     hiss-lint/plants/complexity.js: exit 1; findings ['complexity']
+PASS a11y/hiss-lint-statements-refused
+     hiss-lint/plants/statements.js: exit 1; findings ['max-statements']
+PASS a11y/hiss-lint-dynamic-execution-refused
+     hiss-lint/plants/dynamic-execution.js: exit 1;
+       findings ['no-eval', 'no-implied-eval', 'no-new-func']
+PASS a11y/hiss-lint-self-recursion-refused
+     hiss-lint/plants/self-recursion.js: exit 1;
+       findings ['aegis-hiss/no-self-recursion' x 4]
+PASS a11y/hiss-lint-svelte-component-refused
+     hiss-lint/plants/component.svelte: exit 1;
+       findings ['aegis-hiss/no-self-recursion', 'no-eval']
+PASS a11y/hiss-lint-inline-disable-refused
+     hiss-lint/plants/inline-disable.js: exit 1;
+       findings ['<ignored inline directive>', 'no-eval']
+PASS a11y/hiss-lint-at-the-limits
+     hiss-lint/plants/at-the-limits.js: exit 0; findings []
+PASS a11y/toolchain-readback
+     lint: eslint 10.11.0, eslint-plugin-svelte 3.23.0,
+       svelte-eslint-parser 1.8.1
+```
+
+The first lint over M04's own suite found a real defect: `tests/probe.js` was
+one immediately invoked function of 170 lines. It is now a strict-mode block,
+so its declarations stay block-scoped and nothing it measures changed; the
+suite's eleven tests pass on the same run. Replayed with the original
+`probe.js` restored in the worktree, run `r20260929T085327-8f83` failed
+`a11y/hiss-lint` alone, with ESLint's one finding
+`Function 'install' has too many lines (170). Maximum allowed is 60.` at
+`tests/probe.js:15`, and `make verify-a11y` exited 2; the fix was put back
+before any other run. A second replay appended a function that calls itself
+and `eval` to `tests/harness.js`: run `r20260929T085750-104b` failed
+`a11y/hiss-lint` alone, with `no-eval` and `aegis-hiss/no-self-recursion` at
+`tests/harness.js:131`, while the suite still passed 11 of 11, and the file
+was restored. So a violation in committed code fails the gate, not only the
+planted files the negative cases lint on their own.
+
+The lockfile gained the lint's closure and nothing else: pnpm 12.6.0, from
+the cached `@pnpm/exe.linux-x64` binary whose integrity the lockfile records,
+ran `pnpm install --lockfile-only` in a copy of the package, and every package
+M04 had locked kept its version and integrity. `make a11y-fetch` then refilled
+the offline store and recorded the new lockfile's sha256,
+`524186ac6373c69102e2f1239de3bb8ba5dad6c8602f13bc0d29d82962ad6cb7`; until a
+cache holds that digest, the gate skips and names `make a11y-fetch`, as it
+does for any lockfile change.
+
 ## Scope, and what a pass here does not mean
 
 - It is one component on one page. The P05 shell, its canvas rows REQ-P05-09 to
@@ -417,5 +504,8 @@ fails `make a11y-fetch` until someone records the new digest from the signed
   shell or the image; `make verify-all`'s last line says so.
 - P12 stays a proposal (D86): `tools/verify_preparation.py` binds activation to
   a Cargo manifest, and M04 does not change that.
-- The `@sveltesentio/*` packages D10 adopts are not declared here (D87); M16
-  adopts the ones the shell needs.
+- The `@sveltesentio/*` packages D10 adopts are not declared here (D87), and
+  since D101 the native P05 shell declares none either.
+- The D100 lint is HISS for this package's JavaScript and Svelte, not an
+  accessibility check, and it stands only until cordanaLLM/praetor#589 ships
+  a scanner.

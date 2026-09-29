@@ -7,7 +7,9 @@ package here: under D101 (ADR-0004, 2026-09-29) the whole shell is native Rust
 on gpui in `crates/aegis-forum-shell` (M16, M28), and its accessibility check is
 an AccessKit tree check, not an axe-core scan. The JavaScript and Svelte that
 stay here are linted for HISS-01, HISS-04 and HISS-08 by ESLint in the pinned
-container once M16 delivers D100.
+container (M16, D100): the configuration, its local no-self-recursion rule and
+the planted violations the gate lints are in `concordia-tokens/`, beside the
+code they cover, until cordanaLLM/praetor#589 ships a scanner.
 
 `concordia-tokens/` holds the P12 token file, one Svelte 5 component and the
 accessibility suite that `make verify-all` runs through `tools/verify_a11y.py`

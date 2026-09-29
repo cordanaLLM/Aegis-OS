@@ -294,11 +294,10 @@
         "blueprints/[Report P05] Project Forum - Non-Blocking Desktop Shell & Process Isolation.md"
       ],
       "activation_blockers": [
-        "component manifests and dependency locks",
-        "real positive, negative and boundary tests",
-        "pinned shared integration contract",
-        "the P05 crate crates/aegis-forum-shell (M16) with its Cargo manifest, lock entry and AccessKit tree check, and the gpui shell with its live AT-SPI check (M28), are absent (D101, ADR-0004)",
-        "the canvas rows REQ-P05-09 to REQ-P05-15 (keyboard reach, no focus trap, paint-only culling, instrument semantics, focus under camera zoom, pointer alternatives, text resize) have no test yet: M16 plans REQ-P05-09 to REQ-P05-11 on the model, M28 REQ-P05-13 on rendered pixels and REQ-P05-11 over AT-SPI, and no milestone plans REQ-P05-12, REQ-P05-14 or REQ-P05-15",
+        "a P05 component shell: crates/aegis-forum-shell (M16) is its model -- the D96 lifecycle, the D77 framing over a mocked stream, the DecisionRequest and CarbonTelemetry consumers, and the D74 canvas model with its AccessKit tree check -- and paints nothing, creates no surface and opens no socket; the gpui shell with its layer surface and live AT-SPI check (M28) and the live session (M29) are absent (D101, ADR-0004)",
+        "toolchain admission for the running shell: gpui, git-pinned to one zed-industries/zed commit, and accesskit_unix, zbus and atspi at M28 (D102); only accesskit 0.25.1, the data model, is admitted (M16)",
+        "pinned shared integration contract: no real P04 socket exists for SYNC_DESKTOP_SHELL, so D32's endpoint and per-hop target are recorded and not asserted, and the Concordia token constants the shell consumes (D05) are generated at M28",
+        "the canvas rows REQ-P05-09 to REQ-P05-15 (keyboard reach, no focus trap, paint-only culling, instrument semantics, focus under camera zoom, pointer alternatives, text resize): M16 tests REQ-P05-09 to REQ-P05-11 on the model only, M28 plans REQ-P05-13 on rendered pixels and REQ-P05-11 over AT-SPI, and no milestone plans REQ-P05-12, REQ-P05-14 or REQ-P05-15",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],
       "cheapest_first_slice": {
@@ -316,7 +315,8 @@
         "D32 (2026-09-29): SYNC_DESKTOP_SHELL's endpoint is /run/aegis/compositor.sock and its per-hop budget a target under 100 microseconds, asserted by a contract test once a real P04 socket exists and a target, not a claim, until measured (ADR-0001); DSP-14 is resolved",
         "D82, D101 and D102 / ADR-0004 (2026-09-29): the whole shell, canvas and chrome, is one native Rust program on gpui, git-pinned to one zed-industries/zed commit that M28 chooses and admits; its AccessKit tree reaches AT-SPI through accesskit_unix; Svelte and the Wry webview leave the P05 shell; the shell's accessibility check is an AccessKit tree check (M16 on the model, M28 over AT-SPI), and M29 runs the shell in a live session with the portal, at-spi2 and a StatusNotifierWatcher",
         "D96 (2026-09-29): the lifecycle is the source-order chain with two recovery edges (Rate-Limited to Activated, Quarantined to Eligible but Inactive), every live state may go to Deleted, Deleted is terminal, and QUARANTINE_LIMIT = 3 consecutive rate-limited windows"
-      ]
+      ],
+      "milestone": "M16"
     },
     {
       "id": "P06",
@@ -745,7 +745,7 @@
       "activation_blockers": [
         "activation binding: tools/verify_preparation.py binds activation evidence to a Cargo manifest, so the package.json and pnpm-lock.yaml M04 committed under ui/concordia-tokens cannot be admitted as activation evidence; M04 records evidence only and does not change the validator (D86)",
         "pinned shared integration contract: the P05 consumer of the tokens (D05) is typed at M16, and the Rust theme constants the native shell compiles are generated from the token file at M28 (D101)",
-        "the portal half of REQ-P12-02 and the AT-SPI2 half of REQ-P12-03, whose CSS level M04 covers in browser emulation only (D89): owned by M29, the live-session P05 milestone planned on 2026-09-29 (D91, ADR-0004); D91 assigns REQ-P12-06's Forum Shell scan to M16 (E16-4), which D101 re-maps from axe-core to an AccessKit tree check, and REQ-P12-01's UKI gating to M11 (E11-6), which gates on the M04 PASS and, once M16 delivers it, the shell's tree check",
+        "the portal half of REQ-P12-02 and the AT-SPI2 half of REQ-P12-03, whose CSS level M04 covers in browser emulation only (D89): owned by M29, the live-session P05 milestone planned on 2026-09-29 (D91, ADR-0004); D91 assigns REQ-P12-06's Forum Shell scan to M16 (E16-4), which D101 re-maps from axe-core to an AccessKit tree check, and REQ-P12-01's UKI gating to M11 (E11-6), which gates on the M04 PASS and on the shell's tree check M16 delivered on 2026-09-29",
         "the D76 heads-up theme, which no milestone plans yet; M04 runs only its stub-override negative (REQ-P12-10)"
       ],
       "cheapest_first_slice": {
@@ -807,7 +807,7 @@
         "a P13 component daemon; crates/aegis-tellus holds the ISO/IEC 21031:2024 SCI rate arithmetic, the spatiotemporal defer threshold, the bounded cgroup slice table and the zone-list wattage seam, and is neither the Kepler telemetry probe nor the daemon that carries it (M05)",
         "the kepler_power eBPF probe is not compiled, loaded, verified or attached; kernel ABI pin and verifier evidence absent (M19, M10)",
         "no RAPL or ACPI counter is read: /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 on the reference profile, so a measured delta needs a privileged reader (M21)",
-        "no transport for EMIT_CARBON_TELEMETRY (M16) or SPATIOTEMPORAL_TASK_SHIFT, both of which D77 moves from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; the payloads are typed at M05 and carried by nothing",
+        "no transport for EMIT_CARBON_TELEMETRY or SPATIOTEMPORAL_TASK_SHIFT, both of which D77 moves from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; the task-shift payload is typed at M05 and the carbon telemetry payload at M16, which the P05 shell model consumes over a mocked socketpair only, and nothing carries either",
         "no individual blueprint report; evidence limited to architecture documents and trade-off guide",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],

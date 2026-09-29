@@ -64,8 +64,10 @@ const MINIMUM_SURFACE: usize = 172;
 /// difference, so the figure cannot drift out of agreement with the code the
 /// way a number stated only in prose can. Every one of the 16 is a public
 /// struct field; this crate declares no `pub static`, so that half of the arm
-/// is coverage for a shape this `src/` does not yet use.
-const FIELD_ARM_NAMES: usize = 16;
+/// is coverage for a shape this `src/` does not yet use. M16 (2026-09-29)
+/// added `CarbonTelemetry`, whose `power_watts` and `grid_intensity` are the
+/// two field names no other struct already declared, so the arm reads 18.
+const FIELD_ARM_NAMES: usize = 18;
 
 /// Which enclosing block makes an unmarked item public API.
 #[derive(Clone, Copy, PartialEq, Eq)]

@@ -11,8 +11,10 @@ lockfile, the engine it picks, the container command line, the cache states
 that skip and the ones that fail, how it reads the suite's report -- and the
 static half of M04's criteria: the D76 rule that every colour, stroke and
 motion value is a token, the D81 tag set and clause map, the suite carrying no
-suppression, and no `|| true` in any surface the gate runs through. The sweeps
-at the end hold the gate to HISS-02, HISS-04 and HISS-08.
+suppression, and no `|| true` in any surface the gate runs through. The D100
+lint M16 added is held here too: its configuration, its local rule, its planted
+violations and how the gate reads ESLint's report. The sweeps at the end hold
+the gate to HISS-02, HISS-04 and HISS-08.
 """
 
 import ast
@@ -40,6 +42,9 @@ HARNESS = PACKAGE / "tests" / "harness.js"
 PROBE = PACKAGE / "tests" / "probe.js"
 STUB = PACKAGE / "tests" / "fixtures" / "stub-heads-up-theme.css"
 CONFIG = PACKAGE / "playwright.config.js"
+LINT_CONFIG = PACKAGE / "eslint.config.js"
+LINT_RULE = PACKAGE / "hiss-lint" / "no-self-recursion.js"
+PLANT_DIR = PACKAGE / "hiss-lint" / "plants"
 MAKEFILE = ROOT / "Makefile"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 RENOVATE = ROOT / "renovate.json"
@@ -48,6 +53,7 @@ ROADMAP = ROOT / "docs" / "roadmap" / "README.md"
 EVIDENCE_PAGE = ROOT / "docs" / "build" / "accessibility-harness.md"
 MKDOCS = ROOT / "mkdocs.yml"
 ADMISSION_HEADING = "## The accessibility gate's toolchain (M04)"
+LINT_ADMISSION_HEADING = "## The ui/ HISS lint's toolchain (M16, D100)"
 MAX_FUNCTION_LINES = 60
 MAX_COMPLEXITY = 10
 MAX_STATEMENTS = 50
@@ -67,6 +73,13 @@ ADMITTED_PACKAGES = {
     "axe-core": "4.13.0",
     "svelte": "5.57.1",
     "vite": "8.3.1",
+}
+# D100 (M16): the lint's three packages, exact; with the six above they are
+# every devDependency the package declares.
+ADMITTED_LINT = {
+    "eslint": "10.11.0",
+    "eslint-plugin-svelte": "3.23.0",
+    "svelte-eslint-parser": "1.8.1",
 }
 
 DECLARATION = re.compile(r"([a-z-]+)\s*:\s*([^;{}]+);")
@@ -295,6 +308,7 @@ class SuppressionTests(unittest.TestCase):
         scripts = json.loads(text(gate.MANIFEST))["scripts"]
         self.assertEqual(gate.script_problems(scripts), [])
         self.assertEqual(scripts["test:a11y"], "playwright test")
+        self.assertEqual(scripts["lint:hiss"], "eslint --max-warnings 0 .")
 
     def test_every_suppressing_spelling_is_caught(self):
         for command in (
@@ -398,7 +412,7 @@ class TokenTests(unittest.TestCase):
 
     def test_d17_no_monolithic_css_library_is_declared(self):
         manifest = json.loads(text(gate.MANIFEST))
-        self.assertEqual(manifest["devDependencies"], ADMITTED_PACKAGES)
+        self.assertEqual(manifest["devDependencies"], ADMITTED_PACKAGES | ADMITTED_LINT)
         self.assertNotIn("dependencies", manifest)
 
 
@@ -791,6 +805,9 @@ class ReportTests(unittest.TestCase):
             "axePlaywright": "4.13.0",
             "svelte": "5.57.1",
             "vite": "8.3.1",
+            "eslint": "10.11.0",
+            "eslintPluginSvelte": "3.23.0",
+            "svelteEslintParser": "1.8.1",
             "headlessShell": {"revision": "1243", "browserVersion": "153.0.8010.12"},
             "browsersPath": "/ms-playwright",
             "revisionPresent": True,
@@ -808,6 +825,8 @@ class ReportTests(unittest.TestCase):
             ("headlessShell", {"revision": "1228", "browserVersion": "153.0.8010.12"}),
             ("launched", "152.0.0.0"),
             ("svelte", "5.57.0"),
+            ("eslint", "10.10.0"),
+            ("svelteEslintParser", None),
         ):
             with self.subTest(key=key):
                 self.assertTrue(
@@ -1166,10 +1185,10 @@ class FetchTests(unittest.TestCase):
         self.assertEqual(recorded, context.pin["lock-sha256"].encode("ascii") + b"\n")
 
 
-def admitted_table():
-    """Return {tool: cells} from the M04 table on the admission page."""
+def admitted_table(heading=ADMISSION_HEADING):
+    """Return {tool: cells} from one table on the admission page, the M04 one by default."""
     page = text(ADMISSION)
-    section = page.split(ADMISSION_HEADING, 1)[1].split("\n## ", 1)[0]
+    section = page.split(heading, 1)[1].split("\n## ", 1)[0]
     rows = {}
     for line in section.splitlines():
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
@@ -1223,6 +1242,29 @@ class AdmissionTests(unittest.TestCase):
         self.assertIn("not AT-SPI2", evidence)
         self.assertIn("build/accessibility-harness.md", text(MKDOCS))
 
+    def test_the_lint_rows_are_the_manifests_versions(self):
+        """D100: every package the lint runs has a row on the admission page, at its pin."""
+        rows = {tool: cells[1] for tool, cells in admitted_table(LINT_ADMISSION_HEADING).items()}
+        self.assertEqual(set(rows), set(ADMITTED_LINT))
+        for name, version in ADMITTED_LINT.items():
+            with self.subTest(tool=name):
+                self.assertIn(version, rows[name])
+        section = text(ADMISSION).split(LINT_ADMISSION_HEADING, 1)[1].split("\n## ", 1)[0]
+        self.assertIn("cordanaLLM/praetor#589", section)
+        self.assertIn("mutual recursion", section)
+        self.assertIn("ui/concordia-tokens/tests/probe.js", section)
+
+    def test_renovate_groups_the_lint(self):
+        config = json.loads(text(RENOVATE))
+        groups = [
+            rule
+            for rule in config["packageRules"]
+            if set(ADMITTED_LINT) <= set(rule.get("matchPackageNames", []))
+        ]
+        self.assertEqual(len(groups), 1)
+        self.assertIn("groupName", groups[0])
+        self.assertEqual(groups[0].get("matchFileNames"), ["ui/concordia-tokens/**"])
+
     def test_renovate_moves_the_image_with_playwright(self):
         config = json.loads(text(RENOVATE))
         managers = config.get("customManagers", [])
@@ -1238,6 +1280,200 @@ class AdmissionTests(unittest.TestCase):
         ]
         self.assertEqual(len(groups), 1)
         self.assertIn("groupName", groups[0])
+
+
+def js_function_spans(source):
+    """Return {name: lines} for each top-level `export function` in a planted file."""
+    lines, spans = source.splitlines(), {}
+    for index, line in enumerate(lines):
+        match = re.match(r"export function (\w+)\(", line)
+        if match:
+            end = next(i for i in range(index, len(lines)) if lines[i] == "}")
+            spans[match.group(1)] = end - index + 1
+    return spans
+
+
+def lint_report(*files):
+    """Return an ESLint JSON report: each file a (path, [rule ids], suppressed count) triple."""
+    return [
+        {
+            "filePath": f"{gate.IN_PKG}/{path}",
+            "messages": [{"ruleId": rule, "severity": 2} for rule in rules],
+            "suppressedMessages": [{}] * suppressed,
+        }
+        for path, rules, suppressed in files
+    ]
+
+
+class LintTests(unittest.TestCase):
+    """D100: the ESLint configuration, its planted violations, and how the gate reads them."""
+
+    config = text(LINT_CONFIG)
+
+    def test_the_configuration_states_the_hiss_limits(self):
+        for fragment in (
+            "maxLines: 60,",
+            "maxComplexity: 10,",
+            "maxStatements: 50,",
+            "noInlineConfig: true,",
+            "'no-eval': 'error',",
+            "'no-implied-eval': 'error',",
+            "'no-new-func': 'error',",
+            "'aegis-hiss/no-self-recursion': 'error',",
+            "skipBlankLines: false, skipComments: false, IIFEs: true",
+            "cordanaLLM/praetor#589",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, self.config)
+        self.assertNotIn("'warn'", self.config)
+        self.assertNotIn("'off'", self.config)
+
+    def test_the_local_rule_says_what_it_does_not_detect(self):
+        rule = text(LINT_RULE)
+        self.assertIn("mutual recursion", rule)
+        self.assertIn("NOT detected", self.config)
+        self.assertIn("cordanaLLM/praetor#589", rule)
+
+    def test_the_gate_lints_with_zero_warnings_and_json_output(self):
+        self.assertEqual(
+            gate.lint_argv("/work/lint/x.json", "."),
+            [
+                "pnpm",
+                "exec",
+                "eslint",
+                "--max-warnings",
+                "0",
+                "--format",
+                "json",
+                "--output-file",
+                "/work/lint/x.json",
+                ".",
+            ],
+        )
+        self.assertIn("--no-ignore", gate.lint_argv("/o", "hiss-lint/plants/x.js", True))
+        self.assertIn("eslint.config.js", gate.PACKAGE_ENTRIES)
+        self.assertIn("hiss-lint", gate.PACKAGE_ENTRIES)
+
+    def test_every_plant_exists_names_d100_and_lists_sorted_findings(self):
+        files = {file for _family, file, _expected in gate.LINT_PLANTS} | {gate.LINT_BOUNDARY}
+        self.assertEqual(files, {path.name for path in PLANT_DIR.iterdir()})
+        for family, file, expected in gate.LINT_PLANTS:
+            with self.subTest(family=family):
+                self.assertIn("D100", text(PLANT_DIR / file))
+                self.assertTrue(expected)
+                self.assertEqual(expected, sorted(expected))
+        self.assertEqual(len({family for family, _f, _e in gate.LINT_PLANTS}), 7)
+
+    def test_the_planted_sizes_sit_one_past_and_exactly_on_the_limits(self):
+        """Boundary: 61 lines fails and 60 passes; 11 and 10 of complexity; 51 and 50 statements."""
+        self.assertEqual(js_function_spans(text(PLANT_DIR / "function-length.js")), {"tooLong": 61})
+        limits = js_function_spans(text(PLANT_DIR / gate.LINT_BOUNDARY))
+        self.assertEqual(limits["sixtyLines"], 60)
+        self.assertEqual(text(PLANT_DIR / "complexity.js").count("  if ("), 10)
+        boundary = text(PLANT_DIR / gate.LINT_BOUNDARY)
+        self.assertEqual(boundary.count("  if ("), 9)
+        self.assertEqual(text(PLANT_DIR / "statements.js").count("  result += 1;"), 49)
+        self.assertEqual(boundary.count("  result += 1;"), 48)
+
+    def test_a_clean_package_lint_passes(self):
+        files, findings, suppressed = gate.lint_findings(
+            lint_report(("a/b.js", [], 0), ("a/c.svelte", [], 0))
+        )
+        self.assertEqual(files, ["a/b.js", "a/c.svelte"])
+        self.assertEqual(gate.lint_problems(0, files, findings, suppressed, ["a/b.js"]), [])
+
+    def test_a_finding_a_suppression_a_skipped_file_or_no_svelte_fails(self):
+        cases = {
+            "finding": (1, lint_report(("a.svelte", ["complexity"], 0)), []),
+            "suppressed": (0, lint_report(("a.svelte", [], 1)), []),
+            "exit": (2, lint_report(("a.svelte", [], 0)), []),
+            "skipped": (0, lint_report(("a.svelte", [], 0)), ["b/unlinted.js"]),
+            "no svelte": (0, lint_report(("a.js", [], 0)), []),
+        }
+        for name, (code, results, expected_files) in cases.items():
+            with self.subTest(case=name):
+                files, findings, suppressed = gate.lint_findings(results)
+                self.assertTrue(
+                    gate.lint_problems(code, files, findings, suppressed, expected_files)
+                )
+
+    def test_an_ignored_directive_reads_as_a_finding(self):
+        _files, findings, _suppressed = gate.lint_findings(
+            lint_report(("a.js", [None, "no-eval"], 0))
+        )
+        self.assertEqual(findings, [gate.DIRECTIVE, "no-eval"])
+        self.assertEqual(gate.lint_findings(None), ([], [], 0))
+
+    def test_lintable_finds_every_source_but_the_ignored_ones(self):
+        with tempfile.TemporaryDirectory(prefix="aegis-a11y-test-") as base:
+            root = Path(base)
+            for name in (
+                "eslint.config.js",
+                "src/App.svelte",
+                "tests/readback.mjs",
+                "x.cjs",
+                "README.md",
+                "node_modules/dep/index.js",
+                "dist/app.js",
+                "test-output/r.js",
+                "hiss-lint/no-self-recursion.js",
+                "hiss-lint/plants/eval.js",
+            ):
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).write_bytes(b"x")
+            found = gate.lintable(root)
+        self.assertEqual(
+            found,
+            [
+                "eslint.config.js",
+                "hiss-lint/no-self-recursion.js",
+                "src/App.svelte",
+                "tests/readback.mjs",
+                "x.cjs",
+            ],
+        )
+
+    def plant_case(self, code, results, file="complexity.js", expected=("complexity",)):
+        with tempfile.TemporaryDirectory(prefix="aegis-a11y-test-") as base:
+            context = context_in(base)
+            with mock.patch.object(gate, "lint_run", return_value=(code, results, "eslint output")):
+                problems, printed = quiet(
+                    gate.lint_plant_case, context, "complexity", file, list(expected)
+                )
+        return problems, printed
+
+    def test_a_plant_passes_only_with_exit_one_and_exactly_its_findings(self):
+        path = f"{gate.LINT_PLANT_DIR}/complexity.js"
+        exact = lint_report((path, ["complexity"], 0))
+        self.assertEqual(self.plant_case(1, exact)[0], [])
+        self.assertIn("PASS a11y/hiss-lint-complexity-refused", self.plant_case(1, exact)[1])
+        for name, (code, results) in {
+            "exit 0": (0, exact),
+            "crash": (2, exact),
+            "no report": (1, None),
+            "extra finding": (1, lint_report((path, ["complexity", "no-eval"], 0))),
+            "other file": (1, lint_report(("elsewhere.js", ["complexity"], 0))),
+        }.items():
+            with self.subTest(case=name):
+                self.assertTrue(self.plant_case(code, results)[0])
+
+    def test_the_boundary_file_passes_only_clean_with_exit_zero(self):
+        path = f"{gate.LINT_PLANT_DIR}/{gate.LINT_BOUNDARY}"
+        clean = lint_report((path, [], 0))
+        problems, printed = self.plant_case(0, clean, gate.LINT_BOUNDARY, ())
+        self.assertEqual(problems, [])
+        self.assertIn("PASS a11y/hiss-lint-complexity\n", printed)
+        self.assertTrue(
+            self.plant_case(1, lint_report((path, ["complexity"], 0)), gate.LINT_BOUNDARY, ())[0]
+        )
+
+    def test_the_lint_runs_after_the_install_and_before_the_build(self):
+        line = {}
+        for node in ast.walk(function_index(ast.parse(text(GATE)))["run_cases"]):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                line.setdefault(node.func.id, node.lineno)
+        self.assertLess(line["install_case"], line["lint_cases"])
+        self.assertLess(line["lint_cases"], line["build_case"])
 
 
 def function_index(tree):

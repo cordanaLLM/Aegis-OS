@@ -1,13 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
 // SPDX-License-Identifier: EUPL-1.2
 
-//! The versioned payloads P13 exchanges (milestone M05).
+//! The versioned payloads P13 exchanges (milestones M05 and M16).
 //!
 //! | Edge | Schema | Module |
 //! | :-- | :-- | :-- |
 //! | P16 Athena to P13 Tellus, `EVALUATE_CANDIDATE_CARBON_SCI` | [`sci_query::CandidateSciQuery`] | [`sci_query`] |
 //! | P13 Tellus to P16 Athena, the answer to the same edge | [`sci_query::CandidateSciResponse`] | [`sci_query`] |
 //! | P13 Tellus to P07 Lictor, `SPATIOTEMPORAL_TASK_SHIFT` | [`task_shift::TaskShiftDirective`] | [`task_shift`] |
+//! | P13 Tellus to P05 Forum, `EMIT_CARBON_TELEMETRY` (M16) | [`telemetry::CarbonTelemetry`] | [`telemetry`] |
 //!
 //! # Why the P16-to-P13 pair lives with P13
 //!
@@ -39,8 +40,7 @@
 //!
 //! A payload longer than [`MAX_CONTRACT_PAYLOAD_BYTES`] is refused before it
 //! is parsed at all, and every field of a decoded payload lands in a fixed
-//! inline slot: all three schema types are `Copy`, so a decoded value owns no
-//! heap.
+//! inline slot: every schema type is `Copy`, so a decoded value owns no heap.
 //!
 //! Decoding is **not** unconditionally allocation-free, and this module does
 //! not claim it is. No contract path allocates for an escape-free payload: the
@@ -57,6 +57,7 @@ pub mod encoding;
 pub mod graph;
 pub mod sci_query;
 pub mod task_shift;
+pub mod telemetry;
 
 use core::fmt;
 
@@ -81,14 +82,17 @@ pub enum SchemaId {
     CandidateSciResponse,
     /// The task-shift directive P13 Tellus sends to P07 Lictor.
     TaskShiftDirective,
+    /// The carbon telemetry update P13 Tellus sends to P05 Forum (M16).
+    CarbonTelemetry,
 }
 
 impl SchemaId {
     /// Every schema this module defines.
-    pub const ALL: [Self; 3] = [
+    pub const ALL: [Self; 4] = [
         Self::CandidateSciQuery,
         Self::CandidateSciResponse,
         Self::TaskShiftDirective,
+        Self::CarbonTelemetry,
     ];
 
     /// Returns the stable version tag the payload's `schema` field carries.
@@ -98,6 +102,7 @@ impl SchemaId {
             Self::CandidateSciQuery => "aegis.p16-p13.sci-query.v1",
             Self::CandidateSciResponse => "aegis.p13-p16.sci-response.v1",
             Self::TaskShiftDirective => "aegis.p13-p07.task-shift.v1",
+            Self::CarbonTelemetry => "aegis.p13-p05.carbon-telemetry.v1",
         }
     }
 
@@ -109,6 +114,7 @@ impl SchemaId {
                 graph::EdgeId::EvaluateCandidateCarbonSci
             }
             Self::TaskShiftDirective => graph::EdgeId::SpatiotemporalTaskShift,
+            Self::CarbonTelemetry => graph::EdgeId::EmitCarbonTelemetry,
         }
     }
 }
