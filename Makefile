@@ -35,11 +35,16 @@ verify-all:
 # and the direct entry point when only the Rust half needs re-running. It
 # requires the rustup-installed toolchain that rust-toolchain.toml pins (D61);
 # the toolchain is reported before the gates run, so the evidence names the
-# rustc that actually executed rather than a version string.
+# rustc that actually executed rather than a version string. `cargo fetch
+# --locked` downloads every platform's locked packages, not only the host's:
+# the D78 closure tests read `cargo metadata --locked --offline` without a
+# platform filter, which needs target-specific crates (libc, for cpufeatures
+# on aarch64) that a host build never fetches. It is a no-op once cached.
 verify-rust:
 	rustup show active-toolchain
 	rustup which rustc
 	cargo fmt --check
+	cargo fetch --locked
 	cargo build --locked
 	cargo test --locked --all-features
 	cargo clippy --locked --all-targets --all-features -- -D warnings
