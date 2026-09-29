@@ -96,8 +96,8 @@ pub const P10_RECORDED_CLAIMS: [RecordedClaim; 5] = [
         summary: "accelerator workloads inside a sandbox go through the Venus protocol so \
                   memory movement is priced and tagged",
         status: ClaimStatus::DeferredHardwareRequirement,
-        settled_by: "an accelerator, a monitor and a running Venus transport, which is the \
-                     hardware-backed milestone M21; nothing here prices anything",
+        settled_by: "an accelerator, a monitor and a running Venus transport; M21 records \
+                     it deferred to M12 (epic E21-3), and nothing here prices anything",
         source: ClaimSource {
             export: "export-018",
             sha256_prefix: "5dbc6d071bbb",
@@ -108,9 +108,11 @@ pub const P10_RECORDED_CLAIMS: [RecordedClaim; 5] = [
         summary: "the physical-computation boundaries include explicit pricing of all \
                   AF_VSOCK traffic",
         status: ClaimStatus::DeferredHardwareRequirement,
-        settled_by: "a kernel vsock transport under a running monitor, which is the \
-                     hardware-backed milestone M21; this crate validates a context \
-                     identifier and opens no socket",
+        settled_by: "a priced vsock transport under a running monitor: M21 proved the \
+                     transport path (one candidate evaluation over AF_VSOCK under \
+                     Firecracker 1.17.0), M22 measures it, and no milestone prices a \
+                     message yet; this crate validates a context identifier and opens no \
+                     socket",
         source: ClaimSource {
             export: "export-018",
             sha256_prefix: "5dbc6d071bbb",

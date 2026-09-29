@@ -159,12 +159,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "aegis-tellus-rapl"
+version = "0.1.0"
+dependencies = [
+ "aegis-tellus",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "aegis-vesta"
 version = "0.1.0"
 dependencies = [
  "aegis-justitia",
  "serde",
  "serde_json",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "aegis-vesta-sandbox"
+version = "0.1.0"
+dependencies = [
+ "aegis-athena",
+ "aegis-justitia",
+ "aegis-vesta",
+ "rustix",
+ "serde",
+ "serde_json",
+ "socket2",
  "thiserror 2.0.20",
 ]
 
@@ -673,6 +697,16 @@ dependencies = [
  "wayland-protocols-wlr",
  "wayland-scanner",
  "xkeysym",
+]
+
+[[package]]
+name = "socket2"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
+dependencies = [
+ "libc",
+ "windows-sys",
 ]
 
 [[package]]

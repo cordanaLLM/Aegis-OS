@@ -132,13 +132,18 @@ pub const P13_RECORDED_CLAIMS: [RecordedClaim; 5] = [
 /// The `max_energy_range_uj` both reference-profile zones report.
 ///
 /// 65532610987, read from `/sys/class/powercap/intel-rapl:0/max_energy_range_uj`
-/// and `/sys/class/powercap/intel-rapl:0:0/max_energy_range_uj` on 2026-09-13.
-/// It is recorded here so the M21 rollover boundary has a committed figure to
-/// test against; nothing in this crate reads a counter.
+/// and `/sys/class/powercap/intel-rapl:0:0/max_energy_range_uj` on 2026-09-13,
+/// and read again by `make verify-workstation` on 2026-09-29 (M21). It is the
+/// figure [`crate::EnergyRange::REFERENCE`] carries and the rollover boundary
+/// in `tests/measured_energy.rs` is tested against; nothing in this crate reads
+/// a counter.
 pub const REFERENCE_MAX_ENERGY_RANGE_UJ: u64 = 65_532_610_987;
 
 /// The file mode the reference profile's `energy_uj` attributes carry.
 ///
-/// `0400`, the CVE-2020-8694 mitigation: root-readable only, so the M21 reader
-/// needs a privileged path. Recorded, not enforced.
+/// `0400`, the CVE-2020-8694 mitigation: root-readable only. M21's gate reads
+/// the package counter as root through exactly one scoped command, `sudo -n
+/// cat /sys/class/powercap/intel-rapl:0/energy_uj` (the maintainer's decision
+/// of 2026-09-29), and its unprivileged read of the same file must fail.
+/// Recorded here, enforced by the gate, not by this crate.
 pub const REFERENCE_ENERGY_UJ_MODE: u32 = 0o400;

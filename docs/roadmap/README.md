@@ -189,7 +189,7 @@ score.
 | 17 | M09 | Cross-repository contract pin: one local request/result pair | done | small | no | yes | partial | M18 | M11, M10 |
 | 18 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | done | small | no | no | not-hardware | M04, M14 | M28 |
 | 19 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | done | medium | yes | no | full | M07 | M28, M29 |
-| 20 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
+| 20 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | done | small | yes | no | full (privileged read) | M05 | - |
 | 21 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
 | 22 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
 | 23 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | ready | large | yes | no | full | M16, M27 | M29 |
@@ -1138,7 +1138,7 @@ Epics:
 
 ### M21 - Workstation hardware slices: RAPL counters and KVM sandboxing
 
-Rank 20. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 20. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full
 (privileged read). Blocked by: M05. Unblocks: nothing.
 
@@ -1149,8 +1149,10 @@ Exit criteria:
 - Toolchain admission: Firecracker (and the jailer, if used) is selected through
   the template matrix with a pinned version before any microVM run
 - Unblocking evidence: measured RAPL energy deltas replace the simulated wattage
-  in the M05 engine; a measured microVM boot time and memory footprint replace
-  the scaffold literals; one AF_VSOCK candidate evaluation round-trips
+  in the M05 engine, and one AF_VSOCK candidate evaluation round-trips, proving
+  the sandbox path works. The measured microVM boot time and memory footprint
+  are M22's under decision D71: this milestone proves the path, M22 measures it
+  and records which VMM produced each figure.
 - Scope: these are host-fixture measurements; re-measurement inside an Aegis
   image is a later acceptance and is not claimed
 - Measured RAPL energy deltas from the sysfs energy counter replace the
@@ -1169,7 +1171,13 @@ Exit criteria:
 - The privileged-read path is recorded: energy_uj is mode 0400 (CVE-2020-8694
   mitigation), so the criterion names whether the reader runs as root, holds
   CAP_DAC_OVERRIDE, or uses a privileged daemon — and an unprivileged read is a
-  negative test that must fail.
+  negative test that must fail. Decision (maintainer, 2026-09-29): the counter
+  is read as root through passwordless sudo -n, read-only and scoped to exactly
+  one command, `sudo -n cat /sys/class/powercap/intel-rapl:0/energy_uj`, each
+  under a deadline; the zone enumeration and max_energy_range_uj are
+  world-readable and are read without sudo; no other command ever runs under
+  sudo; the gate prints SKIP with a reason where sudo -n is unavailable; and an
+  unprivileged read of energy_uj is kept as the negative test.
 - Accuracy is stated honestly in the retained evidence: AMD RAPL is a
   model-based estimate derived from activity counters, not a measured power
   rail, so only same-zone deltas are treated as trustworthy and absolute watts
@@ -1185,6 +1193,77 @@ Exit criteria:
 
 Cheapest exit: Read powercap counters and boot one Firecracker microVM on the
 workstation. No Aegis image and no GPU.
+
+Evidence (the 2026-09-29 disclosure, the scope and the closing summary; every
+entry is in `planning/roadmap.json`, and the runs are on
+`docs/build/workstation.md`):
+
+- Disclosure, in the shape M18 recorded, because a milestone must say where its
+  evidence differs from the letter of its bar: one exit criterion was amended
+  during this delivery and before the state moved to done, and it is not a
+  relaxation. Criterion 8 asked which privileged path the reader takes; it now
+  records the answer the maintainer gave on 2026-09-29 (root through one scoped
+  `sudo -n cat`, the unprivileged read kept as the negative test), and nothing
+  else in it changed. No other criterion, epic or the cheapest exit was
+  rewritten, and eight points are recorded instead. (1) Criterion 5 names the
+  reference kernel 7.2.4-1-cachyos; the reference host runs a rolling kernel and
+  read 7.2.8-1-cachyos on every run, which is the kernel recorded beside the
+  readings: the figure is not relabelled, and D73 treats the reference host as
+  provenance. (2) Criterion 11 says the measurement runs as root; exactly one
+  process does, the `cat` sudo starts, and the reader,
+  crates/aegis-tellus-rapl's binary, runs as the invoking user and reads no
+  file: the gate hands it the text. Only the package-0 counter is read, because
+  the decision admits one command; core is enumerated and its counter is not
+  read. (3) Criterion 2's template matrix is
+  docs/roadmap/toolchain-admission.md, which states that it is that matrix. The
+  jailer is not used: it needs root to chroot and change user, which the
+  decision does not admit, so every microVM runs as the invoking user under
+  Firecracker's own seccomp filters. The distribution package firecracker
+  1.17.0-1.1 on the reference profile is not run; the gate runs the release
+  binary it fetched and pinned. (4) E21-2's boundary ran 64 microVMs at once on
+  real KVM, each with one vCPU and 64 MiB, started one at a time, each answering
+  one evaluation before the next started, about 4 GiB of guest memory in all; 64
+  MiB is the smallest power of two the pinned kernel boots with this initramfs
+  (48 MiB and 56 MiB guests panicked out of memory before init on 2026-09-29, 60
+  MiB and 64 MiB reached the listener), a configuration value and not a
+  footprint measurement. (5) E21-2's round-trip is AF_VSOCK at the guest end
+  only: Firecracker mediates between AF_UNIX on the host and AF_VSOCK in the
+  guest with its own virtio-vsock device model (docs/vsock.md at v1.17.0), so
+  the host's vhost_vsock is not in the path. M22's criterion that names
+  /dev/vhost-vsock and CONFIG_VHOST_VSOCK=m as the mechanism describes a
+  vhost-based monitor, not Firecracker, and is M22's to settle. (6) The guest
+  kernel is Firecracker's own CI build, vmlinux-6.18.44 from
+  firecracker-ci/20260909-a8e1c3830545-0, pinned by the sha256 computed at
+  admission because the bucket publishes none; neither the M26 kernel nor the
+  Nucleus release carries CONFIG_VSOCKETS or CONFIG_VIRTIO_MMIO. (7) The
+  rollover formula is at most one counter unit short of the true increment on a
+  wrap, 15.258 uJ on the reference profile, because the kernel's range is one
+  raw unit below the modulus (drivers/powercap/intel_rapl_common.c); the
+  boundary tests record that edge rather than hide it. (8) The criteria name no
+  crate, and M21 adds one to the lock, socket2 0.6.5, whose SockAddr::vsock is
+  the safe AF_VSOCK address constructor the workspace's forbid lint needs; it is
+  admitted in docs/roadmap/toolchain-admission.md.
+- Scope (criteria 4 and 10, 2026-09-29): host-fixture measurements on the
+  reference profile, development evidence only: a pass qualifies no hardware,
+  does not close the hardware gate, is not release evidence, and re-measurement
+  inside an Aegis image remains a later acceptance. No boot time and no memory
+  footprint is recorded; D71 leaves both to M22, and the scaffold's literals
+  stay Unmeasured. Nothing here is evidence about isolation strength, and
+  AF_VSOCK pricing (REQ-P10-03) is implemented nowhere. P10, P13 and P16 stay
+  proposals in planning/components.json, whose blockers now record the runs;
+  their candidate rows keep manifest_present false. M21 unblocks nothing; M22
+  stays ready on M06.
+- Done, and each part by the entry named: criterion 1 by the host entry;
+  criterion 2 by the toolchain entry; criteria 3 and 5 and E21-1's positive by
+  run r20260929T200422-2476, and criterion 5's host model and kernel kept beside
+  the readings by run r20260929T205659-3afc; criterion 6 and E21-1's boundary by
+  the rollover entry and run r20260929T201527-d65a; criterion 7 by the
+  enumeration entry; criteria 8 and 11 and E21-1's negative by the
+  privileged-read entry, as the disclosure records; criterion 9 by the accuracy
+  entry; criterion 3's round-trip and E21-2 by run r20260929T200422-2476 and, on
+  the final revision, r20260929T205659-3afc; E21-3 by its deferral; criteria 4
+  and 10 by the scope entry. Each rests on cargo test and tools/ tests inside
+  make verify-all or on the recorded runs, and none on simulated output.
 
 Epics:
 

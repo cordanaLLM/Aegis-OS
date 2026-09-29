@@ -96,6 +96,22 @@ repeats the M19 loads. It is **not** part of `make verify-all`; the reasoning
 is on the `verify-nucleus-kernel` target in the `Makefile`, and the run, its
 one failure and the scope limits are in `docs/build/nucleus-kernel.md`.
 
+## Reviewed and gated (M21)
+
+| Path | What it declares |
+| :--- | :--- |
+| `sandbox/firecracker.pin.json` | the sandbox monitor and the guest kernel M21 boots: the Firecracker 1.17.0 release archive by URL, sha256 and size, the `firecracker` binary and its Apache-2.0 `LICENSE` inside it by member path and sha256, the jailer recorded as not used; the guest kernel `vmlinux-6.18.44` and its configuration from Firecracker's CI artifacts by URL, sha256 and size, the configuration options the guest needs, and the 64 MiB guest size |
+
+This pins bytes Aegis runs and does not construct (D58). `make
+workstation-fetch` downloads them, refuses any that differ from the pin, checks
+the archive against the digest the release publishes, and extracts only the
+binary and its licence; `make verify-workstation` hashes them again before
+every run and boots microVMs with no drive and no network interface. It is
+**not** part of `make verify-all`; the reasoning is on the
+`verify-workstation` target in the `Makefile`, and the run, the privileged
+counter read beside it and the scope limits are in
+`docs/build/workstation.md`.
+
 ## Still reserved
 
 Current candidates are indexed under `.workingdir/prepared/scaffold/build/`

@@ -54,8 +54,11 @@ const LINE_BOUND: usize = 4096;
 /// verification found missing. The floor sits eight below the total so that
 /// removing one item on purpose does not fail the gate, while dropping the
 /// field arm -- which costs sixteen -- does. Removing public surface on
-/// purpose means lowering the floor on purpose.
-const MINIMUM_SURFACE: usize = 172;
+/// purpose means lowering the floor on purpose. M21 (2026-09-29) added the
+/// measured-energy module: the walk collects 215 names, 195 of them without
+/// the field arm, so the floor moves to 207, eight below the total and above
+/// what a keyword-only sweep collects.
+const MINIMUM_SURFACE: usize = 207;
 
 /// How many of the collected names only the M15 arm reads.
 ///
@@ -67,7 +70,9 @@ const MINIMUM_SURFACE: usize = 172;
 /// is coverage for a shape this `src/` does not yet use. M16 (2026-09-29)
 /// added `CarbonTelemetry`, whose `power_watts` and `grid_intensity` are the
 /// two field names no other struct already declared, so the arm reads 18.
-const FIELD_ARM_NAMES: usize = 18;
+/// M21 added `CounterPair`, whose `before` and `after` are new the same way;
+/// its `interval` is not, so the arm reads 20.
+const FIELD_ARM_NAMES: usize = 20;
 
 /// Which enclosing block makes an unmarked item public API.
 #[derive(Clone, Copy, PartialEq, Eq)]

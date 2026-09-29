@@ -121,6 +121,7 @@ fn the_deferred_row_names_its_milestone() -> Fallible {
     assert!(entry.claim.contains("Firecracker"));
     assert!(SANDBOX_DEFERRED_TO.contains("M06"));
     assert!(SANDBOX_DEFERRED_TO.contains("M22"));
+    assert!(SANDBOX_DEFERRED_TO.contains("M21"));
     Ok(())
 }
 

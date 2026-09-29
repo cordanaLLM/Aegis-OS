@@ -1,0 +1,54 @@
+{
+  "schema": "aegis.m21.sandbox-pin.v1",
+  "note": "M21 development evidence only (D58, D71). The sandbox monitor and the guest kernel make verify-workstation boots, pinned by digest. `make workstation-fetch` is the one networked step: it downloads the Firecracker release archive and the guest kernel named here, refuses either if its sha256 or size differs, checks the archive digest against the .sha256.txt the release publishes, and extracts only the firecracker binary and its LICENSE, each hashed against this file. The bytes are cached outside the repository under AEGIS_WORKSTATION_DIR and hashed again before every run. The jailer is not used: it needs root to chroot and change user, and the maintainer's decision of 2026-09-29 admits no privilege beyond one scoped counter read.",
+  "firecracker": {
+    "version": "1.17.0",
+    "tag": "v1.17.0",
+    "repository": "https://github.com/firecracker-microvm/firecracker",
+    "published": "2026-09-10T14:19:40Z",
+    "licence": "Apache-2.0",
+    "archive": {
+      "file": "firecracker-v1.17.0-x86_64.tgz",
+      "url": "https://github.com/firecracker-microvm/firecracker/releases/download/v1.17.0/firecracker-v1.17.0-x86_64.tgz",
+      "sha256": "06094a1108ae9e82aa4c23a775aa92758f53f1175d422270d9d6162cb9ade558",
+      "size": 7464385,
+      "checksum_url": "https://github.com/firecracker-microvm/firecracker/releases/download/v1.17.0/firecracker-v1.17.0-x86_64.tgz.sha256.txt"
+    },
+    "binary": {
+      "member": "release-v1.17.0-x86_64/firecracker-v1.17.0-x86_64",
+      "file": "firecracker-v1.17.0-x86_64",
+      "sha256": "99ad0f5cd0514a88aad0e9ae8cfdb3cc3b4ab9d190e1194602406c786b5de7a5",
+      "version_output": "Firecracker v1.17.0"
+    },
+    "licence_file": {
+      "member": "release-v1.17.0-x86_64/LICENSE",
+      "file": "LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    "jailer": "not used"
+  },
+  "guest_kernel": {
+    "provider": "Firecracker CI artifacts, the set current when v1.17.0 was published",
+    "prefix": "firecracker-ci/20260909-a8e1c3830545-0/x86_64/",
+    "release": "6.18.44",
+    "licence": "GPL-2.0-only",
+    "file": "vmlinux-6.18.44",
+    "url": "https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/20260909-a8e1c3830545-0/x86_64/vmlinux-6.18.44",
+    "sha256": "d8ced68bd61e27b6813e2c993cc53a4029c59e13210672180591c84109684fe4",
+    "size": 27846248,
+    "config": {
+      "file": "vmlinux-6.18.44.config",
+      "url": "https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/20260909-a8e1c3830545-0/x86_64/vmlinux-6.18.44.config",
+      "sha256": "9fb2be18303d2f6e8ec35b3a20ecf1209f54a4ece10114a893cb37beabee7030",
+      "size": 99233
+    },
+    "required_config": [
+      "CONFIG_BLK_DEV_INITRD=y",
+      "CONFIG_KVM_GUEST=y",
+      "CONFIG_SERIAL_8250_CONSOLE=y",
+      "CONFIG_VIRTIO_MMIO=y",
+      "CONFIG_VIRTIO_VSOCKETS=y"
+    ]
+  },
+  "guest_memory_mib": 64
+}

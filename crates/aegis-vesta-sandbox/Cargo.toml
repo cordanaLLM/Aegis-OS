@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "aegis-vesta-sandbox"
+description = "Aegis OS P10 sandbox path (M21, E21-2): Firecracker microVMs admitted by aegis-vesta's bounded controller and booted on KVM with --no-api and a per-VM config file, one candidate evaluation round-tripping over AF_VSOCK through Firecracker's hybrid vsock (AF_UNIX on the host, AF_VSOCK in the guest), the 64th microVM accepted and the 65th refused, an over-limit memory request refused before any process starts, and every microVM, socket and process torn down. No network device, no jailer, no API socket. Two binaries: the host run and the static guest init."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "aegis-vesta-sandbox"
+path = "src/bin/aegis-vesta-sandbox.rs"
+
+[[bin]]
+name = "aegis-vesta-guest"
+path = "src/bin/aegis-vesta-guest.rs"
+
+[dependencies]
+aegis-athena = { path = "../aegis-athena" }
+aegis-justitia = { path = "../aegis-justitia" }
+aegis-vesta = { path = "../aegis-vesta" }
+rustix = { workspace = true, features = ["system"] }
+serde.workspace = true
+serde_json.workspace = true
+socket2.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

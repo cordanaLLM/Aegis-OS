@@ -167,21 +167,29 @@ fn no_recorded_claim_is_discharged() {
     }
 }
 
-/// Negative: the two hardware-backed requirements stay deferred to M21, which
-/// is what epic E06-3 asks this milestone to record rather than deliver.
+/// Negative: the two hardware-backed requirements stay deferred, which is what
+/// epic E06-3 asks this milestone to record rather than deliver. Since M21
+/// each row names where it goes: Venus to M12 (epic E21-3), and `AF_VSOCK`
+/// pricing past M21, which proved the transport path, and M22, which measures
+/// it.
 #[test]
 fn venus_and_vsock_pricing_stay_deferred() -> Fallible {
-    for requirement in ["REQ-P10-02", "REQ-P10-03"] {
+    for (requirement, milestones) in [
+        ("REQ-P10-02", ["M21", "M12"]),
+        ("REQ-P10-03", ["M21", "M22"]),
+    ] {
         let claim = P10_RECORDED_CLAIMS
             .into_iter()
             .find(|row| row.requirement == requirement)
             .ok_or("the register must carry the deferred requirement")?;
         assert_eq!(claim.status, ClaimStatus::DeferredHardwareRequirement);
         assert_eq!(claim.status.name(), "deferred-hardware-requirement");
-        assert!(
-            claim.settled_by.contains("M21"),
-            "{requirement} is settled by the hardware-backed milestone"
-        );
+        for milestone in milestones {
+            assert!(
+                claim.settled_by.contains(milestone),
+                "{requirement} names {milestone} in its settlement"
+            );
+        }
     }
     Ok(())
 }

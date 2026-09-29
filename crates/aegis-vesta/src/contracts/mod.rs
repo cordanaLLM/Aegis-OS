@@ -19,7 +19,9 @@
 //! `AF_VSOCK` socket, no monitor API connection, no `WebAssembly` instance and
 //! no signing. A schema states the shape and the bounds of a payload; carrying
 //! one between two processes is later work, and the recorded roadmap keeps the
-//! hardware-backed half at M21 and M22.
+//! hardware-backed half at M21 and M22. M21's `aegis-vesta-sandbox` carries
+//! the candidate evaluation over `AF_VSOCK` out of a Firecracker guest and
+//! decodes it with this module; nothing here changed for it.
 //!
 //! # Versioning
 //!

@@ -42,8 +42,8 @@ pub const MAX_GUEST_MEMORY_MIB: u32 = 1024;
 ///
 /// Recorded from export-037 `ce490c88081f`, where the field is assigned the
 /// literal 112 with the comment "Sub-125ms cold boot speed". REQ-P10-05 states
-/// what it is worth: the value is unmeasured. Nothing in this repository has
-/// booted a microVM.
+/// what it is worth: the value is unmeasured. M21 boots microVMs to prove the
+/// sandbox path and times none of them; the measurement is M22's (D71).
 pub const SCAFFOLD_BOOT_TIME_MS: Unmeasured<u32> = Unmeasured::new(112);
 
 /// The cold-boot target the P10 report states, in milliseconds.
