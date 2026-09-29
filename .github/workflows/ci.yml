@@ -30,7 +30,7 @@ env:
   FLAKE8_VERSION: "7.3.0"
   BLACK_VERSION: "26.5.1"
   # Published Praetor commit that builds the praetorctl this gate pins.
-  PRAETOR_COMMIT: "11ac5d8ea360c2d71dd5647d1049d2f182d599f6"
+  PRAETOR_COMMIT: "25451d888c8710822dd578907625dc69a0975142"
   # D80 libva floor on this runner (maintainer decision of 2026-09-29): the
   # intel/libva release tarball, its sha256 as the GitHub release publishes it,
   # and the meson and ninja wheels that build it, each pinned by its PyPI sha256.
