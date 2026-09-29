@@ -23,12 +23,13 @@ proposal.
 | `aegis-janus-lifecycle` | P02 A/B candidate lifecycle | M15 | The A/B lifecycle D15 records: one candidate from declaration through the signature check, delta acquisition, slot swap and boot watchdog to bless or rollback, plus the D13 reopening. Pure state machine with an injected clock, stubbed systemd effects and a machine-readable transition trace. Library only. |
 | `aegis-vulcan` | P03 direct-DMA validation slice | M17 | The validation arithmetic and the bounds of export-038: page-aligned BAR windows, the `1..=8192` block count, the lock-less submission-ring index and a bounded VFIO device table, plus the versioned descriptors P03 hands to P09 and to P15, each carrying the DMA-BUF export path M25 binds. Library only. |
 | `aegis-hestia` | P15 store and overlay validation slice | M17 | The Rust half of decision D09: the vector-store initialisation gate and `1..=100` query bound, the picture-in-picture overlay controller, the versioned registration P15 hands to P04, and `HestiaView`, the typed boundary payload the Svelte package would read. Library only. |
-| `aegis-tellus` | P13 carbon slice | M05 | The ISO/IEC 21031:2024 SCI rate `((E * I) + M) / R`, the 300 gCO2eq/kWh spatiotemporal defer threshold compared strictly, the sixteen-slice cgroup table, the `Delta V` bidding contract, and the zone-list wattage seam M21 substitutes a measured RAPL delta into. Versioned payloads for the P16 and P07 edges. Library only. |
+| `aegis-tellus` | P13 carbon slice | M05, M16 | The ISO/IEC 21031:2024 SCI rate `((E * I) + M) / R`, the 300 gCO2eq/kWh spatiotemporal defer threshold compared strictly, the sixteen-slice cgroup table, the `Delta V` bidding contract, and the zone-list wattage seam M21 substitutes a measured RAPL delta into. Versioned payloads for the P16 and P07 edges (M05) and the carbon telemetry update P05 consumes (M16). Library only. |
 | `aegis-athena` | P16 evolution loop | M05 | The seven-stage candidate lifecycle with only Invalidate terminal, the four-objective Pareto promotion gate, the nine structural maturity gates, and the SHA-256 hash-chained checkpoint ledger over the D02 trait. The versioned trigger P16 hands to P02, and the M14 audit record consumed rather than redefined. Library only. |
 | `aegis-minerva` | P09 agent-chain middle link | M06 | The bounded Alps expert table and its 20 W envelope, the `AgentHER` trajectory buffer whose relabeller flips only failed steps, the constraint screen that can refuse and cannot accept, the versioned request P09 submits to P14, and the two payloads P09 builds from other crates' types rather than redefining. Library only. |
 | `aegis-vesta` | P10 sandbox-controller validation slice | M06 | The bounded microVM and capsule tables of export-037, decision D06's Rust-native runtime with the rejected runtime unrepresentable on the wire, the capsule request P09 sends and the candidate evaluation P16 receives, each carrying the D58 VMM identity, and the recorded boot-time literal carried as an `Unmeasured` value. Library only. |
 | `aegis-ludus` | P11 gaming-integration validation slice | M08 | The 64-argument launch bound of export-033 and the three-way authentication outcome that replaces its boolean, which calls a line carrying no token authenticated because it carried some argument, the platform-register selection and amount bounds of a microtransaction receipt, the versioned receipt P11 hands to P02 with its signing carried as one variant that says it is unsigned, and the three recorded credential probes. Library only. |
 | `aegis-hephaestus` | P14 geometry validation slice | M08 | The iteration and meshing bounds of export-029 held against caller-supplied counts rather than against constants, the solver admission that names three solvers and starts none, the M06 verification request consumed from `aegis-minerva` rather than redefined, and the versioned geometry viewport P14 hands to P15 carrying the same element bound as the planner. Library only. |
+| `aegis-forum-shell` | P05 Forum shell model | M16 | The native shell's model under ADR-0004: the D96 process lifecycle driven by stubbed P04, P06 and P13 inputs, line-delimited JSON-RPC 2.0 framing with a byte bound and deadlines (D77), the decision request and carbon telemetry decoded by their producers' crates, and the D74 canvas model -- registry, camera and `QuadTree` -- with its accessibility tree exported as an `accesskit::TreeUpdate` and checked. Library only. |
 
 Every crate above is a member of the workspace root `Cargo.toml`. The member
 list is written out rather than globbed, so the remaining reserved directories
@@ -194,6 +195,19 @@ detects an edit, it does not establish who wrote it, and TPM2 sealing is M20.
 The M14 audit record is decoded through `aegis_justitia::SignedAuditRecord`
 rather than redefined, so a consumer's reading of it cannot drift from the
 producer's.
+
+`aegis-forum-shell` carries its component's name and sits at the path the
+C05 row proposes, and **P05 remains a proposal all the same**: the P05
+subsystem is a native shell on gpui (ADR-0004), and this crate is its model.
+Deliberately outside it: every surface, socket and bus. Nothing in it links a
+toolkit, creates a window or a layer surface, paints, opens a socket other
+than the ones its tests pair, or reaches D-Bus; the StatusNotifierWatcher, the
+portal settings and AT-SPI2 are traits its tests mock.
+`tests/manifest_hygiene.rs` reads the crate's own dependency closure through
+`cargo metadata` and refuses gpui, winit, wayland-client, zbus, atspi,
+accesskit_unix and tokio in it (D78), and `tests/stubbed_effects.rs` sweeps
+its sources for socket, bus, process, thread, clock and file identifiers. Its
+only new dependency is accesskit 0.25.1, the accessibility tree's data model.
 
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2

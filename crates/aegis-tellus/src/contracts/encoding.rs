@@ -30,6 +30,7 @@ use serde::{Deserializer, Serializer};
 
 use crate::contracts::sci_query::{CandidateList, MAX_QUERY_CANDIDATES, RateEntry, RateList};
 use crate::id::{CandidateId, CorrelationId, SliceName};
+use crate::power::Provenance;
 use crate::sci::{EnergyKwh, GridIntensity, SciRate, Seconds, Watts};
 
 /// A visitor that parses one string field through a validating constructor.
@@ -140,6 +141,21 @@ impl<'de> serde::Deserialize<'de> for SliceName {
         deserializer.deserialize_str(Parsed {
             label: "a bounded cgroup slice name",
             parse: |text| Self::parse(text).ok(),
+        })
+    }
+}
+
+impl serde::Serialize for Provenance {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.name())
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Provenance {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_str(Parsed {
+            label: "one of simulated, modelled or measured",
+            parse: |text| Self::ALL.into_iter().find(|kind| kind.name() == text),
         })
     }
 }

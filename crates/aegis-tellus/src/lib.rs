@@ -27,10 +27,11 @@
 //!   zone, and it takes a [`ZoneList`]: a source that does not carry a zone
 //!   refuses a sample of it with [`TellusError::ZoneAbsent`] instead of
 //!   answering zero (decision D60).
-//! * [`contracts`] carries the two typed edges, and [`register`] records the
-//!   P13 claims this crate cannot check -- including the powercap zone
-//!   enumeration, which was measured on the reference profile rather than
-//!   assumed.
+//! * [`contracts`] carries the typed edges -- M05's two and the carbon
+//!   telemetry update M16 added for the Forum shell, [`CarbonTelemetry`] --
+//!   and [`register`] records the P13 claims this crate cannot check --
+//!   including the powercap zone enumeration, which was measured on the
+//!   reference profile rather than assumed.
 //!
 //! # Design invariants (see `AGENTS.md`)
 //!
@@ -117,6 +118,7 @@ pub use crate::contracts::sci_query::{
     RateList, SciQueryVersion, SciResponseVersion,
 };
 pub use crate::contracts::task_shift::{TaskShiftDirective, TaskShiftVersion};
+pub use crate::contracts::telemetry::{CarbonTelemetry, CarbonTelemetryVersion};
 pub use crate::contracts::{
     ContractError, Correlation, MAX_CONTRACT_PAYLOAD_BYTES, PayloadBuffer, SchemaId,
 };

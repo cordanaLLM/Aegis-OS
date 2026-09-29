@@ -5,7 +5,8 @@
 // from the lockfile, and prints one JSON object for tools/verify_a11y.py to
 // compare with its pins. With --launch it also starts the pinned Chromium and
 // reports the version the browser itself gives. A browser revision the image
-// does not carry is an error here: nothing downloads one.
+// does not carry is an error here: nothing downloads one. The D100 lint's
+// three packages are read back the same way (M16).
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 
@@ -35,6 +36,9 @@ const report = {
   axePlaywright: manifest('@axe-core/playwright').version,
   svelte: manifest('svelte').version,
   vite: manifest('vite').version,
+  eslint: manifest('eslint').version,
+  eslintPluginSvelte: manifest('eslint-plugin-svelte').version,
+  svelteEslintParser: manifest('svelte-eslint-parser').version,
   headlessShell: { revision: shell.revision, browserVersion: shell.browserVersion },
   browsersPath: root,
   revisionPresent: existsSync(path.join(root, `chromium_headless_shell-${shell.revision}`)),

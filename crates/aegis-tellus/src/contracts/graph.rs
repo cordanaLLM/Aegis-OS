@@ -4,23 +4,23 @@
 //! The subsystem-graph edges P13 sits on.
 //!
 //! The graph of record (export-062 `1ce919ed54bb`) names three edges touching
-//! P13 Tellus, and this milestone types two of them:
+//! P13 Tellus. Milestone M05 typed two of them, and M16 the third:
 //!
-//! | Edge | Direction | Typed here |
+//! | Edge | Direction | Typed |
 //! | :-- | :-- | :-- |
-//! | `EVALUATE_CANDIDATE_CARBON_SCI` | P16 Athena to P13 Tellus | yes, both directions of the exchange |
-//! | `SPATIOTEMPORAL_TASK_SHIFT` | P13 Tellus to P07 Lictor | yes |
-//! | `EMIT_CARBON_TELEMETRY` | P13 Tellus to P05 Forum | no: the payload is milestone M16 |
+//! | `EVALUATE_CANDIDATE_CARBON_SCI` | P16 Athena to P13 Tellus | M05, both directions of the exchange |
+//! | `SPATIOTEMPORAL_TASK_SHIFT` | P13 Tellus to P07 Lictor | M05 |
+//! | `EMIT_CARBON_TELEMETRY` | P13 Tellus to P05 Forum | M16, [`super::telemetry::CarbonTelemetry`] |
 //!
-//! The third variant exists without a schema on purpose. The edge is in the
-//! graph of record, so leaving it out of [`EdgeId`] would make the vocabulary
-//! disagree with the graph; and giving it a schema here would duplicate work
-//! the roadmap assigns to M16. A payload naming it is refused by the wrong-edge
-//! check on whichever schema it claims to be.
+//! [`EdgeId::typed_at_m05`] still answers for M05 alone, so it stays `false`
+//! for the telemetry edge. A payload naming an edge its schema does not carry
+//! is refused by the wrong-edge check on whichever schema it claims to be.
 //!
 //! No transport exists in this crate. The transports the graph names -- D-Bus
 //! for both outbound edges -- are recorded by [`EdgeId::recorded_transport`]
-//! and implemented nowhere.
+//! and implemented nowhere; D77 has since moved both off D-Bus to
+//! line-delimited JSON-RPC 2.0 over `AF_UNIX`, which is recorded, not built,
+//! here.
 
 /// An edge of the subsystem graph that touches P13 Tellus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -32,7 +32,7 @@ pub enum EdgeId {
     /// P13 Tellus to P07 Lictor: shift background work in time or space.
     #[serde(rename = "SPATIOTEMPORAL_TASK_SHIFT")]
     SpatiotemporalTaskShift,
-    /// P13 Tellus to P05 Forum: emit carbon telemetry. Payload is M16 work.
+    /// P13 Tellus to P05 Forum: emit carbon telemetry, typed at M16.
     #[serde(rename = "EMIT_CARBON_TELEMETRY")]
     EmitCarbonTelemetry,
 }

@@ -1,0 +1,19 @@
+// SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+// SPDX-License-Identifier: EUPL-1.2
+//
+// Planted HISS-04 violation (D100): cyclomatic complexity 11, one past the
+// limit; 12 statements in 14 lines, so only complexity fires.
+export function tooComplex(value) {
+  let result = 0;
+  if (value === 0) result += 1;
+  if (value === 1) result += 2;
+  if (value === 2) result += 3;
+  if (value === 3) result += 4;
+  if (value === 4) result += 5;
+  if (value === 5) result += 6;
+  if (value === 6) result += 7;
+  if (value === 7) result += 8;
+  if (value === 8) result += 9;
+  if (value === 9) result += 10;
+  return result;
+}

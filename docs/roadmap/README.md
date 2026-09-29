@@ -186,7 +186,7 @@ score.
 | 15 | M24 | Local boot harness over an externally supplied artifact | done | large | yes | no | full | M15 | M11 |
 | 16 | M04 | UI accessibility harness: P12 Concordia tokens | done | medium | no | no | not-hardware | M02 | M16, M11 |
 | 17 | M09 | Cross-repository contract pin: one local request/result pair | done | small | no | yes | partial | M18 | M11, M10 |
-| 18 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | ready | small | no | no | not-hardware | M04, M14 | M28 |
+| 18 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | done | small | no | no | not-hardware | M04, M14 | M28 |
 | 19 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | ready | medium | yes | no | full | M07 | M28, M29 |
 | 20 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
 | 21 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
@@ -1455,7 +1455,7 @@ Epics:
 
 ### M16 - P05 Forum shell state and lifecycle with stubbed IPC
 
-Rank 18. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 18. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
 not-hardware. Blocked by: M04, M14. Unblocks: M28.
 
@@ -1544,7 +1544,9 @@ accesskit::TreeUpdate export, and the two consumers typed on the producers' Rust
 contracts, over a socketpair framed as line-delimited JSON-RPC 2.0, with D-Bus
 mocks only for the platform interfaces and no toolkit, display or bus.
 
-Evidence:
+Evidence (the 2026-09-29 disclosure, the scope and the closing summary;
+every entry is in `planning/roadmap.json`, and the runs are on
+`docs/build/forum-shell.md` and `docs/build/accessibility-harness.md`):
 
 - Disclosure, in the shape M18 recorded, because a milestone that edits its own
   bar must say so where the bar is judged: before any delivery, on 2026-09-29
@@ -1638,6 +1640,24 @@ Evidence:
   whose token file is the single source the shell's theme constants derive from
   (D05, D101), and M14, and M16 now unblocks M28. This entry is not evidence
   that any criterion is met.
+- Scope (criterion 8, 2026-09-29): model-level evidence on the reference
+  profile. The crate paints nothing, creates no window or surface, opens no real
+  socket and contacts no D-Bus daemon; the only sockets are the socketpairs its
+  tests create, and tests/stubbed_effects.rs sweeps the sources for socket, bus,
+  process, thread, clock and file identifiers and finds none. A pass closes no
+  accessibility gate for the running shell, which M28 checks over AT-SPI and M29
+  in a live session, and the rendered-pixel cases are M28's E28-4. P05 stays a
+  proposal in planning/components.json: its blockers now name what the crate
+  holds and what M28 and M29 add, and its candidate row C05 keeps
+  manifest_present false, which verify_candidates() reads as an activation
+  claim. M16 unblocks M28, which stays blocked on M27.
+- Done, and each part by the entry named: criterion 1 by the crate entry;
+  criterion 2 and E16-1 by the lifecycle entry; criterion 3 and E16-2 by the
+  consumers entry; criterion 4 by the framing entry; criterion 5 and E16-3 by
+  the canvas entry; criterion 6 and E16-4 by the tree-check entry; criterion 7
+  by the D100 entry; criterion 8 by the scope entry. Each rests on cargo test or
+  on the recorded gate runs inside make verify-all, and none on simulated
+  output.
 
 Epics:
 

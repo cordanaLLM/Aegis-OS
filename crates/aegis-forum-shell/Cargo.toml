@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "aegis-forum-shell"
+description = "Aegis OS P05 Forum shell model: the D96 process lifecycle, D77 line-delimited JSON-RPC 2.0 framing, the DecisionRequest and CarbonTelemetry consumers typed on the producers' Rust contracts, and the D74 canvas model with its accessibility tree exported as an accesskit::TreeUpdate. No toolkit, no window, no real socket and no D-Bus."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+accesskit.workspace = true
+aegis-justitia = { path = "../aegis-justitia" }
+aegis-tellus = { path = "../aegis-tellus" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

@@ -41,6 +41,12 @@
       "matchFileNames": ["ui/concordia-tokens/**"],
       "matchPackageNames": ["pnpm"],
       "groupName": "pnpm for the accessibility gate"
+    },
+    {
+      "description": "M16, D100: ESLint and the Svelte plugin and parser it loads run together as the ui/ HISS lint, so they move in one pull request, and the gate's planted violations prove each bump still refuses them",
+      "matchFileNames": ["ui/concordia-tokens/**"],
+      "matchPackageNames": ["eslint", "eslint-plugin-svelte", "svelte-eslint-parser"],
+      "groupName": "eslint for the ui HISS lint"
     }
   ],
   "customManagers": [

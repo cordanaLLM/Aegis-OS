@@ -69,7 +69,8 @@ fn a_correlation_renders_with_and_without_an_identifier() -> Fallible {
 
     let anonymous = Correlation::new(SchemaId::TaskShiftDirective, None);
     assert!(format!("{anonymous}").contains("uncorrelated"));
-    assert_eq!(SchemaId::ALL.len(), 3);
+    // M05's three schemas and the carbon telemetry update M16 added.
+    assert_eq!(SchemaId::ALL.len(), 4);
     for schema in SchemaId::ALL {
         assert!(!schema.tag().is_empty());
         assert!(!schema.edge().name().is_empty());

@@ -64,11 +64,13 @@ verify-mkosi:
 	python3 tools/verify_mkosi_definitions.py
 
 # The accessibility gate (M04, D16, D65, D76, D81): the P12 Concordia token
-# file and its one Svelte 5 component are installed from the lockfile, built and
-# scanned with Playwright and axe-core inside the official Playwright image,
-# named by digest in ui/concordia-tokens/toolchain.pin.json, with networking
-# disabled and the repository mounted read-only (REQ-P12-04). Node and pnpm are
-# the pinned releases, not the image's own Node.
+# file and its one Svelte 5 component are installed from the lockfile, linted
+# for HISS-01, HISS-04 and HISS-08 with ESLint (M16, D100: praetorctl scans no
+# JavaScript or Svelte until cordanaLLM/praetor#589), built and scanned with
+# Playwright and axe-core inside the official Playwright image, named by digest
+# in ui/concordia-tokens/toolchain.pin.json, with networking disabled and the
+# repository mounted read-only (REQ-P12-04). Node and pnpm are the pinned
+# releases, not the image's own Node.
 #
 # It IS part of verify-all, unlike verify-boot, because it runs where CI runs:
 # the ubuntu-24.04 runner has a container engine, and CI runs `make a11y-fetch`
@@ -87,8 +89,10 @@ verify-mkosi:
 # that lockfile's sha256 beside it once the fill succeeded. The cache
 # and the retained logs live under AEGIS_A11Y_DIR, default
 # ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-a11y. Nothing is written into the
-# repository. A pass covers the P12 token component; it closes no accessibility
-# gate for the shell or the image. See docs/build/accessibility-harness.md.
+# repository. A pass covers the P12 token component and the lint; it closes no
+# accessibility gate for the shell or the image. The native P05 shell's tree
+# check is a cargo test inside the crate gate, not a case here (D101). See
+# docs/build/accessibility-harness.md.
 verify-a11y:
 	python3 tools/verify_a11y.py
 

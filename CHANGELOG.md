@@ -50,6 +50,54 @@ version and is never released.
   fails `contract/identity` instead of skipping (D93). M09 and M18 append dated
   evidence, and D92 carries a dated correction.
 
+### Added (P05 Forum shell model and tree check, milestone M16)
+
+- **The native shell's model, as a crate.** `crates/aegis-forum-shell`, named
+  after the component, holds the half of the P05 shell ADR-0004 needs no
+  toolkit, display or bus for: the D96 lifecycle, the D77 framing, the two
+  inbound consumers and the D74 canvas model. It paints nothing, opens no real
+  socket and contacts no D-Bus daemon; its 77 tests run inside
+  `make verify-all` through the crate gate. `docs/build/forum-shell.md` is the
+  evidence.
+- **The D96 lifecycle, driven by stubs.** Five states and exactly nine edges,
+  checked against all 25 pairs; the third consecutive over-budget window
+  quarantines a process and the second does not, and a window within budget
+  restarts the count. P04, P06 and P13 speak through a stubbed input type.
+- **Consumers typed on the producers' own Rust types.** A decision request is
+  decoded by `aegis-justitia` and a carbon telemetry update by `aegis-tellus`,
+  whose new `CarbonTelemetry` payload, `aegis.p13-p05.carbon-telemetry.v1`,
+  carries the draw, the SCI rate, the grid intensity and whether the draw was
+  measured, modelled or simulated. An unknown version is refused with the
+  producer's own typed error; zero watts is a reading.
+- **D77 framing over a socketpair.** One line-delimited JSON-RPC 2.0 message
+  per edge, at most 8,192 bytes before the newline, with a deadline armed
+  before every read and every write. An invalid line is answered with the
+  specification's error code and the next line is read; a line at the bound
+  is applied and one byte more is refused. D32's endpoint and per-hop target
+  are recorded and asserted by no test.
+- **Every canvas node in the accessibility tree.** With 1,000 seeded nodes
+  and 10 in view, the exported `accesskit::TreeUpdate` carries all 1,000 in
+  focus order with a role, a name and bounds; dropping, hiding or clipping the
+  culled ones fails. Focusing a culled node moves the camera until it is in
+  view, and a keyboard-only walk reaches every node and invokes every action,
+  ending in the pointer path's state.
+- **The shell's accessibility check is a tree check (E16-4).** Every node
+  needs a role and a non-empty name; a planted unlabelled node fails and is
+  named; the empty canvas exports a labelled empty state. It is narrower than
+  an axe-core scan, as ADR-0004 records.
+- **accesskit 0.25.1 admitted, and nothing that would paint.** The data model
+  only, locked with uuid 1.26.1; the crate's hygiene test reads its own
+  dependency closure (D78) and refuses gpui, winit, wayland-client, zbus,
+  atspi, accesskit_unix and tokio.
+- **ESLint enforces HISS on `ui/` (D100).** Inside the accessibility gate's
+  pinned container, `ui/concordia-tokens` is linted with exact pins of
+  eslint, eslint-plugin-svelte and svelte-eslint-parser: 60-line functions,
+  complexity 10, 50 statements, no dynamic execution and no direct
+  self-recursion, zero warnings and no inline configuration. Seven planted
+  violations fail with exactly their findings and a 60-line function passes.
+  The first run found a 170-line immediately invoked function in
+  `tests/probe.js`, now fixed. Mutual recursion is not detected.
+
 ### Changed (native P05 shell on gpui, ADR-0004)
 
 - **The whole P05 shell is native Rust (D82, D101, ADR-0004).** One native

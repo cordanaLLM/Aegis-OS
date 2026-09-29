@@ -227,12 +227,12 @@
         }
       ],
       "missing": [
-        "crates/aegis-forum-shell/Cargo.toml, a written-out workspace member entry and a Cargo.lock entry (M16)",
-        "the AccessKit tree check that replaces the axe-core scan for the shell (D101): M16 on the exported accesskit::TreeUpdate, M28 over AT-SPI",
-        "toolchain admission: accesskit 0.25.1 at M16; gpui, git-pinned to one zed-industries/zed commit, and accesskit_unix at M28 (D102)",
-        "Concordia token consumption contract (D05), as Rust theme constants generated from the M04 token file (M28, D101)"
+        "the gpui shell on a zwlr_layer_shell_v1 surface and its live AT-SPI tree check (M28); M16's crate holds the model and its AccessKit tree check over the exported accesskit::TreeUpdate (D101)",
+        "toolchain admission: gpui, git-pinned to one zed-industries/zed commit, and accesskit_unix at M28 (D102); accesskit 0.25.1 was admitted at M16",
+        "Concordia token consumption contract (D05), as Rust theme constants generated from the M04 token file (M28, D101)",
+        "a live session with the portal, at-spi2 and a StatusNotifierWatcher (M29)"
       ],
-      "note": "Re-typed by D101 (ADR-0004) on 2026-09-29: the shell is native Rust, so the row names the crate M16 creates, whose package name is the component name the activation binding requires. The Svelte scaffold export-043 and the Playwright spec export-023 stay cited as the proposal data the row was first built from; they are superseded, not deleted. in_proposed_workspace is false because export-006 lists no P05 crate; manifest_present and lockfile_present stay false while P05 is a proposal."
+      "note": "Re-typed by D101 (ADR-0004) on 2026-09-29: the shell is native Rust, so the row names the crate M16 creates, whose package name is the component name the activation binding requires. The Svelte scaffold export-043 and the Playwright spec export-023 stay cited as the proposal data the row was first built from; they are superseded, not deleted. in_proposed_workspace is false because export-006 lists no P05 crate; manifest_present and lockfile_present stay false while P05 is a proposal. M16 (2026-09-29) created crates/aegis-forum-shell as a written-out workspace member with a Cargo.lock entry; manifest_present and lockfile_present stay false because verify_candidates() reads them as an activation claim, and P05 is not activated."
     },
     {
       "candidate_id": "C06",
