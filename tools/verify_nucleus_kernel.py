@@ -63,6 +63,7 @@ import verify_bpf_objects as bpf
 import verify_contract_pair as contract
 import verify_latency_fixture as harness
 from host import kernel_release
+from host import target as linux_path
 
 ROOT = Path(__file__).resolve().parent.parent
 PIN = ROOT / "build" / "kernel" / "nucleus-artifact.pin.json"
@@ -1481,9 +1482,13 @@ def host_reasons(cache):
         return [f"this host is {sys.platform}; the guest boots under Linux KVM only"]
     reasons = []
     if not os.access(KVM, os.R_OK | os.W_OK):
-        reasons.append(f"{KVM} is absent or not read-write; M10 boots under KVM with no fallback")
+        reasons.append(
+            f"{linux_path(KVM)} is absent or not read-write; M10 boots under KVM with no fallback"
+        )
     if not HOST_CONFIG.exists():
-        reasons.append(f"{HOST_CONFIG} does not exist; the host half of the probe cannot run")
+        reasons.append(
+            f"{linux_path(HOST_CONFIG)} does not exist; the host half of the probe cannot run"
+        )
     store = contract_store()
     absent = [str(path) for path in store.values() if not path.is_file()]
     if absent:
