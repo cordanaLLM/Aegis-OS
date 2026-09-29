@@ -33,10 +33,17 @@
 //! configuration and resolves no revision. The mkosi reference is a path the
 //! mkosi gate in `tools/verify_mkosi_definitions.py` resolves; the revision is
 //! a recorded value and no git command is run to confirm it.
+//!
+//! # Wire form
+//!
+//! A manifest is a JSON object, and so is each of its nested structs: the
+//! array form serde would otherwise derive is refused at every level (see
+//! [`crate::payload`]). The JSON Schema generated from these types is
+//! committed as `build/product-input.schema.json` ([`crate::schema`]).
 
 use crate::field::{CorrelationId, PackageName, RelativePath, Revision, SnapshotId};
 use crate::finding::Finding;
-use crate::payload::{MAX_PAYLOAD_BYTES, declared_schema};
+use crate::payload::{MAX_PAYLOAD_BYTES, declared_schema, object_only};
 use crate::repart::{MAX_DEFINITIONS, RepartDefinition, check_repart_set};
 use crate::sysupdate::TransferDefinition;
 use crate::{DefinitionError, MAX_FINDINGS};
@@ -54,7 +61,17 @@ pub const MAX_RETRY_ATTEMPTS: u32 = 5;
 pub const MAX_BACKOFF_SECONDS: u32 = 3600;
 
 /// The contract versions of the product input manifest this build admits.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+)]
 #[non_exhaustive]
 pub enum ProductInputVersion {
     /// Version 1, tagged `aegis.p01.product-input.v1`.
@@ -66,7 +83,17 @@ pub enum ProductInputVersion {
 ///
 /// The spelling is mkosi's own `Distribution=` value, so the manifest and the
 /// image configuration name the same thing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+)]
 pub enum DistributionId {
     /// Arch Linux, spelled `arch`.
     #[serde(rename = "arch")]
@@ -78,7 +105,7 @@ pub enum DistributionId {
 /// There is no unpinned spelling: [`SnapshotId`] refuses `latest`, which is
 /// the value REQ-P01-01 records as the reason the image inputs are not
 /// reproducible today.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct DistributionPin {
     /// The distribution the image is built from.
@@ -88,7 +115,7 @@ pub struct DistributionPin {
 }
 
 /// Where the reviewed configuration inputs live in this repository.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct DefinitionReferences {
     /// The `repart.d(5)` drop-in directory.
@@ -102,7 +129,17 @@ pub struct DefinitionReferences {
 }
 
 /// Where the boot kernel comes from (decision D07, amended by D70).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 pub enum BootKernelSource {
     /// The pinned distribution package, which D07 makes the default.
@@ -120,7 +157,7 @@ pub enum BootKernelSource {
 /// the distribution package that boots by default, and the requirement payload
 /// any kernel must satisfy. A manifest therefore says who currently builds the
 /// kernel without losing what the kernel has to be.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct BootKernel {
     /// Which source is in force.
@@ -130,17 +167,19 @@ pub struct BootKernel {
 }
 
 /// The bounded retry budget for one request across the boundary.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct RetryPolicy {
     /// How many attempts one request may make in total.
+    #[schemars(range(min = 1, max = MAX_RETRY_ATTEMPTS))]
     pub max_attempts: u32,
     /// How long to wait between attempts, in seconds.
+    #[schemars(range(min = 1, max = MAX_BACKOFF_SECONDS))]
     pub backoff_seconds: u32,
 }
 
 /// The product input manifest payload.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ProductInputManifest {
     /// The contract version this payload claims.
@@ -154,12 +193,87 @@ pub struct ProductInputManifest {
     /// Where the reviewed configuration inputs live.
     pub definitions: DefinitionReferences,
     /// The image content set the recorded requirements name.
+    #[schemars(length(min = 1, max = MAX_PACKAGES))]
     pub packages: Vec<PackageName>,
     /// The boot kernel identity.
     pub kernel: BootKernel,
     /// The bounded retry budget.
     pub retries: RetryPolicy,
 }
+
+// The field mirrors the object-form decoders are derived on (see
+// `crate::payload`). Each names every field of its public struct, with the
+// same type and the same serde attributes; `remote` makes the compiler hold
+// the field list, and the round-trip tests and the committed JSON Schema hold
+// the attributes.
+
+/// The decoder of [`DistributionPin`], object form only.
+#[derive(serde::Deserialize)]
+#[serde(
+    remote = "DistributionPin",
+    rename_all = "kebab-case",
+    deny_unknown_fields
+)]
+struct DistributionPinFields {
+    id: DistributionId,
+    snapshot: SnapshotId,
+}
+
+/// The decoder of [`DefinitionReferences`], object form only.
+#[derive(serde::Deserialize)]
+#[serde(
+    remote = "DefinitionReferences",
+    rename_all = "kebab-case",
+    deny_unknown_fields
+)]
+struct DefinitionReferencesFields {
+    repart: RelativePath,
+    sysupdate: RelativePath,
+    mkosi: RelativePath,
+    kernel_requirement: RelativePath,
+}
+
+/// The decoder of [`BootKernel`], object form only.
+#[derive(serde::Deserialize)]
+#[serde(remote = "BootKernel", rename_all = "kebab-case", deny_unknown_fields)]
+struct BootKernelFields {
+    source: BootKernelSource,
+    default_package: PackageName,
+}
+
+/// The decoder of [`RetryPolicy`], object form only.
+#[derive(serde::Deserialize)]
+#[serde(remote = "RetryPolicy", rename_all = "kebab-case", deny_unknown_fields)]
+struct RetryPolicyFields {
+    max_attempts: u32,
+    backoff_seconds: u32,
+}
+
+/// The decoder of [`ProductInputManifest`], object form only.
+#[derive(serde::Deserialize)]
+#[serde(
+    remote = "ProductInputManifest",
+    rename_all = "kebab-case",
+    deny_unknown_fields
+)]
+struct ProductInputManifestFields {
+    schema: ProductInputVersion,
+    correlation_id: CorrelationId,
+    revision: Revision,
+    distribution: DistributionPin,
+    definitions: DefinitionReferences,
+    packages: Vec<PackageName>,
+    kernel: BootKernel,
+    retries: RetryPolicy,
+}
+
+object_only!(
+    DistributionPin => DistributionPinFields,
+    DefinitionReferences => DefinitionReferencesFields,
+    BootKernel => BootKernelFields,
+    RetryPolicy => RetryPolicyFields,
+    ProductInputManifest => ProductInputManifestFields,
+);
 
 /// Why a product input manifest was refused.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]

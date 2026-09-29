@@ -10,12 +10,16 @@ this repository's payloads against it, the provenance read out of
 `go version -m`, the build request an accepted payload must print, what counts
 as a correlated refusal, the tampered and bounded payloads it writes, the
 identity record and the cache states that skip and the ones that fail, the
-checkout that must hold nothing but the pinned commit, the environment every
-command runs in and the digest the fetch records -- and the surfaces the gate
-runs through: the Makefile, CI, the admission page and the
-evidence page. The recorded outputs below are what imago 16f964b printed on the
-reference profile on 2026-09-28, kept as bytes. The sweeps at the end hold the
-gate to HISS-02, HISS-04 and HISS-08.
+checkouts that must hold nothing but the pinned commits, the environment every
+command runs in, the digest the fetch records, and what nucleus's report must
+say for each row (D106) -- and the surfaces the gate runs through: the
+Makefile, CI, the admission page and the evidence page. The recorded outputs
+below are what imago 16f964b printed on the reference profile on 2026-09-28,
+and what nucleus 0a4eac9's verifier wrote on 2026-09-29, kept as bytes;
+nucleus's reports are abridged by dropping fields and rows, never by adding or
+changing one, and a variant nucleus did not write is built inside its test and
+named synthetic there. The sweeps at the end hold the gate to HISS-02, HISS-04
+and HISS-08.
 """
 
 import ast
@@ -44,11 +48,13 @@ MAX_FUNCTION_LINES = 60
 MAX_COMPLEXITY = 10
 MAX_STATEMENTS = 50
 BRANCHES = (ast.If, ast.For, ast.While, ast.IfExp, ast.ExceptHandler, ast.With, ast.Assert)
-# What the gate may start: git, go and the binary under test (imago or the stand-in).
-ALLOWED_PROGRAMS = {"git", "go", "<binary>"}
+# What the gate may start: git, go, the binary under test (imago or the stand-in)
+# and the interpreter running it, for nucleus's stdlib-only verifier.
+ALLOWED_PROGRAMS = {"git", "go", "python3", "<binary>"}
 # The only functions that may reach the network, and the commands that do.
 NETWORK_FUNCTIONS = {"fetch_identity", "fetch_checkout", "fetch_build"}
 PIN_COMMIT = "16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee"
+NUCLEUS_COMMIT = "0a4eac93f29fef432bfa9d892ad236568ce2f482"
 # The pinned commit's committer time as go writes vcs.time, and as `git log
 # --format=%ct` prints it.
 COMMITTED = "2026-09-16T13:01:55Z"
@@ -97,6 +103,57 @@ EMPTY_STDERR = (
     "Error: kernel requirement aegis-m18-kernel-requirement-0001: features: "
     "feature list is empty\n" * 2
 )
+# nucleus 0a4eac9's versions.json downstream.requirements, as the checkout holds it.
+VERSIONS = (
+    b'{"downstream": {"repository": "cordanaLLM/imago", "requirements": ['
+    b'{"label": "imago", "repository": "cordanaLLM/imago", "path": "kernel/requirement.json",'
+    b' "dispatched": true, "streams": ["bleeding", "mainstream", "lts", "realtime"]},'
+    b'{"label": "aegis-os", "repository": "cordanaLLM/Aegis-OS",'
+    b' "path": "build/kernel-requirement.json", "dispatched": false, "streams": ["realtime"]}'
+    b"]}}"
+)
+# What `scripts/verify_kernel_requirement.py --report-json` wrote at 0a4eac9 for
+# build/kernel-requirement.json, abridged to one feature and without its policy.
+# Each report below is abridged by dropping fields, streams and rows only:
+# nothing is added or changed. Gate run r20260929T090040-a024 kept the full
+# reports; a variant nucleus did not write is built inside its test and named
+# synthetic there.
+REPORT_HEAD = (
+    b'{"schema": "nucleus.kernel-requirement-report.v1",'
+    b' "nucleus_revision": "0a4eac93f29fef432bfa9d892ad236568ce2f482",'
+    b' "evidence_level": "declared", '
+)
+PASS_REPORT = REPORT_HEAD + (
+    b'"verdict": "PASS", "documents": [{"label": "aegis-os", "status": "PASS",'
+    b' "source": {"label": "aegis-os", "repository": "cordanaLLM/Aegis-OS",'
+    b' "path": "build/kernel-requirement.json", "ref": null,'
+    b' "sha256": "d796c408b4db5dd9e5f22d35c109a8dccadcdb14f3f68ce7de2cddc594d47adb"},'
+    b' "correlation_id": "aegis-m18-kernel-requirement-0001", "architectures": ["x86-64"],'
+    b' "bound_streams": ["realtime"], "held": ["realtime"], "reasons": [], "streams": []}]}'
+)
+# ... and for the requirement with CONFIG_AEGIS_CONTRACT_UNSET planted, abridged.
+FAIL_REPORT = REPORT_HEAD + (
+    b'"verdict": "FAIL", "documents": [{"label": "aegis-os", "status": "FAIL",'
+    b' "source": {"sha256": "706ba4ec256d9e0a6d8cb68cc5defbc8db9d74a1f2ef416edcb76ac414b9bcd9"},'
+    b' "correlation_id": "aegis-m18-kernel-requirement-0001",'
+    b' "bound_streams": ["realtime"], "held": [], "reasons": ["aegis-m18-kernel-requirement-0001:'
+    b" realtime x86_64: CONFIG_AEGIS_CONTRACT_UNSET (required-by REQ-P07-01) requires built-in,"
+    b' observed unrecorded"], "streams": [{"stream": "lts", "bound": false,'
+    b' "architectures": [{"arch": "x86_64", "features": [{"symbol": "CONFIG_AEGIS_CONTRACT_UNSET",'
+    b' "observed": null, "satisfied": false}]}]}, {"stream": "realtime", "bound": true,'
+    b' "architectures": [{"token": "x86-64", "arch": "x86_64", "features": [{"symbol":'
+    b' "CONFIG_PREEMPT_RT", "observed": "y", "satisfied": true}, {"symbol":'
+    b' "CONFIG_AEGIS_CONTRACT_UNSET", "observed": null, "satisfied": false}]}]}]}]}'
+)
+# ... and for the empty feature list.
+EMPTY_REPORT = REPORT_HEAD + (
+    b'"verdict": "FAIL", "documents": [{"label": "aegis-os", "status": "REJECTED",'
+    b' "source": {"sha256": "cfdcdf932ecec40229b07f68f1bfced4d78d45d6cba3d585fef5934aee67af31"},'
+    b' "rejection": {"kind": "NoFeatures", "message": "the document lists no required feature;'
+    b' an empty requirement is refused"}}]}'
+)
+# nucleus's main before D106, the commit a pre-D106 fetch recorded as pinned.
+LS_REMOTE_MAIN = "8672247ff1bd22ed6b6b89d498116f20ff00c2ab"
 LS_REMOTE = (
     "40c43718a6cd04884c0440d5048063e3648acfe5\trefs/heads/fix/uki-refuse-fabrication\n"
     "8672247ff1bd22ed6b6b89d498116f20ff00c2ab\trefs/heads/main\n"
@@ -175,6 +232,7 @@ def filled_cache(directory, pinned=None):
     """Return a Context over a cache with every piece present, fetched for `pinned`."""
     context = context_in(directory)
     (context.checkout / ".git").mkdir(parents=True)
+    (context.nucleus / ".git").mkdir(parents=True)
     context.binary.parent.mkdir(parents=True)
     context.binary.write_bytes(b"\x7fELF")
     pins = pinned or {name: context.pin[name]["commit"] for name in gate.PRODUCERS}
@@ -189,7 +247,10 @@ class PinTests(unittest.TestCase):
     def test_the_committed_pin_loads(self):
         pin = gate.load_pin()
         self.assertEqual(pin["imago"]["commit"], PIN_COMMIT)
-        self.assertEqual(pin["nucleus"]["commit"], "8672247ff1bd22ed6b6b89d498116f20ff00c2ab")
+        self.assertEqual(pin["nucleus"]["commit"], NUCLEUS_COMMIT)
+        self.assertEqual(pin["nucleus"]["label"], "aegis-os")
+        self.assertEqual(pin["nucleus"]["bound-streams"], ["realtime"])
+        self.assertEqual(pin["nucleus"]["evidence-level"], "declared")
         self.assertEqual(pin["imago"]["go"], "1.27.1")
         self.assertEqual(len(pin["imago"]["fixtures"]), 3)
 
@@ -222,6 +283,12 @@ class PinTests(unittest.TestCase):
             (("imago", "bounds", "MaxRetryAttempts"), True, "positive integer"),
             (("imago", "bounds", "source"), "../pkg/aegis/aegis.go", "relative path"),
             (("imago", "fixtures"), [], "1..8"),
+            (("nucleus", "verifier"), "../scripts/verify.py", "relative path"),
+            (("nucleus", "label"), "Aegis OS", "versions.json label"),
+            (("nucleus", "report-schema"), "nucleus.kernel-requirement-report.v2", "report-schema"),
+            (("nucleus", "evidence-level"), "built", "evidence-level"),
+            (("nucleus", "bound-streams"), [], "bound-streams"),
+            (("nucleus", "bound-streams"), ["Realtime"], "bound-streams"),
         )
         for keys, value, needle in defects:
             with self.subTest(field=".".join(keys)):
@@ -247,6 +314,14 @@ class PinTests(unittest.TestCase):
         pin["imago"]["fixtures"] = [dict(row) for _ in range(gate.MAX_FIXTURES)]
         self.assertEqual(gate.pin_problems(pin), [])
         pin["imago"]["fixtures"].append(dict(row))
+        self.assertTrue(gate.pin_problems(pin))
+
+    def test_the_stream_bound_is_inclusive(self):
+        """Boundary: eight bound streams are admitted, nine are refused."""
+        pin = committed_pin()
+        pin["nucleus"]["bound-streams"] = [f"s{index}" for index in range(gate.MAX_STREAMS)]
+        self.assertEqual(gate.pin_problems(pin), [])
+        pin["nucleus"]["bound-streams"].append("one-more")
         self.assertTrue(gate.pin_problems(pin))
 
     def test_a_pin_that_is_not_json_is_a_gate_error(self):
@@ -629,7 +704,7 @@ class CacheTests(unittest.TestCase):
     def test_an_empty_cache_skips_and_names_the_fetch(self):
         with tempfile.TemporaryDirectory() as base:
             reasons = gate.cache_reasons(context_in(base))
-        self.assertEqual(len(reasons), 3)
+        self.assertEqual(len(reasons), 4)
         for reason in reasons:
             self.assertIn("run `make contract-fetch`", reason)
 
@@ -651,6 +726,55 @@ class CacheTests(unittest.TestCase):
         self.assertEqual(len(reasons), 1)
         self.assertIn("no imago binary under", reasons[0])
 
+    def test_a_missing_nucleus_checkout_is_its_own_reason(self):
+        """Boundary: a record for this pin without the nucleus checkout skips and says why."""
+        with tempfile.TemporaryDirectory() as base:
+            context = filled_cache(base)
+            (context.nucleus / ".git").rmdir()
+            reasons = gate.cache_reasons(context)
+            self.assertEqual(gate.skip_reasons(context), (reasons, []))
+        self.assertEqual(len(reasons), 1)
+        self.assertIn("no nucleus checkout under", reasons[0])
+
+    def test_a_record_for_another_pin_is_found_beside_an_absent_piece(self):
+        """Negative (D93): the pre-D106 cache -- nucleus 8672247, no nucleus checkout --
+        is present but wrong, and the absent checkout does not turn it into a skip."""
+        with tempfile.TemporaryDirectory() as base:
+            imago = gate.load_pin()["imago"]["commit"]
+            context = filled_cache(base, {"imago": imago, "nucleus": LS_REMOTE_MAIN})
+            (context.nucleus / ".git").rmdir()
+            self.assertEqual(len(gate.cache_reasons(context)), 1)
+            reasons, stale = gate.skip_reasons(context)
+        self.assertEqual(reasons, [])
+        self.assertEqual(len(stale), 1)
+        self.assertIn(f"nucleus: the cache was fetched for {LS_REMOTE_MAIN}", stale[0])
+        self.assertIn("run `make contract-fetch`", stale[0])
+
+    def test_no_record_or_one_for_this_pin_is_not_stale(self):
+        """Boundary: only a record that is present and names another pin is stale."""
+        with tempfile.TemporaryDirectory() as base:
+            context = filled_cache(base)
+            self.assertEqual(gate.stale_problems(context), [])
+            context.identity.unlink()
+            self.assertEqual(gate.stale_problems(context), [])
+            reasons, stale = gate.skip_reasons(context)
+        self.assertEqual(stale, [])
+        self.assertEqual(len(reasons), 1)
+        self.assertIn("no identity record under", reasons[0])
+
+    def test_a_record_without_producers_is_stale(self):
+        """Negative: a record that names no pin at all cannot vouch for this one."""
+        with tempfile.TemporaryDirectory() as base:
+            context = filled_cache(base)
+            context.identity.write_bytes(b'{"producers": []}')
+            self.assertEqual(len(gate.stale_problems(context)), len(gate.PRODUCERS))
+
+    def test_missing_tools_skip_before_the_record_is_read(self):
+        """Boundary: without go the gate cannot run at all, stale record or not."""
+        with tempfile.TemporaryDirectory() as base, on_path("git"):
+            context = filled_cache(base, {"imago": "c" * 40, "nucleus": "d" * 40})
+            self.assertEqual(gate.skip_reasons(context), (["go is not on PATH"], []))
+
     def test_an_unreadable_identity_record_is_a_failure(self):
         with tempfile.TemporaryDirectory() as base:
             context = filled_cache(base)
@@ -658,6 +782,8 @@ class CacheTests(unittest.TestCase):
             self.assertEqual(gate.cache_reasons(context), [])
             with self.assertRaises(gate.GateError):
                 gate.identity_case(context)
+            with self.assertRaises(gate.GateError):
+                gate.stale_problems(context)
 
     def test_missing_tools_are_reasons(self):
         with on_path("git"):
@@ -747,12 +873,13 @@ class GuardTests(unittest.TestCase):
         self.assertIn("FAIL: the gate could not run: the pin does not declare schema", printed)
 
     def identity_cases(self, failing):
-        """Run run_cases with the four identity cases stubbed; `failing` maps a case to its
+        """Run run_cases with the five identity cases stubbed; `failing` maps a case to its
         problems. Return (failed count, printed text, whether the payload cases ran)."""
         names = (
             ("pin_case", "contract/pin"),
             ("identity_case", "contract/identity"),
             ("checkout_case", "contract/checkout"),
+            ("nucleus_checkout_case", "contract/nucleus-checkout"),
             ("provenance_case", "contract/binary-provenance"),
         )
         with tempfile.TemporaryDirectory() as base, contextlib.ExitStack() as stack:
@@ -770,6 +897,15 @@ class GuardTests(unittest.TestCase):
         failed, printed, ran = self.identity_cases({"contract/checkout": ["HEAD is 'x'"]})
         self.assertEqual(failed, 1)
         self.assertIn("the payload cases did not run, because contract/checkout failed", printed)
+        self.assertFalse(ran)
+
+    def test_a_wrong_nucleus_checkout_stops_the_payload_cases(self):
+        """Negative (D106): a nucleus checkout that is not the pin runs nothing it would verify."""
+        failed, printed, ran = self.identity_cases(
+            {"contract/nucleus-checkout": ["versions.json aegis-os streams is ['lts']"]}
+        )
+        self.assertEqual(failed, 1)
+        self.assertIn("because contract/nucleus-checkout failed", printed)
         self.assertFalse(ran)
 
     def test_the_stated_reason_names_the_cases_that_failed(self):
@@ -794,6 +930,38 @@ class GuardTests(unittest.TestCase):
         self.assertIn("FAIL contract/identity", printed)
         self.assertIn("the cache was fetched for " + "c" * 40, printed)
         self.assertNotIn("SKIP", printed)
+
+    def test_the_cache_a_pre_d106_fetch_left_fails_rather_than_skips(self):
+        """Negative (D93): its record names nucleus 8672247 and it holds no nucleus checkout;
+        the gate fails contract/identity, runs nothing else and prints no SKIP."""
+        imago = gate.load_pin()["imago"]["commit"]
+        with tempfile.TemporaryDirectory() as base, on_path("go", "git"):
+            context = filled_cache(base, {"imago": imago, "nucleus": LS_REMOTE_MAIN})
+            (context.nucleus / ".git").rmdir()
+            store = {gate.CACHE_VARIABLE: str(context.store)}
+            with mock.patch.dict(gate.os.environ, store), mock.patch.object(
+                gate, "run", return_value=(0, "", "")
+            ), mock.patch.object(gate, "checkout_case") as checkout:
+                code, printed = quiet(gate.main, [])
+        self.assertEqual(code, 1)
+        self.assertIn("FAIL contract/identity", printed)
+        self.assertIn(f"nucleus: the cache was fetched for {LS_REMOTE_MAIN}", printed)
+        self.assertIn("the other cases did not run", printed)
+        self.assertNotIn("SKIP", printed)
+        checkout.assert_not_called()
+
+    def test_a_cache_for_this_pin_without_a_piece_still_skips(self):
+        """Boundary: absence alone, under a record for this pin, stays a stated skip."""
+        with tempfile.TemporaryDirectory() as base, on_path("go", "git"):
+            context = filled_cache(base)
+            (context.nucleus / ".git").rmdir()
+            store = {gate.CACHE_VARIABLE: str(context.store)}
+            with mock.patch.dict(gate.os.environ, store), mock.patch.object(gate, "run") as run:
+                code, printed = quiet(gate.main, [])
+        self.assertEqual(code, 0)
+        self.assertIn("SKIP: no nucleus checkout under", printed)
+        self.assertNotIn("FAIL", printed)
+        run.assert_not_called()
 
     def test_every_terminating_signal_this_host_has_is_routed(self):
         with mock.patch.object(gate.signal, "signal") as install:
@@ -991,6 +1159,297 @@ class DigestTests(unittest.TestCase):
         self.assertIn("the fetch recorded None", problems[0])
 
 
+def planted_bytes():
+    """Return the bytes the gate writes for the requirement with the planted symbol."""
+    requirement = kernel_requirement()
+    features = requirement["features"] + [gate.PLANTED_FEATURE]
+    return gate.json_bytes(gate.with_field(requirement, "features", features))
+
+
+def empty_bytes():
+    """Return the bytes the gate writes for the requirement with no feature."""
+    return gate.json_bytes(gate.with_field(kernel_requirement(), "features", []))
+
+
+def stream_row(document, name):
+    """Return the one stream row named `name` in a report document."""
+    (row,) = [stream for stream in document["streams"] if stream["stream"] == name]
+    return row
+
+
+class NucleusReportTests(unittest.TestCase):
+    """What nucleus's report must say for a row, read from its JSON and never its text (D106)."""
+
+    pin = gate.load_pin()
+    sent = (ROOT / "build" / "kernel-requirement.json").read_bytes()
+
+    def problems(self, record, expected, sent=None):
+        verdict = "PASS" if expected["status"] == "PASS" else "FAIL"
+        document = gate.document_of(record)
+        return gate.report_problems(record, self.pin, verdict) + gate.document_problems(
+            document, expected, self.pin["nucleus"], self.sent if sent is None else sent
+        )
+
+    def test_the_recorded_pass_is_admitted(self):
+        self.assertEqual(self.problems(json.loads(PASS_REPORT), gate.PASSED), [])
+
+    def test_the_recorded_correlated_refusal_is_admitted(self):
+        """Positive: the gate's own planted payload is the one nucleus hashed and refused."""
+        record = json.loads(FAIL_REPORT)
+        self.assertEqual(self.problems(record, gate.FAILED, planted_bytes()), [])
+
+    def test_the_recorded_rejection_is_admitted(self):
+        record = json.loads(EMPTY_REPORT)
+        self.assertEqual(self.problems(record, gate.rejected("NoFeatures"), empty_bytes()), [])
+
+    def test_another_evidence_level_or_revision_fails(self):
+        """Negative: a resolved report, or one for another commit, is not what the pin records."""
+        for key, value in (("evidence_level", "resolved"), ("nucleus_revision", "a" * 40)):
+            with self.subTest(key=key):
+                record = dict(json.loads(PASS_REPORT), **{key: value})
+                problems = self.problems(record, gate.PASSED)
+                self.assertEqual(len(problems), 1, problems)
+                self.assertIn(f"report {key} is {value!r}", problems[0])
+
+    def test_a_pass_not_held_by_exactly_the_bound_streams_fails(self):
+        for key, value in (("held", []), ("bound_streams", ["lts"]), ("reasons", ["x"])):
+            with self.subTest(key=key):
+                record = json.loads(PASS_REPORT)
+                record["documents"][0][key] = value
+                self.assertEqual(len(self.problems(record, gate.PASSED)), 1)
+
+    def test_a_refusal_that_drops_the_correlation_id_or_the_symbol_fails(self):
+        record = json.loads(FAIL_REPORT)
+        reason = record["documents"][0]["reasons"][0]
+        record["documents"][0]["reasons"] = [reason.replace("-0001:", "-0002:")]
+        problems = self.problems(record, gate.FAILED, planted_bytes())
+        self.assertTrue(any("not every reason opens with" in line for line in problems))
+        record["documents"][0]["reasons"] = ["aegis-m18-kernel-requirement-0001: realtime x86_64"]
+        problems = self.problems(record, gate.FAILED, planted_bytes())
+        self.assertEqual(problems, ["no reason names CONFIG_AEGIS_CONTRACT_UNSET"])
+
+    def test_a_planted_symbol_nucleus_sets_fails(self):
+        """Negative: a refusal that records the planted symbol as set is not the one planted."""
+        record = json.loads(FAIL_REPORT)
+        realtime = stream_row(record["documents"][0], "realtime")
+        check = realtime["architectures"][0]["features"][1]
+        check.update(observed="y", satisfied=True)
+        problems = self.problems(record, gate.FAILED, planted_bytes())
+        self.assertEqual(len(problems), 1)
+        self.assertIn("does not record CONFIG_AEGIS_CONTRACT_UNSET unset", problems[0])
+
+    def test_another_kind_status_or_document_fails(self):
+        record = json.loads(EMPTY_REPORT)
+        wrong_kind = self.problems(record, gate.rejected("DigestMismatch"), empty_bytes())
+        self.assertEqual(wrong_kind, ["rejected as 'NoFeatures', expected DigestMismatch"])
+        self.assertTrue(self.problems(record, gate.PASSED, empty_bytes()))
+        other_bytes = self.problems(record, gate.rejected("NoFeatures"), self.sent)
+        self.assertEqual(len(other_bytes), 1)
+        self.assertIn("hashes the document as", other_bytes[0])
+
+    def test_no_report_or_two_documents_fail(self):
+        self.assertEqual(
+            gate.report_problems(None, self.pin, "PASS"), ["the verifier wrote no JSON report"]
+        )
+        record = json.loads(PASS_REPORT)
+        record["documents"] *= 2
+        self.assertEqual(gate.document_of(record), {})
+        self.assertIn(
+            "the report does not hold exactly one document",
+            gate.report_problems(record, self.pin, "PASS"),
+        )
+
+    def test_only_bound_streams_count_and_no_check_fails_closed(self):
+        """Boundary: an unbound stream is information only. nucleus recorded the planted
+        symbol unset on lts as well, so a synthetic copy sets it there: bound to realtime
+        alone the refusal still holds, and with lts bound too it would not. A report
+        with no check of the planted symbol at all is refused rather than passed."""
+        document = gate.document_of(json.loads(FAIL_REPORT))
+        self.assertEqual(len(gate.planted_checks(document, ["realtime"])), 1)
+        self.assertEqual(len(gate.planted_checks(document, ["realtime", "lts"])), 2)
+        self.assertIsNone(gate.unset_problem(gate.planted_checks(document, ["realtime", "lts"])))
+        synthetic = gate.document_of(json.loads(FAIL_REPORT))
+        check = stream_row(synthetic, "lts")["architectures"][0]["features"][0]
+        check.update(observed="y", satisfied=True)
+        self.assertIsNone(gate.unset_problem(gate.planted_checks(synthetic, ["realtime"])))
+        both = gate.planted_checks(synthetic, ["realtime", "lts"])
+        self.assertIsNotNone(gate.unset_problem(both))
+        self.assertIsNotNone(gate.unset_problem(gate.planted_checks(document, ["mainstream"])))
+        self.assertIsNotNone(gate.unset_problem([]))
+
+    def test_another_report_schema_or_verdict_fails(self):
+        """Negative: the report's schema id and its top-level verdict each count alone."""
+        schema = dict(json.loads(PASS_REPORT), schema="nucleus.kernel-requirement-report.v2")
+        problems = self.problems(schema, gate.PASSED)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("report schema is 'nucleus.kernel-requirement-report.v2'", problems[0])
+        verdict = dict(json.loads(FAIL_REPORT), verdict="PASS")
+        problems = self.problems(verdict, gate.FAILED, planted_bytes())
+        self.assertEqual(problems, ["report verdict is 'PASS', expected 'FAIL'"])
+
+    def test_another_label_or_correlation_id_fails(self):
+        """Negative: a document for another label, or a PASS naming another document's
+        correlation id, is not this repository's requirement held."""
+        record = json.loads(PASS_REPORT)
+        record["documents"][0]["label"] = "imago"
+        problems = self.problems(record, gate.PASSED)
+        self.assertEqual(problems, ["document 'imago' is 'PASS', expected aegis-os PASS"])
+        record = json.loads(PASS_REPORT)
+        record["documents"][0]["correlation_id"] = "aegis-m18-kernel-reference-0001"
+        problems = self.problems(record, gate.PASSED)
+        self.assertEqual(problems, ["document correlation_id is 'aegis-m18-kernel-reference-0001'"])
+
+
+class NucleusBindingTests(unittest.TestCase):
+    """nucleus's versions.json must bind the pinned label to this repository's payload."""
+
+    nucleus = gate.load_pin()["nucleus"]
+
+    def test_the_recorded_binding_passes(self):
+        row = gate.bound_row(json.loads(VERSIONS), "aegis-os")
+        self.assertEqual(row["streams"], ["realtime"])
+        self.assertEqual(gate.binding_problems(row, self.nucleus), [])
+
+    def test_another_path_stream_or_repository_fails(self):
+        for key, value in (
+            ("path", "build/kernel-requirement.reference.json"),
+            ("streams", ["realtime", "lts"]),
+            ("repository", "lusoris/Aegis-OS"),
+        ):
+            with self.subTest(key=key):
+                row = dict(gate.bound_row(json.loads(VERSIONS), "aegis-os"), **{key: value})
+                problems = gate.binding_problems(row, self.nucleus)
+                self.assertEqual(len(problems), 1, problems)
+                self.assertIn(f"aegis-os {key} is", problems[0])
+
+    def test_an_absent_or_repeated_label_binds_nothing(self):
+        versions = json.loads(VERSIONS)
+        self.assertIsNone(gate.bound_row(versions, "aegis"))
+        versions["downstream"]["requirements"].append({"label": "aegis-os"})
+        self.assertIsNone(gate.bound_row(versions, "aegis-os"))
+        self.assertEqual(
+            gate.binding_problems(None, self.nucleus),
+            ["versions.json binds no single downstream row to aegis-os"],
+        )
+        self.assertIsNone(gate.bound_row([], "aegis-os"))
+
+    def test_the_row_bound_is_inclusive(self):
+        """Boundary: the label as the 64th row is read; as the 65th it is not, and fails."""
+        row = gate.bound_row(json.loads(VERSIONS), "aegis-os")
+        filler = [{"label": f"other-{index}"} for index in range(gate.MAX_REQUIREMENT_ROWS - 1)]
+        versions = {"downstream": {"requirements": filler + [row]}}
+        self.assertEqual(gate.bound_row(versions, "aegis-os"), row)
+        versions["downstream"]["requirements"].insert(0, {"label": "one-more"})
+        self.assertIsNone(gate.bound_row(versions, "aegis-os"))
+
+
+class NucleusRunTests(unittest.TestCase):
+    """How the gate runs nucleus's verifier, and the rows it sends."""
+
+    def test_the_verifier_runs_isolated_from_the_checkout_with_absolute_paths(self):
+        with tempfile.TemporaryDirectory() as base, mock.patch.object(
+            gate, "run", return_value=(0, "", "")
+        ) as run:
+            context = context_in(base)
+            result, record = gate.verify_requirement(
+                context, "nucleus-x", gate.KERNEL_REQUIREMENT, ["--sha256", "aegis-os=ab"]
+            )
+            argv, cwd = run.call_args.args[0], run.call_args.kwargs["cwd"]
+        self.assertEqual(argv[:3], [gate.PYTHON, "-I", "scripts/verify_kernel_requirement.py"])
+        self.assertEqual(argv[3:5], ["--requirement", f"aegis-os={gate.KERNEL_REQUIREMENT}"])
+        self.assertTrue(Path(argv[6]).is_absolute())
+        self.assertEqual(
+            argv[7:], ["--nucleus-revision", NUCLEUS_COMMIT, "--sha256", "aegis-os=ab"]
+        )
+        self.assertEqual(cwd, context.nucleus)
+        self.assertEqual((result["exit"], record), (0, None))
+
+    def test_the_rows_send_the_committed_bytes_and_one_field_edits(self):
+        requirement = kernel_requirement()
+        digest = gate.sha256_of(gate.KERNEL_REQUIREMENT.read_bytes())
+        with tempfile.TemporaryDirectory() as base:
+            context = context_in(base)
+            rows = gate.nucleus_rows(context)
+            written = {
+                label: Path(path).read_bytes()
+                for rows_ in rows.values()
+                for label, path, _, _ in rows_
+            }
+        accepted = rows["nucleus/accepted"][0]
+        self.assertEqual(accepted[1], gate.KERNEL_REQUIREMENT)
+        self.assertEqual(
+            accepted[2],
+            [
+                "--sha256",
+                f"aegis-os={digest}",
+                "--correlation-id",
+                f"aegis-os={requirement['correlation-id']}",
+            ],
+        )
+        self.assertEqual(written["planted-unset-symbol"], planted_bytes())
+        self.assertEqual(written["features-0"], empty_bytes())
+        self.assertEqual(len(json.loads(written["features-1"])["features"]), 1)
+        binding = {row[0]: row for row in rows["nucleus/dispatch-binding-refused"]}
+        reference = gate.KERNEL_REFERENCE.read_bytes()
+        self.assertIn(
+            f"aegis-os={gate.sha256_of(reference)}", binding["sha256-of-another-document"][2]
+        )
+        self.assertIn(
+            "aegis-os=aegis-m18-kernel-reference-0001", binding["correlation-id-of-another"][2]
+        )
+        self.assertEqual(
+            requirement, kernel_requirement(), "the source payload must stay untouched"
+        )
+
+    def test_a_case_asserts_the_exit_code_beside_the_report(self):
+        """Negative: the right report with the wrong exit code fails, and the reverse."""
+        rows = [("requirement", gate.KERNEL_REQUIREMENT, [], gate.PASSED)]
+        for code, record, failed in (
+            (0, PASS_REPORT, False),
+            (1, PASS_REPORT, True),
+            (0, FAIL_REPORT, True),
+        ):
+            with self.subTest(code=code, failed=failed), tempfile.TemporaryDirectory() as base:
+                answer = (result(code), json.loads(record))
+                with mock.patch.object(gate, "verify_requirement", return_value=answer):
+                    problems, _ = quiet(gate.nucleus_case, context_in(base), "nucleus/x", rows)
+                self.assertEqual(bool(problems), failed, problems)
+
+
+class NucleusCheckoutTests(unittest.TestCase):
+    """The nucleus checkout counts only as the pinned commit binding this repository."""
+
+    rows = (
+        (("rev-parse",), (0, NUCLEUS_COMMIT + "\n", "")),
+        (("ls-files",), (0, "H versions.json\n", "")),
+    )
+
+    def case(self, versions=VERSIONS, verifier=True):
+        with tempfile.TemporaryDirectory() as base, mock.patch.object(
+            gate, "run", side_effect=answering(*self.rows)
+        ):
+            context = context_in(base)
+            (context.nucleus / "scripts").mkdir(parents=True)
+            (context.nucleus / "versions.json").write_bytes(versions)
+            if verifier:
+                (context.nucleus / "scripts" / "verify_kernel_requirement.py").write_bytes(b"")
+            return quiet(gate.nucleus_checkout_case, context)
+
+    def test_the_pinned_checkout_passes(self):
+        problems, printed = self.case()
+        self.assertEqual(problems, [])
+        self.assertIn(
+            "binds aegis-os to cordanaLLM/Aegis-OS build/kernel-requirement.json", printed
+        )
+
+    def test_a_missing_verifier_or_another_binding_fails(self):
+        problems, _ = self.case(verifier=False)
+        self.assertEqual(problems, ["the checkout has no scripts/verify_kernel_requirement.py"])
+        problems, _ = self.case(versions=VERSIONS.replace(b'["realtime"]', b'["lts"]'))
+        self.assertEqual(len(problems), 1)
+        self.assertIn("aegis-os streams is ['lts']", problems[0])
+
+
 class SuppressionTests(unittest.TestCase):
     """No surface the gate runs through can turn a failure into a pass (REQ-CI-02)."""
 
@@ -1042,13 +1501,14 @@ class AdmissionTests(unittest.TestCase):
         self.assertIn("git", rows)
         self.assertIn(pin["imago"]["commit"], rows["cordanaLLM/imago"][1])
         self.assertIn(pin["nucleus"]["commit"], rows["cordanaLLM/nucleus"][1])
+        self.assertIn(pin["nucleus"]["verifier"], rows["cordanaLLM/nucleus"][2])
         for program in ALLOWED_PROGRAMS - {"<binary>"}:
             self.assertIn(program, rows)
 
     def test_the_evidence_page_is_published_and_names_the_pins(self):
         page = text(EVIDENCE_PAGE)
         pin = gate.load_pin()
-        for value in (pin["imago"]["commit"], pin["nucleus"]["commit"], "D92", "D93"):
+        for value in (pin["imago"]["commit"], pin["nucleus"]["commit"], "D92", "D93", "D106"):
             self.assertIn(value, page)
         self.assertIn("build/contract-pair.md", text(MKDOCS))
 
@@ -1081,6 +1541,8 @@ def program_of(node):
         return first.value
     if isinstance(first, ast.Call) and getattr(first.func, "id", "") == "native":
         return "<binary>"
+    if isinstance(first, ast.Name) and first.id == "PYTHON":
+        return "python3"
     return None
 
 

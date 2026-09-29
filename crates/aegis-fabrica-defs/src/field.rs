@@ -19,6 +19,14 @@
 //! * **A shape is refused, not repaired.** [`Revision`] takes a full 40-digit
 //!   commit identifier and nothing shorter; [`SnapshotId`] takes a dated
 //!   snapshot and refuses `latest`. Neither has a default.
+//!
+//! Each type also states its rule for the JSON Schema generated from the
+//! contract types (D105): a `pattern`, anchored at both ends, and a
+//! `maxLength` equal to the scalar bound. The pattern is declared beside the
+//! validator it restates, in the ECMA-262 subset JSON Schema recommends -- no
+//! lookaround -- and `tools/test_payload_schemas.py` runs the committed
+//! schemas' patterns against the same accepted and refused values the tests
+//! of this module use.
 
 use core::fmt;
 
@@ -49,8 +57,61 @@ pub const MAX_RELEASE_COMPONENTS: usize = 8;
 /// The prefix every Kconfig symbol carries.
 pub const SYMBOL_PREFIX: &str = "CONFIG_";
 
-/// The prefix every recorded requirement identifier carries.
+/// The prefix every requirement identifier Aegis itself issues carries.
+///
+/// Not a schema rule since D103: `required-by` admits any identifier
+/// [`RequirementId`] does, so a producer may name its own, such as imago's
+/// `FLAVOR-BASE`. The prefix binds the payloads Aegis issues, and
+/// [`RequirementId::is_aegis_requirement`] is the check their tests run.
 pub const REQUIREMENT_PREFIX: &str = "REQ-";
+
+/// The JSON Schema pattern of [`CorrelationId`].
+const CORRELATION_PATTERN: &str = "^[A-Za-z0-9._:-]+$";
+
+/// The JSON Schema pattern of [`Revision`].
+const REVISION_PATTERN: &str = "^[0-9a-f]{40}$";
+
+/// The JSON Schema pattern of [`SnapshotId`].
+const SNAPSHOT_PATTERN: &str = "^[0-9]{4}/[0-9]{2}/[0-9]{2}$";
+
+/// The JSON Schema pattern of [`RelativePath`].
+///
+/// One or more `/`-separated components, each non-empty and not `..`. Without
+/// lookaround, "not `..`" is spelled as the three shapes a component may take
+/// instead: one that does not start with a dot, `.` alone or followed by a
+/// non-dot, and `..` followed by at least one more character.
+const PATH_PATTERN: &str = concat!(
+    r"^(?:[A-Za-z0-9_-][A-Za-z0-9._-]*|\.(?:[A-Za-z0-9_-][A-Za-z0-9._-]*)?|\.\.[A-Za-z0-9._-]+)",
+    r"(?:/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*|\.(?:[A-Za-z0-9_-][A-Za-z0-9._-]*)?|\.\.[A-Za-z0-9._-]+))*$",
+);
+
+/// The JSON Schema pattern of [`PackageName`].
+const PACKAGE_PATTERN: &str = "^[a-z0-9][a-z0-9@._+-]*$";
+
+/// The JSON Schema pattern of [`ArtifactDigest`].
+const DIGEST_PATTERN: &str = "^[0-9a-f]{64}$";
+
+/// The JSON Schema pattern of [`ArtifactSignature`].
+const SIGNATURE_PATTERN: &str = "^(?:[0-9a-f]{2})+$";
+
+/// The JSON Schema pattern of [`ConfigSymbol`].
+const SYMBOL_PATTERN: &str = "^CONFIG_[A-Z0-9_]+$";
+
+/// The JSON Schema pattern of [`KernelRelease`].
+const RELEASE_PATTERN: &str = "^[0-9][0-9A-Za-z._+-]*$";
+
+/// The JSON Schema pattern of [`RequirementId`] (D103).
+///
+/// nucleus's ADR-0007 form, `[A-Z][A-Z0-9-]*` with the bare `REQ-` refused.
+/// Without lookaround, "not `REQ-`" is spelled by length: up to three
+/// characters, five or more, or four that differ from `REQ-` at their first,
+/// second, third or fourth character. `tools/test_payload_schemas.py` holds
+/// this to nucleus's own `(?!REQ-$)[A-Z][A-Z0-9-]*` over every value of up to
+/// six characters drawn from the letters of `REQ-` and a few others.
+const REQUIREMENT_PATTERN: &str = concat!(
+    "^(?:[A-Z][A-Z0-9-]{0,2}|[A-Z][A-Z0-9-]{4,}|[A-QS-Z][A-Z0-9-]{3}",
+    "|R[A-DF-Z0-9-][A-Z0-9-]{2}|RE[A-PR-Z0-9-][A-Z0-9-]|REQ[A-Z0-9])$",
+);
 
 /// Why a bounded field was refused.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -172,8 +233,11 @@ fn numeric_components(text: &str) -> Vec<u64> {
 ///
 /// `docs/integration/stack.md` requires one on every crossing of the Aegis
 /// boundary; a payload without it does not decode.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
 #[serde(try_from = "String", into = "String")]
+#[schemars(inline, extend("pattern" = CORRELATION_PATTERN, "maxLength" = MAX_FIELD_BYTES))]
 pub struct CorrelationId(String);
 
 impl CorrelationId {
@@ -213,8 +277,11 @@ impl fmt::Display for CorrelationId {
 /// A branch name, a tag, `HEAD` and an abbreviated identifier are all refused.
 /// The point of the field is that the revision names one tree and keeps naming
 /// it, which a moving reference does not.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
 #[serde(try_from = "String", into = "String")]
+#[schemars(inline, extend("pattern" = REVISION_PATTERN, "maxLength" = REVISION_CHARS))]
 pub struct Revision(String);
 
 impl Revision {
@@ -261,8 +328,11 @@ impl fmt::Display for Revision {
 /// formats the snapshot it discovers as `%Y/%m/%d`. `latest` and `rolling` are
 /// refused here rather than accepted and warned about, because an unpinned
 /// release is exactly the drift REQ-P01-01 records.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
 #[serde(try_from = "String", into = "String")]
+#[schemars(inline, extend("pattern" = SNAPSHOT_PATTERN, "maxLength" = SNAPSHOT_CHARS))]
 pub struct SnapshotId(String);
 
 impl SnapshotId {
@@ -311,8 +381,11 @@ impl fmt::Display for SnapshotId {
 /// Absolute paths, parent-directory components and backslashes are refused, so
 /// a manifest cannot point a consumer at a developer's home directory or climb
 /// out of the checkout.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
 #[serde(try_from = "String", into = "String")]
+#[schemars(inline, extend("pattern" = PATH_PATTERN, "maxLength" = MAX_FIELD_BYTES))]
 pub struct RelativePath(String);
 
 impl RelativePath {
@@ -364,8 +437,11 @@ impl fmt::Display for RelativePath {
 /// on a dated snapshot the repository holds exactly one version of each
 /// package, so the [`SnapshotId`] is the version pin and a second, separately
 /// maintained one could only disagree with it.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
 #[serde(try_from = "String", into = "String")]
+#[schemars(inline, extend("pattern" = PACKAGE_PATTERN, "maxLength" = MAX_FIELD_BYTES))]
 pub struct PackageName(String);
 
 impl PackageName {
@@ -410,8 +486,11 @@ impl fmt::Display for PackageName {
 /// The sha256 of a produced artifact, in lower-case hexadecimal.
 ///
 /// A field encoding only. Nothing in this crate computes or verifies a digest.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
 #[serde(try_from = "String", into = "String")]
+#[schemars(inline, extend("pattern" = DIGEST_PATTERN, "maxLength" = DIGEST_CHARS))]
 pub struct ArtifactDigest(String);
 
 impl ArtifactDigest {
@@ -455,8 +534,11 @@ impl fmt::Display for ArtifactDigest {
 ///
 /// A field encoding only. This crate neither produces nor verifies a
 /// signature, and carrying one is not evidence that one was checked.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
 #[serde(try_from = "String", into = "String")]
+#[schemars(inline, extend("pattern" = SIGNATURE_PATTERN, "maxLength" = MAX_SIGNATURE_CHARS))]
 pub struct ArtifactSignature(String);
 
 impl ArtifactSignature {
@@ -502,8 +584,11 @@ impl fmt::Display for ArtifactSignature {
 /// list: a consumer adds a symbol by adding a row, not by changing this crate.
 /// The `CONFIG_` prefix is mandatory so a rendered fragment line is always a
 /// Kconfig assignment.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
 #[serde(try_from = "String", into = "String")]
+#[schemars(inline, extend("pattern" = SYMBOL_PATTERN, "maxLength" = MAX_SYMBOL_BYTES))]
 pub struct ConfigSymbol(String);
 
 impl ConfigSymbol {
@@ -546,8 +631,11 @@ impl fmt::Display for ConfigSymbol {
 }
 
 /// A kernel release string, such as `6.12` or `7.2.4-1-cachyos`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
 #[serde(try_from = "String", into = "String")]
+#[schemars(inline, extend("pattern" = RELEASE_PATTERN, "maxLength" = MAX_RELEASE_BYTES))]
 pub struct KernelRelease(String);
 
 impl KernelRelease {
@@ -609,13 +697,22 @@ impl fmt::Display for KernelRelease {
     }
 }
 
-/// The identifier of the recorded requirement a payload row comes from.
+/// The identifier of the requirement a payload row comes from.
 ///
 /// Every asserted feature names one, so a reviewer can go from a Kconfig
-/// symbol back to the requirement in `docs/roadmap/requirements.md` that asked
-/// for it without reading this crate.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+/// symbol back to the requirement that asked for it without reading this
+/// crate. The form is schema-generic (D103), exactly the one nucleus's
+/// ADR-0007 states: an upper-case letter, then upper-case letters, digits and
+/// hyphens, at most [`MAX_FIELD_BYTES`] bytes, with the bare `REQ-` refused.
+/// A producer may therefore use its own identifiers, such as imago's
+/// `FLAVOR-BASE`; a payload Aegis issues names a requirement recorded in
+/// `docs/roadmap/requirements.md`, which [`Self::is_aegis_requirement`] tells
+/// apart.
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
 #[serde(try_from = "String", into = "String")]
+#[schemars(inline, extend("pattern" = REQUIREMENT_PATTERN, "maxLength" = MAX_FIELD_BYTES))]
 pub struct RequirementId(String);
 
 impl RequirementId {
@@ -623,6 +720,16 @@ impl RequirementId {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// Returns `true` when this identifier has the form Aegis issues.
+    ///
+    /// That is [`REQUIREMENT_PREFIX`] and a name after it. The schema admits
+    /// more (D103); the payloads under `build/` that Aegis publishes are held
+    /// to this by their tests, not by the decoder.
+    #[must_use]
+    pub fn is_aegis_requirement(&self) -> bool {
+        self.0.starts_with(REQUIREMENT_PREFIX) && self.0.len() > REQUIREMENT_PREFIX.len()
     }
 }
 
@@ -634,11 +741,12 @@ impl TryFrom<String> for RequirementId {
         charset("required-by", &value, "[A-Z0-9-]", |c| {
             c.is_ascii_uppercase() || c.is_ascii_digit() || c == '-'
         })?;
-        if !value.starts_with(REQUIREMENT_PREFIX) || value.len() <= REQUIREMENT_PREFIX.len() {
+        let leads = value.starts_with(|c: char| c.is_ascii_uppercase());
+        if !leads || value == REQUIREMENT_PREFIX {
             return Err(shape(
                 "required-by",
                 &value,
-                "a recorded requirement identifier with a REQ- prefix",
+                "an identifier that starts with an upper-case letter and is not the bare REQ-",
             ));
         }
         Ok(Self(value))

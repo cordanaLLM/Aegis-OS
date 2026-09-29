@@ -73,18 +73,23 @@ yet, so no artifact, digest or boot evidence has returned.
 `imago.p01.product-result.v1` is proposed by Imago and moved with the result to
 M11, and `cordanaLLM/imago` issue 46 tracks its emitter.
 
-The Nucleus edge is not connected at all. `cordanaLLM/nucleus` has no surface
-reading `aegis.p01-nucleus.kernel-requirement.v1`; its `verify-requirements.yml`
-checks a symbol list hardcoded in the workflow, which satisfies two of the
-thirteen features `build/kernel-requirement.json` declares. `CONFIG_PREEMPT_RT`
-comes from its `realtime` stream rather than a fragment, and the remaining ten —
-including `CONFIG_DEBUG_INFO_BTF`, which the P06 eBPF gate needs, and
-`CONFIG_KVM`, where Nucleus sets the guest-side `CONFIG_KVM_GUEST` instead — are
-absent. Reported as `cordanaLLM/nucleus` issue 20. Until that edge reads the
-document, D70 building the kernel locally is not a stopgap but the only path.
-M09 records nucleus by identity and by its outbound role, the
-`imago.nucleus.kernel-artifact.v1` manifest imago verifies; a Nucleus-built
-kernel and its digests are M10's to record (D92).
+The Nucleus edge reads the kernel requirement since `cordanaLLM/nucleus` pull
+request 35, merged as `0a4eac9` on 2026-09-29, and M09 pins that under D106. Its
+`scripts/verify_kernel_requirement.py` decodes `build/kernel-requirement.json`
+the way `crates/aegis-fabrica-defs` does and holds it against the kconfig
+fragments of the streams its `versions.json` binds Aegis to, `realtime` alone,
+in place of the hardcoded symbol list its issue 20 reported; its ADR-0007, still
+Proposed, is the policy. `make verify-contract` runs that script from the pinned
+checkout and reads its JSON report: the requirement passes on `realtime`, a
+planted symbol no fragment sets is refused with the requirement's correlation
+id, an empty feature list is rejected, and the digest or correlation id of
+another document is rejected ([the contract pair](../build/contract-pair.md)).
+The evidence level is `declared`: the fragments as merged, not a built
+configuration, so `make olddefconfig` can still drop a declared symbol (nucleus
+issue 18). The forge builds no kernel yet, so D70 building the kernel locally is
+not a stopgap but the only path to one, and a Nucleus-built kernel and its
+digests are M10's to record (D92). Nucleus's outbound role is unchanged: the
+`imago.nucleus.kernel-artifact.v1` manifest imago verifies.
 
 Activation order: the ranked, blocking-state roadmap in `docs/roadmap/README.md`
 and `planning/roadmap.json` is authoritative (`make readiness` lists the ready

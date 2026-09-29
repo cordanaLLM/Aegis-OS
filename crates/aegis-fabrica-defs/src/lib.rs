@@ -44,6 +44,11 @@
 //! and it is checked against the measured reference profile by
 //! [`kernel::ReferenceProfile`].
 //!
+//! Both decode from JSON objects only, at every level of nesting; the array
+//! form serde derives for a struct is refused ([`payload`]). [`schema`]
+//! renders the JSON Schema of each, generated from these types and committed
+//! under `build/` for consumers in other languages (D105).
+//!
 //! Neither schema contacts a producer repository, opens a file, runs a builder
 //! or verifies a signature. A digest or signature field is a field encoding.
 //!
@@ -99,6 +104,7 @@ pub mod kernel;
 pub mod manifest;
 pub mod payload;
 pub mod repart;
+pub mod schema;
 pub mod size;
 pub mod sysupdate;
 pub mod unit;

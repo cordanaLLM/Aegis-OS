@@ -5,7 +5,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Product input manifest, kernel requirement, and what the host said
 
-Status: recorded observations from milestone M18, reference profile, 2026-09-13
+Status: recorded observations from milestone M18, reference profile, 2026-09-13;
+the schema rules amended on 2026-09-29 (D103 to D105)
 
 This page records the two Aegis-owned schemas, the payloads this repository
 ships under them, and what the reference machine answered when each asserted
@@ -31,12 +32,28 @@ carries a `required-by` identifier that resolves in
 of the source each requirement came from. No private path and no source
 fragment appears in any of them.
 
+| File | What it is |
+| :--- | :--- |
+| `build/kernel-requirement.schema.json` | the JSON Schema of `aegis.p01-nucleus.kernel-requirement.v1`, generated from the Rust types (D105) |
+| `build/product-input.schema.json` | the JSON Schema of `aegis.p01.product-input.v1`, generated the same way |
+
 ## The two schemas
 
 `crates/aegis-fabrica-defs` owns both. The field primitives are in `src/field.rs`
 and every one of them validates while the payload is being decoded, through
 `#[serde(try_from = "String")]`, so an ill-formed field is a refusal rather than
 a value that is checked later or not at all.
+
+A payload is a JSON object, and so is every struct nested in one. serde's
+derived decoder also reads a struct from a JSON array of its values in
+declaration order, where `deny_unknown_fields` has no key to refuse, and a probe
+on 2026-09-29 found `KernelRequirement::decode` returning `Ok` for the reviewed
+requirement written that way. Both contracts now refuse the array form at every
+level, `schema` peek included, as `Malformed` with `expected a JSON object`:
+each struct's `Deserialize` asks for a map and hands only its entries to the
+decoder serde derives on a private field mirror (`src/payload.rs`).
+`tests/array_form.rs` sends the array form of both payloads and of every nested
+struct.
 
 The manifest states what `docs/integration/stack.md` asks of every crossing of
 the Aegis boundary: a schema, a correlation identifier, an exact revision,
@@ -64,11 +81,66 @@ symbol in code at all. Every symbol lives in a JSON row of the form
 ```
 
 so a consumer adds a feature by adding a row, not by changing this repository.
-The private readiness matrix records that Nucleus currently validates a fixed
-symbol list; this payload is the shape Aegis proposes instead. M09 pinned the
-consumer that reads it: `cordanaLLM/imago`'s `pkg/kernel` decodes this payload
-at the pinned commit, and `cordanaLLM/nucleus` reads no Aegis payload (D92,
+M09 pins the consumers that read it: `cordanaLLM/imago`'s `pkg/kernel` decodes
+this payload at the pinned commit (D92), and since `cordanaLLM/nucleus` pull
+request 35 nucleus's `scripts/verify_kernel_requirement.py` holds it against the
+kconfig fragments of its `realtime` stream (D106,
 [the contract pair](contract-pair.md)).
+
+`required-by` is schema-generic (D103): an upper-case letter, then upper-case
+letters, digits and hyphens, at most 128 bytes, with the bare `REQ-` refused.
+That is exactly the form nucleus's ADR-0007 states, so this schema and nucleus's
+verifier admit the same identifiers -- `tools/test_payload_schemas.py` compares
+the published pattern with nucleus's own over every short value -- and imago's
+flavour identifiers (`FLAVOR-BASE`, cordanaLLM/imago#48) decode under the schema
+id they claim. The payloads Aegis itself issues stay on the `REQ-` form with a
+row in `docs/roadmap/requirements.md`; `tests/issued_payloads.rs` holds every
+`required-by` in `build/` to that, and `RequirementId::is_aegis_requirement` is
+the check.
+
+`architectures` is all-of and fails closed (D104): a conforming kernel is built
+for every listed architecture, and each build provides every feature. A
+reference profile records one architecture, so the check against it reports each
+other listed architecture as `ArchitectureUnverified`; a single profile proves a
+requirement only when that requirement lists exactly the profile's architecture,
+and a repeated architecture is one promise. Both reviewed kernel payloads list
+`x86-64` alone.
+
+## The published JSON Schemas (D105)
+
+A consumer that is not written in Rust validates a payload against a JSON
+Schema, so both contracts are published as one, generated from the Rust types
+with schemars 1.2.2 and never written by hand:
+
+- `build/kernel-requirement.schema.json` for
+  `aegis.p01-nucleus.kernel-requirement.v1`;
+- `build/product-input.schema.json` for `aegis.p01.product-input.v1`.
+
+Each is JSON Schema 2020-12. Every struct, at the top and nested, is `type:
+object` with `additionalProperties: false` and its `required` fields; every
+bounded field carries its `pattern`, anchored at both ends, and a `maxLength`
+equal to the decoder's bound; and the list and range bounds are the decoder's
+own constants (`features` 1 to 64, `architectures` 1 to 4, `packages` 1 to 64,
+`max-attempts` 1 to 5, `backoff-seconds` 1 to 3600). The patterns use no
+lookaround, so an ECMA-262 reader and Python's `re` read them alike. A consumer
+can fetch a schema by its path at the Aegis commit it pins, as nucleus and imago
+already fetch the payloads.
+
+`crates/aegis-fabrica-defs/tests/json_schema.rs` fails when a committed file is
+not byte for byte what the types generate and names the command that regenerates
+both, `AEGIS_WRITE_SCHEMAS=1 cargo test --locked -p aegis-fabrica-defs --test
+json_schema`. `tools/test_payload_schemas.py` reads them from the other side, as
+a consumer does: the three payloads under `build/` validate, the array form, an
+unknown field and a value past a bound do not, and each pattern accepts and
+refuses the values the crate's validators do.
+
+What a JSON Schema cannot state stays the decoder's alone: a Kconfig symbol
+required twice, a target release older than the minimum, and the other
+invariants `validate` checks. A payload a schema accepts can therefore still be
+refused by `KernelRequirement::decode` or `ProductInputManifest::decode`, and
+never the reverse. cordanaLLM/praetor#607 records the fleet-level gap this
+closes for one owner: no general way yet to check a consumer's decoder against
+the schema owner's.
 
 ## The fragment M26 consumes
 

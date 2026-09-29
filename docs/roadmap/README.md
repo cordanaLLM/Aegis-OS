@@ -55,18 +55,21 @@ Current verified state at revision time:
   E24-2) are closed with M24; E16-4 and E11-6, which D91 adds, are issues #147
   and #148 (read back 2026-09-28). E11-7 and E10-4, which D92 adds, and E10-5,
   which D94 adds, are issues #149 to #151; #49 to #51 (E09-1 to E09-3) carry the
-  D92 text and are closed with M09. M28 and M29, which ADR-0004 adds on
-  2026-09-29, and their epics E28-1 to E28-6 and E29-1 to E29-4 have no GitHub
-  milestone or issue yet, and the M16 milestone with #47, #48, #128 and #147
-  (E16-1 to E16-4) and #148 (E11-6) still carry the text from before ADR-0004
-  until they are re-synced. The M27 milestone description also predates ADR-0004
-  and still says M27 unblocks nothing, and the rank lines in milestone
-  descriptions and issue bodies are not kept current (M27's reads rank 21);
-  ranks are read from `planning/roadmap.json`, which stays the source of truth.
+  D92 text and are closed with M09. M28 and M29, which ADR-0004 adds, are GitHub
+  milestones 29 and 30, and their epics E28-1 to E28-6 and E29-1 to E29-4 are
+  issues #156 to #165. The M16 milestone with #47, #48, #128 and #147 (E16-1 to
+  E16-4), the M11 milestone with #52 to #55, #139, #148 and #149, and the M27
+  milestone with #125 to #127 were re-synced to the ADR-0004 register on
+  2026-09-29, their rank lines included (read back that day with `gh issue view`
+  and the milestones API). Rank lines in the other milestone descriptions and
+  issue bodies are not kept current; ranks are read from
+  `planning/roadmap.json`, which stays the source of truth.
 - cordanaLLM/imago and cordanaLLM/nucleus resolve. imago decodes both M18
-  payloads at the commit M09 pins (16f964b), nucleus reads neither, and neither
-  producer builds an image or a kernel yet (M09, D92). The private readiness
-  matrix is a superseded 2026-09-13 snapshot.
+  payloads at the commit M09 pins (16f964b), nucleus verifies
+  `build/kernel-requirement.json` against the kconfig fragments of its
+  `realtime` stream at the commit M09 pins since D106 (0a4eac9), and neither
+  producer builds an image or a kernel yet (M09, D92, D106). The private
+  readiness matrix is a superseded 2026-09-13 snapshot.
 
 ## Method
 
@@ -719,6 +722,32 @@ Evidence:
   parse. No image, UKI, kernel, artefact, signature or boot evidence is produced
   or claimed, no producer repository is contacted, and the image, kernel, boot,
   hardware and release gates remain blocked
+- Dated 2026-09-29, appended after done (D103, D104, D105 and a defect found by
+  probe); no exit criterion or epic text changes, and criterion 2's 'accepted
+  architectures' now reads all-of. The array form: KernelRequirement::decode,
+  and ProductInputManifest::decode likewise, accepted a payload written as a
+  JSON array of its values in declaration order, because serde's derived decoder
+  implements visit_seq and deny_unknown_fields has no key to refuse there -- a
+  malformed payload criterion 1 and E18-2 should have refused. Every struct of
+  both contracts now decodes from a JSON object only, at the top and nested
+  (src/payload.rs); tests/array_form.rs sends the array form of both payloads
+  and of every nested struct, and a one-element array led by another version,
+  which the object-only version peek alone decides, and its negative cases fail
+  against the decoder of 061bbde. D103: required-by admits exactly the
+  identifiers of the form nucleus's ADR-0007 states, an upper-case letter then
+  [A-Z0-9-], at most 128 bytes, with the bare REQ- refused; the REQ- form binds
+  the payloads Aegis issues (RequirementId::is_aegis_requirement,
+  tests/issued_payloads.rs). D104: a listed architecture is a promise, so a
+  profile reports each other listed architecture as ArchitectureUnverified and
+  MAX_UNMET grows by MAX_ARCHITECTURES, which tests/reference_profile.rs holds
+  by building the reachable maximum, four rows plus two for each of MAX_FEATURES
+  features; both reviewed payloads list x86-64 alone, so exit criteria 6 to 8
+  hold unchanged. D105: build/kernel-requirement.schema.json and
+  build/product-input.schema.json are generated from the types with schemars
+  1.2.2 and held to them by tests/json_schema.rs; tools/test_payload_schemas.py
+  validates the three reviewed payloads against them. `cargo test --locked
+  --all-features` passes on the pinned toolchain, and criterion 5 still holds
+  for the crate: it contacts no producer.
 
 Epics:
 
@@ -2863,9 +2892,9 @@ Exit criteria:
 Cheapest exit: Run the pair against the pinned local checkouts without any
 hosted dispatch.
 
-Evidence (the 2026-09-27 and D92 disclosures, the scope and the closing summary;
-every entry is in `planning/roadmap.json`, and the run is on
-`docs/build/contract-pair.md`):
+Evidence (the 2026-09-27 and D92 disclosures, the scope, the closing summary
+and the dated D106 entries of 2026-09-29; every entry is in
+`planning/roadmap.json`, and the runs are on `docs/build/contract-pair.md`):
 
 - Disclosure, in the shape M18 recorded, because a milestone that edits its own
   bar must say so where the bar is judged: before any delivery, three exit
@@ -2944,6 +2973,64 @@ every entry is in `planning/roadmap.json`, and the run is on
   simulated-output entry. Each rests on the recorded runs or on
   tools/test_contract_pair.py inside `make verify-all`, and none on simulated
   output.
+- Dated 2026-09-29, appended after done (D106); no exit criterion and no epic
+  text changes. D92 recorded cordanaLLM/nucleus by identity only because at
+  8672247 it read no Aegis payload. At 0a4eac93f29fef432bfa9d892ad236568ce2f482
+  (nucleus pull request 35; its main on 2026-09-29, read with `git ls-remote
+  --heads`) it does: its versions.json binds the label aegis-os to
+  cordanaLLM/Aegis-OS build/kernel-requirement.json and the realtime stream, and
+  scripts/verify_kernel_requirement.py decodes the document as
+  crates/aegis-fabrica-defs does and holds every feature against the kconfig
+  fragments of that stream. build/contract/producers.pin.json, now schema
+  aegis.m09.contract-pin.v2, pins that commit with the verifier, the label, the
+  bound stream, the report schema nucleus.kernel-requirement-report.v1 and the
+  evidence level declared. `make contract-fetch` (run f20260929T084215-2847)
+  clones nucleus into a fresh directory beside imago, and the gate adds
+  contract/nucleus-checkout -- the checkout is the pinned commit with nothing it
+  lacks, the verifier is present and versions.json binds exactly one row to
+  aegis-os -- and four cases that run the verifier offline with the gate's
+  python3 and -I and assert on its --report-json, never on its text:
+  nucleus/accepted (the committed requirement, with --sha256 and
+  --correlation-id bound to its own bytes and id: exit 0, PASS, held by
+  realtime, no reason), nucleus/correlated-refusal (a planted built-in
+  CONFIG_AEGIS_CONTRACT_UNSET: exit 1, FAIL, every reason opening with
+  aegis-m18-kernel-requirement-0001:, and the report recording the symbol unset
+  and unmet on realtime x86_64), nucleus/empty-features-refused (no feature:
+  exit 1, REJECTED NoFeatures; one feature: exit 0, PASS) and
+  nucleus/dispatch-binding-refused (the sha256 or the correlation id of
+  build/kernel-requirement.reference.json: exit 1, REJECTED DigestMismatch and
+  CorrelationMismatch). Run r20260929T085636-c155 of `make verify-contract`
+  passed all nineteen cases, the fourteen imago cases unchanged. The evidence
+  level is declared, the fragments as nucleus merges them and not a built
+  configuration, so this is not the check of a feature against a built kernel
+  D94 gives M10 (E10-5), and no Nucleus kernel result came back (E10-4). E09-2's
+  text stays as written, naming imago's pkg/kernel, and its evidence grows by
+  these runs; criterion 1's and E09-2's statements that nucleus consumes or
+  reads no Aegis payload are read as of 8672247, as D92's dated correction
+  records.
+- Dated 2026-09-29, gates run on the D103 to D106 revision after its review,
+  each exit 0: `make contract-fetch` (run f20260929T084215-2847: both ls-remote
+  calls, fresh depth-1 clones of imago and nucleus, and an imago binary with the
+  same sha256 as on 2026-09-28,
+  71186e11e2589ad86d6dae318b8fa337752ed89d0e7de7911ddf53dd8d5a67bd); `make
+  verify-contract` (run r20260929T092808-d300, nineteen PASS lines); and `make
+  verify-all` with the contract pair gate running (run r20260929T092828-797e),
+  praetorctl built from the ci.yml pin d2b6a3b958004d0408bb6e04a41de68e5778fbc4.
+  Replays against copies of the cache, each exit 1 with the payload cases not
+  run: an identity record for the old nucleus pin 8672247 beside the pinned
+  nucleus checkout failed contract/identity (run r20260929T085243-2c5e); an
+  untracked scripts/zz_planted.py (run r20260929T085243-9938) and a
+  versions.json edited to bind aegis-os to lts (run r20260929T085243-a0d5)
+  failed contract/nucleus-checkout; and the cache a fetch from before D106 left,
+  whose record names 8672247 and which holds no nucleus checkout, failed
+  contract/identity with no SKIP line (run r20260929T092142-aeb6). As first
+  delivered the gate printed SKIP and exited 0 on that cache, the absent
+  checkout hiding the wrong record; review found it, and the record is now read
+  before any absent piece. tools/test_contract_pair.py covers each nucleus
+  decision with the reports nucleus wrote, abridged by dropping fields and rows
+  and nothing else, kept as bytes; the one variant nucleus did not write, an
+  unbound stream that sets the planted symbol, is built inside its test and
+  named synthetic.
 
 Epics:
 
@@ -4646,6 +4733,20 @@ gate runs.
   requirement's correlation-id, was left to no milestone by D92 and D94 assigns
   it to M10. The executed retry stays with no milestone, and M09 discloses it as
   a narrowing.
+
+  **Corrected (2026-09-29, by D106).** D92's premise that nucleus reads no Aegis
+  payload held at `8672247` and stopped holding at nucleus
+  `0a4eac93f29fef432bfa9d892ad236568ce2f482` (pull request 35), whose
+  `scripts/verify_kernel_requirement.py` decodes `build/kernel-requirement.json`
+  and holds it against the kconfig fragments of the `realtime` stream. The
+  closure stands: M09 closed on imago's consumption, and this adds a second
+  consumer rather than removing one. What changes is the gate, which runs
+  nucleus's verifier as well, and M09's record, which appends dated evidence and
+  rewrites no criterion; the statements that nucleus consumes, or reads, no
+  Aegis payload in its first criterion and in E09-2 are read as of `8672247`.
+  The Nucleus kernel result stays M10's (E10-4), and so does rejecting a feature
+  a built kernel does not satisfy (E10-5, D94): nucleus's verdict is at its
+  `declared` level, the fragments as merged, and no kernel was built.
 - **D93** Where does the contract gate run? Options: the D88 pattern -- a fetch
   target, `make contract-fetch`, as the only networked step, which runs `git
   ls-remote` against both producers and keeps the output, clones imago at the
@@ -4817,6 +4918,133 @@ new.
   carries what the shell needs (D69), the pattern D80 set for cros-libva; until
   then no gpui or accesskit_unix dependency is admitted, and
   `docs/roadmap/toolchain-admission.md` lists both as proposed.
+
+### Decisions of 2026-09-29 (producer contracts)
+
+The maintainer decided D103 to D106 on 2026-09-29, answering the questions a
+session working in cordanaLLM/nucleus raised while nucleus pull request 35 made
+nucleus read `build/kernel-requirement.json`: its ADR-0007, merged as Proposed
+at nucleus `0a4eac93f29fef432bfa9d892ad236568ce2f482`, diverges from the schema
+owner in two places and asks this repository to settle both. D103 to D105 change
+the M18 schema crate and D106 the M09 gate; M18 and M09 are done, and each
+appends dated evidence and rewrites no criterion. Recorded with them is a defect
+the same review found and a probe confirmed, the array form, which is not a
+decision and is fixed rather than ruled on.
+
+- **D103** What may `required-by` hold? Options: any identifier of the form
+  nucleus's ADR-0007 states -- an upper-case letter, then upper-case letters,
+  digits and hyphens, at most 128 bytes, the bare `REQ-` refused -- with the
+  `REQ-` form enforced only on the payloads Aegis issues; keep the `REQ-` rule
+  in the schema and ask imago to rename its identifiers; admit a per-producer
+  list of prefixes. Why: imago's `kernel/requirement.json` at `16f964b` names
+  its flavours (`FLAVOR-BASE`, `FLAVOR-K8S-NODE`, `FLAVOR-AI-INFER`,
+  `FLAVOR-DOCKER`) under the schema id
+  `aegis.p01-nucleus.kernel-requirement.v1`, and `RequirementId` refused every
+  one (cordanaLLM/imago#48); nucleus's verifier accepts them for every source
+  and names the divergence as a question to this repository. A per-producer list
+  would put producer vocabulary in the schema. **Decision (2026-09-29):** the
+  first option. `RequirementId` (`crates/aegis-fabrica-defs/src/field.rs`)
+  admits `[A-Z][A-Z0-9-]*` of at most 128 bytes and refuses the bare `REQ-`,
+  exactly nucleus's form, so the schema and nucleus admit the same identifiers;
+  `tools/test_payload_schemas.py` compares the published pattern with nucleus's
+  `(?!REQ-$)[A-Z][A-Z0-9-]*` over every value of up to six characters from a
+  small alphabet. The `REQ-` form now binds the payloads this repository
+  publishes, not the decoder: `RequirementId::is_aegis_requirement` and
+  `crates/aegis-fabrica-defs/tests/issued_payloads.rs` hold every `required-by`
+  in `build/kernel-requirement.json`, `build/kernel-requirement.reference.json`
+  and `build/product-input.json` to `REQ-` and to a row in
+  `docs/roadmap/requirements.md`. imago#48's flavour identifiers decode under
+  the schema id they claim; imago's decoder still diverges from the owner in the
+  other directions #48 lists, which is imago's to close.
+- **D104** Is an architecture a requirement lists a promise or an option?
+  Options: all-of and fail-closed, so a conforming kernel is built for every
+  listed architecture and each build provides every feature; any-of, so a kernel
+  for one listed architecture conforms. Why: `KernelRequirement::unmet` accepted
+  a profile of any listed architecture (`unmet_identity`) and the field was
+  documented as the architectures a kernel 'may be built for', while nucleus's
+  verifier builds for, and requires, every listed one and asked which reading
+  the owner meant. Both live documents list `x86-64` alone, so no payload
+  changes either way. **Decision (2026-09-29):** all-of, fail-closed.
+  `KernelRequirement::architectures` is documented as the architectures a kernel
+  must be built for, all of them, and the check against a profile reports each
+  listed architecture the profile is not for as `Unmet::ArchitectureUnverified`,
+  so one profile proves a requirement only when it lists exactly that profile's
+  architecture; a repeated architecture is one promise. `MAX_UNMET` grows by
+  `MAX_ARCHITECTURES` to stay above every reachable count;
+  `the_reachable_maximum_of_unmet_rows_is_reported_whole` builds that count,
+  four rows plus two for each of `MAX_FEATURES` features, and every row comes
+  back, where the old bound would drop one. The boundary -- exactly the
+  profile's architecture met, a repeat of it met, one other architecture one
+  unverified row -- is in
+  `crates/aegis-fabrica-defs/tests/reference_profile.rs`.
+- **D105** How does a consumer in another language validate the two contracts?
+  Options: JSON Schemas generated from the Rust types with schemars, committed
+  under `build/` with a test that fails when they drift; hand-written JSON
+  Schemas; no schema, the crate as the only definition. Why: nucleus's ADR-0007
+  records that Aegis publishes no JSON Schema and re-implements the decoder
+  field by field from the crate's source, imago#48 shows imago's decoder
+  diverging from the owner in both directions, and cordanaLLM/praetor#607
+  records the fleet-level gap of checking a consumer's decoder against the
+  owner's at all. A hand-written schema would be a third definition to drift.
+  **Decision (2026-09-29):** the first option. schemars 1.2.2 is admitted
+  (`docs/roadmap/toolchain-admission.md`: MIT, its newest release, the lock's
+  checksum the one crates.io publishes, and five dependencies under MIT or MIT
+  OR Apache-2.0). `build/kernel-requirement.schema.json` and
+  `build/product-input.schema.json` are JSON Schema 2020-12: every struct is
+  `type: object` with `additionalProperties: false` and its `required` fields,
+  every bounded field carries its anchored `pattern` and `maxLength`, and the
+  list and range bounds are the decoder's constants.
+  `crates/aegis-fabrica-defs/tests/json_schema.rs` fails on drift and names the
+  regeneration command, and `tools/test_payload_schemas.py` reads both as a
+  consumer does. What a schema cannot state -- a repeated symbol, an inverted
+  release -- stays the decoder's. `docs/build/product-input.md` names the paths
+  for consumers.
+- **D106** nucleus now reads the kernel requirement: how does M09 record it,
+  when D92 closed M09 with nucleus recorded by identity only because it read no
+  Aegis payload? Options: extend the M09 contract gate -- the fetch clones
+  nucleus at a pinned commit and the offline gate runs its verifier and asserts
+  on its JSON report -- with dated M09 evidence and a dated correction of D92;
+  open a milestone for the nucleus edge; record the change and leave the gate
+  alone. Why: nucleus pull request 35, merged as
+  `0a4eac93f29fef432bfa9d892ad236568ce2f482`, made
+  `scripts/verify_kernel_requirement.py` decode `build/kernel-requirement.json`
+  and hold it against the kconfig fragments of the `realtime` stream its
+  `versions.json` binds this repository to; the consumption contract is exactly
+  what M09 pins, so a second consumer belongs in the same gate, and M09 is done,
+  so its bar must not move. **Decision (2026-09-29):** the first option.
+  `build/contract/producers.pin.json` moves nucleus to that commit, nucleus's
+  `main` on 2026-09-29 read with `git ls-remote --heads`, and records the
+  verifier, the label `aegis-os`, the bound stream `realtime`, the report schema
+  `nucleus.kernel-requirement-report.v1` and the evidence level `declared`.
+  `make contract-fetch` clones nucleus beside imago; the gate checks the
+  checkout and its binding, runs the verifier with the gate's `python3` and
+  `-I`, and asserts on its `--report-json`, never its text: PASS for `aegis-os`
+  with `--sha256` and `--correlation-id` bound, a planted built-in symbol
+  nucleus does not set refused FAIL with the correlation id in every reason, an
+  empty feature list REJECTED `NoFeatures` and one feature PASS, and the digest
+  or correlation id of another document REJECTED `DigestMismatch` and
+  `CorrelationMismatch` (`docs/build/contract-pair.md`). The `declared` level is
+  recorded as such: the fragments as nucleus merges them, not a built
+  configuration, so M10's E10-4 and E10-5 are unchanged. M09 appends dated
+  evidence and E09-2's text stays, its evidence growing by these runs; D92
+  carries a dated correction.
+
+**Recorded with them (2026-09-29): the array form.** serde's derived decoder
+reads a struct from a JSON array of its values in declaration order as readily
+as from an object, and `deny_unknown_fields` has no key to refuse in an array,
+so `KernelRequirement::decode` returned `Ok` for the reviewed requirement
+written as `[schema, correlation-id, architectures, abi, features]`, and the
+product input manifest decoded the same way; nucleus's ADR-0007 named it as its
+second divergence and refuses the form. It is refused now for every struct of
+both contracts, at the top and nested, without recursion: each struct's
+`Deserialize` asks the deserializer for a map and passes only the map's entries
+to the decoder serde derives on a private field mirror
+(`crates/aegis-fabrica-defs/src/payload.rs`), and the version peek reads objects
+only, so an array led by another version is `Malformed` rather than
+`UnknownVersion`. `crates/aegis-fabrica-defs/tests/array_form.rs` sends the
+array form of both payloads and of every nested struct, and a one-element array
+led by another version, the case the object-only peek alone decides, and fails
+against the decoder of `061bbde`.
 
 ## Evidence
 

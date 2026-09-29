@@ -102,15 +102,30 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | thiserror | 2.0.20 | `[workspace.dependencies]`, `features = ["std"]` | typed error enums at every boundary | M02 |
 | serde | 1.0.229 | `[workspace.dependencies]`, optional, behind the `jsonl` feature | JSON Lines rendering, off the hashing path | M02 |
 | serde_json | 1.0.151 | `[workspace.dependencies]`, optional, behind the `jsonl` feature | JSON Lines rendering, off the hashing path | M02 |
+| schemars | 1.2.2 | `[workspace.dependencies]`, `default-features = false`, `features = ["derive"]`; used by `crates/aegis-fabrica-defs` only | generates the JSON Schemas of both M18 contracts from their Rust types, committed under `build/` (D105) | D105, 2026-09-29 |
 
-The resolved graph those five pull in is fixed by `Cargo.lock`:
+The resolved graph those six pull in is fixed by `Cargo.lock`:
 block-buffer 0.12.1, cfg-if 1.0.4, cpufeatures 0.3.1, crypto-common 0.2.2,
-digest 0.11.3, hybrid-array 0.4.15, itoa 1.0.18, libc 0.2.189, memchr 2.8.3,
-proc-macro2 1.0.107, quote 1.0.47, serde_core 1.0.229, serde_derive 1.0.229,
-syn 3.0.5, thiserror-impl 2.0.20, typenum 1.20.1, unicode-ident 1.0.24 and
-zmij 1.0.23. `crates/aegis-justitia/tests/manifest_hygiene.rs` asserts that the
-lock contains the SHA-256 implementation and no MD5 implementation under any
+digest 0.11.3, dyn-clone 1.0.20, hybrid-array 0.4.15, itoa 1.0.18, libc
+0.2.189, memchr 2.8.3, proc-macro2 1.0.107, quote 1.0.47, ref-cast 1.0.27,
+ref-cast-impl 1.0.27, schemars_derive 1.2.2, serde_core 1.0.229, serde_derive
+1.0.229, serde_derive_internals 0.30.0, syn 3.0.5, thiserror-impl 2.0.20,
+typenum 1.20.1, unicode-ident 1.0.24 and zmij 1.0.23.
+`crates/aegis-justitia/tests/manifest_hygiene.rs` asserts that the lock
+contains the SHA-256 implementation and no MD5 implementation under any
 spelling.
+
+schemars was admitted on 2026-09-29 against the crates.io API, read with a
+`User-Agent`: 1.2.2 of 2026-07-27 is its newest stable release (D69), licensed
+MIT, and the lock's checksum `687274d293b6...` is the one crates.io publishes.
+It adds five crates, each at its newest release and each with the checksum
+crates.io publishes: schemars_derive 1.2.2 (MIT) and dyn-clone 1.0.20, ref-cast
+1.0.27, ref-cast-impl 1.0.27 and serde_derive_internals 0.30.0 (each MIT OR
+Apache-2.0). Every one is a permissive licence a EUPL-1.2 work may depend on,
+none is vendored into the repository, so REUSE is unchanged, and all of them
+resolve on the syn 3.0.5 already in the lock. `default-features = false` drops
+schemars' `std` feature, which implements schemas for standard-library
+collections these types do not use.
 
 ## The systemd floor, and why it is a floor rather than a pin
 
@@ -481,18 +496,21 @@ reads it. `docs/build/accessibility-harness.md` records the run.
 
 Every row below is a program `tools/verify_contract_pair.py` starts, or a
 producer commit it runs against, read back on the reference profile on
-2026-09-28. `tools/test_contract_pair.py` reads this table back and requires the
-Go floor and both commits to be the ones `build/contract/producers.pin.json`
-records, and a row for every program the gate may start. The last-but-one column
-is the D69 comparison, read on 2026-09-28 from `go.dev/dl` and from the tags of
-`github.com/git/git`, and for the producers from `git ls-remote --heads`.
+2026-09-28, and the nucleus and `python3` rows again on 2026-09-29 when D106
+moved the nucleus pin. `tools/test_contract_pair.py` reads this table back and
+requires the Go floor, both commits and nucleus's verifier to be the ones
+`build/contract/producers.pin.json` records, and a row for every program the
+gate may start. The last-but-one column is the D69 comparison, read from
+`go.dev/dl`, the tags of `github.com/git/git` and the `python.org` release API,
+and for the producers from `git ls-remote --heads`.
 
 | Tool or producer | Pinned version or commit | How it is pinned | Latest upstream, read 2026-09-28 | Role |
 | :--- | :--- | :--- | :--- | :--- |
 | `go` | floor 1.27.1, from imago's `go.mod` (`go 1.27.1`); reference profile go1.27.1 (`go 2:1.27.1-2`); CI 1.27.1 | `imago.go` in the pin, checked against the cached `go.mod`; every go command runs with `GOTOOLCHAIN=local`, so a Go below the floor is refused by the fetch rather than replaced by a download. CI's Go is the M00 row above: setup-go resolves Praetor's `go 1.27` to the newest 1.27 patch, 1.27.1, which meets the floor | 1.27.1 (stable), `go.dev/dl` | `make contract-fetch`: `go mod download`, `go mod verify` and the `-trimpath -buildvcs=true` build; the gate: `go version -m` and the offline stand-in build, with `GOPROXY=off` |
 | `git` | reference profile 2.55.0 (`git 2.55.0-1.1`) | recorded, not pinned; no source this gate relies on declares a minimum beyond the 2.32 that `GIT_CONFIG_GLOBAL` needs | 2.56.0, tag `v2.56.0`; the distribution ships 2.55.0 | `make contract-fetch`: `ls-remote --heads`, the depth-1 fetch and checkout; the gate: `rev-parse`, `status --untracked-files=all --ignored`, `ls-files -v` and `log` of the imago checkout, `rev-parse` and `status` of this repository, and the stand-in's commit. Every git command, and go's own git calls, run with `GIT_CONFIG_NOSYSTEM=1`, an empty `GIT_CONFIG_GLOBAL` and no inherited `GIT_*` variable |
 | `cordanaLLM/imago` | commit `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` | `imago.commit` in the pin; fetched by commit into a fresh directory, checked by `git rev-parse HEAD`, by the binary's `vcs.revision`, `vcs.time` and module version, and by the binary sha256 the fetch recorded | `main` at `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` | consumes both M18 payloads (`pkg/aegis`, `pkg/kernel`) |
-| `cordanaLLM/nucleus` | commit `8672247ff1bd22ed6b6b89d498116f20ff00c2ab` | `nucleus.commit` in the pin; identity only, read with `git ls-remote --heads` | `main` at `8672247ff1bd22ed6b6b89d498116f20ff00c2ab` | none in M09: reads no Aegis payload (D92) |
+| `cordanaLLM/nucleus` | commit `0a4eac93f29fef432bfa9d892ad236568ce2f482` (was `8672247ff1bd22ed6b6b89d498116f20ff00c2ab` until D106) | `nucleus.commit` in the pin; fetched by commit into a fresh directory and checked by `git rev-parse HEAD`, a clean status and index, the presence of `scripts/verify_kernel_requirement.py` and the `versions.json` row that binds `aegis-os` to this repository's payload on `realtime` | `main` at `0a4eac93f29fef432bfa9d892ad236568ce2f482`, read 2026-09-29 | verifies `build/kernel-requirement.json` against the kconfig fragments of its bound stream at evidence level `declared` (nucleus#35, D106) |
+| `python3` | reference profile 3.14.7 (`python3 --version`); CI runs the Python of the `ubuntu-24.04` image | recorded, not pinned: the gate starts nucleus's verifier with the interpreter running the gate (`sys.executable`, which `make` starts as `python3`) and `-I`, which ignores every `PYTHON*` variable and the user site; the script is standard-library only, and nucleus lints it for Python 3.11 (`target-version = "py311"`) and runs it on CPython 3.12 in its CI | 3.14.7 of 2026-08-05, `python.org` | the gate: `scripts/verify_kernel_requirement.py --report-json`, six runs per gate run, from the nucleus checkout |
 
 A producer's `main` moving past its pin is recorded by the fetch, not followed:
 the gate runs the pinned commit until the pin is edited, and a pin edit leaves a
