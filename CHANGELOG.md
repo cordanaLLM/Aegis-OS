@@ -13,6 +13,29 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Changed (native P05 shell on gpui, ADR-0004)
+
+- **The whole P05 shell is native Rust (D82, D101, ADR-0004).** One native
+  toolkit that exposes AccessKit paints the canvas and the chrome, Svelte and
+  the Wry webview leave the shell, and the shell's accessibility check moves
+  from axe-core to an AccessKit tree check. REQ-P05-02, REQ-P05-08, REQ-P12-01
+  and REQ-P12-06 keep their source text and carry re-mapping notes. M04 is done
+  and unchanged: its gate covers the P12 token component.
+- **The toolkit is gpui, git-pinned (D102).** The zed commit is chosen and
+  admitted at M28, not here; `docs/roadmap/toolchain-admission.md` lists
+  accesskit, gpui, accesskit_unix and the libraries they reach as proposed.
+- **Milestones.** M16 becomes the Rust crate `crates/aegis-forum-shell` and
+  discloses the rewrite of its bar. M11's E11-6 gates on the M04 PASS and, once
+  M16 delivers it, the shell's tree check. M28 (the native shell on gpui) and
+  M29 (a live session in a VM) are new, and M27 now unblocks both.
+- **Decisions of 2026-09-29.** D32 adopts `/run/aegis/compositor.sock` and a
+  per-hop target under 100 microseconds, a target and not a claim until
+  measured, and resolves DSP-14. D96 fixes the shell lifecycle and D100 the
+  ESLint lint for `ui/`; D97 to D99, taken for a JavaScript shell, are withdrawn
+  before any delivery. The only code changes are the DSP-14 claim in
+  `crates/aegis-compositor` and the refreshed `docs/integration/stack.md` digest
+  in `crates/aegis-vesta`.
+
 ### Added (contract pair against the pinned imago, milestone M09)
 
 - **The first run of an Aegis payload through a producer's own code, built from

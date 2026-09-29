@@ -5,13 +5,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # crates
 
-Rust crates for the daemons proposed for P03, P04, P06, P07, P08, P09, P10,
-P11, P13, P14, P15, P16 and P17. A crate joins the workspace only with its own
-`Cargo.toml`, a workspace lock entry, its interface contract, and positive,
-negative and boundary tests. Joining the workspace is not the same as
-activating the component: `planning/components.json` records which components
-have left `proposal`, and several crates below carry a component's name while
-the component stays a proposal.
+Rust crates for the daemons proposed for P03, P04, P05, P06, P07, P08, P09, P10,
+P11, P13, P14, P15, P16 and P17; P05's crate is the native shell ADR-0004
+records. A crate joins the workspace only with its own `Cargo.toml`, a workspace
+lock entry, its interface contract, and positive, negative and boundary tests.
+Joining the workspace is not the same as activating the component:
+`planning/components.json` records which components have left `proposal`, and
+several crates below carry a component's name while the component stays a
+proposal.
 
 ## Activated
 

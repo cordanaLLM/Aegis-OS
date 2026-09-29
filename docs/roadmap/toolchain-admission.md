@@ -535,6 +535,38 @@ runner's libva, which nobody has checked, or that any frame was decoded. The
 upstream fix is unreleased on crates.io (0.0.13, 2024-12-06, fails against libva
 2.24.1), so the git pin is refreshed to a release once one carries it (D69).
 
+## Proposed for M16 and M28: the native shell's crates (D101, D102)
+
+These rows are proposals, not admissions, in the shape of the M27 rows above.
+M16 admits accesskit and M28 admits the rest, each when its gate reads the row
+back before it runs; until then no gate may cite them. They are recorded now
+because decision D101 makes the P05 shell native Rust and D102 names its
+toolkit, gpui, git-pinned (ADR-0004), and because none of these crates is named
+anywhere else on this page. Each value was read on 2026-09-29 from the crates.io
+API, from zed-industries/zed or from the reference profile's package manager.
+
+| Tool or crate | Reference version, read 2026-09-29 | Proposed pin or floor | Role |
+| :--- | :--- | :--- | :--- |
+| accesskit | 0.25.1 (MIT OR Apache-2.0), the newest release, published 2026-09-25 | 0.25.1 in `[workspace.dependencies]`, locked (M16) | the accessibility tree's data model; M16 exports the canvas model as an `accesskit::TreeUpdate` and uses no platform adapter |
+| gpui | zed-industries/zed `main` at `bd747337d7be`, `crates/gpui` version 0.2.2 (Apache-2.0); the crates.io release is 0.2.2 of 2025-10-22 | one zed commit with `rev =`, chosen and locked at M28 (D102) | the toolkit: the layer-shell surface, canvas painting and the AccessKit integration |
+| accesskit_unix | 0.22 as zed `main` resolves it; the newest release is 0.24.0 (MIT OR Apache-2.0) of 2026-09-25 | the version the pinned zed commit resolves, recorded as D69 drift while it lags (M28) | exports the AccessKit tree to AT-SPI over D-Bus |
+| zbus, atspi | 5.19.0 and 0.30.0 (both Apache-2.0 OR MIT), the newest releases; accesskit_unix 0.24.0 requires zbus ^5.19 and atspi ^0.29 | as the pinned accesskit_unix resolves them; atspi also for the tests that read the tree back (M28) | pure-Rust D-Bus and AT-SPI below accesskit_unix |
+| libxkbcommon | 1.13.2 (`libxkbcommon 1.13.2-1.1`) | the floor the pinned xkbcommon crate (0.8.0 at zed `main`) needs, read at admission (M28) | the C keymap library gpui links for Linux keyboard input |
+| libwayland-client | 1.26.0 (`wayland 1.26.0-1.1`) | read at admission (M28) | loaded by wayland-backend through `dlopen` |
+| at-spi2-core | 2.60.7 (`at-spi2-core 2.60.7-1.1`), with `dbus-run-session` from `dbus 1.16.2-1.1` | recorded and read back before the AT-SPI cases run (M28) | the bus launcher and registry of the private AT-SPI session M28's tests start |
+
+What these rows do **not** claim: that any zed commit is chosen, that gpui
+builds on the Verification gate's runner, that the accesskit gpui resolves and
+the 0.25.1 M16 exports can share one tree without a conversion, or that any
+frame was painted. The zed repository holds crates other than gpui; the build
+graph takes only what the pin resolves, and M28 records the licence of every
+package it resolves. xdg-desktop-portal and the guest session M29 runs are M29's
+admission, not this page's yet.
+
+The D100 lint's packages, eslint, eslint-plugin-svelte and svelte-eslint-parser,
+are also M16's admission: they run in the pinned M04 container, and their exact
+pins are read when M16 admits them, so no version is proposed for them here.
+
 ## Not yet admitted
 
 These are run by a gate but pinned by nothing, so they are gaps recorded here

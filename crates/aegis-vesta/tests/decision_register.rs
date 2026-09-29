@@ -60,7 +60,7 @@ fn d06_cites_both_sides_of_its_dispute() {
     assert_eq!(runtime_source.export, "export-037");
     assert_eq!(runtime_source.sha256_prefix, "ce490c88081f");
     assert_eq!(boundary_rule.export, "public:docs/integration/stack.md");
-    assert_eq!(boundary_rule.sha256_prefix, "6fa553cd6a3c");
+    assert_eq!(boundary_rule.sha256_prefix, "74ea997dde2a");
     for citation in D06_WASM_RUNTIME.sources {
         assert_eq!(citation.sha256_prefix.len(), 12);
         assert!(
