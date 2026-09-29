@@ -13,6 +13,23 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Changed (nucleus re-pinned to 82aa6b7, milestone M09)
+
+- **The contract gate pins nucleus at `82aa6b7`**, its `main` after its pull
+  requests 36 and 37, which close its issues 18 and 31; it was `0a4eac9`.
+  `versions.json` still binds `aegis-os` to `build/kernel-requirement.json` on
+  `realtime`, undispatched, and the five nucleus cases pass as before at
+  evidence level `declared`. The reports `tools/test_contract_pair.py` keeps
+  are re-captured from the new run. The verifier's new `resolved` level needs
+  the network, so the offline gate does not run it; it is M10's input (E10-4,
+  E10-5). A cache fetched for `0a4eac9` fails `contract/identity` until
+  `make contract-fetch` runs. M09 appends dated evidence.
+- **Fixed: the gate dirtied the nucleus checkout.** At `82aa6b7` the verifier
+  imports a sibling module, and under `python3 -I` alone that import wrote
+  `scripts/__pycache__` into the checkout, so every gate run after the first
+  failed `contract/nucleus-checkout`. The gate now adds `-B`, and
+  `tools/test_contract_pair.py` runs a sibling-importing stand-in both ways.
+
 ### Changed (producer contracts, D103 to D106)
 
 - **`required-by` is schema-generic (D103).** It admits an upper-case letter

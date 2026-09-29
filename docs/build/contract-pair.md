@@ -6,7 +6,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 # The contract pair, and what the pinned producers did with Aegis's payloads
 
 Status: recorded observations from milestone M09, reference profile,
-2026-09-28; nucleus's verifier added under D106 on 2026-09-29
+2026-09-28; nucleus's verifier added under D106 on 2026-09-29, and nucleus
+re-pinned to `82aa6b7` the same day
 
 Milestone M09 pins the cross-repository contract as far as the producers can
 prove it today. Decision D92 scopes it to consumption: `cordanaLLM/imago`, built
@@ -44,9 +45,11 @@ inside `make verify-all` on every platform of the matrix.
 
 **No result came back, and none was expected to.** Nothing produces imago's
 `imago.p01.product-result.v1` yet (its ADR-0020; `cordanaLLM/imago` issue 46),
-and nucleus has built no kernel (`cordanaLLM/nucleus` issue 18): its verdict is
-at evidence level `declared`, the kconfig fragments as its merge script merges
-them, and `make olddefconfig` can still drop a declared symbol. Under
+and nucleus has published no kernel: since `82aa6b7` its build matrix compiles
+and gates every leg (issues 18 and 31, closed by its pull request 37), but it
+has no release yet. Its verdict here is at evidence level `declared`, the
+kconfig fragments as its merge script merges them, and `make olddefconfig` can
+still drop a declared symbol. Under
 D92 the Imago product result is M11's (a criterion and epic E11-7) and the
 Nucleus kernel result is M10's (its first criterion and epic E10-4). Under D94,
 M10 also rejects a requirement feature the built kernel's config does not
@@ -75,14 +78,16 @@ Nothing is written into the repository, and nothing is sent to either producer.
 | Producer | Repository | Commit | Role in M09 |
 | --- | --- | --- | --- |
 | imago | `https://github.com/cordanaLLM/imago.git` | `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` | consumes both payloads: `imago aegis validate` (`pkg/aegis`, ADR-0020) and `imago kernel requirement validate` (`pkg/kernel`, ADR-0021) |
-| nucleus | `https://github.com/cordanaLLM/nucleus.git` | `0a4eac93f29fef432bfa9d892ad236568ce2f482` | verifies `build/kernel-requirement.json`: `scripts/verify_kernel_requirement.py` under the `versions.json` label `aegis-os`, bound to the `realtime` stream, report `nucleus.kernel-requirement-report.v1` at evidence level `declared` (D106); also publishes the `imago.nucleus.kernel-artifact.v1` manifest imago verifies |
+| nucleus | `https://github.com/cordanaLLM/nucleus.git` | `82aa6b7a3c68a42a6330370c81ec642482014c9f` | verifies `build/kernel-requirement.json`: `scripts/verify_kernel_requirement.py` under the `versions.json` label `aegis-os`, bound to the `realtime` stream, report `nucleus.kernel-requirement-report.v1` at evidence level `declared` (D106); also publishes the `imago.nucleus.kernel-artifact.v1` manifest imago verifies |
 
 imago's commit was its `main` on 2026-09-28 and still was on 2026-09-29;
-nucleus's was its `main` on 2026-09-29, both read with `git ls-remote --heads`.
-nucleus was pinned at `8672247ff1bd22ed6b6b89d498116f20ff00c2ab`, its `main` on
-2026-09-28, by identity only until D106. The 2026-09-13 local-only pins, imago
-`4f116fc` and nucleus `78ca8f2`, never reached either producer and are not
-used.
+nucleus's was its `main` on 2026-09-29 once its pull requests 36 and 37 had
+merged, both read with `git ls-remote --heads`. nucleus was pinned at
+`8672247ff1bd22ed6b6b89d498116f20ff00c2ab`, its `main` on 2026-09-28, by
+identity only until D106, and at `0a4eac93f29fef432bfa9d892ad236568ce2f482`,
+its pull request 35, from D106 until the re-pin. The 2026-09-13 local-only
+pins, imago `4f116fc` and nucleus `78ca8f2`, never reached either producer and
+are not used.
 
 imago's `go.mod` declares `go 1.27.1`, and the fetch builds with
 `GOTOOLCHAIN=local`, so a Go below that floor is refused rather than replaced
@@ -100,15 +105,29 @@ symbols hardcoded in the workflow (issue 20); `publish-release.yml` wrote the
 not yet perform (issue 18); and its `AGENTS.md`, under "The contract with
 imago", named imago's own `kernel/requirement.json` as its inbound.
 
-What it reads at `0a4eac9`, from the same tree: `versions.json` declares each
-requirement document under `downstream.requirements`, and binds the label
-`aegis-os` to `cordanaLLM/Aegis-OS` `build/kernel-requirement.json` and the
-`realtime` stream; `scripts/verify_kernel_requirement.py`, standard-library
-Python, decodes a document the way `crates/aegis-fabrica-defs` does and holds
-every feature, on every listed architecture, against the kconfig fragments of
-each bound stream; `AGENTS.md` now lists both documents as its inbound. Its
-ADR-0007, still Proposed, asked this repository two questions, and D103 and
-D104 answer them.
+What it reads since `0a4eac9`, and still at `82aa6b7`, from the same tree:
+`versions.json` declares each requirement document under
+`downstream.requirements`, and binds the label `aegis-os` to
+`cordanaLLM/Aegis-OS` `build/kernel-requirement.json` and the `realtime`
+stream; `scripts/verify_kernel_requirement.py`, standard-library Python with
+its sibling `scripts/versions_query.py`, decodes a document the way
+`crates/aegis-fabrica-defs` does and holds every feature, on every listed
+architecture, against the kconfig fragments of each bound stream; `AGENTS.md`
+now lists both documents as its inbound. Its ADR-0007, still Proposed, asked
+this repository two questions, and D103 and D104 answer them.
+
+What `82aa6b7` changes for this gate. Pull request 36 adds a second evidence
+level, `resolved` (its ADR-0008, Proposed): given
+`--resolved-config STREAM:ARCH=PATH`, the verifier holds the document against a
+`.config` resolved from the stream's fetched, signature-verified kernel source.
+Producing one needs the network and a kernel tree, so the gate never passes the
+flag and the pin keeps `declared`. Without it the report keeps its schema, its
+top-level fields and every document field; each stream row gains `evidence`,
+`declared` here, and the stream versions follow `versions.json` (`realtime` is
+`7.2.8`, was `7.2-rt`). The verifier now puts its own directory on `sys.path`
+to import that sibling module, which `python3 -I` otherwise hides (its commit
+`229f164`, before the merge). Pull request 37 compiles and gates every stream
+and architecture leg before anything is signed.
 
 ## How one run works
 
@@ -130,8 +149,10 @@ the run directory, and each invocation is retained there.
 
 nucleus's verifier runs from the nucleus checkout, where it reads `kconfig/` and
 `versions.json`, under the interpreter running the gate with `-I`, so no
-`PYTHON*` variable, user site or working-directory module takes part, and with
-every path absolute. Each run passes `--requirement aegis-os=<payload>`,
+`PYTHON*` variable, user site or working-directory module takes part, with
+`-B`, so importing its sibling module writes no `scripts/__pycache__` into the
+checkout the next run requires clean, and with every path absolute. Each run
+passes `--requirement aegis-os=<payload>`,
 `--report-json <run directory>/reports/<row>.json` and `--nucleus-revision
 <pin>`. The gate asserts on that report and never on the text the script prints,
 which its interface lets grow: the schema
@@ -331,6 +352,87 @@ PASS nucleus/dispatch-binding-refused
 `make verify-all` ran the same nineteen cases as run `r20260929T085813-f455`,
 and after review as run `r20260929T092828-797e`.
 
+## The recorded runs of 2026-09-29, nucleus re-pinned to 82aa6b7
+
+`make contract-fetch`, run `f20260929T101312-03f2`, with the nucleus pin moved
+from `0a4eac9` to `82aa6b7` (folded; the imago lines are as before):
+
+```text
+PASS contract-fetch/identity
+     git ls-remote --heads https://github.com/cordanaLLM/nucleus.git: exit 0;
+       main 82aa6b7a3c68a42a6330370c81ec642482014c9f equals the pin
+PASS contract-fetch/nucleus-checkout
+     https://github.com/cordanaLLM/nucleus.git at
+       82aa6b7a3c68a42a6330370c81ec642482014c9f, depth 1, into a fresh directory
+PASS contract-fetch/build
+     binary sha256
+       71186e11e2589ad86d6dae318b8fa337752ed89d0e7de7911ddf53dd8d5a67bd,
+       recorded in .../identity.json
+```
+
+`make verify-contract`, run `r20260929T101320-e64d`, then passed all nineteen
+cases. The next gate run, inside `make verify-all` (run
+`r20260929T102148-b707`), failed:
+
+```text
+FAIL contract/nucleus-checkout
+     the checkout is modified:
+       ['!! scripts/__pycache__/versions_query.cpython-314.pyc']
+```
+
+At `82aa6b7` the verifier imports its sibling `scripts/versions_query.py`, and
+`python3 -I` alone writes that import's bytecode into the checkout, which the
+next run refuses. By hand, from a separate clone, `-I` wrote
+`scripts/__pycache__/` and `-I -B` wrote nothing, with byte-identical reports.
+The gate now passes `-B` as well, and `tools/test_contract_pair.py` runs a
+stand-in that imports a sibling module both ways.
+
+With that change, `make contract-fetch` (run `f20260929T102410-28e2`) cloned a
+fresh checkout, and `make verify-contract` ran twice in a row, runs
+`r20260929T102414-7f8a` and `r20260929T102414-cc48`, each passing all
+nineteen cases, the fourteen imago cases unchanged, with
+`git status --porcelain --ignored` of the nucleus checkout empty between them.
+The nucleus lines (folded):
+
+```text
+PASS contract/nucleus-checkout
+     .../nucleus at 82aa6b7a3c68a42a6330370c81ec642482014c9f: no tracked
+       change, untracked or ignored file, or hidden index entry
+     versions.json binds aegis-os to cordanaLLM/Aegis-OS
+       build/kernel-requirement.json on realtime; verifier
+       scripts/verify_kernel_requirement.py
+PASS nucleus/accepted
+     requirement (--sha256 --correlation-id): exit 0, PASS
+       (aegis-m18-kernel-requirement-0001 held by realtime), sha256
+       d796c408b4db, evidence level declared
+PASS nucleus/correlated-refusal
+     planted-unset-symbol: exit 1, FAIL (aegis-m18-kernel-requirement-0001:
+       realtime x86_64: CONFIG_AEGIS_CONTRACT_UNSET (required-by REQ-P07-01)
+       requires built-in, observed unrecorded), sha256 706ba4ec256d, evidence
+       level declared
+PASS nucleus/empty-features-refused
+     features-0: exit 1, REJECTED (NoFeatures), sha256 cfdcdf932ece, ...
+     features-1: exit 0, PASS (aegis-m18-kernel-requirement-0001 held by
+       realtime), sha256 57de5dce775b, evidence level declared
+PASS nucleus/dispatch-binding-refused
+     sha256-of-another-document (--sha256): exit 1, REJECTED (DigestMismatch),
+       sha256 d796c408b4db, evidence level declared
+     correlation-id-of-another (--correlation-id): exit 1, REJECTED
+       (CorrelationMismatch), sha256 d796c408b4db, evidence level declared
+```
+
+`make verify-all` ran the same nineteen cases as run `r20260929T102617-ece2`.
+Every report the `-B` runs wrote is byte-identical to run
+`r20260929T101320-e64d`'s. The reports `tools/test_contract_pair.py` keeps were
+re-captured from them; beyond the revision, the fields they keep read as they
+did at `0a4eac9`.
+
+A copy of the cache whose identity record names nucleus `0a4eac9`, the state
+every cache fetched before this re-pin is in (run `r20260929T102000-a8c1`),
+failed `contract/identity` with `nucleus: the cache was fetched for
+0a4eac93f29f..., the pin names 82aa6b7a3c68...; run make contract-fetch`,
+exit 1, with no other case run.
+
 ## Replays of a wrong cache
 
 Each ran against a copy of the cache, never the one CI or `make verify-all`
@@ -417,6 +519,10 @@ three Aegis maxima; the converse does not hold and does not need to.
   that D94 gives M10 (E10-5), and no Nucleus kernel result came back (E10-4).
   The runtime probes the requirement names are checked through their Kconfig
   symbol only; nucleus defers the probes themselves to boot.
+- The `resolved` level nucleus offers since `82aa6b7` is M10's input, not this
+  gate's: E10-4 and E10-5 read the release asset `kernel-realtime-x86_64.config`
+  that the `imago.nucleus.kernel-artifact.v1` manifest pins by
+  `kernel.config_digest`, and nucleus has published no release yet.
 - No hosted dispatch is claimed. Nothing was sent to either producer, no
   `repository_dispatch` was involved, and no issue or pull request was opened
   from here.

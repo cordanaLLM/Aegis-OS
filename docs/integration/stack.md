@@ -74,7 +74,8 @@ yet, so no artifact, digest or boot evidence has returned.
 M11, and `cordanaLLM/imago` issue 46 tracks its emitter.
 
 The Nucleus edge reads the kernel requirement since `cordanaLLM/nucleus` pull
-request 35, merged as `0a4eac9` on 2026-09-29, and M09 pins that under D106. Its
+request 35, merged as `0a4eac9` on 2026-09-29, and M09 pins it under D106, at
+`82aa6b7` since that day's re-pin. Its
 `scripts/verify_kernel_requirement.py` decodes `build/kernel-requirement.json`
 the way `crates/aegis-fabrica-defs` does and holds it against the kconfig
 fragments of the streams its `versions.json` binds Aegis to, `realtime` alone,
@@ -85,10 +86,16 @@ planted symbol no fragment sets is refused with the requirement's correlation
 id, an empty feature list is rejected, and the digest or correlation id of
 another document is rejected ([the contract pair](../build/contract-pair.md)).
 The evidence level is `declared`: the fragments as merged, not a built
-configuration, so `make olddefconfig` can still drop a declared symbol (nucleus
-issue 18). The forge builds no kernel yet, so D70 building the kernel locally is
-not a stopgap but the only path to one, and a Nucleus-built kernel and its
-digests are M10's to record (D92). Nucleus's outbound role is unchanged: the
+configuration, so `make olddefconfig` can still drop a declared symbol. Since
+`82aa6b7` the verifier also offers a `resolved` level, against a `.config`
+resolved from the stream's verified source, which needs the network, so the
+offline gate stays at `declared`; and the forge compiles and gates every leg
+(nucleus issues 18 and 31, closed by its pull request 37) but has published no
+release. Until one exists, D70 building the kernel locally is the only path to
+a kernel Aegis can use, and a Nucleus-published kernel, its configuration and
+its digests are M10's to record (D92, D94): E10-4 and E10-5 read the release
+asset `kernel-realtime-x86_64.config`, which the manifest pins by
+`kernel.config_digest`. Nucleus's outbound role is unchanged: the
 `imago.nucleus.kernel-artifact.v1` manifest imago verifies.
 
 Activation order: the ranked, blocking-state roadmap in `docs/roadmap/README.md`

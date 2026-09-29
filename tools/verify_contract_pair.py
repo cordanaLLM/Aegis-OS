@@ -18,8 +18,8 @@ outside the repository, and builds imago with
 ``GOTOOLCHAIN=local CGO_ENABLED=0 go build -trimpath -buildvcs=true``, so the
 binary carries the commit it was built from; the identity record it writes last
 keeps the binary's sha256. nucleus's verifier is a stdlib-only Python script and
-is not built: the gate runs it from the checkout with this interpreter and
-``-I``. The gate never touches the network: without go or git on PATH, or
+is not built: the gate runs it from the checkout with this interpreter, ``-I``
+and ``-B``. The gate never touches the network: without go or git on PATH, or
 without a cached checkout, the binary or the identity record, it prints why it
 did not run and exits 0 (HISS-21). A cache that is present but wrong is a FAIL
 naming ``make contract-fetch``: an identity record fetched for another pin,
@@ -100,7 +100,8 @@ CACHE_VARIABLE = "AEGIS_CONTRACT_DIR"
 PRODUCERS = ("imago", "nucleus")
 IMAGO_MODULE = "github.com/cordanaLLM/imago"
 # The interpreter nucleus's stdlib-only verifier runs under: the one running this
-# gate, which `make` starts as python3, isolated from the environment with -I.
+# gate, which `make` starts as python3, isolated from the environment with -I
+# and writing no bytecode into the checkout with -B.
 PYTHON = sys.executable
 REPORT_SCHEMA = "nucleus.kernel-requirement-report.v1"
 EVIDENCE_LEVELS = ("declared", "resolved")
@@ -1323,8 +1324,11 @@ def verify_requirement(context, label, path, flags=()):
 
     It runs from the checkout, which is where it reads kconfig/ and
     versions.json, under this interpreter with -I, so no PYTHON* variable, user
-    site or working-directory module takes part. Both paths are absolute
-    because the working directory is the checkout.
+    site or working-directory module takes part, and with -B: since nucleus
+    82aa6b7 the verifier imports a sibling module, and without -B that import
+    writes scripts/__pycache__ into the checkout, which the next run's
+    contract/nucleus-checkout then refuses. Both paths are absolute because the
+    working directory is the checkout.
     """
     nucleus = context.pin["nucleus"]
     written = (context.run_dir / "reports" / f"{label}.json").resolve()
@@ -1332,6 +1336,7 @@ def verify_requirement(context, label, path, flags=()):
     argv = [
         PYTHON,
         "-I",
+        "-B",
         nucleus["verifier"],
         "--requirement",
         f"{nucleus['label']}={native(Path(path).resolve())}",

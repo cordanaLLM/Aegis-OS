@@ -31,7 +31,7 @@
   },
   "nucleus": {
     "repository": "https://github.com/cordanaLLM/nucleus.git",
-    "commit": "0a4eac93f29fef432bfa9d892ad236568ce2f482",
+    "commit": "82aa6b7a3c68a42a6330370c81ec642482014c9f",
     "verifier": "scripts/verify_kernel_requirement.py",
     "label": "aegis-os",
     "bound-streams": [
@@ -39,6 +39,6 @@
     ],
     "report-schema": "nucleus.kernel-requirement-report.v1",
     "evidence-level": "declared",
-    "role": "consumes build/kernel-requirement.json since nucleus#35 (its ADR-0007, Proposed): the verifier decodes it as the Aegis crate does and holds it against the kconfig fragments of the streams versions.json binds the aegis-os label to, at evidence level declared, the fragments as merged and not a built .config; nucleus also publishes the imago.nucleus.kernel-artifact.v1 manifest imago verifies, and the kernel result stays M10's under D92 (D106)"
+    "role": "consumes build/kernel-requirement.json since nucleus#35 (its ADR-0007, Proposed): the verifier decodes it as the Aegis crate does and holds it against the kconfig fragments of the streams versions.json binds the aegis-os label to, at evidence level declared, the fragments as merged and not a built .config; nucleus also publishes the imago.nucleus.kernel-artifact.v1 manifest imago verifies, and the kernel result stays M10's under D92 (D106). Re-pinned from 0a4eac9 on 2026-09-29 after nucleus#36 and #37: its --resolved-config level needs a .config resolved from a fetched, signed kernel source, so this offline gate stays at declared"
   }
 }

@@ -113,8 +113,8 @@ a11y-fetch:
 # binary rebuilt from other sources that prints imago's output byte for byte is
 # refused because it lacks the pinned build provenance. Since D106 the kernel
 # requirement also runs through cordanaLLM/nucleus's
-# scripts/verify_kernel_requirement.py at its pinned commit, with this python3
-# and -I: the gate asserts on its --report-json -- PASS on the bound stream, a
+# scripts/verify_kernel_requirement.py at its pinned commit, with this python3,
+# -I and -B: the gate asserts on its --report-json -- PASS on the bound stream, a
 # planted unset symbol refused with the correlation id, an empty list rejected,
 # a digest or correlation id of another document rejected -- never on its text.
 #

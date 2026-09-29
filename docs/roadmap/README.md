@@ -67,9 +67,10 @@ Current verified state at revision time:
 - cordanaLLM/imago and cordanaLLM/nucleus resolve. imago decodes both M18
   payloads at the commit M09 pins (16f964b), nucleus verifies
   `build/kernel-requirement.json` against the kconfig fragments of its
-  `realtime` stream at the commit M09 pins since D106 (0a4eac9), and neither
-  producer builds an image or a kernel yet (M09, D92, D106). The private
-  readiness matrix is a superseded 2026-09-13 snapshot.
+  `realtime` stream at the commit M09 pins (0a4eac9 under D106, 82aa6b7 since
+  the re-pin of 2026-09-29), and neither producer has published an image or a
+  kernel yet (M09, D92, D106). The private readiness matrix is a superseded
+  2026-09-13 snapshot.
 
 ## Method
 
@@ -3051,6 +3052,50 @@ and the dated D106 entries of 2026-09-29; every entry is in
   and nothing else, kept as bytes; the one variant nucleus did not write, an
   unbound stream that sets the planted symbol, is built inside its test and
   named synthetic.
+- Dated 2026-09-29, appended after done; no exit criterion and no epic text
+  changes. The nucleus pin moves from 0a4eac93f29fef432bfa9d892ad236568ce2f482
+  to 82aa6b7a3c68a42a6330370c81ec642482014c9f, cordanaLLM/nucleus main on
+  2026-09-29 (read with `git ls-remote https://github.com/cordanaLLM/nucleus.git
+  refs/heads/main`), after its pull requests 36 (30253b9: signed kernel sources
+  and a resolved configuration) and 37 (82aa6b7: every leg compiled and its
+  artifacts gated before signing; it closes nucleus issues 18 and 31). At
+  82aa6b7 versions.json still binds aegis-os to cordanaLLM/Aegis-OS
+  build/kernel-requirement.json on realtime with dispatched false, and
+  scripts/verify_kernel_requirement.py is still standard-library Python; it now
+  imports its sibling scripts/versions_query.py by putting its own directory on
+  sys.path, which python3 -I otherwise hides. Without --resolved-config its
+  report keeps the schema nucleus.kernel-requirement-report.v1, evidence_level
+  declared and every document field; each stream row gains an evidence field,
+  declared here. The first gate run at 82aa6b7 passed (`make contract-fetch` run
+  f20260929T101312-03f2, `make verify-contract` run r20260929T101320-e64d), and
+  the next failed contract/nucleus-checkout (run r20260929T102148-b707): under
+  python3 -I alone the sibling import wrote
+  `scripts/__pycache__/versions_query.cpython-314.pyc` into the checkout. The
+  gate now runs the verifier with -I -B, and tools/test_contract_pair.py runs a
+  sibling-importing stand-in with -B (no bytecode) and without it (bytecode
+  written). Gates run on this revision, each exit 0: `make contract-fetch` (run
+  f20260929T102410-28e2: nucleus main equals the pin, a fresh depth-1 clone at
+  82aa6b7, and the imago binary again
+  71186e11e2589ad86d6dae318b8fa337752ed89d0e7de7911ddf53dd8d5a67bd); `make
+  verify-contract` twice in a row (runs r20260929T102414-7f8a and
+  r20260929T102414-cc48, nineteen PASS lines each, the nucleus checkout still
+  clean after the first; the nucleus rows as under D106: PASS held by realtime,
+  the planted symbol refused with the correlation id, NoFeatures, DigestMismatch
+  and CorrelationMismatch); and `make verify-all` with the contract pair gate
+  running (run r20260929T102617-ece2), praetorctl 892dc1035ae9, the ci.yml pin
+  892dc1035ae93de4e956a5d9a33202557ad28202. The -B runs wrote reports
+  byte-identical to run r20260929T101320-e64d's, and the reports
+  tools/test_contract_pair.py keeps were re-captured from them, abridged as
+  before; beyond nucleus_revision the fields they keep are unchanged. The
+  evidence level stays declared. The resolved level is M10's input, not M09's:
+  E10-4 and E10-5 read the release asset kernel-realtime-x86_64.config, which
+  the imago.nucleus.kernel-artifact.v1 manifest pins by kernel.config_digest,
+  and nucleus has published no release (its releases API lists none and
+  publish-release.yml has never run, read 2026-09-29). nucleus's own
+  verify-requirements run 36540473760 on 82aa6b7 reports this document (Aegis-OS
+  631a1b5, sha256 d796c408b4db) held by realtime at both levels; it ran on
+  nucleus's runner, not in this gate, and is neither a built kernel nor a
+  release, so it closes nothing in M10.
 
 Epics:
 
