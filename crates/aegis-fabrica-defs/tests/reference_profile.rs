@@ -17,7 +17,8 @@ mod common;
 
 use aegis_fabrica_defs::field::ConfigSymbol;
 use aegis_fabrica_defs::kernel::{
-    Architecture, ConfigState, MAX_PROFILE_BYTES, MAX_UNMET, ProbeSource, RequiredState,
+    Architecture, ConfigState, MAX_ARCHITECTURES, MAX_FEATURES, MAX_PROFILE_BYTES, MAX_UNMET,
+    ProbeSource, RequiredState,
 };
 use aegis_fabrica_defs::{KernelError, KernelRequirement, ReferenceProfile, Unmet};
 
@@ -222,12 +223,42 @@ fn another_architecture_or_a_newer_minimum_is_refused() -> Fallible {
         "{unmet:?}"
     );
     assert!(
+        unmet.contains(&Unmet::ArchitectureUnverified {
+            architecture: Architecture::Arm64
+        }),
+        "{unmet:?}"
+    );
+    assert!(
         unmet
             .iter()
             .any(|row| matches!(row, Unmet::ReleaseBelowMinimum { .. })),
         "{unmet:?}"
     );
     assert!(unmet.len() <= MAX_UNMET);
+    Ok(())
+}
+
+/// Negative: a second listed architecture is a promise the profile cannot keep (D104).
+///
+/// Architectures are all-of. A requirement for x86-64 and arm64 is not met by
+/// an x86-64 profile that satisfies every feature: the arm64 build is
+/// unverified, and the check says so by name instead of passing.
+#[test]
+fn a_listed_architecture_the_profile_is_not_for_is_unverified() -> Fallible {
+    let profile = profile()?;
+    let mut requirement = only("CONFIG_HZ_1000", RequiredState::BuiltIn)?;
+    requirement.architectures = vec![Architecture::X86_64, Architecture::Arm64];
+    requirement.validate()?;
+    let unmet = requirement.unmet(&profile);
+    assert_eq!(
+        unmet,
+        vec![Unmet::ArchitectureUnverified {
+            architecture: Architecture::Arm64
+        }],
+        "{unmet:?}"
+    );
+    let shown = unmet.first().ok_or("no unmet row")?.to_string();
+    assert!(shown.contains("arm64"), "{shown}");
     Ok(())
 }
 
@@ -327,6 +358,100 @@ fn a_requirement_for_the_timer_frequency_alone_is_accepted() -> Fallible {
         "the product requirement must still fail on the same profile"
     );
     assert_eq!(realtime.unmet(&profile), Vec::new());
+    Ok(())
+}
+
+/// Boundary: exactly the profile's architecture is met, and a repeat of it too.
+///
+/// The edge of D104's all-of rule: one listed architecture, the profile's own,
+/// is the only list a single profile can prove. Listing it again is the same
+/// promise and adds nothing to prove; the list at [`MAX_ARCHITECTURES`] made of
+/// repeats is still one promise, and one other architecture is one row, not a
+/// row per repeat.
+#[test]
+fn exactly_the_profiles_architecture_is_met_and_a_repeat_adds_nothing() -> Fallible {
+    let profile = profile()?;
+    let mut requirement = only("CONFIG_HZ_1000", RequiredState::BuiltIn)?;
+    assert_eq!(requirement.architectures, vec![Architecture::X86_64]);
+    assert_eq!(requirement.unmet(&profile), Vec::new());
+    requirement.architectures = vec![Architecture::X86_64; MAX_ARCHITECTURES];
+    requirement.validate()?;
+    assert_eq!(requirement.unmet(&profile), Vec::new());
+    requirement.architectures = vec![
+        Architecture::Arm64,
+        Architecture::X86_64,
+        Architecture::Arm64,
+        Architecture::Arm64,
+    ];
+    requirement.validate()?;
+    assert_eq!(
+        requirement.unmet(&profile),
+        vec![Unmet::ArchitectureUnverified {
+            architecture: Architecture::Arm64
+        }]
+    );
+    Ok(())
+}
+
+/// Boundary: the reachable maximum of unmet rows is reported whole (D104).
+///
+/// All-of architectures let the identity half reach four rows: the profile's
+/// architecture not accepted, the one other architecture unverified, the
+/// release and the ABI. Beside them each of [`MAX_FEATURES`] rows adds two, a
+/// capability the profile records absent and a symbol it does not record. The
+/// profile here is the measured one with `rapl_energy_counters` recorded
+/// absent, a synthetic edit. `4 + 2 * MAX_FEATURES` rows must all come back
+/// and fit under [`MAX_UNMET`]: the bound before D104, `3 + 2 * MAX_FEATURES`,
+/// would drop one that was found.
+#[test]
+fn the_reachable_maximum_of_unmet_rows_is_reported_whole() -> Fallible {
+    let mut document: serde_json::Value = serde_json::from_str(&reference_profile_text()?)?;
+    *document
+        .pointer_mut("/capabilities/rapl_energy_counters/present")
+        .ok_or("the profile records no rapl_energy_counters row")? = serde_json::Value::Bool(false);
+    let profile = ReferenceProfile::from_profile_json(&serde_json::to_string(&document)?)?;
+    let mut requirement = only("CONFIG_HZ_1000", RequiredState::BuiltIn)?;
+    let row = requirement
+        .features
+        .first()
+        .cloned()
+        .ok_or("no feature row")?;
+    requirement.features.clear();
+    for index in 0..MAX_FEATURES {
+        let mut feature = row.clone();
+        feature.symbol = ConfigSymbol::try_from(format!("CONFIG_AEGIS_UNRECORDED_{index}"))?;
+        feature.probe = ProbeSource::Powercap;
+        requirement.features.push(feature);
+    }
+    requirement.architectures = vec![Architecture::Arm64];
+    requirement.abi.minimum_release = "999".to_owned().try_into()?;
+    requirement.abi.target_release = None;
+    requirement.abi.module_abi = Some("1.0".to_owned().try_into()?);
+    requirement.validate()?;
+    let unmet = requirement.unmet(&profile);
+    let reachable = MAX_FEATURES.saturating_mul(2).saturating_add(4);
+    assert_eq!(unmet.len(), reachable, "a found row was dropped");
+    assert!(
+        reachable <= MAX_UNMET,
+        "{reachable} rows are reachable, the bound is {MAX_UNMET}"
+    );
+    let absent = unmet
+        .iter()
+        .filter(|row| matches!(row, Unmet::CapabilityAbsent { .. }))
+        .count();
+    let unobserved = unmet
+        .iter()
+        .filter(|row| matches!(row, Unmet::Unobserved { .. }))
+        .count();
+    assert_eq!((absent, unobserved), (MAX_FEATURES, MAX_FEATURES));
+    assert!(unmet.contains(&Unmet::ArchitectureNotAccepted {
+        observed: Architecture::X86_64
+    }));
+    assert!(
+        unmet
+            .iter()
+            .any(|row| matches!(row, Unmet::AbiMismatch { .. }))
+    );
     Ok(())
 }
 

@@ -21,6 +21,11 @@ build/kernel-requirement.json text eol=lf
 build/kernel-requirement.reference.json text eol=lf
 build/contract/*.json text eol=lf
 
+# The published JSON Schemas are compared byte for byte with what the contract
+# types generate (crates/aegis-fabrica-defs/tests/json_schema.rs), and consumers
+# fetch them at the commit they pin.
+build/*.schema.json text eol=lf
+
 # BEGIN praetor managed attributes (praetorctl adopt)
 # praetorctl audit hashes these files; keep their checkout bytes the same on every platform.
 tools/figures/** text eol=lf

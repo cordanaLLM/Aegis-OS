@@ -5,7 +5,8 @@
 # builds no product image, boots nothing and publishes no release: the image,
 # boot, hardware, accessibility and release gates stay blocked. The M04
 # accessibility harness it runs covers the P12 token component only, and the M09
-# contract pair gate covers imago's consumption of the two Aegis payloads only.
+# contract pair gate covers imago's consumption of the two Aegis payloads and
+# nucleus's declared-level verification of the kernel requirement only.
 name: Verification gate
 
 on:
@@ -118,9 +119,11 @@ jobs:
 
       # The contract pair gate inside make verify-all never touches the network
       # either (M09, D93). This is its one networked step: git ls-remote against
-      # both producers, a depth-1 fetch of cordanaLLM/imago at the commit
-      # build/contract/producers.pin.json names, and a GOTOOLCHAIN=local build
-      # with -buildvcs=true, refused unless the binary carries that revision. The
+      # both producers, a depth-1 fetch of cordanaLLM/imago and cordanaLLM/nucleus
+      # at the commits build/contract/producers.pin.json names (nucleus since
+      # D106, for the verifier the gate runs with this runner's python3), and a
+      # GOTOOLCHAIN=local build of imago with -buildvcs=true, refused unless the
+      # binary carries that revision. The
       # Go set up above for praetorctl builds it: Praetor's go.mod declares go
       # 1.27, which setup-go resolves to the newest 1.27 patch (1.27.1 when this
       # was written), at or above the go 1.27.1 imago's go.mod requires.

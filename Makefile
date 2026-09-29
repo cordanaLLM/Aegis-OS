@@ -95,32 +95,37 @@ verify-a11y:
 a11y-fetch:
 	python3 tools/verify_a11y.py --fetch
 
-# The contract pair gate (M09, D92, D93): Aegis's two M18 payloads,
+# The contract pair gate (M09, D92, D93, D106): Aegis's two M18 payloads,
 # build/product-input.json and build/kernel-requirement.json, are run through
 # cordanaLLM/imago built from the commit build/contract/producers.pin.json names.
 # Each is accepted, a tampered copy is refused with an error carrying the
 # payload's correlation id, and each bound imago enforces is exercised at the
 # bound and one above it; an empty feature list is refused explicitly. A stand-in
 # binary rebuilt from other sources that prints imago's output byte for byte is
-# refused because it lacks the pinned build provenance. cordanaLLM/nucleus reads
-# no Aegis payload and is recorded by identity only (D92).
+# refused because it lacks the pinned build provenance. Since D106 the kernel
+# requirement also runs through cordanaLLM/nucleus's
+# scripts/verify_kernel_requirement.py at its pinned commit, with this python3
+# and -I: the gate asserts on its --report-json -- PASS on the bound stream, a
+# planted unset symbol refused with the correlation id, an empty list rejected,
+# a digest or correlation id of another document rejected -- never on its text.
 #
 # It IS part of verify-all, the D88 placement D93 applies: the gate never touches
 # the network, and CI runs `make contract-fetch` before `make verify-all`. With no
-# go or git on PATH, or without the cached checkout, binary or identity record, it
+# go or git on PATH, or without a cached checkout, the binary or the identity record, it
 # prints 'SKIP: <reason>; the contract pair gate did not run.' and exits 0, so an
 # exit 0 is evidence only when the case lines are above it. A cache that is
 # present but wrong is a FAIL naming `make contract-fetch`, not a skip: an
-# identity record fetched for another pin, a checkout with anything the pinned
-# commit lacks (a tracked change, an untracked or ignored file, a hidden index
-# entry), a binary whose sha256 is not the one the fetch recorded or whose
+# identity record fetched for another pin (read before any absent piece, so a
+# pin edit that adds a producer cannot hide it), a checkout with anything the
+# pinned commit lacks (a tracked change, an untracked or ignored file, a hidden
+# index entry), a binary whose sha256 is not the one the fetch recorded or whose
 # `go version -m` is not the pinned build. Every git and go command runs with the
 # system and user git configuration shut out and no inherited GIT_* variable. It
 # never suppresses a failure.
 #
 # `make contract-fetch` is the one networked step: `git ls-remote --heads` against
-# both producers, a depth-1 fetch of imago at the pinned commit into a fresh
-# directory, `go mod download` and `go mod verify`, and GOTOOLCHAIN=local
+# both producers, a depth-1 fetch of imago and of nucleus at their pinned commits
+# into fresh directories, `go mod download` and `go mod verify`, and GOTOOLCHAIN=local
 # CGO_ENABLED=0 go build -trimpath -buildvcs=true, refusing a binary whose
 # `go version -m` is not the pinned build and recording the sha256 of the one it
 # keeps. The cache and the retained logs live under AEGIS_CONTRACT_DIR, default

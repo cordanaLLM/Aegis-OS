@@ -13,6 +13,43 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Changed (producer contracts, D103 to D106)
+
+- **`required-by` is schema-generic (D103).** It admits an upper-case letter
+  followed by upper-case letters, digits and hyphens, at most 128 bytes, and
+  refuses the bare `REQ-`: exactly the form nucleus's ADR-0007 states, so
+  imago's `FLAVOR-*` identifiers (cordanaLLM/imago#48) decode under the schema
+  id they claim. The `REQ-` form now binds the payloads Aegis publishes,
+  checked by `tests/issued_payloads.rs` against `docs/roadmap/requirements.md`.
+- **Listed architectures are all-of (D104).** A conforming kernel is built for
+  every architecture a requirement lists; the check against a profile reports
+  each other listed architecture as `ArchitectureUnverified` instead of
+  accepting any one, and `MAX_UNMET` grows by `MAX_ARCHITECTURES`.
+- **Fixed: the array form of a contract struct decoded.**
+  `KernelRequirement::decode` and `ProductInputManifest::decode` accepted a
+  payload, or any nested struct, written as a JSON array of its values, which
+  `deny_unknown_fields` cannot see. Every struct of both contracts now decodes
+  from a JSON object only (`src/payload.rs`), without recursion, and
+  `tests/array_form.rs` covers both payloads and every nested struct.
+- **Published JSON Schemas (D105).** `build/kernel-requirement.schema.json` and
+  `build/product-input.schema.json` are generated from the Rust types with
+  schemars 1.2.2, newly admitted: closed objects at every level, required
+  fields, identifier patterns and the decoder's bounds. `tests/json_schema.rs`
+  fails when either drifts, and `tools/test_payload_schemas.py` reads them as a
+  consumer does.
+- **nucleus in the contract gate (D106).** cordanaLLM/nucleus verifies
+  `build/kernel-requirement.json` since its pull request 35, so the pin moves
+  nucleus to `0a4eac9` and `make contract-fetch` clones it. The gate checks the
+  checkout and its `versions.json` binding, then runs nucleus's
+  `scripts/verify_kernel_requirement.py` with `python3 -I` and asserts on its
+  JSON report: PASS on `realtime` with the digest and correlation id bound, a
+  planted unset symbol refused with the correlation id, an empty list rejected,
+  and another document's digest or id rejected, at evidence level `declared`.
+  An identity record fetched for another pin fails the gate even when a piece
+  such as the nucleus checkout is absent, so the cache a pre-D106 fetch left
+  fails `contract/identity` instead of skipping (D93). M09 and M18 append dated
+  evidence, and D92 carries a dated correction.
+
 ### Changed (native P05 shell on gpui, ADR-0004)
 
 - **The whole P05 shell is native Rust (D82, D101, ADR-0004).** One native

@@ -33,18 +33,34 @@
 //! the profile does not record at all is [`Unmet::Unobserved`] rather than an
 //! assumed default.
 //!
+//! # Every listed architecture is a promise (D104)
+//!
+//! `architectures` is all-of: a conforming kernel is built for every
+//! architecture the payload lists, and each of those builds provides every
+//! feature. A profile records one architecture, so a check against it can
+//! prove the requirement only when that is the one architecture listed; any
+//! other listed architecture is [`Unmet::ArchitectureUnverified`], never read
+//! as optional. A repeated architecture is one promise, not two.
+//!
 //! # What this module does not do
 //!
 //! It does not build a kernel, boot one, load an eBPF program, read
 //! `/proc/config.gz`, or verify a digest or a signature. The artifact digest
 //! and signature are field encodings; nothing here produces or checks either.
+//!
+//! # Wire form
+//!
+//! A payload is a JSON object, and so is each of its nested structs: the array
+//! form serde would otherwise derive is refused at every level (see
+//! [`crate::payload`]). The JSON Schema generated from these types is
+//! committed as `build/kernel-requirement.schema.json` ([`crate::schema`]).
 
 use std::collections::BTreeMap;
 
 use crate::field::{
     ArtifactDigest, ArtifactSignature, ConfigSymbol, CorrelationId, KernelRelease, RequirementId,
 };
-use crate::payload::{MAX_PAYLOAD_BYTES, declared_schema};
+use crate::payload::{MAX_PAYLOAD_BYTES, declared_schema, object_only};
 
 /// The stable tag the payload's `schema` field carries.
 pub const KERNEL_REQUIREMENT_TAG: &str = "aegis.p01-nucleus.kernel-requirement.v1";
@@ -57,21 +73,36 @@ pub const MAX_ARCHITECTURES: usize = 4;
 
 /// Scalar bound on the unmet rows one check may report.
 ///
-/// Derived rather than chosen. `unmet_identity` contributes at most three rows
-/// -- architecture, release and ABI -- and each feature row contributes at most
-/// two, a missing capability and a state that does not match. A payload
+/// Derived rather than chosen. `unmet_identity` contributes at most
+/// `3 + MAX_ARCHITECTURES` rows: the profile's architecture not accepted, one
+/// unverified row per other listed architecture, the release and the ABI. The
+/// profile's own architecture is either listed, leaving at most
+/// `MAX_ARCHITECTURES - 1` others, or not, adding the one not-accepted row; the
+/// sum is the same. Each feature row contributes at most two, a missing
+/// capability and a state that does not match. A payload
 /// [`KernelRequirement::validate`] accepts carries at most [`MAX_FEATURES`]
-/// feature rows, so the count can never reach this bound and the truncation
-/// that enforces it can never drop a row that was actually found. A bound
-/// below the reachable maximum would under-report an unmet requirement in
-/// silence, which is the opposite of failing closed.
-pub const MAX_UNMET: usize = 3 + 2 * MAX_FEATURES;
+/// feature rows and [`MAX_ARCHITECTURES`] architectures, so the count can
+/// never pass this bound and the truncation that enforces it can never drop a
+/// row that was actually found. A bound below the reachable maximum would
+/// under-report an unmet requirement in silence, which is the opposite of
+/// failing closed.
+pub const MAX_UNMET: usize = 3 + MAX_ARCHITECTURES + 2 * MAX_FEATURES;
 
 /// Scalar bound, in bytes, on a reference profile document.
 pub const MAX_PROFILE_BYTES: usize = 1 << 20;
 
 /// The contract versions of the kernel requirement this build admits.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+)]
 #[non_exhaustive]
 pub enum KernelRequirementVersion {
     /// Version 1, tagged `aegis.p01-nucleus.kernel-requirement.v1`.
@@ -84,7 +115,17 @@ pub enum KernelRequirementVersion {
 /// The spellings are mkosi's own `Architecture=` values, so the same word
 /// travels from the product input manifest into the image configuration
 /// without translation. An architecture outside this list does not decode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+)]
 pub enum Architecture {
     /// 64-bit x86, spelled `x86-64`.
     #[serde(rename = "x86-64")]
@@ -144,7 +185,17 @@ impl ConfigState {
 }
 
 /// The state a requirement row demands of its symbol.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 pub enum RequiredState {
     /// The symbol must be compiled in; a module does not satisfy it.
@@ -193,7 +244,17 @@ impl RequiredState {
 /// Each variant names one interface, and [`Self::path`] is the exact path the
 /// probe reads. A row therefore carries its own falsification recipe: a
 /// reviewer runs [`FeatureRequirement::probe_command`] and compares.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProbeSource {
     /// The kernel's own compiled-in configuration, `/proc/config.gz`.
@@ -238,7 +299,7 @@ impl ProbeSource {
 }
 
 /// One required kernel feature.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct FeatureRequirement {
     /// The Kconfig symbol the requirement is about.
@@ -247,7 +308,11 @@ pub struct FeatureRequirement {
     pub state: RequiredState,
     /// How the claim is checked on a running system.
     pub probe: ProbeSource,
-    /// The recorded requirement this row comes from.
+    /// The requirement this row comes from.
+    ///
+    /// Schema-generic (D103): any identifier [`RequirementId`] admits, such as
+    /// a producer's `FLAVOR-BASE`. A payload Aegis issues names a recorded
+    /// requirement, which [`RequirementId::is_aegis_requirement`] tells apart.
     pub required_by: RequirementId,
 }
 
@@ -269,7 +334,7 @@ impl FeatureRequirement {
 }
 
 /// The kernel version and module ABI the requirement is bounded by.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct KernelAbi {
     /// The oldest release the requirement admits. A hard floor.
@@ -296,7 +361,7 @@ pub struct KernelAbi {
 /// signature over nothing; a requirement that expects neither omits the object
 /// entirely. Both are field encodings: this crate produces and verifies
 /// neither.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ArtifactExpectation {
     /// The sha256 the produced artifact must hash to.
@@ -307,23 +372,98 @@ pub struct ArtifactExpectation {
 }
 
 /// The kernel requirement payload.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct KernelRequirement {
     /// The contract version this payload claims.
     pub schema: KernelRequirementVersion,
     /// The identifier threading this requirement and its result together.
     pub correlation_id: CorrelationId,
-    /// The architectures a conforming kernel may be built for.
+    /// The architectures a conforming kernel must be built for: all of them.
+    ///
+    /// All-of and fail-closed (D104). A kernel conforms only when it is built
+    /// for every listed architecture and each of those builds provides every
+    /// feature; no listed architecture is optional. A repeated architecture is
+    /// one promise, evaluated once.
+    #[schemars(length(min = 1, max = MAX_ARCHITECTURES))]
     pub architectures: Vec<Architecture>,
     /// The version and ABI bounds.
     pub abi: KernelAbi,
-    /// The features a conforming kernel must provide.
+    /// The features a conforming kernel must provide, on every architecture.
+    #[schemars(length(min = 1, max = MAX_FEATURES))]
     pub features: Vec<FeatureRequirement>,
     /// What a conforming artifact must hash and be signed to, when known.
     #[serde(default)]
     pub artifact: Option<ArtifactExpectation>,
 }
+
+// The field mirrors the object-form decoders are derived on (see
+// `crate::payload`). Each names every field of its public struct, with the
+// same type and the same serde attributes; `remote` makes the compiler hold
+// the field list, and the round-trip tests and the committed JSON Schema hold
+// the attributes.
+
+/// The decoder of [`FeatureRequirement`], object form only.
+#[derive(serde::Deserialize)]
+#[serde(
+    remote = "FeatureRequirement",
+    rename_all = "kebab-case",
+    deny_unknown_fields
+)]
+struct FeatureRequirementFields {
+    symbol: ConfigSymbol,
+    state: RequiredState,
+    probe: ProbeSource,
+    required_by: RequirementId,
+}
+
+/// The decoder of [`KernelAbi`], object form only.
+#[derive(serde::Deserialize)]
+#[serde(remote = "KernelAbi", rename_all = "kebab-case", deny_unknown_fields)]
+struct KernelAbiFields {
+    minimum_release: KernelRelease,
+    #[serde(default)]
+    target_release: Option<KernelRelease>,
+    #[serde(default)]
+    module_abi: Option<KernelRelease>,
+}
+
+/// The decoder of [`ArtifactExpectation`], object form only.
+#[derive(serde::Deserialize)]
+#[serde(
+    remote = "ArtifactExpectation",
+    rename_all = "kebab-case",
+    deny_unknown_fields
+)]
+struct ArtifactExpectationFields {
+    digest: ArtifactDigest,
+    #[serde(default)]
+    signature: Option<ArtifactSignature>,
+}
+
+/// The decoder of [`KernelRequirement`], object form only.
+#[derive(serde::Deserialize)]
+#[serde(
+    remote = "KernelRequirement",
+    rename_all = "kebab-case",
+    deny_unknown_fields
+)]
+struct KernelRequirementFields {
+    schema: KernelRequirementVersion,
+    correlation_id: CorrelationId,
+    architectures: Vec<Architecture>,
+    abi: KernelAbi,
+    features: Vec<FeatureRequirement>,
+    #[serde(default)]
+    artifact: Option<ArtifactExpectation>,
+}
+
+object_only!(
+    FeatureRequirement => FeatureRequirementFields,
+    KernelAbi => KernelAbiFields,
+    ArtifactExpectation => ArtifactExpectationFields,
+    KernelRequirement => KernelRequirementFields,
+);
 
 /// Why a kernel requirement payload was refused.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -395,10 +535,18 @@ pub enum KernelError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Unmet {
-    /// The profile's architecture is not one the requirement accepts.
+    /// The profile's architecture is not one the requirement lists.
     ArchitectureNotAccepted {
         /// The architecture the profile reports.
         observed: Architecture,
+    },
+    /// A listed architecture the profile is not for, so nothing proves it.
+    ///
+    /// Architectures are all-of (D104): each listed one needs its own build
+    /// and its own evidence, and a profile of another architecture is neither.
+    ArchitectureUnverified {
+        /// The listed architecture no profile evidence covers.
+        architecture: Architecture,
     },
     /// The profile's kernel is older than the required minimum.
     ReleaseBelowMinimum {
@@ -444,8 +592,13 @@ impl core::fmt::Display for Unmet {
         match self {
             Self::ArchitectureNotAccepted { observed } => write!(
                 formatter,
-                "the profile reports architecture {}, which the requirement does not accept",
+                "the profile reports architecture {}, which the requirement does not list",
                 observed.tag()
+            ),
+            Self::ArchitectureUnverified { architecture } => write!(
+                formatter,
+                "the requirement lists architecture {}, which the profile is not for",
+                architecture.tag()
             ),
             Self::ReleaseBelowMinimum { observed, minimum } => write!(
                 formatter,
@@ -753,14 +906,16 @@ impl KernelRequirement {
     /// Returns everything `profile` does not satisfy; empty means it does.
     ///
     /// The check fails closed. A symbol the profile records nothing about is
-    /// [`Unmet::Unobserved`], and a runtime probe whose capability row is
-    /// absent or false is [`Unmet::CapabilityAbsent`], rather than either
-    /// being read as a silent pass.
+    /// [`Unmet::Unobserved`], a runtime probe whose capability row is absent
+    /// or false is [`Unmet::CapabilityAbsent`], and a listed architecture the
+    /// profile is not for is [`Unmet::ArchitectureUnverified`], rather than any
+    /// of them being read as a silent pass. The result is therefore empty only
+    /// when the payload lists exactly the profile's architecture (D104).
     ///
     /// [`MAX_UNMET`] is the scalar bound on the result. It is derived from
-    /// [`MAX_FEATURES`] rather than chosen, so a payload [`Self::validate`]
-    /// accepts cannot reach it and no row that was found is dropped from the
-    /// report.
+    /// [`MAX_FEATURES`] and [`MAX_ARCHITECTURES`] rather than chosen, so a
+    /// payload [`Self::validate`] accepts cannot pass it and no row that was
+    /// found is dropped from the report.
     #[must_use]
     pub fn unmet(&self, profile: &ReferenceProfile) -> Vec<Unmet> {
         let mut out = self.unmet_identity(profile);
@@ -773,16 +928,7 @@ impl KernelRequirement {
 
     /// The architecture, release and ABI half of [`Self::unmet`].
     fn unmet_identity(&self, profile: &ReferenceProfile) -> Vec<Unmet> {
-        let mut out = Vec::new();
-        let observed = profile.architecture();
-        if !self
-            .architectures
-            .iter()
-            .take(MAX_ARCHITECTURES)
-            .any(|accepted| *accepted == observed)
-        {
-            out.push(Unmet::ArchitectureNotAccepted { observed });
-        }
+        let mut out = unmet_architectures(&self.architectures, profile.architecture());
         if !profile.release().at_least(&self.abi.minimum_release) {
             out.push(Unmet::ReleaseBelowMinimum {
                 observed: profile.release().clone(),
@@ -799,6 +945,31 @@ impl KernelRequirement {
         }
         out
     }
+}
+
+/// The architecture rows of [`KernelRequirement::unmet`], all-of (D104).
+///
+/// The profile's own architecture must be listed, and every other listed
+/// architecture is unverified: a profile is evidence for the one architecture
+/// it records. A repeated architecture is reported once. Both loops are bounded
+/// by [`MAX_ARCHITECTURES`].
+fn unmet_architectures(listed: &[Architecture], observed: Architecture) -> Vec<Unmet> {
+    let mut out = Vec::new();
+    let mut seen: Vec<Architecture> = Vec::new();
+    for architecture in listed.iter().take(MAX_ARCHITECTURES) {
+        if !seen.contains(architecture) {
+            seen.push(*architecture);
+        }
+    }
+    if !seen.contains(&observed) {
+        out.push(Unmet::ArchitectureNotAccepted { observed });
+    }
+    for architecture in seen.into_iter().take(MAX_ARCHITECTURES) {
+        if architecture != observed {
+            out.push(Unmet::ArchitectureUnverified { architecture });
+        }
+    }
+    out
 }
 
 /// Appends one `# ...` comment line to a Kconfig fragment.

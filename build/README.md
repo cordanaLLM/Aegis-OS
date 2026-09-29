@@ -27,6 +27,7 @@ and diagnostics, the open points, and the PCR acceptance target for M11 are in
 | `product-input.json` | the product input manifest: correlation id, exact revision, distribution pin, the four configuration references, package set, boot kernel identity (D07) and bounded retries |
 | `kernel-requirement.json` | the kernel a conforming product must be built with, as a payload of Kconfig symbol rows |
 | `kernel-requirement.reference.json` | what the reference profile must keep providing for the local milestones to stay runnable |
+| `kernel-requirement.schema.json`, `product-input.schema.json` | the JSON Schemas of both contracts, generated from the Rust types for consumers in other languages (D105); `crates/aegis-fabrica-defs/tests/json_schema.rs` fails when either drifts from the types |
 
 `make verify-mkosi` parses `mkosi.conf` with the host's own mkosi and requires
 the Output stanza of the main image; the crate validates the two JSON payloads

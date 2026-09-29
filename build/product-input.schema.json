@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProductInputManifest",
+  "description": "The product input manifest payload.",
+  "type": "object",
+  "properties": {
+    "correlation-id": {
+      "description": "The identifier threading this request and its result together.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "definitions": {
+      "description": "Where the reviewed configuration inputs live.",
+      "$ref": "#/$defs/DefinitionReferences"
+    },
+    "distribution": {
+      "description": "The pinned distribution input.",
+      "$ref": "#/$defs/DistributionPin"
+    },
+    "kernel": {
+      "description": "The boot kernel identity.",
+      "$ref": "#/$defs/BootKernel"
+    },
+    "packages": {
+      "description": "The image content set the recorded requirements name.",
+      "type": "array",
+      "items": {
+        "description": "One package name in the pinned image content set.\n\nThe charset is the one a pacman package name uses. No version is carried:\non a dated snapshot the repository holds exactly one version of each\npackage, so the [`SnapshotId`] is the version pin and a second, separately\nmaintained one could only disagree with it.",
+        "type": "string",
+        "maxLength": 128,
+        "pattern": "^[a-z0-9][a-z0-9@._+-]*$"
+      },
+      "maxItems": 64,
+      "minItems": 1
+    },
+    "retries": {
+      "description": "The bounded retry budget.",
+      "$ref": "#/$defs/RetryPolicy"
+    },
+    "revision": {
+      "description": "The exact source revision the referenced inputs were read at.",
+      "type": "string",
+      "maxLength": 40,
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "schema": {
+      "description": "The contract version this payload claims.",
+      "$ref": "#/$defs/ProductInputVersion"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "correlation-id",
+    "revision",
+    "distribution",
+    "definitions",
+    "packages",
+    "kernel",
+    "retries"
+  ],
+  "$defs": {
+    "BootKernel": {
+      "description": "The boot kernel identity.\n\nAll three of D07's facts are recorded at once: which source is in force,\nthe distribution package that boots by default, and the requirement payload\nany kernel must satisfy. A manifest therefore says who currently builds the\nkernel without losing what the kernel has to be.",
+      "type": "object",
+      "properties": {
+        "default-package": {
+          "description": "The pinned distribution package D07 makes the default.",
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-z0-9][a-z0-9@._+-]*$"
+        },
+        "source": {
+          "description": "Which source is in force.",
+          "$ref": "#/$defs/BootKernelSource"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "default-package"
+      ]
+    },
+    "BootKernelSource": {
+      "description": "Where the boot kernel comes from (decision D07, amended by D70).",
+      "oneOf": [
+        {
+          "description": "The pinned distribution package, which D07 makes the default.",
+          "type": "string",
+          "const": "distribution-package"
+        },
+        {
+          "description": "The kernel this repository builds while Nucleus is a scaffold (D70, M26).",
+          "type": "string",
+          "const": "built-here"
+        },
+        {
+          "description": "A producer artifact consumed through the M09 contract, which D07 lets\noverride the default once it exists.",
+          "type": "string",
+          "const": "producer-artifact"
+        }
+      ]
+    },
+    "DefinitionReferences": {
+      "description": "Where the reviewed configuration inputs live in this repository.",
+      "type": "object",
+      "properties": {
+        "kernel-requirement": {
+          "description": "The kernel requirement payload the kernel build consumes.",
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^(?:[A-Za-z0-9_-][A-Za-z0-9._-]*|\\.(?:[A-Za-z0-9_-][A-Za-z0-9._-]*)?|\\.\\.[A-Za-z0-9._-]+)(?:/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*|\\.(?:[A-Za-z0-9_-][A-Za-z0-9._-]*)?|\\.\\.[A-Za-z0-9._-]+))*$"
+        },
+        "mkosi": {
+          "description": "The mkosi configuration the image gate resolves.",
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^(?:[A-Za-z0-9_-][A-Za-z0-9._-]*|\\.(?:[A-Za-z0-9_-][A-Za-z0-9._-]*)?|\\.\\.[A-Za-z0-9._-]+)(?:/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*|\\.(?:[A-Za-z0-9_-][A-Za-z0-9._-]*)?|\\.\\.[A-Za-z0-9._-]+))*$"
+        },
+        "repart": {
+          "description": "The `repart.d(5)` drop-in directory.",
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^(?:[A-Za-z0-9_-][A-Za-z0-9._-]*|\\.(?:[A-Za-z0-9_-][A-Za-z0-9._-]*)?|\\.\\.[A-Za-z0-9._-]+)(?:/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*|\\.(?:[A-Za-z0-9_-][A-Za-z0-9._-]*)?|\\.\\.[A-Za-z0-9._-]+))*$"
+        },
+        "sysupdate": {
+          "description": "The `sysupdate.d(5)` transfer directory.",
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^(?:[A-Za-z0-9_-][A-Za-z0-9._-]*|\\.(?:[A-Za-z0-9_-][A-Za-z0-9._-]*)?|\\.\\.[A-Za-z0-9._-]+)(?:/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*|\\.(?:[A-Za-z0-9_-][A-Za-z0-9._-]*)?|\\.\\.[A-Za-z0-9._-]+))*$"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "repart",
+        "sysupdate",
+        "mkosi",
+        "kernel-requirement"
+      ]
+    },
+    "DistributionId": {
+      "description": "The distributions an Aegis image may be built from.\n\nThe spelling is mkosi's own `Distribution=` value, so the manifest and the\nimage configuration name the same thing.",
+      "oneOf": [
+        {
+          "description": "Arch Linux, spelled `arch`.",
+          "type": "string",
+          "const": "arch"
+        }
+      ]
+    },
+    "DistributionPin": {
+      "description": "The pinned distribution input (decision D18).\n\nThere is no unpinned spelling: [`SnapshotId`] refuses `latest`, which is\nthe value REQ-P01-01 records as the reason the image inputs are not\nreproducible today.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The distribution the image is built from.",
+          "$ref": "#/$defs/DistributionId"
+        },
+        "snapshot": {
+          "description": "The dated snapshot every package version is resolved against.",
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^[0-9]{4}/[0-9]{2}/[0-9]{2}$"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "snapshot"
+      ]
+    },
+    "ProductInputVersion": {
+      "description": "The contract versions of the product input manifest this build admits.",
+      "oneOf": [
+        {
+          "description": "Version 1, tagged `aegis.p01.product-input.v1`.",
+          "type": "string",
+          "const": "aegis.p01.product-input.v1"
+        }
+      ]
+    },
+    "RetryPolicy": {
+      "description": "The bounded retry budget for one request across the boundary.",
+      "type": "object",
+      "properties": {
+        "backoff-seconds": {
+          "description": "How long to wait between attempts, in seconds.",
+          "type": "integer",
+          "format": "uint32",
+          "maximum": 3600,
+          "minimum": 1
+        },
+        "max-attempts": {
+          "description": "How many attempts one request may make in total.",
+          "type": "integer",
+          "format": "uint32",
+          "maximum": 5,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "max-attempts",
+        "backoff-seconds"
+      ]
+    }
+  }
+}

@@ -57,6 +57,31 @@ fn each_field_type_parses_the_value_the_reviewed_payloads_carry() -> Result<(), 
     Ok(())
 }
 
+/// Positive: `required-by` admits a producer's own identifiers (D103).
+///
+/// imago's `kernel/requirement.json` names its flavours, and imago#48 records
+/// that the REQ- rule refused every one of them under the schema id they
+/// share. They decode now; only an Aegis identifier reads as one.
+#[test]
+fn required_by_admits_a_producers_own_identifiers() -> Result<(), FieldError> {
+    for flavour in [
+        "FLAVOR-BASE",
+        "FLAVOR-K8S-NODE",
+        "FLAVOR-AI-INFER",
+        "FLAVOR-DOCKER",
+    ] {
+        let id = RequirementId::try_from(flavour.to_owned())?;
+        assert_eq!(id.as_str(), flavour);
+        assert!(
+            !id.is_aegis_requirement(),
+            "{flavour} read as an Aegis identifier"
+        );
+    }
+    let aegis = RequirementId::try_from("REQ-P07-01".to_owned())?;
+    assert!(aegis.is_aegis_requirement());
+    Ok(())
+}
+
 /// Positive: a digest and a signature round-trip through `String`.
 ///
 /// The `From<T> for String` direction is what serde uses to encode, so a type
@@ -183,8 +208,14 @@ fn a_value_of_the_wrong_shape_is_refused() {
     assert!(is_shape_refusal(&KernelRelease::try_from(
         "v7.3".to_owned()
     )));
-    assert!(is_shape_refusal(&RequirementId::try_from(
-        "P07-01".to_owned()
+    for refused in ["7-P01", "-REQ-P07-01", "REQ-", "-"] {
+        assert!(
+            is_shape_refusal(&RequirementId::try_from(refused.to_owned())),
+            "{refused} was not refused for its shape"
+        );
+    }
+    assert!(is_charset_refusal(&RequirementId::try_from(
+        "req-p07-01".to_owned()
     )));
     assert!(is_shape_refusal(&ArtifactSignature::try_from(
         "abc".to_owned()
@@ -201,6 +232,46 @@ fn the_general_field_bound_is_exact_at_its_own_width() {
     assert!(matches!(over, Err(FieldError::TooLong { .. })), "{over:?}");
     assert!(KernelRelease::try_from(repeated('7', MAX_RELEASE_BYTES)).is_ok());
     assert!(KernelRelease::try_from(repeated('7', MAX_RELEASE_BYTES.saturating_add(1))).is_err());
+}
+
+/// Boundary: `required-by` is exact at its bound, and at its shortest forms.
+///
+/// One upper-case letter is the shortest identifier the schema admits, and
+/// `REQ-` with one character after it the shortest Aegis identifier; the bare
+/// prefix one character shorter is refused.
+#[test]
+fn required_by_is_exact_at_its_bound_and_its_shortest_forms() -> Result<(), FieldError> {
+    assert!(RequirementId::try_from(repeated('A', MAX_FIELD_BYTES)).is_ok());
+    let over = RequirementId::try_from(repeated('A', MAX_FIELD_BYTES.saturating_add(1)));
+    assert!(matches!(over, Err(FieldError::TooLong { .. })), "{over:?}");
+    let shortest = RequirementId::try_from("A".to_owned())?;
+    assert!(!shortest.is_aegis_requirement());
+    let aegis = RequirementId::try_from(format!("{REQUIREMENT_PREFIX}X"))?;
+    assert!(aegis.is_aegis_requirement());
+    assert!(RequirementId::try_from(REQUIREMENT_PREFIX.to_owned()).is_err());
+    assert!(matches!(
+        RequirementId::try_from(String::new()),
+        Err(FieldError::Empty { .. })
+    ));
+    Ok(())
+}
+
+/// Boundary: the bare `REQ-` is the one value refused beyond the charset (D103).
+///
+/// nucleus's ADR-0007 form refuses nothing else: a trailing hyphen elsewhere,
+/// as in `FLAVOR-`, `REQ-P07-` or `A-`, and a value one character away from
+/// `REQ-`, are admitted as nucleus admits them.
+#[test]
+fn only_the_bare_prefix_is_refused_beyond_the_charset() {
+    for admitted in ["FLAVOR-", "REQ-P07-", "A-", "REQ", "REQX", "RE-Q", "REQ--"] {
+        assert!(
+            RequirementId::try_from(admitted.to_owned()).is_ok(),
+            "{admitted} is admitted by nucleus's ADR-0007 form"
+        );
+    }
+    assert!(is_shape_refusal(&RequirementId::try_from(
+        REQUIREMENT_PREFIX.to_owned()
+    )));
 }
 
 /// Boundary: the fixed-width fields accept their own width and nothing else.

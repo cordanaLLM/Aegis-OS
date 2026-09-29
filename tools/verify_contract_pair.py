@@ -1,25 +1,30 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
 # SPDX-License-Identifier: EUPL-1.2
-"""Run Aegis's two M18 payloads through the pinned cordanaLLM/imago, offline.
+"""Run Aegis's M18 payloads through the pinned cordanaLLM/imago and nucleus, offline.
 
 Milestone M09, scoped by decision D92 to the consumption contract and placed by
-D93. ``build/contract/producers.pin.json`` names the imago commit, its Go floor,
-the bounds its product-input decoder enforces and the three fixtures imago
-vendors from this repository, and names the nucleus commit for identity only:
-nucleus reads no Aegis payload.
+D93, and extended by D106 to nucleus. ``build/contract/producers.pin.json``
+names the imago commit, its Go floor, the bounds its product-input decoder
+enforces and the three fixtures imago vendors from this repository; and the
+nucleus commit with the verifier that reads ``build/kernel-requirement.json``
+there (nucleus#35, its ADR-0007), the label and streams its ``versions.json``
+binds Aegis to, and the evidence level its report states.
 
 ``--fetch`` (``make contract-fetch``) is the only networked step. It runs
 ``git ls-remote --heads`` against both producers and keeps the output, clones
-imago at the pinned commit into a fresh directory in a cache outside the
-repository, and builds it with
+imago and nucleus at their pinned commits into fresh directories in a cache
+outside the repository, and builds imago with
 ``GOTOOLCHAIN=local CGO_ENABLED=0 go build -trimpath -buildvcs=true``, so the
 binary carries the commit it was built from; the identity record it writes last
-keeps the binary's sha256. The gate never touches the network: without go or git
-on PATH, or without the cached checkout, binary or identity record, it prints
-why it did not run and exits 0 (HISS-21). A cache that is present but wrong is a
-FAIL naming ``make contract-fetch``: an identity record fetched for another pin,
-a checkout at another commit or with anything in it the commit lacks, a binary
+keeps the binary's sha256. nucleus's verifier is a stdlib-only Python script and
+is not built: the gate runs it from the checkout with this interpreter and
+``-I``. The gate never touches the network: without go or git on PATH, or
+without a cached checkout, the binary or the identity record, it prints why it
+did not run and exits 0 (HISS-21). A cache that is present but wrong is a FAIL
+naming ``make contract-fetch``: an identity record fetched for another pin,
+even beside an absent piece such as the nucleus checkout a pin edit adds, a
+checkout at another commit or with anything in it the commit lacks, a binary
 whose digest is not the one the fetch recorded or whose build information is
 not the pinned build.
 
@@ -47,14 +52,24 @@ Cases, every one asserting an exit code and the text beside it:
   ``product-input/retry-bound``, ``product-input/packages-bound`` and
   ``product-input/aegis-bounds-inside-imago`` (E09-1);
 * ``kernel-requirement/accepted``, ``kernel-requirement/invalid-feature-refused``
-  and ``kernel-requirement/empty-features-refused`` (E09-2 as D92 re-scopes it).
+  and ``kernel-requirement/empty-features-refused`` (E09-2 as D92 re-scopes it);
+* ``contract/nucleus-checkout``: the cached nucleus checkout is the pinned
+  commit with nothing the commit lacks, its verifier is present and its
+  ``versions.json`` binds the pinned label to this repository's payload and the
+  pinned streams (D106);
+* ``nucleus/accepted``, ``nucleus/correlated-refusal``,
+  ``nucleus/empty-features-refused`` and ``nucleus/dispatch-binding-refused``:
+  what nucleus's verifier decided, read from its ``--report-json``
+  (``nucleus.kernel-requirement-report.v1``) and never from its text (D106).
 
-Every invocation's argv, exit code, stdout and stderr, every payload fed to
-imago and the identity record are retained under ``AEGIS_CONTRACT_DIR``
-(default ``${XDG_CACHE_HOME:-$HOME/.cache}/aegis-contract``) in a directory named
-by the printed run id. Nothing is written into the repository and nothing is
-sent to either producer. A pass is consumption evidence; no product result, no
-image and no kernel came back (D92 moved those to M11 and M10).
+Every invocation's argv, exit code, stdout and stderr, every payload fed to a
+producer, every nucleus report and the identity record are retained under
+``AEGIS_CONTRACT_DIR`` (default ``${XDG_CACHE_HOME:-$HOME/.cache}/aegis-contract``)
+in a directory named by the printed run id. Nothing is written into the
+repository and nothing is sent to either producer. A pass is consumption
+evidence; no product result, no image and no kernel came back (D92 moved those
+to M11 and M10), and nucleus's verdict is at its ``declared`` evidence level:
+the kconfig fragments it merges, not a built configuration.
 """
 
 import argparse
@@ -74,7 +89,7 @@ from host import end_session
 
 ROOT = Path(__file__).resolve().parent.parent
 PIN = ROOT / "build" / "contract" / "producers.pin.json"
-PIN_SCHEMA = "aegis.m09.contract-pin.v1"
+PIN_SCHEMA = "aegis.m09.contract-pin.v2"
 PRODUCT_INPUT = ROOT / "build" / "product-input.json"
 KERNEL_REQUIREMENT = ROOT / "build" / "kernel-requirement.json"
 KERNEL_REFERENCE = ROOT / "build" / "kernel-requirement.reference.json"
@@ -84,6 +99,20 @@ AEGIS_BOUNDS = ("MAX_PACKAGES", "MAX_RETRY_ATTEMPTS", "MAX_BACKOFF_SECONDS")
 CACHE_VARIABLE = "AEGIS_CONTRACT_DIR"
 PRODUCERS = ("imago", "nucleus")
 IMAGO_MODULE = "github.com/cordanaLLM/imago"
+# The interpreter nucleus's stdlib-only verifier runs under: the one running this
+# gate, which `make` starts as python3, isolated from the environment with -I.
+PYTHON = sys.executable
+REPORT_SCHEMA = "nucleus.kernel-requirement-report.v1"
+EVIDENCE_LEVELS = ("declared", "resolved")
+# This repository, as nucleus's versions.json names the source of its payload.
+AEGIS_SOURCE = {"repository": "cordanaLLM/Aegis-OS", "path": "build/kernel-requirement.json"}
+# A built-in symbol no nucleus fragment sets; the refusal case plants it.
+PLANTED_FEATURE = {
+    "symbol": "CONFIG_AEGIS_CONTRACT_UNSET",
+    "state": "built-in",
+    "probe": "kernel-config",
+    "required-by": "REQ-P07-01",
+}
 PRODUCT_PREFIX = "aegis product-input"
 KERNEL_PREFIX = "kernel requirement"
 # imago's main() ends a rejected command with os.Exit(1); anything else is a crash.
@@ -118,6 +147,8 @@ MAX_FIXTURES = 8
 MAX_LISTED_LINES = 4096
 MAX_RETAINED_RUNS = 16
 MAX_PRUNED = 4096
+MAX_STREAMS = 8
+MAX_REQUIREMENT_ROWS = 64
 
 REPOSITORIES = {name: f"https://github.com/cordanaLLM/{name}.git" for name in PRODUCERS}
 COMMIT = re.compile(r"[0-9a-f]{40}")
@@ -127,6 +158,8 @@ GO_RELEASE = re.compile(r"go(\d+)\.(\d+)(?:\.(\d+))?")
 RELATIVE = re.compile(r"[A-Za-z0-9_+-][A-Za-z0-9_.+-]*(?:/[A-Za-z0-9_+-][A-Za-z0-9_.+-]*)*")
 GO_DIRECTIVE = re.compile(r"^go (\S+)$", re.M)
 RUST_CONST = re.compile(r"^pub const (?P<name>[A-Z_]+): \w+ = (?P<value>\d+);$", re.M)
+LABEL = re.compile(r"[a-z0-9][a-z0-9-]*")
+STREAM = re.compile(r"[a-z][a-z0-9-]*")
 
 
 class GateError(Exception):
@@ -214,6 +247,31 @@ def imago_problems(row):
     return [problem for problem in problems if problem] + fixture_problems(row.get("fixtures"))
 
 
+def streams_problem(streams):
+    """Return why `streams` is not a list of 1..MAX_STREAMS stream names, or None."""
+    if isinstance(streams, list) and 1 <= len(streams) <= MAX_STREAMS:
+        if all(STREAM.fullmatch(str(stream)) for stream in streams):
+            return None
+    return f"nucleus bound-streams {streams!r} is not a list of 1..{MAX_STREAMS} stream names"
+
+
+def nucleus_problems(row):
+    """Return what is wrong with the nucleus section beyond its identity (D106)."""
+    problems = [relative_problem(row.get("verifier")), streams_problem(row.get("bound-streams"))]
+    if not LABEL.fullmatch(str(row.get("label", ""))):
+        problems.append(f"nucleus label {row.get('label')!r} is not a versions.json label")
+    if row.get("report-schema") != REPORT_SCHEMA:
+        problems.append(
+            f"nucleus report-schema {row.get('report-schema')!r} is not {REPORT_SCHEMA}"
+        )
+    if row.get("evidence-level") not in EVIDENCE_LEVELS:
+        problems.append(
+            f"nucleus evidence-level {row.get('evidence-level')!r} is not one of "
+            f"{', '.join(EVIDENCE_LEVELS)}"
+        )
+    return [problem for problem in problems if problem]
+
+
 def pin_problems(pin):
     """Return every problem in a parsed pin; an empty list admits it."""
     if not isinstance(pin, dict) or pin.get("schema") != PIN_SCHEMA:
@@ -221,7 +279,7 @@ def pin_problems(pin):
     problems = producer_problems("imago", pin.get("imago"))
     problems += producer_problems("nucleus", pin.get("nucleus"))
     if not problems:
-        problems += imago_problems(pin["imago"])
+        problems += imago_problems(pin["imago"]) + nucleus_problems(pin["nucleus"])
     return problems
 
 
@@ -480,6 +538,16 @@ def recorded_binary(record):
     return digest if SHA256.fullmatch(str(digest)) else None
 
 
+def pinned_problems(name, row, pin):
+    """Return why one producer's retained row was fetched for another pin, or []."""
+    if row.get("pinned") == pin[name]["commit"]:
+        return []
+    return [
+        f"{name}: the cache was fetched for {row.get('pinned')}, the pin names "
+        f"{pin[name]['commit']}; run `make contract-fetch`"
+    ]
+
+
 def producer_record_problems(name, row, pin):
     """Return where one producer's retained row disagrees with the pin, or []."""
     problems = []
@@ -487,12 +555,7 @@ def producer_record_problems(name, row, pin):
         problems.append(f"{name}: the record names {row.get('repository')!r}")
     if row.get("exit") != 0 or not COMMIT.fullmatch(str(row.get("main", ""))):
         problems.append(f"{name}: git ls-remote exit {row.get('exit')}, main {row.get('main')}")
-    if row.get("pinned") != pin[name]["commit"]:
-        problems.append(
-            f"{name}: the cache was fetched for {row.get('pinned')}, the pin names "
-            f"{pin[name]['commit']}; run `make contract-fetch`"
-        )
-    return problems
+    return problems + pinned_problems(name, row, pin)
 
 
 def identity_problems(record, pin):
@@ -606,6 +669,8 @@ class Context:
     def __init__(self, pin, store, run_dir):
         self.pin, self.store, self.run_dir = pin, store, run_dir
         self.checkout = store / "imago"
+        self.nucleus = store / "nucleus"
+        self.checkouts = {"imago": self.checkout, "nucleus": self.nucleus}
         self.binary = store / "bin" / f"imago{EXE}"
         self.identity = store / "identity.json"
         self.gitconfig = run_dir / "empty.gitconfig"
@@ -678,19 +743,20 @@ def hidden_entries(listing):
     return [line for line in lines if not line.startswith("H ")]
 
 
-def checkout_problems(context, label):
-    """Return why the cached checkout is not exactly the pinned commit, or [].
+def checkout_problems(context, label, name="imago"):
+    """Return why producer `name`'s cached checkout is not exactly its pinned commit, or [].
 
     Nothing may differ from the commit: no tracked change, no untracked or
     ignored file (go would compile an extra .go file and still stamp
-    vcs.modified=false for an ignored one), and no hidden index entry.
+    vcs.modified=false for an ignored one, and python would run an extra
+    module), and no hidden index entry.
     """
-    checkout = context.checkout
+    checkout = context.checkouts[name]
     head = invoke(context, f"{label}-head", git(checkout, "rev-parse", "HEAD"), GIT_TIMEOUT)
     status = invoke(context, f"{label}-status", git(checkout, *STRICT_STATUS), GIT_TIMEOUT)
     index = invoke(context, f"{label}-index", git(checkout, "ls-files", "-v"), GIT_TIMEOUT)
     problems = []
-    if head["exit"] != 0 or head["stdout"].strip() != context.pin["imago"]["commit"]:
+    if head["exit"] != 0 or head["stdout"].strip() != context.pin[name]["commit"]:
         problems.append(f"HEAD is {head['stdout'].strip() or head['stderr'].strip()!r}")
     if status["exit"] != 0 or status["stdout"].strip():
         problems.append(f"the checkout is modified: {tail(status['stdout'] + status['stderr'])}")
@@ -743,7 +809,8 @@ def pin_case(context):
     dirty = invoke(context, "aegis-status", git(ROOT, "status", "--porcelain"), GIT_TIMEOUT)
     notes = [
         f"imago {pin['imago']['repository']} at {pin['imago']['commit']}, go {pin['imago']['go']}",
-        f"nucleus {pin['nucleus']['repository']} at {pin['nucleus']['commit']} (identity only)",
+        f"nucleus {pin['nucleus']['repository']} at {pin['nucleus']['commit']}: "
+        f"{pin['nucleus']['verifier']} as {pin['nucleus']['label']} (D106)",
         f"Aegis revision {head['stdout'].strip()}, "
         f"{len(dirty['stdout'].splitlines())} uncommitted path(s)",
     ]
@@ -1200,14 +1267,318 @@ def kernel_cases(context):
     ]
 
 
+def bound_row(versions, label):
+    """Return the one downstream.requirements row versions.json keeps for `label`, or None."""
+    downstream = versions.get("downstream") if isinstance(versions, dict) else None
+    rows = downstream.get("requirements") if isinstance(downstream, dict) else None
+    rows = rows if isinstance(rows, list) else []
+    matches = [
+        row
+        for row in rows[:MAX_REQUIREMENT_ROWS]
+        if isinstance(row, dict) and row.get("label") == label
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def binding_problems(row, nucleus):
+    """Return where nucleus's row for the pinned label is not this repository's payload, or []."""
+    if row is None:
+        return [f"versions.json binds no single downstream row to {nucleus['label']}"]
+    wanted = dict(AEGIS_SOURCE, streams=nucleus["bound-streams"])
+    return [
+        f"versions.json {nucleus['label']} {key} is {row.get(key)!r}, pinned {value!r}"
+        for key, value in wanted.items()
+        if row.get(key) != value
+    ]
+
+
+def nucleus_checkout_case(context):
+    """The nucleus checkout is the pinned commit, and binds this repository's payload (D106)."""
+    nucleus = context.pin["nucleus"]
+    problems = checkout_problems(context, "nucleus-checkout", "nucleus")
+    if not (context.nucleus / nucleus["verifier"]).is_file():
+        problems.append(f"the checkout has no {nucleus['verifier']}")
+    row = bound_row(load_json(context.nucleus / "versions.json"), nucleus["label"])
+    problems += binding_problems(row, nucleus)
+    notes = [
+        f"{native(context.nucleus)} at {nucleus['commit']}: no tracked change, "
+        "untracked or ignored file, or hidden index entry",
+        f"versions.json binds {nucleus['label']} to {AEGIS_SOURCE['repository']} "
+        f"{AEGIS_SOURCE['path']} on {', '.join(nucleus['bound-streams'])}; "
+        f"verifier {nucleus['verifier']}",
+    ]
+    return report(context, "contract/nucleus-checkout", problems, notes if not problems else [])
+
+
+def read_report(path):
+    """Return the JSON report the verifier wrote at `path`, or None when none parses."""
+    try:
+        return json.loads(Path(path).read_bytes().decode("utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def verify_requirement(context, label, path, flags=()):
+    """Run nucleus's verifier on `path` under the pinned label; return (result, record).
+
+    It runs from the checkout, which is where it reads kconfig/ and
+    versions.json, under this interpreter with -I, so no PYTHON* variable, user
+    site or working-directory module takes part. Both paths are absolute
+    because the working directory is the checkout.
+    """
+    nucleus = context.pin["nucleus"]
+    written = (context.run_dir / "reports" / f"{label}.json").resolve()
+    written.parent.mkdir(parents=True, exist_ok=True)
+    argv = [
+        PYTHON,
+        "-I",
+        nucleus["verifier"],
+        "--requirement",
+        f"{nucleus['label']}={native(Path(path).resolve())}",
+        "--report-json",
+        native(written),
+        "--nucleus-revision",
+        nucleus["commit"],
+        *flags,
+    ]
+    result = invoke(context, label, argv, VALIDATE_TIMEOUT, cwd=context.nucleus)
+    return result, read_report(written)
+
+
+def document_of(record):
+    """Return the one document a report holds, or {} when it does not hold exactly one."""
+    documents = record.get("documents") if isinstance(record, dict) else None
+    if isinstance(documents, list) and len(documents) == 1 and isinstance(documents[0], dict):
+        return documents[0]
+    return {}
+
+
+def report_problems(record, pin, verdict):
+    """Return why `record` is not this pin's nucleus.kernel-requirement-report.v1 with `verdict`."""
+    if not isinstance(record, dict):
+        return ["the verifier wrote no JSON report"]
+    nucleus = pin["nucleus"]
+    rows = (
+        ("schema", REPORT_SCHEMA),
+        ("nucleus_revision", nucleus["commit"]),
+        ("evidence_level", nucleus["evidence-level"]),
+        ("verdict", verdict),
+    )
+    problems = [
+        f"report {key} is {record.get(key)!r}, expected {wanted!r}"
+        for key, wanted in rows
+        if record.get(key) != wanted
+    ]
+    if not document_of(record):
+        problems.append("the report does not hold exactly one document")
+    return problems
+
+
+def held_problems(document, nucleus):
+    """Return why a PASS document is not held by exactly the pinned streams, or []."""
+    streams = nucleus["bound-streams"]
+    rows = (("bound_streams", streams), ("held", streams), ("reasons", []))
+    return [
+        f"document {key} is {document.get(key)!r}, expected {wanted!r}"
+        for key, wanted in rows
+        if document.get(key) != wanted
+    ]
+
+
+def as_list(value, bound):
+    """Return the first `bound` items of `value` when it is a list, else []."""
+    return value[:bound] if isinstance(value, list) else []
+
+
+def as_dict(value):
+    """Return `value` when it is a dict, else {}."""
+    return value if isinstance(value, dict) else {}
+
+
+def bound_architectures(document, bound):
+    """Return the report's architecture rows on every stream in `bound`."""
+    streams = [as_dict(stream) for stream in as_list(document.get("streams"), MAX_STREAMS)]
+    return [
+        as_dict(arch)
+        for stream in streams
+        if stream.get("stream") in bound
+        for arch in as_list(stream.get("architectures"), MAX_STREAMS)
+    ]
+
+
+def planted_checks(document, bound):
+    """Return the report's checks of the planted symbol on every bound stream and architecture."""
+    symbol = PLANTED_FEATURE["symbol"]
+    return [
+        check
+        for arch in bound_architectures(document, bound)
+        for check in map(as_dict, as_list(arch.get("features"), MAX_REQUIREMENT_ROWS))
+        if check.get("symbol") == symbol
+    ]
+
+
+def unset_problem(checks):
+    """Return why `checks` do not record the planted symbol unset and unmet everywhere, or None."""
+    unset = [
+        check
+        for check in checks
+        if check.get("observed") is None and check.get("satisfied") is False
+    ]
+    if checks and len(unset) == len(checks):
+        return None
+    return f"the report does not record {PLANTED_FEATURE['symbol']} unset: {checks!r}"[:400]
+
+
+def planted_problems(document, correlation_id, nucleus):
+    """Return why a FAIL document is not the correlated refusal of the planted symbol, or [].
+
+    Every reason must open with the payload's correlation id, one must name the
+    planted symbol, and on every bound stream and architecture the report must
+    record the symbol as unset and unmet: nucleus does not set it.
+    """
+    reasons = [str(line) for line in as_list(document.get("reasons"), MAX_REQUIREMENT_ROWS)]
+    problems = [unset_problem(planted_checks(document, nucleus["bound-streams"]))]
+    if not reasons or not all(line.startswith(f"{correlation_id}: ") for line in reasons):
+        problems.append(f"not every reason opens with {correlation_id}: {reasons!r}"[:400])
+    if not any(PLANTED_FEATURE["symbol"] in line for line in reasons):
+        problems.append(f"no reason names {PLANTED_FEATURE['symbol']}")
+    return [problem for problem in problems if problem]
+
+
+def document_problems(document, expected, nucleus, sent):
+    """Return where one report document differs from the row's expected outcome, or []."""
+    problems = []
+    if document.get("label") != nucleus["label"] or document.get("status") != expected["status"]:
+        problems.append(
+            f"document {document.get('label')!r} is {document.get('status')!r}, "
+            f"expected {nucleus['label']} {expected['status']}"
+        )
+    source = document.get("source") if isinstance(document.get("source"), dict) else {}
+    if source.get("sha256") != sha256_of(sent):
+        problems.append(f"the report hashes the document as {source.get('sha256')!r}")
+    if expected["status"] == "REJECTED":
+        rejection = document.get("rejection") if isinstance(document.get("rejection"), dict) else {}
+        if rejection.get("kind") != expected["kind"]:
+            problems.append(f"rejected as {rejection.get('kind')!r}, expected {expected['kind']}")
+        return problems
+    correlation_id = json.loads(sent.decode("utf-8"))["correlation-id"]
+    if document.get("correlation_id") != correlation_id:
+        problems.append(f"document correlation_id is {document.get('correlation_id')!r}")
+    if expected["status"] == "PASS":
+        return problems + held_problems(document, nucleus)
+    return problems + planted_problems(document, correlation_id, nucleus)
+
+
+def nucleus_note(result, record):
+    """Return one row's outcome as the note prints it, read from the report."""
+    document = document_of(record)
+    status, source = document.get("status"), document.get("source") or {}
+    if status == "PASS":
+        detail = f"{document.get('correlation_id')} held by {', '.join(document.get('held') or [])}"
+    elif status == "REJECTED":
+        detail = f"{(document.get('rejection') or {}).get('kind')}"
+    else:
+        detail = "; ".join(str(line) for line in (document.get("reasons") or [])[:2])
+    level = record.get("evidence_level") if isinstance(record, dict) else None
+    digest = str(source.get("sha256"))[:12] if isinstance(source, dict) else None
+    return f"exit {result['exit']}, {status} ({detail}), sha256 {digest}, evidence level {level}"
+
+
+def nucleus_case(context, name, rows):
+    """Run each (label, path, flags, expected) row through nucleus's verifier as one case."""
+    problems, notes = [], []
+    for label, path, flags, expected in rows:
+        sent = read_bytes(path)
+        result, record = verify_requirement(context, f"nucleus-{label}", path, flags)
+        row = []
+        if result["exit"] != expected["exit"]:
+            row.append(f"expected exit {expected['exit']}, observed {result['exit']}")
+        verdict = "PASS" if expected["status"] == "PASS" else "FAIL"
+        row += report_problems(record, context.pin, verdict)
+        row += document_problems(document_of(record), expected, context.pin["nucleus"], sent)
+        problems += [f"{label}: {line}" for line in row]
+        bound = " ".join(flag for flag in flags if flag.startswith("--"))
+        notes.append(f"{label}{f' ({bound})' if bound else ''}: {nucleus_note(result, record)}")
+    return report(context, name, problems, notes)
+
+
+# What each nucleus row expects: its exit code, the document status and, for a
+# rejection, the kind the report names.
+PASSED = {"exit": 0, "status": "PASS", "kind": None}
+FAILED = {"exit": 1, "status": "FAIL", "kind": None}
+
+
+def rejected(kind):
+    """Return the expectation of a document nucleus rejects as `kind`."""
+    return {"exit": 1, "status": "REJECTED", "kind": kind}
+
+
+def nucleus_rows(context):
+    """Return {case: rows} for nucleus's verifier, each row (label, path, flags, expected).
+
+    The accepted and the binding rows send the committed file itself, so the
+    digest nucleus proves is the one of the bytes this repository publishes;
+    the others are one-field edits of it written under the run directory.
+    """
+    label = context.pin["nucleus"]["label"]
+    requirement = load_json(KERNEL_REQUIREMENT)
+    reference = load_json(KERNEL_REFERENCE)
+    features = requirement["features"]
+    written = {
+        name: payload_path(context, f"nucleus-{name}", with_field(requirement, "features", rows))
+        for name, rows in (
+            ("planted", features + [PLANTED_FEATURE]),
+            ("features-0", []),
+            ("features-1", features[:1]),
+        )
+    }
+    digest = sha256_of(read_bytes(KERNEL_REQUIREMENT))
+    bind = [
+        "--sha256",
+        f"{label}={digest}",
+        "--correlation-id",
+        f"{label}={requirement['correlation-id']}",
+    ]
+    other_digest = ["--sha256", f"{label}={sha256_of(read_bytes(KERNEL_REFERENCE))}"]
+    other_id = ["--correlation-id", f"{label}={reference['correlation-id']}"]
+    return {
+        "nucleus/accepted": [("requirement", KERNEL_REQUIREMENT, bind, PASSED)],
+        "nucleus/correlated-refusal": [("planted-unset-symbol", written["planted"], (), FAILED)],
+        "nucleus/empty-features-refused": [
+            ("features-0", written["features-0"], (), rejected("NoFeatures")),
+            ("features-1", written["features-1"], (), PASSED),
+        ],
+        "nucleus/dispatch-binding-refused": [
+            (
+                "sha256-of-another-document",
+                KERNEL_REQUIREMENT,
+                other_digest,
+                rejected("DigestMismatch"),
+            ),
+            (
+                "correlation-id-of-another",
+                KERNEL_REQUIREMENT,
+                other_id,
+                rejected("CorrelationMismatch"),
+            ),
+        ],
+    }
+
+
+def nucleus_cases(context):
+    """D106: nucleus's verifier consumes build/kernel-requirement.json at the pinned commit."""
+    return [nucleus_case(context, name, rows) for name, rows in nucleus_rows(context).items()]
+
+
 def run_cases(context):
     """Run every case in order and return the number that failed.
 
-    Nothing a binary prints counts until its provenance is the pinned build,
-    so the payload cases run only after the four identity cases pass.
+    Nothing a producer prints counts until its checkout is the pinned commit
+    and imago's binary the pinned build, so the payload cases run only after
+    the five identity cases pass.
     """
     outcomes = [pin_case(context), identity_case(context), checkout_case(context)]
-    outcomes.append(provenance_case(context))
+    outcomes += [nucleus_checkout_case(context), provenance_case(context)]
     if any(outcomes):
         failed = [row["case"] for row in context.outcomes if row["problems"]]
         print(f"     the payload cases did not run, because {', '.join(failed)} failed")
@@ -1218,6 +1589,7 @@ def run_cases(context):
     outcomes.append(simulated_case(context, real))
     outcomes += product_cases(context)
     outcomes += kernel_cases(context)
+    outcomes += nucleus_cases(context)
     return sum(1 for problems in outcomes if problems)
 
 
@@ -1226,16 +1598,32 @@ def tool_reasons():
     return [f"{tool} is not on PATH" for tool in ("go", "git") if shutil.which(tool) is None]
 
 
+def stale_problems(context):
+    """Return why a present identity record was fetched for another pin, or [].
+
+    Read before any absent piece can skip the run. A pin edit leaves the old
+    record behind and, for a producer the edit adds, no checkout yet -- the
+    cache a fetch from before D106 left holds nucleus 8672247 and no nucleus
+    checkout -- so an absence would otherwise hide a cache that is wrong (D93).
+    """
+    if not context.identity.exists():
+        return []
+    rows = recorded_rows(load_json(context.identity)).items()
+    return [line for name, row in rows for line in pinned_problems(name, row, context.pin)]
+
+
 def cache_reasons(context):
     """Return why the cache cannot serve a run: each piece of it that is absent.
 
     Only absence is a skip (D93). A cache that is present but wrong -- fetched
     for another pin, a checkout or a binary that is not the pinned build -- is
     a failure, found by the identity, checkout and provenance cases, each of
-    which names `make contract-fetch`.
+    which names `make contract-fetch`. An identity record fetched for another
+    pin fails even when a piece is also absent: `stale_problems` runs first.
     """
     pieces = (
         ("imago checkout", context.checkout / ".git"),
+        ("nucleus checkout", context.nucleus / ".git"),
         ("imago binary", context.binary),
         ("identity record", context.identity),
     )
@@ -1260,9 +1648,44 @@ def write_summary(context, failed):
     write_bytes(context.run_dir / "summary.json", json_bytes(summary))
 
 
+def pass_line(context):
+    """Return the line a passing gate run ends with: what each producer did, and its limits."""
+    imago, nucleus = context.pin["imago"], context.pin["nucleus"]
+    return (
+        f"PASS: contract pair gate (M09, D92, D106) on run {context.run_dir.name}: imago "
+        f"{imago['commit'][:12]} consumed both Aegis payloads and refused every tampered, "
+        "out-of-bound and empty one with the payload's correlation id, a stand-in without the "
+        f"pinned provenance was refused, and nucleus {nucleus['commit'][:12]} held the kernel "
+        f"requirement on {', '.join(nucleus['bound-streams'])} at evidence level "
+        f"{nucleus['evidence-level']} and refused a planted, an empty and a mis-bound one. "
+        "Consumption evidence only: no product result, image or kernel came back (M11, M10)."
+    )
+
+
+def skip_reasons(context):
+    """Return (why the gate cannot run here, why its cache was fetched for another pin).
+
+    Missing tools skip before anything is read. Otherwise the stale identity
+    check runs before the absence check, and a stale record leaves no reason
+    to skip: a cache present but wrong fails (D93).
+    """
+    reasons = tool_reasons()
+    if reasons:
+        return reasons, []
+    stale = stale_problems(context)
+    return ([] if stale else cache_reasons(context)), stale
+
+
+def stale_cases(context):
+    """Run the pin and identity cases alone, on a cache fetched for another pin (D93)."""
+    outcomes = [pin_case(context), identity_case(context)]
+    print("     the other cases did not run, because the cache was fetched for another pin")
+    return sum(1 for problems in outcomes if problems)
+
+
 def gate_main(context):
     """Run the gate: SKIP with a reason, FAIL with a reason, or PASS with every case above it."""
-    reasons = tool_reasons() or cache_reasons(context)
+    reasons, stale = skip_reasons(context)
     if reasons:
         for reason in reasons[:MAX_PROBLEM_LINES]:
             print(f"SKIP: {reason}; the contract pair gate did not run.")
@@ -1270,20 +1693,14 @@ def gate_main(context):
     context.run_dir.mkdir(parents=True, exist_ok=True)
     print(f"     run id {context.run_dir.name}; retained in {native(context.run_dir)}")
     try:
-        failed = run_cases(context)
+        failed = stale_cases(context) if stale else run_cases(context)
     finally:
         shutil.rmtree(context.run_dir / "standin-bin", ignore_errors=True)
     write_summary(context, failed)
     if failed:
         print(f"FAIL: {failed} contract pair case(s) did not match their recorded outcome.")
         return 1
-    print(
-        f"PASS: contract pair gate (M09, D92) on run {context.run_dir.name}: imago "
-        f"{context.pin['imago']['commit'][:12]} consumed both Aegis payloads and refused every "
-        "tampered, out-of-bound and empty one with the payload's correlation id, and a stand-in "
-        "without the pinned provenance was refused. Consumption evidence only: no product "
-        "result, image or kernel came back (M11, M10)."
-    )
+    print(pass_line(context))
     return 0
 
 
@@ -1342,24 +1759,29 @@ def fetch_identity(context):
     return record, report(context, "contract-fetch/identity", problems, notes)
 
 
-def fetch_checkout(context):
-    """Clone imago at the pinned commit into a fresh directory, never reusing the cached one.
+# The fetch case each producer's clone reports under.
+CHECKOUT_CASES = {"imago": "contract-fetch/checkout", "nucleus": "contract-fetch/nucleus-checkout"}
+
+
+def fetch_checkout(context, name="imago"):
+    """Clone producer `name` at its pinned commit into a fresh directory, never reusing one.
 
     A reused checkout could carry a file git ignores, an index flag or a
-    repository setting that no status check sees and go would build from.
+    repository setting that no status check sees and go would build from, or
+    python would import.
     """
-    imago = context.pin["imago"]
-    shutil.rmtree(context.checkout, ignore_errors=True)
-    if context.checkout.exists():
-        problems = [f"the cached checkout {native(context.checkout)} could not be removed"]
-        return report(context, "contract-fetch/checkout", problems)
-    fetch = ["fetch", "-q", "--depth", "1", "--no-tags", imago["repository"], imago["commit"]]
+    row, checkout, case = context.pin[name], context.checkouts[name], CHECKOUT_CASES[name]
+    shutil.rmtree(checkout, ignore_errors=True)
+    if checkout.exists():
+        problems = [f"the cached checkout {native(checkout)} could not be removed"]
+        return report(context, case, problems)
+    fetch = ["fetch", "-q", "--depth", "1", "--no-tags", row["repository"], row["commit"]]
     steps = (
-        ("clone-init", ["git", "init", "-q", native(context.checkout)], GIT_TIMEOUT),
-        ("clone-fetch", git(context.checkout, *fetch), NETWORK_TIMEOUT),
+        (f"{name}-clone-init", ["git", "init", "-q", native(checkout)], GIT_TIMEOUT),
+        (f"{name}-clone-fetch", git(checkout, *fetch), NETWORK_TIMEOUT),
         (
-            "clone-checkout",
-            git(context.checkout, "checkout", "-q", "--detach", imago["commit"]),
+            f"{name}-clone-checkout",
+            git(checkout, "checkout", "-q", "--detach", row["commit"]),
             GIT_TIMEOUT,
         ),
     )
@@ -1367,10 +1789,10 @@ def fetch_checkout(context):
         result = invoke(context, label, argv, timeout)
         if result["exit"] != 0:
             problems = [f"{label} exited {result['exit']}"] + tail(result["stderr"], 3)
-            return report(context, "contract-fetch/checkout", problems)
-    problems = checkout_problems(context, "fetched")
-    notes = [f"{imago['repository']} at {imago['commit']}, depth 1, into a fresh directory"]
-    return report(context, "contract-fetch/checkout", problems, notes)
+            return report(context, case, problems)
+    problems = checkout_problems(context, f"{name}-fetched", name)
+    notes = [f"{row['repository']} at {row['commit']}, depth 1, into a fresh directory"]
+    return report(context, case, problems, notes)
 
 
 def fetch_build(context):
@@ -1415,7 +1837,7 @@ def fetch_build(context):
 
 
 def fetch_main(context):
-    """`make contract-fetch`: identity for both producers, then clone and build imago.
+    """`make contract-fetch`: identity for both producers, clone both, then build imago.
 
     The identity record is written last, with the built binary's sha256, so it
     always names a complete fetch and the binary that fetch produced.
@@ -1427,7 +1849,9 @@ def fetch_main(context):
     if not problems:
         record, problems = fetch_identity(context)
     if not problems:
-        problems = fetch_checkout(context) or fetch_build(context)
+        problems = (
+            fetch_checkout(context) or fetch_checkout(context, "nucleus") or fetch_build(context)
+        )
     write_summary(context, 1 if problems else 0)
     if problems:
         print("FAIL: the contract pair's pinned producer could not be fetched and built.")
@@ -1437,7 +1861,8 @@ def fetch_main(context):
     print(f"     binary sha256 {digest}, recorded in {native(context.identity)}")
     write_bytes(context.identity, json_bytes(record))
     print(
-        "PASS: identity retained for both producers and imago "
+        "PASS: identity retained for both producers, nucleus "
+        f"{context.pin['nucleus']['commit'][:12]} cloned and imago "
         f"{context.pin['imago']['commit'][:12]} built with its provenance; "
         "`make verify-all` now runs the contract gate."
     )
@@ -1489,7 +1914,7 @@ def parse_arguments(argv):
     parser.add_argument(
         "--fetch",
         action="store_true",
-        help="run git ls-remote on both producers, clone imago at the pin and build it",
+        help="run git ls-remote on both producers, clone both at the pin and build imago",
     )
     return parser.parse_args(argv)
 
@@ -1503,7 +1928,7 @@ def main(argv=None):
     """Load the pin, then fetch or run the gate."""
     options = parse_arguments(argv)
     install_signal_handlers()
-    print("Contract pair gate (M09, D92, D93; consumption evidence only).")
+    print("Contract pair gate (M09, D92, D93, D106; consumption evidence only).")
     try:
         pin = load_pin()
     except GateError as error:

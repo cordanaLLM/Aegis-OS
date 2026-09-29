@@ -1,6 +1,6 @@
 {
-  "schema": "aegis.m09.contract-pin.v1",
-  "note": "M09 development evidence only (D92, D93). The consumption contract is pinned against each producer's main branch: cordanaLLM/imago decodes both Aegis payloads at the commit named here, and cordanaLLM/nucleus is recorded by identity only, because it consumes no Aegis payload. `make contract-fetch` retains `git ls-remote --heads` for both producers, clones imago at this commit into a cache outside the repository and builds it with GOTOOLCHAIN=local CGO_ENABLED=0 go build -trimpath -buildvcs=true; the gate inside `make verify-all` never touches the network. Nothing is published to either producer from here.",
+  "schema": "aegis.m09.contract-pin.v2",
+  "note": "M09 development evidence only (D92, D93), extended by D106. The consumption contract is pinned against each producer's main branch: cordanaLLM/imago decodes both Aegis payloads at the commit named here, and cordanaLLM/nucleus verifies build/kernel-requirement.json with its scripts/verify_kernel_requirement.py at the commit named here. `make contract-fetch` retains `git ls-remote --heads` for both producers, clones both at their commits into a cache outside the repository and builds imago with GOTOOLCHAIN=local CGO_ENABLED=0 go build -trimpath -buildvcs=true; the gate inside `make verify-all` never touches the network. Nothing is published to either producer from here.",
   "imago": {
     "repository": "https://github.com/cordanaLLM/imago.git",
     "commit": "16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee",
@@ -31,7 +31,14 @@
   },
   "nucleus": {
     "repository": "https://github.com/cordanaLLM/nucleus.git",
-    "commit": "8672247ff1bd22ed6b6b89d498116f20ff00c2ab",
-    "role": "identity only: publishes the imago.nucleus.kernel-artifact.v1 manifest to imago and reads no Aegis payload (its AGENTS.md, 'The contract with imago'); the kernel result is M10's under D92"
+    "commit": "0a4eac93f29fef432bfa9d892ad236568ce2f482",
+    "verifier": "scripts/verify_kernel_requirement.py",
+    "label": "aegis-os",
+    "bound-streams": [
+      "realtime"
+    ],
+    "report-schema": "nucleus.kernel-requirement-report.v1",
+    "evidence-level": "declared",
+    "role": "consumes build/kernel-requirement.json since nucleus#35 (its ADR-0007, Proposed): the verifier decodes it as the Aegis crate does and holds it against the kconfig fragments of the streams versions.json binds the aegis-os label to, at evidence level declared, the fragments as merged and not a built .config; nucleus also publishes the imago.nucleus.kernel-artifact.v1 manifest imago verifies, and the kernel result stays M10's under D92 (D106)"
   }
 }
