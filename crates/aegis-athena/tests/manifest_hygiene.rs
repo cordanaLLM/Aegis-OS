@@ -14,7 +14,17 @@
 //! milestone activates a crate, and hard-coding it in several crates is what
 //! made two of them fail when this milestone added two members.
 
+#[path = "../../dependency_closure.rs"]
+mod dependency_closure;
+
 use std::path::{Path, PathBuf};
+
+/// This crate's package name, the start of its closure (D78).
+const PACKAGE: &str = "aegis-athena";
+
+/// The hash crates this crate's closure must not resolve: the list the
+/// lock-wide sweep carried before D78, kept verbatim.
+const FORBIDDEN: [&str; 4] = ["blake3", "md-5", "md5", "blake2"];
 
 /// Returns the workspace root, two directories above this crate's manifest.
 fn workspace_root() -> Option<PathBuf> {
@@ -83,18 +93,22 @@ fn the_crate_depends_on_the_two_workspace_crates() {
 /// This is the structural half of D02. BLAKE3 is named by REQ-P16-01 and
 /// REQ-P16-03 and MD5 by the reference daemon; neither has a crate, a lock
 /// entry or a feature here, so a record naming either cannot be produced by
-/// this workspace at all.
+/// this crate at all. Since M27 the sweep reads this crate's own dependency
+/// closure from `cargo metadata` (D78) rather than the whole lock; the
+/// forbidden list is unchanged, and D02's algorithm must still be locked.
 #[test]
-fn no_hash_crate_but_the_one_d02_admits_is_resolved() {
+fn no_hash_crate_but_the_one_d02_admits_is_resolved() -> Result<(), String> {
+    let names = dependency_closure::own_closure(PACKAGE)?;
+    let found = dependency_closure::hits(&names, &FORBIDDEN);
+    assert!(
+        found.is_empty(),
+        "the closure of {PACKAGE} resolves {found:?}"
+    );
+    assert!(
+        names.contains("sha2"),
+        "the algorithm D02 chose reaches this crate through aegis-justitia"
+    );
     let lock = read("Cargo.lock");
-    for absent in [
-        "name = \"blake3\"",
-        "name = \"md-5\"",
-        "name = \"md5\"",
-        "name = \"blake2\"",
-    ] {
-        assert!(!lock.contains(absent), "the lock resolved {absent}");
-    }
     assert!(
         lock.contains("name = \"sha2\""),
         "the algorithm D02 chose must be locked"
@@ -105,6 +119,7 @@ fn no_hash_crate_but_the_one_d02_admits_is_resolved() {
         !manifest.contains("sha2"),
         "the hash arrives through aegis-justitia's D02 trait, not a second dependency"
     );
+    Ok(())
 }
 
 /// Negative: this crate declares no update, hypervisor or bus dependency.
@@ -165,22 +180,38 @@ fn the_lock_entry_names_exactly_five_dependencies() {
         .find(|block| block.contains("name = \"aegis-athena\""))
         .unwrap_or_default();
     assert!(!entry.is_empty(), "the lock must carry this crate");
-    let deps: Vec<&str> = entry
-        .lines()
-        .map(str::trim)
-        .filter(|line| line.starts_with('"') && line.ends_with("\","))
-        .collect();
+    let deps = dependency_names(entry);
     assert_eq!(
         deps,
         vec![
-            "\"aegis-justitia\",",
-            "\"aegis-tellus\",",
-            "\"serde\",",
-            "\"serde_json\",",
-            "\"thiserror\",",
+            "aegis-justitia",
+            "aegis-tellus",
+            "serde",
+            "serde_json",
+            "thiserror",
         ],
         "lock dependencies found: {deps:?}"
     );
+    assert!(
+        lock.contains("name = \"thiserror\"\nversion = \"1.")
+            && lock.contains("name = \"thiserror\"\nversion = \"2."),
+        "the case this strips a suffix for: thiserror 1 and 2 both locked"
+    );
+}
+
+/// The package names a lock entry's `dependencies` array lists.
+///
+/// Cargo writes a dependency line as `"name",` while one version of the name
+/// is locked and as `"name 2.0.20",` once two are (M27: cros-libva locks
+/// thiserror 1 beside the workspace's thiserror 2), so the version it appends
+/// is stripped before the names are compared.
+fn dependency_names(entry: &str) -> Vec<&str> {
+    entry
+        .lines()
+        .map(str::trim)
+        .filter_map(|line| line.strip_prefix('"')?.strip_suffix("\","))
+        .map(|dependency| dependency.split(' ').next().unwrap_or(dependency))
+        .collect()
 }
 
 /// Boundary: the toolchain pin is untouched by this milestone.

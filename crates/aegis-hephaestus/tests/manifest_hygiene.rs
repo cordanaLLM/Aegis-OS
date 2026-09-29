@@ -259,8 +259,8 @@ fn the_crate_inherits_the_workspace_lints_and_toolchain() {
     let root = read("Cargo.toml");
     assert!(root.contains("unsafe_code = \"forbid\""));
     assert!(
-        root.contains("rust-version = \"1.85\""),
-        "the M02 toolchain"
+        root.contains("rust-version = \"1.87\""),
+        "M27: the highest rust-version the resolved graph declares (accesskit 0.25.1)"
     );
     let pinned = read("rust-toolchain.toml");
     assert!(

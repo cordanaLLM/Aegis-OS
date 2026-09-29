@@ -16,6 +16,7 @@ members = [
     "crates/aegis-lictor",
     "crates/aegis-ludus",
     "crates/aegis-minerva",
+    "crates/aegis-scaena",
     "crates/aegis-tellus",
     "crates/aegis-vesta",
     "crates/aegis-vulcan",
@@ -24,7 +25,7 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.87"
 license = "EUPL-1.2"
 repository = "https://github.com/cordanaLLM/Aegis-OS"
 authors = ["Lusoris <lusoris@proton.me>"]
@@ -32,10 +33,13 @@ authors = ["Lusoris <lusoris@proton.me>"]
 [workspace.dependencies]
 accesskit = { version = "0.25.1", default-features = false }
 base16ct = { version = "1.0.0", default-features = false }
+cros-libva = { git = "https://github.com/chromeos/cros-libva", rev = "59384456ac2ae78c0c3e5515f41ef1efd9b802cf" }
+rustix = { version = "1.1.5", features = ["net", "fs", "event"] }
 schemars = { version = "1.2.2", default-features = false, features = ["derive"] }
 serde = { version = "1.0.229", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.151", default-features = false, features = ["std"] }
 sha2 = { version = "0.11.0", default-features = false }
+smithay-client-toolkit = { version = "0.21.1", default-features = false }
 thiserror = { version = "2.0.20", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]

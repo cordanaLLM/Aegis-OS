@@ -104,8 +104,11 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | serde_json | 1.0.151 | `[workspace.dependencies]`, optional, behind the `jsonl` feature | JSON Lines rendering, off the hashing path | M02 |
 | schemars | 1.2.2 | `[workspace.dependencies]`, `default-features = false`, `features = ["derive"]`; used by `crates/aegis-fabrica-defs` only | generates the JSON Schemas of both M18 contracts from their Rust types, committed under `build/` (D105) | D105, 2026-09-29 |
 | accesskit | 0.25.1 (MIT OR Apache-2.0), crate checksum `ad442f58ee04714aaa0ba0a2768c1ea1935b29507bb22ddece8cbbc76db02932` | `[workspace.dependencies]`, `default-features = false`, used only by `crates/aegis-forum-shell` | the accessibility tree's data model: the P05 canvas model is exported as an `accesskit::TreeUpdate`; no platform adapter | M16 (D101) |
+| cros-libva | git revision `59384456ac2ae78c0c3e5515f41ef1efd9b802cf` of chromeos/cros-libva (package 0.0.13, BSD-3-Clause), the merge of #37 on 2026-09-01 and the head of `main` on 2026-09-29 | `[workspace.dependencies]`, `git` with `rev =`; locked as `git+https://github.com/chromeos/cros-libva?rev=59384456...#59384456...`; used only by `crates/aegis-scaena` | VA-API decode and DMA-BUF export through `Surface::export_prime` (D80) | M27 (D80) |
+| smithay-client-toolkit | 0.21.1 (MIT), crate checksum `74dc9ee14b0fdcb535f9556141bacac070c994a977d2240ee455d7438a617f00` | `[workspace.dependencies]`, `default-features = false`; used only by `crates/aegis-scaena` | the layer surface and the `zwp_linux_dmabuf_v1` client over wayland-client's pure-Rust backend; libwayland is neither linked nor loaded | M27 (D75) |
+| rustix | 1.1.5 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT), crate checksum `891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d` | `[workspace.dependencies]`, `features = ["net", "fs", "event"]`; used only by `crates/aegis-scaena` | `sendmsg` and `recvmsg` with `SCM_RIGHTS` and `MSG_CMSG_CLOEXEC`, `SO_RCVTIMEO` and `SO_SNDTIMEO`, `fstatfs`, `fstat`, `lseek`, `poll` on the Wayland connection fd under a deadline, and in tests `memfd_create` | M27 (D77) |
 
-The resolved graph those seven pull in is fixed by `Cargo.lock`: block-buffer
+The resolved graph the first seven pull in is fixed by `Cargo.lock`: block-buffer
 0.12.1, cfg-if 1.0.4, cpufeatures 0.3.1, crypto-common 0.2.2, digest 0.11.3,
 dyn-clone 1.0.20, hybrid-array 0.4.15, itoa 1.0.18, libc 0.2.189, memchr 2.8.3,
 proc-macro2 1.0.107, quote 1.0.47, ref-cast 1.0.27, ref-cast-impl 1.0.27,
@@ -132,13 +135,57 @@ accesskit 0.25.1, admitted by M16 on 2026-09-29, was the newest release on the
 crates.io API that day, published 2026-09-25. With its features off it
 resolves one crate more, uuid 1.26.1 (Apache-2.0 OR MIT, the newest release,
 published 2026-09-10), with no feature and no dependency of its own. Its
-`rust-version` is 1.87, above the workspace's declared 1.85; the pinned
-toolchain is 1.98.1, so every gate compiles it, and Cargo's MSRV-aware
-resolver picks it only because `0.25.1` is the lowest version the requirement
-admits. `crates/aegis-forum-shell/tests/manifest_hygiene.rs` asserts the
+`rust-version` is 1.87, above the 1.85 the workspace declared when it was
+admitted; the pinned toolchain is 1.98.1, so every gate compiles it, and
+Cargo's MSRV-aware resolver picks it only because `0.25.1` is the lowest
+version the requirement admits. Since M27 the workspace declares 1.87, the
+highest `rust-version` in the resolved graph (see below).
+`crates/aegis-forum-shell/tests/manifest_hygiene.rs` asserts the
 declaration, the lock entry, and that the crate's own dependency closure
 (D78) holds no gpui, winit, wayland-client, zbus, atspi, accesskit_unix or
 tokio.
+
+The three M27 crates were admitted on 2026-09-29, each read that day from the
+crates.io API or with `git ls-remote`: smithay-client-toolkit 0.21.1
+(published 2026-07-23) and rustix 1.1.5 (2026-09-16) are the newest releases,
+and each lock checksum is the one crates.io publishes; cros-libva's newest
+release is still 0.0.13 of 2024-12-06, which fails to compile against libva
+2.24.1, so the git revision D80 names is pinned and is the head of `main`.
+With Cargo's MSRV fallback off (`CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=allow`,
+D69), the three resolve 46 crates more, each at the newest release its
+dependents' requirements admit: aho-corasick 1.1.5, bindgen 0.70.1, bitflags
+2.13.2, cc 1.5.1, cexpr 0.6.0, clang-sys 1.9.1, cursor-icon 1.2.0, downcast-rs
+1.2.1, either 1.18.0, errno 0.3.14, find-msvc-tools 0.1.14, glob 0.3.4,
+itertools 0.13.0, libloading 0.8.9, linux-raw-sys 0.12.1, log 0.4.34, memmap2
+0.9.11, minimal-lexical 0.2.1, nom 7.1.3, pkg-config 0.3.34, prettyplease
+0.2.37, quick-xml 0.41.0, regex 1.13.1, regex-automata 0.4.18, regex-syntax
+0.8.11, rustc-hash 1.1.0, shlex 1.3.0 and 2.0.1, smallvec 1.16.2, syn 2.0.119,
+thiserror 1.0.69, thiserror-impl 1.0.69, wayland-backend 0.3.17,
+wayland-client 0.31.15, wayland-csd-frame 0.3.0, wayland-cursor 0.31.14,
+wayland-protocols 0.32.13, wayland-protocols-experimental 20251230.0.3,
+wayland-protocols-misc 0.3.12, wayland-protocols-wlr 0.3.12, wayland-scanner
+0.31.11, wayland-sys 0.31.11, windows-link 0.2.1, windows-sys 0.61.2, xcursor
+0.3.11 and xkeysym 0.2.1. Their licences, read from `cargo metadata --locked`,
+are MIT, Apache-2.0, BSD-3-Clause, ISC, or a choice among MIT, Apache-2.0,
+Zlib and the Unlicense; every one is permissive and none is vendored into the
+repository, so REUSE is unchanged. No existing lock entry changed version.
+
+Two crates resolve a second major version beside the workspace's own:
+thiserror 1.0.69 through cros-libva beside thiserror 2.0.20, and syn 2.0.119
+through bindgen, prettyplease and thiserror-impl 1.0.69 beside syn 3.0.5.
+Since two thiserror versions are locked, Cargo writes every thiserror 2
+dependency line version-qualified (`"thiserror 2.0.20"`), and the lock-entry
+tests of `crates/aegis-athena` and `crates/aegis-tellus` strip that suffix
+before they compare their exact name lists.
+
+The highest `rust-version` any resolved package declares is 1.87
+(accesskit 0.25.1), above smithay-client-toolkit's and wayland-protocols' 1.86,
+so the workspace's `rust-version` moved from 1.85 to 1.87 and no further;
+`crates/aegis-scaena/tests/manifest_hygiene.rs` reads the highest value back
+from `cargo metadata --locked` and holds the workspace to it.
+`rust-toolchain.toml` stays at 1.98.1. Raising the declared MSRV switched on
+clippy's `manual_is_multiple_of`, which checks nothing below 1.87, and its
+three findings were rewritten with `is_multiple_of` in the same change.
 
 ## The systemd floor, and why it is a floor rather than a pin
 
@@ -533,43 +580,106 @@ cache fetched for another pin, which the gate reports as a FAIL that names
 built from source to run the contract and is not a release artifact;
 `docs/build/contract-pair.md` records the runs.
 
-## Proposed for M27: the display slice's crates and build tools (D80)
+## The display slice's build toolchain (M27, D80)
 
-These rows are proposals, not admissions. Milestone M27 admits them when its
-gate reads each one back before it runs, the shape M19 and M23 use; until then
-no gate may cite them. They are recorded now because decision D80 fixes the
-VA-API binding, and the binding decides the build tools.
+`crates/aegis-scaena` builds a C binding: cros-libva's build script finds libva
+through pkg-config, and bindgen, its build dependency, loads libclang to
+generate the bindings from the libva headers. None of those is a Cargo input,
+so `tools/display_toolchain.py` reads every row below back before
+`make verify-rust` builds anything, prints each value beside its floor, and
+fails the crate gate on a missing tool or a value below its floor.
+`tools/test_display_toolchain.py` reads this table back and requires it to
+state the same admission as the tool's `TOOLCHAIN` and `LOCKED` lists: names
+compared as sets, and each row's reference and floor compared. Each reference
+value was read on the reference profile on 2026-09-29.
 
-| Tool or crate | Reference-profile version | Proposed pin or floor | Role |
+| Tool or crate | Reference-profile version | Floor | Role |
 | :--- | :--- | :--- | :--- |
-| cros-libva | git rev `59384456ac2ae78c0c3e5515f41ef1efd9b802cf` (package 0.0.13, BSD-3-Clause), the merge of chromeos/cros-libva#37 | that revision, as a git source with `rev =` in `[workspace.dependencies]`, locked | VA-API decode and DMA-BUF export through `Surface::export_prime` |
-| smithay-client-toolkit | 0.21.1 (MIT), `default-features = false` | 0.21.1 | the layer surface and the `zwp_linux_dmabuf_v1` client, over wayland-client's pure-Rust backend |
-| rustix | 1.1.5, features `net`, `fs` and `event` | 1.1.5 | safe `sendmsg` and `recvmsg` with `SCM_RIGHTS` and send and receive deadlines, `fstatfs`, `seek`, `poll` on the Wayland connection fd under a deadline and, in tests, `memfd_create` |
-| bindgen | the version cros-libva's build dependency resolves (`bindgen = "0.70.1"` at the pinned revision) | as locked | generates the libva bindings at build time |
-| libclang | 22.1.8, `/usr/lib/libclang.so` from `cachyos-znver4/clang 22.1.8-2` | the floor bindgen 0.70 declares, read at admission | loaded by bindgen |
-| pkgconf (`pkg-config`) | 3.0.7, `pkgconf 3.0.7-1.1` | read at admission | locates libva for cros-libva's build script |
-| libva (headers and library) | 2.24.1, `libva 2.24.1-1.1`; `pkg-config --modversion libva` prints the VA-API version, 1.24.0 | the lowest libva the pinned revision compiles against, measured on the reference profile and on the Verification gate's runner | the VA-API loader |
-| intel-media-driver (iHD) | 26.2.4, `intel-media-driver 26.2.4-1.1` | recorded, not pinned: a host driver the gate reads back through the VA vendor string before it decodes | decode on the Arc A380 |
+| pkgconf | 3.0.7 (`pkgconf 3.0.7-1.1`) | 1.8.1 | locates libva for cros-libva's build script; the floor is the Verification gate runner's `pkg-config 1.8.1-2build1`, the oldest any gate builds with |
+| libva | 2.24.1 (`libva 2.24.1-1.1`), read as `pkg-config --variable=libva_version libva` | 2.24.1 | the VA-API loader and the headers the bindings are generated from; the floor is the version CI builds (below), never lowered |
+| VA-API | 1.24.0, read as `pkg-config --modversion libva` | 1.24.0 | the API version those headers declare |
+| clang | 22.1.8 (`clang 22.1.8-2`; libclang 22.1.8) | 6.0 | libclang, which bindgen loads; bindgen 0.70.1 builds clang-sys with its `clang_6_0` feature, and its book at that tag asks for Clang 5.0 or later, so 6.0 is the stricter floor. The row reads the `clang` on `PATH`; clang-sys loads the newest libclang it finds, which on both hosts belongs to that same LLVM |
+| bindgen | 0.70.1, read from `Cargo.lock` | 0.70.1 | cros-libva's build dependency at the pinned revision (`bindgen = "0.70.1"`), locked exactly |
+| cros-libva | 0.0.13 from git revision `59384456ac2ae78c0c3e5515f41ef1efd9b802cf`, read from `Cargo.lock` | 0.0.13 | the binding itself; the lock's source must name the pinned revision |
 
-Three things are deliberately absent from the table. `vainfo` and
-`wayland-info` established the three display capabilities in
-`planning/hardware-profile.json`, but they are probes, not gate tools. ffmpeg
-n9.0.2 generates the committed Motion-JPEG fixture once, drawing the frame-index
-blocks M27 reads back; the gate never runs it, so it is recorded as the
-fixture's provenance rather than admitted. The CRC-32 (the computation
-cros-libva's own test uses, `crc_nv12_image` in `lib/src/lib.rs` at the pinned
-revision), which checks the MPEG-2 frame and pins the Motion-JPEG frames against
-regression, is either written in the test or taken from a crate that M27 admits
-in its own row; this page does not choose.
+`vainfo` and `wayland-info` established the three display capabilities in
+`planning/hardware-profile.json`, but they are probes, not gate tools. The iHD
+driver, `intel-media-driver 26.2.4-1.1` on the reference profile, is a host
+driver that is recorded, not pinned: the display gate reads it back through
+the VA vendor string before it decodes (M27 criterion 5;
+`crates/aegis-scaena/src/decode.rs`, `require_ihd`), and the per-frame
+regression pins are recorded with that string. ffmpeg n9.0.2 generated the
+committed Motion-JPEG fixture once, drawing the frame-index blocks M27 reads
+back; the gate never runs it, so the command is recorded as the fixture's
+provenance on `docs/build/display.md` rather than admitted. The CRC-32 that
+checks the MPEG-2 frame and pins the Motion-JPEG frames against regression is
+the computation cros-libva's own test uses (`crc_nv12_image` in
+`lib/src/lib.rs` at the pinned revision, through crc32fast): M27 writes it in
+the crate, `content::Crc32`, ISO-HDLC with its check value tested, and admits
+no crate for it.
 
-What these rows do **not** claim: that the pinned revision compiles against the
-runner's libva, which nobody has checked, or that any frame was decoded. The
-upstream fix is unreleased on crates.io (0.0.13, 2024-12-06, fails against libva
-2.24.1), so the git pin is refreshed to a release once one carries it (D69).
+### The display gate's programs
+
+`make verify-display` (`tools/verify_display.py`) starts only the programs in
+its `PROGRAMS` list, and `tools/test_display_slice.py` holds that list, refuses
+a program outside it before it starts, and requires every process to start
+from one call site with a deadline. None of them is admitted here with a
+version floor: the build rows above are read back through
+`tools/display_toolchain.py` before the gate builds, and the rest are queries.
+
+| Program | Invocation | Role |
+| :--- | :--- | :--- |
+| cargo | `cargo build --locked -p aegis-scaena --bin aegis-scaena-display` | builds the run binary on the locked graph |
+| rustc | `rustc --version` | printed with every run |
+| pkg-config | `--variable=libva_version libva` and `--modversion libva` | libva and VA-API printed with every run |
+| clang | through `tools/display_toolchain.py` | the libclang row above |
+| loginctl | `show-session <id> -p LockedHint --value` | a locked session presents no client surface, so the gate skips |
+| pacman | `-Qo <compositor executable>` | names the compositor's package; the compositor binary is never executed |
+| aegis-scaena-display | `run` and `driver-probe` | the run itself, with `LIBVA_DRIVER_NAME` in its environment only |
+
+### libva on the Verification gate's runner
+
+The runner is ubuntu-24.04, whose archive carries libva 2.20.0 (and
+ubuntu-26.04 carries 2.23.0), both below the floor. As the maintainer decided on
+2026-09-29 (D80), the job builds the pinned release tarball rather than
+lowering the floor or changing the runner image, in
+`.github/workflows/ci.yml` before `make verify-all`, and caches the installed
+prefix under `~/.cache/aegis-libva/2.24.1`, keyed on every pin below.
+`tools/test_display_toolchain.py` holds the workflow's `env:` values to this
+table.
+
+| Input | Pinned value | How it is checked | Role |
+| :--- | :--- | :--- | :--- |
+| libva release tarball | `https://github.com/intel/libva/releases/download/2.24.1/libva-2.24.1.tar.bz2`, sha256 `eec6050b52876f229bd35e9df17cd31a06785e18e6f7990c445b584628483d67` | `LIBVA_VERSION` and `LIBVA_SHA256`, `sha256sum -c` before extraction; the digest is the one the GitHub release publishes for the asset, and on 2026-09-29 the detached `libva-2.24.1.tar.bz2.asc` verified against key `421E5C3C1148E3DB9372378E8B99990502A81421` (Intel Media Stack Release) | the headers and the `libva` and `libva-drm` libraries the crate builds and runs its tests against |
+| meson | 1.12.1, wheel sha256 `930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02` | `MESON_VERSION` and `MESON_WHEEL_SHA256`, `pip install --require-hashes --only-binary=:all: --no-deps` into a throwaway virtual environment | configures the libva build; the newest release on PyPI on 2026-09-29 |
+| ninja | 1.13.2, wheel sha256 `65a24341b5ac09fcadcc37082660be40a94174e51a937fabf6e2cae26225fa2c` (manylinux x86_64) | `NINJA_VERSION` and `NINJA_WHEEL_SHA256`, the same install | runs the libva build; the newest release on PyPI on 2026-09-29 |
+| libdrm headers | unpinned: the runner's `libdrm-dev` from its signed Ubuntu archive | `pkg-config --atleast-version=2.4.75 libdrm`, the floor libva's `meson.build` requires for `libva-drm`, printed and held before the build | `libva-drm`, which cros-libva links; the image ships no libdrm headers |
+
+The build runs `meson setup` with `--prefix=$HOME/.cache/aegis-libva/2.24.1
+--libdir=lib --buildtype=release -Dwith_x11=no -Dwith_glx=no -Dwith_wayland=no
+-Dwith_win32=no -Denable_docs=false`, then `meson compile` and `meson install`;
+only the DRM backend, which cros-libva links, is built. The step after it
+exports `PKG_CONFIG_PATH`, so cros-libva's build script finds the prefix, and
+`LD_LIBRARY_PATH`, because Cargo adds a build script's search path to the
+loader path only inside the target directory, and it reads the installed
+`libva_version` back and requires it to equal `LIBVA_VERSION`.
+
+What these rows establish and what they do not. On the reference profile,
+`cargo build --locked` built the crate against libva 2.24.1 with clang 22.1.8
+and pkgconf 3.0.7. The workflow's three libva steps were run, extracted from
+`ci.yml` and unmodified, in an `ubuntu:24.04` container with the runner's
+pkg-config 1.8.1 and clang 18.1.3 on 2026-09-29: libva 2.24.1 built, the
+read-back printed VA-API 1.24.0, `tools/display_toolchain.py` passed and
+`cargo build --locked -p aegis-scaena` succeeded against the built prefix. A
+container is not the runner; the first Verification gate run on this change is
+the runner's own evidence. That the pinned revision compiles against apt's
+libva 2.20.0 was not tried, because the floor is not lowered. No frame is
+decoded by any of this; decoding is the display gate's.
 
 ## Proposed for M16 and M28: the native shell's crates (D101, D102)
 
-These rows are proposals, not admissions, in the shape of the M27 rows above.
+These rows are proposals, not admissions, in the shape M27's rows had until M27
+admitted them.
 M16 admitted accesskit on 2026-09-29, and its row moved to
 [Crates the workspace pins](#crates-the-workspace-pins); M28 admits the rest,
 each when its gate reads the row back before it runs; until then no gate may
@@ -655,6 +765,11 @@ rather than admissions:
   the runner image and from the workstation distribution.
 - `npx` and `pipx` are the delivery mechanism for four pinned linters; the
   Node.js and Python runtimes behind them are the runner's.
+- `libdrm-dev` on the Verification gate's runner, which the pinned libva build
+  compiles `libva-drm` against, comes from the runner's Ubuntu archive at
+  whatever version it carries; only the libdrm floor of 2.4.75 that libva's
+  `meson.build` requires is held, read back with `pkg-config` before the
+  build.
 - `node`, which `make docs-lint` (part of `make verify-all`) runs directly, is
   the runner's or the workstation's; `.github/workflows/praetor-docs.yml` asks
   `actions/setup-node` for major version 24. Praetor supplies both files. The
@@ -705,6 +820,12 @@ taken, no milestone may cite them as admitted toolchain.
   contains no installer, no bootloader tool and nothing that writes outside the
   build directory, so adding one fails `make verify-all` rather than being
   noticed in review.
+- The M27 display-toolchain rows are checked by
+  `tools/test_display_toolchain.py`, which holds this page's table to the
+  `TOOLCHAIN` and `LOCKED` lists of `tools/display_toolchain.py` and the libva
+  pins to the `env:` block of `.github/workflows/ci.yml`. `make verify-rust`
+  runs `tools/display_toolchain.py` before it builds, so the evidence names the
+  pkgconf, libva and clang the crate was built with.
 - The M24 rows are checked by `tools/test_boot_harness.py` the same way, with
   the three OVMF images compared by digest. That test also holds the programs
   the boot harness may start, which contain nothing that writes a firmware

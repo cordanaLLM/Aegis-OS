@@ -86,8 +86,21 @@ entitled to license. In particular:
   with override tables, and
   [`LICENSES/MIT.txt`](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSES/MIT.txt)
   is the canonical SPDX text. `make verify-all` fails if that text differs from
-  its pinned digest, or if a third-party identifier appears anywhere but on
-  those two trees.
+  its pinned digest, or if a `REUSE.toml` table names a third-party identifier
+  anywhere but on those two trees.
+- The reference MPEG-2 intra frame in `crates/aegis-scaena/src/reference.rs`
+  is third-party data: the clip and its VA-API parameters as cros-libva's test
+  carries them (BSD-3-Clause, © 2022 The ChromiumOS Authors), adapted there
+  from libva-utils `decode/mpeg2vldemo.cpp` (MIT, © 2007-2008 Intel
+  Corporation). The file carries those terms as file-level SPDX headers rather
+  than a `REUSE.toml` table, and
+  [`LICENSES/BSD-3-Clause.txt`](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSES/BSD-3-Clause.txt)
+  is the canonical SPDX text, pinned by digest like the others. The whole-tree
+  `REUSE.toml` table is `aggregate`, so REUSE reports the project licence
+  beside the file's own; the upstream terms are the ones that apply to the
+  data. The Motion-JPEG fixture beside it,
+  `crates/aegis-scaena/fixtures/index-blocks-60.mjpeg`, is generated for Aegis
+  and carries the project licence.
 - A citation, hyperlink, bibliography entry, factual reference, or lawful
   quotation does not relicense the cited or quoted work.
 

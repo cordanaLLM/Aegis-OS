@@ -10,7 +10,26 @@
 //! is the exit criterion's "no `PipeWire`". Each is asserted here rather than
 //! left as prose.
 
+#[path = "../../dependency_closure.rs"]
+mod dependency_closure;
+
 use std::path::{Path, PathBuf};
+
+/// This crate's package name, the start of its closure (D78).
+const PACKAGE: &str = "aegis-calliope";
+
+/// The crates this crate's closure must not resolve: the list the lock-wide
+/// sweep carried before D78, kept verbatim.
+const FORBIDDEN: [&str; 8] = [
+    "pipewire",
+    "libspa",
+    "tokio",
+    "zenoh",
+    "aya",
+    "smithay",
+    "wayland-server",
+    "drm",
+];
 
 /// Returns the workspace root, two directories above this crate's manifest.
 fn workspace_root() -> Option<PathBuf> {
@@ -181,27 +200,24 @@ fn the_crate_declares_no_binary_target() {
     assert!(manifest.contains("publish = false"));
 }
 
-/// Negative: no new third-party crate is resolved into the lock file.
+/// Negative: this crate's own dependency closure resolves no multimedia or
+/// async crate.
 ///
 /// The exit criterion says the M02 toolchain is reused. The dependency half of
-/// that is that this milestone resolves nothing new, so the lock's package set
-/// must not gain a multimedia or async entry.
+/// that was a lock-wide sweep until M27; decision D78 re-scoped it to this
+/// crate's own closure, read from `cargo metadata`, so P17's Wayland and VA-API
+/// crates in the shared lock do not trip it while this crate still resolves
+/// none of them. The forbidden list is the one the lock-wide sweep carried.
 #[test]
-fn the_lock_resolves_no_multimedia_or_async_crate() {
-    let lock = read("Cargo.lock");
-    assert!(!lock.is_empty(), "Cargo.lock must be committed");
-    for absent in [
-        "name = \"pipewire\"",
-        "name = \"libspa\"",
-        "name = \"tokio\"",
-        "name = \"zenoh\"",
-        "name = \"aya\"",
-        "name = \"smithay\"",
-        "name = \"wayland-server\"",
-        "name = \"drm\"",
-    ] {
-        assert!(!lock.contains(absent), "the lock resolves {absent}");
-    }
+fn the_lock_resolves_no_multimedia_or_async_crate() -> Result<(), String> {
+    let names = dependency_closure::own_closure(PACKAGE)?;
+    assert!(names.contains(PACKAGE), "the closure starts at {PACKAGE}");
+    let found = dependency_closure::hits(&names, &FORBIDDEN);
+    assert!(
+        found.is_empty(),
+        "the closure of {PACKAGE} resolves {found:?}"
+    );
+    Ok(())
 }
 
 // --- Boundary -------------------------------------------------------------

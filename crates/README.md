@@ -30,6 +30,7 @@ proposal.
 | `aegis-ludus` | P11 gaming-integration validation slice | M08 | The 64-argument launch bound of export-033 and the three-way authentication outcome that replaces its boolean, which calls a line carrying no token authenticated because it carried some argument, the platform-register selection and amount bounds of a microtransaction receipt, the versioned receipt P11 hands to P02 with its signing carried as one variant that says it is unsigned, and the three recorded credential probes. Library only. |
 | `aegis-hephaestus` | P14 geometry validation slice | M08 | The iteration and meshing bounds of export-029 held against caller-supplied counts rather than against constants, the solver admission that names three solvers and starts none, the M06 verification request consumed from `aegis-minerva` rather than redefined, and the versioned geometry viewport P14 hands to P15 carrying the same element bound as the planner. Library only. |
 | `aegis-forum-shell` | P05 Forum shell model | M16 | The native shell's model under ADR-0004: the D96 process lifecycle driven by stubbed P04, P06 and P13 inputs, line-delimited JSON-RPC 2.0 framing with a byte bound and deadlines (D77), the decision request and carbon telemetry decoded by their producers' crates, and the D74 canvas model -- registry, camera and `QuadTree` -- with its accessibility tree exported as an `accesskit::TreeUpdate` and checked. Library only. |
+| `aegis-scaena` | P17 Scaena first slice | M27 | The D77 data plane P08 hands decoded video over: the `aegis.p08-p17.decoded-frame.v1` descriptor owned here as the consumer, its line-delimited JSON-RPC 2.0 codec under a byte bound, exactly one DMA-BUF fd per `SOCK_SEQPACKET` message over `SCM_RIGHTS` with send and receive deadlines, the `DMA_BUF_MAGIC`, plane-bound and advertised-format checks before an attach, the layer-surface state machine, and every Wayland wait under a deadline; and the display slice `make verify-display` runs on the reference profile: the decode node resolved from the compositor's main device through `/sys/class/drm`, cros-libva decode of the reference MPEG-2 frame and a committed Motion-JPEG fixture checked against content, `export_prime`, and the layer-surface presenter. Library and one binary, `aegis-scaena-display`; depends on cros-libva, git-pinned (D80), smithay-client-toolkit and rustix. |
 
 Every crate above is a member of the workspace root `Cargo.toml`. The member
 list is written out rather than globbed, so the remaining reserved directories
@@ -208,6 +209,33 @@ portal settings and AT-SPI2 are traits its tests mock.
 accesskit_unix and tokio in it (D78), and `tests/stubbed_effects.rs` sweeps
 its sources for socket, bus, process, thread, clock and file identifiers. Its
 only new dependency is accesskit 0.25.1, the accessibility tree's data model.
+
+`aegis-scaena` carries its component's name and sits at the path the C18 row
+proposes, and **P17 remains a proposal all the same**: a pass inside
+`make verify-all` covers the planes over a socket pair and a memfd, the JPEG
+reader, the content check, the device resolution and the decode deadline, and
+`make verify-display`, outside it, decodes, exports and presents on the
+reference profile (`docs/build/display.md`). A run against a compositor is the
+client half only, because the reference profile's compositor is the host
+session's `KWin` and not P04 (D79). It is the first
+crate whose dependencies reach a C library: cros-libva generates its bindings
+from the libva headers at build time, so `tools/display_toolchain.py` reads
+pkgconf, libva and clang back before the crate gate builds. It holds no
+occurrence of the keyword the workspace's forbid lint refuses; the binding's
+own FFI lives inside the pinned dependency, and its per-picture allocation is
+the deviation D83 limits to that binding. Its reference MPEG-2 frame,
+`src/reference.rs`, is third-party data under BSD-3-Clause and MIT, carried as
+file-level SPDX headers.
+
+`dependency_closure.rs`, beside the crate directories, is not a crate: it is
+the one definition of decision D78's closure rule, included by path into the
+manifest-hygiene tests of `aegis-athena`, `aegis-justitia`, `aegis-calliope`,
+`aegis-compositor`, `aegis-lictor`, `aegis-tellus` and `aegis-scaena`. Each of
+those sweeps reads its own crate's dependency closure from `cargo metadata`
+instead of the whole lock, so P17's Wayland and VA-API crates in the shared
+`Cargo.lock` trip none of them; a helper crate would have entered every
+closure it reads. `aegis-forum-shell` carries its own copy of the same walk
+from M16.
 
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2

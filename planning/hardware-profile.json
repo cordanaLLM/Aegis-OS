@@ -152,14 +152,14 @@
       "evidence_command": "wayland-info -i zwlr_layer_shell_v1; kwin_wayland --version; pacman -Q kwin",
       "recorded_on": "2026-09-28",
       "observed": "interface zwlr_layer_shell_v1 version 5, advertised by the host session compositor, kwin 6.7.5 (package kwin 6.7.5-1.1)",
-      "note": "this is the host desktop session's compositor, not P04 aegis-compositor, which serves no Wayland protocol; a run against it is development evidence for the client half only (D79). kwin_wayland --version and pacman -Q report the installed kwin, not which process served the session socket; that the session compositor is that kwin is inferred"
+      "note": "this is the host desktop session's compositor, not P04 aegis-compositor, which serves no Wayland protocol; a run against it is development evidence for the client half only (D79). kwin_wayland --version and pacman -Q report the installed kwin, not which process served the session socket; that the session compositor is that kwin is inferred. M27's gate (run r20260929T151938-0d35) read the session socket's peer with SO_PEERCRED: /usr/bin/kwin_wayland_wrapper (pid 3089, package kwin 6.7.5-1.1), which holds the listening socket for kwin_wayland"
     },
     "compositor_dmabuf_import": {
       "present": true,
       "evidence_command": "wayland-info -i zwp_linux_dmabuf_v1; wayland-info -i wp_presentation; stat -L -c '%t:%T' /dev/dri/by-path/pci-0000:03:00.0-render",
       "recorded_on": "2026-09-28",
       "observed": "interface zwp_linux_dmabuf_v1 version 5 with main device 0xE281 (device number e2:81, /dev/dri/renderD129, the Arc A380; wayland-info also names the same GPU's primary node /dev/dri/card2); its feedback lists NV12 (0x3231564e) and P010, each with LINEAR, INTEL_X_TILED, INTEL_4_TILED and DRM_FORMAT_MOD_INVALID (implicit modifier), and neither with INTEL_4_TILED_DG2_RC_CCS or INTEL_4_TILED_DG2_RC_CCS_CC; wp_presentation version 2 on CLOCK_MONOTONIC",
-      "note": "advertised by KDE KWin 6.7.5 and not exercised by any committed gate; M27 is the gate that does. Decoding on the compositor's main device avoids a cross-device import, which nothing here has tested (D79)"
+      "note": "advertised by KDE KWin 6.7.5 and exercised by make verify-display run r20260929T151938-0d35 (M27, 2026-09-29): 60 NV12 frames with I915_FORMAT_MOD_4_TILED imported, each created and presented, client half only (D79). Decoding on the compositor's main device avoids a cross-device import, which nothing here has tested (D79)"
     }
   },
   "gpus": [

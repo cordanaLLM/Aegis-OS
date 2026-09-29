@@ -19,6 +19,9 @@ LICENSE_TEXTS = {
     "LICENSES/EUPL-1.2.txt": "57fb42fbcd0b037ce528ed8f72f1ec095d67bc6825ecf1448ff39be1fe68a4b4",
     "LICENSES/CC-BY-SA-4.0.txt": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5",
     "LICENSES/MIT.txt": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+    # The reference MPEG-2 frame's upstream terms (M27): it carries file-level
+    # SPDX headers, never a REUSE.toml table, so LICENSE_IDS stays exact.
+    "LICENSES/BSD-3-Clause.txt": "5a93d5831e1297ab10fe643e1a631e83be392896da14ee2951285a79012df69d",
 }
 LICENSE_IDS = {"EUPL-1.2", "CC-BY-SA-4.0"}
 # Vendored third-party trees and the only identifier REUSE.toml may give each.

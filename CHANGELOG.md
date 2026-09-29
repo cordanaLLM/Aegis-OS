@@ -13,6 +13,48 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (P17 Scaena first slice, VA-API frames to a layer surface, milestone M27)
+
+- **P17 aegis-scaena joins the workspace (criteria 1 to 4).** cros-libva is
+  git-pinned (D80), smithay-client-toolkit 0.21.1 and rustix 1.1.5 are
+  admitted, and the D77 planes are typed and tested over a socket pair and a
+  memfd inside `make verify-all`: the `aegis.p08-p17.decoded-frame.v1`
+  descriptor, one fd per `SOCK_SEQPACKET` message over `SCM_RIGHTS` under
+  send and receive deadlines, and the `DMA_BUF_MAGIC` and plane-bound checks
+  before an attach. The workspace `rust-version` is 1.87, the graph's highest.
+- **The six lock-wide sweeps read their own crate's closure (D78).**
+  `crates/dependency_closure.rs` is the one definition of the rule; on the
+  pre-M27 lock each re-scoped sweep reports what the lock-wide one did, and a
+  tokio planted as a dev-dependency of `aegis-compositor` fails its sweep.
+- **CI builds libva 2.24.1 (D80, 2026-09-29).** The Verification gate builds
+  the release tarball, pinned by sha256, with pinned meson and ninja, before
+  `make verify-all`, and `tools/display_toolchain.py` reads pkgconf, libva
+  and clang back before the crate gate builds.
+- **`make verify-display`, outside `make verify-all`.** On the reference
+  profile it decodes cros-libva's reference MPEG-2 intra frame to CRC-32
+  `0xa5713e52` and the 60 frames of a committed Motion-JPEG fixture through
+  VA-API on the render node that is the compositor's main device, reads each
+  frame's drawn index back before export, exports it with `export_prime`,
+  passes the DMA-BUF over `SCM_RIGHTS` and presents it on a
+  `zwlr_layer_shell_v1` surface: run r20260929T151938-0d35, 60 created, none
+  failed, 60 presented. The nvidia VA driver, every other render node, an
+  unadvertised format and modifier pair and a zero-filled surface are each
+  refused before anything is attached. Client half only (D79): the compositor
+  is the host session's KWin, not P04. `docs/build/display.md` is the
+  evidence.
+- **The texts that named M12 for the display path now name M27 (D79).** The
+  compositor and hestia crate texts say that M27 exercises the client half
+  against the host compositor and that no milestone yet plans a P04 that
+  serves `zwlr_layer_shell_v1`.
+- **The fixture and the reference frame.** The Motion-JPEG fixture is
+  generated for Aegis with ffmpeg n9.0.2, its command recorded and its sha256
+  pinned; the MPEG-2 frame is third-party data with file-level SPDX headers,
+  BSD-3-Clause and MIT, and `LICENSES/BSD-3-Clause.txt` is added and pinned.
+- **HISS-03 on the frame path (D83).** P17's own frame loop allocates nothing
+  per frame; cros-libva's per-picture allocation is D83's scoped deviation,
+  and wayland-client's per-object allocation, which D83 does not name, is
+  disclosed rather than waived.
+
 ### Changed (nucleus re-pinned to 82aa6b7, milestone M09)
 
 - **The contract gate pins nucleus at `82aa6b7`**, its `main` after its pull

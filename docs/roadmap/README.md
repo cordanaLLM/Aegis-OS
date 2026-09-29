@@ -188,11 +188,11 @@ score.
 | 16 | M04 | UI accessibility harness: P12 Concordia tokens | done | medium | no | no | not-hardware | M02 | M16, M11 |
 | 17 | M09 | Cross-repository contract pin: one local request/result pair | done | small | no | yes | partial | M18 | M11, M10 |
 | 18 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | done | small | no | no | not-hardware | M04, M14 | M28 |
-| 19 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | ready | medium | yes | no | full | M07 | M28, M29 |
+| 19 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | done | medium | yes | no | full | M07 | M28, M29 |
 | 20 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
 | 21 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
 | 22 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
-| 23 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | blocked | large | yes | no | full | M16, M27 | M29 |
+| 23 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | ready | large | yes | no | full | M16, M27 | M29 |
 | 24 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | blocked | medium | yes | no | full | M28, M27 | - |
 | 25 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
 | 26 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | ready | medium | yes | yes | partial | M09, M19, M23 | M12 |
@@ -2374,7 +2374,7 @@ Evidence:
 
 ### M27 - P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS
 
-Rank 19. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 19. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M07. Unblocks: M28, M29.
 
@@ -2581,6 +2581,57 @@ the reference profile with the driver and device pinned, export, pass and attach
 them, and test the descriptor codec, the SCM_RIGHTS path and the surface state
 machine on a socketpair and a memfd inside make verify-all.
 
+Evidence (the 2026-09-29 disclosure, the scope and the closing summary; every
+entry is in `planning/roadmap.json`, and the run is on `docs/build/display.md`):
+
+- Disclosure, in the shape M18 recorded, because a milestone must say where its
+  evidence differs from the letter of its bar: no exit criterion, epic or the
+  cheapest exit was rewritten by this delivery, and six points are recorded
+  instead. (1) Criterion 2's parenthetical names 1.86 as the value the rule
+  would give; the rule gives 1.87, because accesskit 0.25.1, admitted by M16
+  after the criterion was written, declares it, and 1.87 is what the workspace
+  declares. (2) The runner half of criterion 1 and of E27-3's positive, cargo
+  build --locked on the Verification gate's runner against the libva it builds,
+  rests on the ci.yml steps run unmodified in an ubuntu:24.04 container on
+  2026-09-29; the runner's own evidence is the required Verification gate check
+  of the pull request carrying this change, without which it does not merge. (3)
+  E27-2's boundary 'a decoded surface that does not reach VASurfaceReady fails
+  at its deadline and names the surface' is exercised on a status source that
+  never leaves VASurfaceRendering (tests/decode_rules.rs); the Arc A380 finished
+  every decode within its first polls, and nothing provoked a stuck surface on
+  the hardware. (4) HISS-03: wayland-client allocates per protocol object, three
+  per frame, a third-party allocation D83 does not name, recorded beside D83 and
+  not waived. (5) The gate also skips when logind reports the session locked,
+  which criterion 11 does not list: the first runs on 2026-09-29 found the
+  session locked, when the compositor presents no client surface and the first
+  frame's presented event cannot arrive. (6) Criterion 3 asks the six sweeps to
+  keep their forbidden lists verbatim and to match package names exactly, and
+  for justitia's sweep those two cannot both hold: before M27 it searched
+  Cargo.lock for four substrings, "md5", "md-5", name = "md5 and name = "md-5,
+  and the last two, having no closing quote, also refused any package whose name
+  merely starts with md5 or md-5 (md5-asm, say). Its forbidden list is now the
+  exact names md5 and md-5; that prefix coverage is given up with D78's
+  exact-name rule, and tests/manifest_hygiene.rs records it in
+  a_prefixed_md5_name_is_not_a_hit beside a_planted_md5_crate_fails_the_sweep.
+- Scope (criterion 9, 2026-09-29): development evidence on the reference profile
+  for the client half only. The compositor is the host session's KDE KWin, not
+  P04, which serves no Wayland protocol; no milestone yet plans one that does,
+  and a pass closes no hardware, accessibility or release gate. P17 stays a
+  proposal in planning/components.json: its blockers now record the run and what
+  is still open (the runner's own libva evidence, the engine M28 admits, a P04
+  that serves the protocols), and its candidate row C18 keeps manifest_present
+  false, which verify_candidates() reads as an activation claim. M27 unblocks
+  M28, which turns ready; M29 stays blocked on M28.
+- Done, and each part by the entry named: criterion 1 by the toolchain entry,
+  its runner half as the disclosure records; criterion 2 by the member entry;
+  criterion 3 and E27-3 by the D78 entry; criterion 4 and E27-1 by the planes
+  entry; criteria 5, 6 and 7 and E27-2 by run r20260929T151938-0d35 and, on the
+  final revision, r20260929T170629-d8c5, on which the ready poll preceded every
+  sync and create_image; criterion 8 by the licensing entry; criterion 9 by the
+  labelling and scope entries; criterion 10 by the M12-texts entry; criterion 11
+  by the gate entry. Each rests on cargo test and tools/ tests inside make
+  verify-all or on the recorded runs, and none on simulated output.
+
 Epics:
 
 - **E27-1 D77 planes over a socketpair: decoded-frame descriptor, JSON-RPC 2.0
@@ -2630,7 +2681,7 @@ Epics:
 
 ### M28 - P05 native shell on gpui: layer surface, AT-SPI tree, frame time
 
-Rank 23. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 23. State: ready. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M16, M27. Unblocks: M29.
 
@@ -4475,6 +4526,15 @@ beyond TPM2 (TDX, SEV-SNP, CCA).
   maintainer: cros-libva at that revision heap-allocates for every decoded
   picture, so M27 does not claim HISS-03 on the frame path, and whether that
   allocation is accepted or removed is not decided.
+  **libva on the Verification gate (2026-09-29):** The maintainer decided that
+  the runner meets the admitted libva floor by building intel/libva 2.24.1
+  from its release tarball, pinned by the sha256 the GitHub release publishes,
+  with meson and ninja, cached between runs, in `.github/workflows/ci.yml`
+  before `make verify-all`, with `PKG_CONFIG_PATH` pointing the crate build at
+  it. The runner's apt libva is 2.20.0 on ubuntu-24.04 and 2.23.0 on
+  ubuntu-26.04, both below the floor; the runner image is not changed and the
+  floor is not lowered. `docs/roadmap/toolchain-admission.md` records the
+  tarball URL, its sha256 and the build flags.
 - **D81** Which accessibility standard do the new canvas, heads-up theme and
   display-runtime requirements target? Options: EN 301 549 V4.1.1 (2026-09),
   which reflects WCAG 2.2, with WCAG 2.2 AA; EN 301 549 V3.2.1 (2021-03), which
@@ -4524,6 +4584,20 @@ beyond TPM2 (TDX, SEV-SNP, CCA).
   decoder binding D80 pins, and it is reviewed whenever that binding is replaced
   or re-pinned. The deviation grants nothing to Aegis-authored code and waives
   no other invariant.
+  **Applied at M27 (2026-09-29):** P17's frame loop in `crates/aegis-scaena`
+  (the receive, the attach checks, the format admission, the import, the
+  commit and the waits) builds only `Copy` values, lands lines in caller-owned
+  buffers and control messages in stack buffers, and
+  `tests/allocation_bounds.rs` fails to compile if a heap-owning field enters
+  one of them; no per-frame count is produced, because a counting allocator
+  needs an unsafe `GlobalAlloc`. The run found a second third-party allocation
+  on the frame path that D83 does not name: wayland-client, through
+  smithay-client-toolkit (D75), allocates for every protocol object it
+  creates, and each frame creates a `zwp_linux_buffer_params_v1`, the
+  `wl_buffer` its `created` event announces and a `wp_presentation_feedback`,
+  which M27's per-frame `created` and `presented` events require. It is
+  recorded with M27's evidence as outside D83's scope, not waived; whether
+  D83 names that binding too is the maintainer's to decide.
 
 ### Decisions from the M24 delivery (2026-09-28)
 

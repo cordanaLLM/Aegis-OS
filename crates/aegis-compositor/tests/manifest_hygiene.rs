@@ -13,7 +13,26 @@
 //! export-006 Zenoh pin is not inherited". Each is asserted here rather than
 //! left as prose.
 
+#[path = "../../dependency_closure.rs"]
+mod dependency_closure;
+
 use std::path::{Path, PathBuf};
+
+/// This crate's package name, the start of its closure (D78).
+const PACKAGE: &str = "aegis-compositor";
+
+/// The crates this crate's closure must not resolve, the list the lock-wide
+/// sweep carried before D78, kept verbatim.
+const FORBIDDEN: [&str; 8] = [
+    "zenoh",
+    "zenoh-transport",
+    "smithay",
+    "wayland-server",
+    "wayland-backend",
+    "drm",
+    "gbm",
+    "tokio",
+];
 
 /// Returns the workspace root, two directories above this crate's manifest.
 fn workspace_root() -> Option<PathBuf> {
@@ -193,27 +212,37 @@ fn the_crate_declares_no_binary_target() {
     assert!(manifest.contains("publish = false"));
 }
 
-/// Negative: no new third-party crate is resolved into the lock file.
+/// Negative: this crate's own dependency closure resolves no multimedia or
+/// async crate.
 ///
 /// The exit criterion says the M02 toolchain is reused. The dependency half of
-/// that is that this milestone resolves nothing new, so the lock's package set
-/// must not gain a multimedia or async entry.
+/// that was a lock-wide sweep until M27; decision D78 re-scoped it to this
+/// crate's own closure, read from `cargo metadata`, because P17's
+/// smithay-client-toolkit puts wayland-backend into the shared lock while this
+/// crate still depends on none of it. The forbidden list is the one the
+/// lock-wide sweep carried, unchanged.
 #[test]
-fn the_lock_resolves_no_multimedia_or_async_crate() {
-    let lock = read("Cargo.lock");
-    assert!(!lock.is_empty(), "Cargo.lock must be committed");
-    for absent in [
-        "name = \"zenoh\"",
-        "name = \"zenoh-transport\"",
-        "name = \"smithay\"",
-        "name = \"wayland-server\"",
-        "name = \"wayland-backend\"",
-        "name = \"drm\"",
-        "name = \"gbm\"",
-        "name = \"tokio\"",
-    ] {
-        assert!(!lock.contains(absent), "the lock resolves {absent}");
-    }
+fn the_lock_resolves_no_multimedia_or_async_crate() -> Result<(), String> {
+    let names = dependency_closure::own_closure(PACKAGE)?;
+    assert!(names.contains(PACKAGE), "the closure starts at {PACKAGE}");
+    let found = dependency_closure::hits(&names, &FORBIDDEN);
+    assert!(
+        found.is_empty(),
+        "the closure of {PACKAGE} resolves {found:?}"
+    );
+    Ok(())
+}
+
+/// Negative (E27-3): tokio planted as a dev-dependency of this crate, the way
+/// `cargo metadata` reports a manifest edit, fails the sweep: the closure
+/// follows every edge whatever its `dep_kinds`.
+#[test]
+fn a_tokio_dev_dependency_planted_in_this_closure_fails_the_sweep() -> Result<(), String> {
+    let mut metadata = dependency_closure::metadata()?;
+    dependency_closure::plant(&mut metadata, PACKAGE, "tokio", Some("dev"))?;
+    let names = dependency_closure::closure(&metadata, PACKAGE)?;
+    assert_eq!(dependency_closure::hits(&names, &FORBIDDEN), vec!["tokio"]);
+    Ok(())
 }
 
 // --- Boundary -------------------------------------------------------------
@@ -261,4 +290,31 @@ fn the_crate_inherits_the_workspace_lints() {
     assert!(!manifest.contains("[lints.clippy]"));
     let root = read("Cargo.toml");
     assert!(root.contains("unsafe_code = \"forbid\""));
+}
+
+/// Boundary (E27-3): wayland-backend is in `Cargo.lock` -- P17's
+/// smithay-client-toolkit resolves it -- but outside this crate's closure,
+/// and the sweep passes.
+#[test]
+fn wayland_backend_in_the_lock_but_outside_this_closure_passes() -> Result<(), String> {
+    let lock = read("Cargo.lock");
+    assert!(lock.contains("name = \"wayland-backend\""));
+    let names = dependency_closure::own_closure(PACKAGE)?;
+    assert!(!names.contains("wayland-backend"), "{names:?}");
+    assert!(dependency_closure::hits(&names, &FORBIDDEN).is_empty());
+    Ok(())
+}
+
+/// Boundary (E27-3): a name that only shares a prefix with a forbidden one,
+/// tokio-macros or wayland-backend-sys, is not a hit.
+#[test]
+fn a_name_that_only_shares_a_prefix_is_not_a_hit() -> Result<(), String> {
+    let metadata = dependency_closure::synthetic(
+        PACKAGE,
+        &["tokio-macros", "wayland-backend-sys", "drm-fourcc"],
+    );
+    let names = dependency_closure::closure(&metadata, PACKAGE)?;
+    assert_eq!(names.len(), 4, "{names:?}");
+    assert!(dependency_closure::hits(&names, &FORBIDDEN).is_empty());
+    Ok(())
 }

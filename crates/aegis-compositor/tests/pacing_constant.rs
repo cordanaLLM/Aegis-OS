@@ -13,8 +13,10 @@
 //! zero has no period at all.
 //!
 //! Nothing here runs a loop, sleeps or reads a clock. Whether an
-//! implementation can hold this period is a question for real hardware at
-//! milestone M12 and for the latency fixtures at M23.
+//! implementation can hold this period is a question for a P04 that drives a
+//! display, which no milestone yet plans -- milestone M27 exercises only the
+//! client half against the host session's compositor (D79) -- and for the
+//! latency fixtures at M23.
 
 mod common;
 

@@ -14,8 +14,10 @@
 //! **Nothing is composited, rendered, mapped or displayed.** No Wayland
 //! connection is opened, no `wl_surface` exists, no layer-shell protocol is
 //! bound, no buffer is attached and no output is driven. A surface is a row in
-//! a fixed array, and a "layer" is a value of [`SurfaceLayer`]. Milestone M12
-//! is where a real display path would be demonstrated.
+//! a fixed array, and a "layer" is a value of [`SurfaceLayer`]. Milestone M27
+//! exercises the client half of a display path against the host session's
+//! compositor, and no milestone yet plans a P04 that drives a display or
+//! serves `zwlr_layer_shell_v1` (D79).
 //!
 //! The registry is backend-agnostic on purpose: decision D08 selects a pure
 //! Rust compositor and admits no compositor library at all at this milestone,

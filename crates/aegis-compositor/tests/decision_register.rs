@@ -211,7 +211,9 @@ fn the_compositor_library_check_was_run() {
     assert_eq!(check.upstream_max_stable, "0.7.0");
     assert_eq!(check.upstream_released_on, "2025-06-24");
     assert!(check.proposed_requirement.contains("none"));
-    assert!(check.admitted_at.contains("M12"));
+    assert!(check.admitted_at.contains(
+        "no milestone yet plans: M27 exercises the client half against the host compositor"
+    ));
     assert!(check.reason.contains("drm"));
     assert!(check.reason.contains("19 are required and 25 are"));
     assert!(check.reason.contains("default feature closure"));

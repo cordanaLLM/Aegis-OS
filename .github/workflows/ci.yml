@@ -31,6 +31,15 @@ env:
   BLACK_VERSION: "26.5.1"
   # Published Praetor commit that builds the praetorctl this gate pins.
   PRAETOR_COMMIT: "8d0344e917f16a2b7e23b1ec5258133ddba783f2"
+  # D80 libva floor on this runner (maintainer decision of 2026-09-29): the
+  # intel/libva release tarball, its sha256 as the GitHub release publishes it,
+  # and the meson and ninja wheels that build it, each pinned by its PyPI sha256.
+  LIBVA_VERSION: "2.24.1"
+  LIBVA_SHA256: "eec6050b52876f229bd35e9df17cd31a06785e18e6f7990c445b584628483d67"
+  MESON_VERSION: "1.12.1"
+  MESON_WHEEL_SHA256: "930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02"
+  NINJA_VERSION: "1.13.2"
+  NINJA_WHEEL_SHA256: "65a24341b5ac09fcadcc37082660be40a94174e51a937fabf6e2cae26225fa2c"
 
 jobs:
   verify:
@@ -107,6 +116,72 @@ jobs:
           rustup show active-toolchain
           rustup which rustc
           rustup which cargo-clippy
+
+      # The P17 crate's VA-API binding (cros-libva, D80) generates its bindings
+      # from the libva headers at build time and links libva and libva-drm. This
+      # runner's apt archive carries libva 2.20.0, below the admitted floor of
+      # 2.24.1 (VA-API 1.24.0), so, as the maintainer decided on 2026-09-29, the
+      # job builds the pinned release tarball with meson and ninja and caches
+      # the installed prefix; a change to any pin below is a new cache key.
+      # libva's meson.build requires libdrm 2.4.75 or later for libva-drm, and
+      # the image ships no libdrm headers, so they come from the runner's own
+      # signed Ubuntu archive, unpinned and read back against that floor
+      # (docs/roadmap/toolchain-admission.md records both).
+      - name: Install the libdrm headers libva-drm builds against
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libdrm-dev
+          pkg-config --modversion libdrm
+          pkg-config --atleast-version=2.4.75 libdrm
+
+      - name: Restore the pinned libva build
+        id: libva-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/aegis-libva/${{ env.LIBVA_VERSION }}
+          key: "libva-${{ env.LIBVA_VERSION }}-${{ env.LIBVA_SHA256 }}\
+            -meson-${{ env.MESON_VERSION }}-ninja-${{ env.NINJA_VERSION }}-ubuntu-24.04"
+
+      - name: Build the pinned libva from its release tarball
+        if: steps.libva-cache.outputs.cache-hit != 'true'
+        run: |
+          prefix="$HOME/.cache/aegis-libva/$LIBVA_VERSION"
+          work="$RUNNER_TEMP/libva-build"
+          mkdir -p "$work"
+          url="https://github.com/intel/libva/releases/download/${LIBVA_VERSION}/libva-${LIBVA_VERSION}.tar.bz2"
+          curl -fsSL --max-time 120 -o "$work/libva.tar.bz2" "$url"
+          echo "${LIBVA_SHA256}  $work/libva.tar.bz2" | sha256sum -c -
+          tar -xjf "$work/libva.tar.bz2" -C "$work"
+          python3 -m venv "$work/venv"
+          {
+            echo "meson==${MESON_VERSION} --hash=sha256:${MESON_WHEEL_SHA256}"
+            echo "ninja==${NINJA_VERSION} --hash=sha256:${NINJA_WHEEL_SHA256}"
+          } > "$work/requirements.txt"
+          "$work/venv/bin/pip" install --quiet --require-hashes --only-binary=:all: \
+            --no-deps -r "$work/requirements.txt"
+          export PATH="$work/venv/bin:$PATH"
+          meson --version
+          ninja --version
+          meson setup "$work/build" "$work/libva-${LIBVA_VERSION}" \
+            --prefix="$prefix" --libdir=lib --buildtype=release \
+            -Dwith_x11=no -Dwith_glx=no -Dwith_wayland=no -Dwith_win32=no \
+            -Denable_docs=false
+          meson compile -C "$work/build"
+          meson install -C "$work/build"
+
+      # PKG_CONFIG_PATH is how cros-libva's build script finds the headers, and
+      # LD_LIBRARY_PATH is how the test binaries find libva at run time: Cargo
+      # adds a build script's search path to the loader path only inside the
+      # target directory. make verify-rust reads the version back again before
+      # it builds (tools/display_toolchain.py).
+      - name: Point the crate build at the pinned libva
+        run: |
+          prefix="$HOME/.cache/aegis-libva/$LIBVA_VERSION"
+          echo "PKG_CONFIG_PATH=$prefix/lib/pkgconfig" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$prefix/lib" >> "$GITHUB_ENV"
+          test "$(PKG_CONFIG_PATH="$prefix/lib/pkgconfig" \
+            pkg-config --variable=libva_version libva)" = "$LIBVA_VERSION"
+          PKG_CONFIG_PATH="$prefix/lib/pkgconfig" pkg-config --modversion libva
 
       # The accessibility gate inside make verify-all never pulls and never
       # downloads (M04). This is the one networked step: it pulls the
