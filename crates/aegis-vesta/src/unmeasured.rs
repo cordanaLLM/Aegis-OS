@@ -7,8 +7,10 @@
 //! creates, with the comment "Sub-125ms cold boot speed", and the crate header
 //! lists "under 125ms boot and under 5MB RAM" among its standards targets.
 //! REQ-P10-05 records what those figures are: **the values are unmeasured**.
-//! Nothing in this repository has booted a microVM, and this crate starts no
-//! process at all.
+//! M21 boots microVMs (`crates/aegis-vesta-sandbox`, `make
+//! verify-workstation`) to prove the sandbox path and measures neither figure:
+//! under decision D71 the measurements are M22's, each naming its monitor.
+//! This crate starts no process at all.
 //!
 //! A bare `u32` field cannot carry that. [`Unmeasured<T>`] is the wrapper that
 //! does: a value of this type is a recorded target or a scaffold literal and

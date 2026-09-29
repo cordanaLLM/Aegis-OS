@@ -409,9 +409,9 @@
         "a pinned Rust-native runtime: D06 selects the language boundary at M06 and pins no version",
         "a behavioural admission gate for the two P06 gating paths (D04): the M06 capsule request carries both readings and reports them apart, and nothing admits or refuses a sandbox execution on that field, which is the contract test DSP-04 assigns to M06",
         "thread-per-core runtime decision (open decision D46)",
-        "real hardware or emulator evidence: the boot-time and footprint figures stay unmeasured and AF_VSOCK and Venus pricing stay deferred to M21"
+        "real hardware or emulator evidence: M21 boots Firecracker microVMs and carries one candidate evaluation over AF_VSOCK (crates/aegis-vesta-sandbox); the boot-time and footprint figures stay unmeasured until M22, AF_VSOCK pricing is implemented nowhere, and Venus pricing is deferred to M12"
       ],
-      "note": "Member 6 of the export-006 members array. The crate exists from M06 as a written-out member of the workspace root Cargo.toml, with a Cargo.lock entry and positive, negative and boundary tests; D06 is recorded and applied there and both D04 readings are carried by the capsule request. manifest_present stays false because verify_candidates() reads it as a component-activation claim rather than as a filesystem fact, and P10 is still a proposal."
+      "note": "Member 6 of the export-006 members array. The crate exists from M06 as a written-out member of the workspace root Cargo.toml, with a Cargo.lock entry and positive, negative and boundary tests; D06 is recorded and applied there and both D04 readings are carried by the capsule request. manifest_present stays false because verify_candidates() reads it as a component-activation claim rather than as a filesystem fact, and P10 is still a proposal. M21 adds crates/aegis-vesta-sandbox beside it, the effectful half that boots Firecracker for rows this crate admits; aegis-vesta itself still starts nothing, and P10 stays a proposal."
     },
     {
       "candidate_id": "C11",
@@ -517,7 +517,7 @@
         "telemetry payload schema for the P16 consumer",
         "positive, negative and boundary tests"
       ],
-      "note": "Member 8 of the export-006 members array; coverage gap, one blueprint-free source plus one eBPF probe. Milestone M05 makes crates/aegis-tellus a written-out member of the workspace root Cargo.toml and Cargo.lock carries the crate. manifest_present stays false because verify_candidates() reads that flag as a component-activation claim rather than as a filesystem fact, and P13 is not activated: the crate holds the SCI rate arithmetic, the defer threshold, the slice bound and the zone-list wattage seam, not the Kepler eBPF telemetry daemon the component is."
+      "note": "Member 8 of the export-006 members array; coverage gap, one blueprint-free source plus one eBPF probe. Milestone M05 makes crates/aegis-tellus a written-out member of the workspace root Cargo.toml and Cargo.lock carries the crate. manifest_present stays false because verify_candidates() reads that flag as a component-activation claim rather than as a filesystem fact, and P13 is not activated: the crate holds the SCI rate arithmetic, the defer threshold, the slice bound and the zone-list wattage seam, not the Kepler eBPF telemetry daemon the component is. M21 adds MeasuredWattage to the crate and crates/aegis-tellus-rapl beside it, which turns two reads of the package counter, taken by the gate through one scoped sudo -n cat, into a measured SCI; no daemon reads the counter, and P13 stays a proposal."
     },
     {
       "candidate_id": "C14",
@@ -642,7 +642,7 @@
         "hash-algorithm trait so that D02 supersedes the ledger named in export-007",
         "signed audit-record schema (M14)"
       ],
-      "note": "Member 10 of the export-006 members array; REQ-P16-07 states the membership explicitly, and milestone M05 acts on it: crates/aegis-athena is a written-out member of the workspace root Cargo.toml and Cargo.lock carries the crate. manifest_present stays false because verify_candidates() reads that flag as a component-activation claim rather than as a filesystem fact, and P16 is not activated: the crate holds the lifecycle, the Pareto gate and the hash chain, and executes no candidate and deploys no update."
+      "note": "Member 10 of the export-006 members array; REQ-P16-07 states the membership explicitly, and milestone M05 acts on it: crates/aegis-athena is a written-out member of the workspace root Cargo.toml and Cargo.lock carries the crate. manifest_present stays false because verify_candidates() reads that flag as a component-activation claim rather than as a filesystem fact, and P16 is not activated: the crate holds the lifecycle, the Pareto gate and the hash chain, and executes no candidate and deploys no update. At M21 the Pareto gate judges one candidate evaluation inside a Firecracker guest (crates/aegis-vesta-sandbox); nothing deploys or promotes on it, and P16 stays a proposal."
     },
     {
       "candidate_id": "C18",

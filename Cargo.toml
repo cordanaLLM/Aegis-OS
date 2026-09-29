@@ -18,7 +18,9 @@ members = [
     "crates/aegis-minerva",
     "crates/aegis-scaena",
     "crates/aegis-tellus",
+    "crates/aegis-tellus-rapl",
     "crates/aegis-vesta",
+    "crates/aegis-vesta-sandbox",
     "crates/aegis-vulcan",
 ]
 
@@ -40,6 +42,7 @@ serde = { version = "1.0.229", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.151", default-features = false, features = ["std"] }
 sha2 = { version = "0.11.0", default-features = false }
 smithay-client-toolkit = { version = "0.21.1", default-features = false }
+socket2 = { version = "0.6.5", default-features = false, features = ["all"] }
 thiserror = { version = "2.0.20", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]

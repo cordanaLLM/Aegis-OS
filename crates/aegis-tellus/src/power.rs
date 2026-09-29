@@ -5,11 +5,11 @@
 //!
 //! # What the seam is for
 //!
-//! The SCI arithmetic in [`crate::sci`] needs a draw. At this milestone the
-//! draw is a recorded simulated constant; at M21 it becomes a delta between
-//! two reads of a RAPL energy counter. [`WattageSource`] is the boundary
-//! between the two, and it is placed so that substituting the second for the
-//! first changes no arithmetic: a source hands back [`Watts`],
+//! The SCI arithmetic in [`crate::sci`] needs a draw. At M05 the draw was a
+//! recorded simulated constant; at M21 it is also a delta between two reads
+//! of a RAPL energy counter, [`crate::MeasuredWattage`]. [`WattageSource`] is
+//! the boundary between the two, and it is placed so that substituting the
+//! second for the first changes no arithmetic: a source hands back [`Watts`],
 //! [`crate::sci::EnergyKwh::from_draw`] turns a draw held over an interval
 //! into energy, and [`crate::sci::SciEngine::sci_rate`] never learns where the
 //! number came from.
@@ -35,8 +35,9 @@
 //!
 //! D60 also says DRAM energy is modelled and labelled as modelled, never
 //! reported as measured. [`Provenance`] is that label, carried on every
-//! [`ZoneSample`], and no value in this milestone carries
-//! [`Provenance::Measured`].
+//! [`ZoneSample`]. No value [`SimulatedWattage`] hands back carries
+//! [`Provenance::Measured`]; only [`crate::MeasuredWattage`] does (M21), and
+//! it refuses the `dram` and `psys` zones outright.
 //!
 //! Two rules decide a label in [`SimulatedWattage::recorded`], and neither is
 //! the figure alone. For a zone the profile exposes -- the two
@@ -56,6 +57,8 @@
 //! It opens no file, reads no counter, loads no eBPF program and starts no
 //! timer. `/sys/class/powercap` is named in this documentation and nowhere in
 //! the code; `tests/stubbed_effects.rs` is the sweep that keeps it that way.
+//! The counter text [`crate::MeasuredWattage`] is built from is read by the
+//! caller, not here.
 
 use core::fmt;
 use core::num::NonZeroU32;
@@ -135,7 +138,7 @@ pub const SIMULATED_PACKAGE0_WATTS: f64 = SIMULATED_CORE_WATTS + MODELLED_DRAM_W
 ///
 /// The variants are ordered by how much they may be relied on, and the
 /// ordering is part of the type: [`Self::Measured`] is the only one a hardware
-/// claim may rest on, and no value this milestone produces carries it.
+/// claim may rest on, and only [`crate::MeasuredWattage`] produces it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[non_exhaustive]
 pub enum Provenance {
@@ -143,7 +146,8 @@ pub enum Provenance {
     Simulated,
     /// Derived from a model because the platform exposes no counter (D60).
     Modelled,
-    /// Read from a hardware counter. Nothing in this crate produces one.
+    /// Derived from readings of a hardware counter; [`crate::MeasuredWattage`]
+    /// is the one producer (M21).
     Measured,
 }
 
@@ -298,9 +302,11 @@ impl ZoneList {
 
 /// The deadline within which a wattage sample must complete.
 ///
-/// The parameter is in the trait signature so that the M21 reader, which does
-/// open a file, cannot implement [`WattageSource`] without receiving one. That
-/// is the HISS-02 obligation for I/O made structural rather than remembered.
+/// The parameter is in the trait signature so that a reader that does open a
+/// file cannot implement [`WattageSource`] without receiving one. That is the
+/// HISS-02 obligation for I/O made structural rather than remembered; at M21
+/// the reads happen in the gate, each under its own deadline, and
+/// [`crate::MeasuredWattage`] still honours this one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SampleDeadline(NonZeroU32);
 
@@ -361,9 +367,10 @@ impl ZoneSample {
 
 /// The seam the SCI arithmetic reads its draw through.
 ///
-/// Milestone M05 ships [`SimulatedWattage`] only. M21 adds a reader over the
-/// powercap energy counters and substitutes it here; nothing in
-/// [`crate::sci`] changes when it does.
+/// Milestone M05 shipped [`SimulatedWattage`]. M21 adds
+/// [`crate::MeasuredWattage`], built from two readings of a powercap energy
+/// counter, and substitutes it here; nothing in [`crate::sci`] changed when it
+/// did.
 pub trait WattageSource {
     /// Returns the zones this source carries.
     fn zones(&self) -> ZoneList;
@@ -416,8 +423,7 @@ impl SimulatedWattage {
     /// A simulated source needs no time at all, so the default is one
     /// millisecond and the parameter exists for two reasons: it makes the
     /// [`TellusError::WouldBlock`] path reachable and therefore testable, and
-    /// it is where the M21 reader declares what a privileged `energy_uj` read
-    /// actually costs.
+    /// it mirrors the service time [`crate::MeasuredWattage`] declares.
     #[must_use]
     pub const fn with_service_time(zones: ZoneList, service: SampleDeadline) -> Self {
         Self { zones, service }

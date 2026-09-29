@@ -7,8 +7,11 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 Rust crates for the daemons proposed for P03, P04, P05, P06, P07, P08, P09, P10,
 P11, P13, P14, P15, P16 and P17; P05's crate is the native shell ADR-0004
-records. A crate joins the workspace only with its own `Cargo.toml`, a workspace
-lock entry, its interface contract, and positive, negative and boundary tests.
+records. Two crates, `aegis-tellus-rapl` and `aegis-vesta-sandbox`, are the
+effectful halves M21 runs on the reference profile beside the effect-free P13
+and P10 libraries they build on. A crate joins the workspace only with its own
+`Cargo.toml`, a workspace lock entry, its interface contract, and positive,
+negative and boundary tests.
 Joining the workspace is not the same as activating the component:
 `planning/components.json` records which components have left `proposal`, and
 several crates below carry a component's name while the component stays a
@@ -23,10 +26,12 @@ proposal.
 | `aegis-janus-lifecycle` | P02 A/B candidate lifecycle | M15 | The A/B lifecycle D15 records: one candidate from declaration through the signature check, delta acquisition, slot swap and boot watchdog to bless or rollback, plus the D13 reopening. Pure state machine with an injected clock, stubbed systemd effects and a machine-readable transition trace. Library only. |
 | `aegis-vulcan` | P03 direct-DMA validation slice | M17 | The validation arithmetic and the bounds of export-038: page-aligned BAR windows, the `1..=8192` block count, the lock-less submission-ring index and a bounded VFIO device table, plus the versioned descriptors P03 hands to P09 and to P15, each carrying the DMA-BUF export path M25 binds. Library only. |
 | `aegis-hestia` | P15 store and overlay validation slice | M17 | The Rust half of decision D09: the vector-store initialisation gate and `1..=100` query bound, the picture-in-picture overlay controller, the versioned registration P15 hands to P04, and `HestiaView`, the typed boundary payload the Svelte package would read. Library only. |
-| `aegis-tellus` | P13 carbon slice | M05, M16 | The ISO/IEC 21031:2024 SCI rate `((E * I) + M) / R`, the 300 gCO2eq/kWh spatiotemporal defer threshold compared strictly, the sixteen-slice cgroup table, the `Delta V` bidding contract, and the zone-list wattage seam M21 substitutes a measured RAPL delta into. Versioned payloads for the P16 and P07 edges (M05) and the carbon telemetry update P05 consumes (M16). Library only. |
+| `aegis-tellus` | P13 carbon slice | M05, M16, M21 | The ISO/IEC 21031:2024 SCI rate `((E * I) + M) / R`, the 300 gCO2eq/kWh spatiotemporal defer threshold compared strictly, the sixteen-slice cgroup table, the `Delta V` bidding contract, and the zone-list wattage seam. Versioned payloads for the P16 and P07 edges (M05) and the carbon telemetry update P05 consumes (M16). `MeasuredWattage`, the seam's second source: two energy-counter readings, the rollover delta at `max_energy_range_uj` and a draw labelled `Measured`, with `dram` and `psys` refused and an unreadable read an error (M21). Library only; reads nothing. |
+| `aegis-tellus-rapl` | P13 measured-energy slice | M21 | The readings document `make verify-workstation` hands over after its one scoped `sudo -n cat` of the package counter, judged in six cases (seven with an observed wrap): the live range against the recorded one, the SCI rate from measured energy through the M05 seam and the unchanged engine, the unprivileged read failing closed, the `dram` and `psys` refusals, and the wrap at the live range. Library and one binary, `aegis-tellus-rapl`; reads no file and starts no process. |
 | `aegis-athena` | P16 evolution loop | M05 | The seven-stage candidate lifecycle with only Invalidate terminal, the four-objective Pareto promotion gate, the nine structural maturity gates, and the SHA-256 hash-chained checkpoint ledger over the D02 trait. The versioned trigger P16 hands to P02, and the M14 audit record consumed rather than redefined. Library only. |
 | `aegis-minerva` | P09 agent-chain middle link | M06 | The bounded Alps expert table and its 20 W envelope, the `AgentHER` trajectory buffer whose relabeller flips only failed steps, the constraint screen that can refuse and cannot accept, the versioned request P09 submits to P14, and the two payloads P09 builds from other crates' types rather than redefining. Library only. |
 | `aegis-vesta` | P10 sandbox-controller validation slice | M06 | The bounded microVM and capsule tables of export-037, decision D06's Rust-native runtime with the rejected runtime unrepresentable on the wire, the capsule request P09 sends and the candidate evaluation P16 receives, each carrying the D58 VMM identity, and the recorded boot-time literal carried as an `Unmeasured` value. Library only. |
+| `aegis-vesta-sandbox` | P10 sandbox path | M21 | Firecracker 1.17.0 microVMs booted on KVM only for rows the `aegis-vesta` controller admitted, each from a per-VM configuration file with `--no-api`, no drive and no network interface; Firecracker's hybrid vsock framed and bounded; the guest's evaluation service, which judges a candidate with P16's Pareto gate and answers with the M06 candidate evaluation; the 64th microVM accepted, the 65th and an over-limit memory request refused, and every process and socket torn down. Library and two binaries, `aegis-vesta-sandbox` (the host run) and `aegis-vesta-guest` (the static guest init); depends on socket2 for `AF_VSOCK`. |
 | `aegis-ludus` | P11 gaming-integration validation slice | M08 | The 64-argument launch bound of export-033 and the three-way authentication outcome that replaces its boolean, which calls a line carrying no token authenticated because it carried some argument, the platform-register selection and amount bounds of a microtransaction receipt, the versioned receipt P11 hands to P02 with its signing carried as one variant that says it is unsigned, and the three recorded credential probes. Library only. |
 | `aegis-hephaestus` | P14 geometry validation slice | M08 | The iteration and meshing bounds of export-029 held against caller-supplied counts rather than against constants, the solver admission that names three solvers and starts none, the M06 verification request consumed from `aegis-minerva` rather than redefined, and the versioned geometry viewport P14 hands to P15 carrying the same element bound as the planner. Library only. |
 | `aegis-forum-shell` | P05 Forum shell model | M16 | The native shell's model under ADR-0004: the D96 process lifecycle driven by stubbed P04, P06 and P13 inputs, line-delimited JSON-RPC 2.0 framing with a byte bound and deadlines (D77), the decision request and carbon telemetry decoded by their producers' crates, and the D74 canvas model -- registry, camera and `QuadTree` -- with its accessibility tree exported as an `accesskit::TreeUpdate` and checked. Library only. |
@@ -162,14 +167,16 @@ or file descriptor, so neither half can reach into the other.
 `src/register.rs` records the P15 claims this repository cannot check, including
 the one REQ-P15-06 itself marks as an unverified proposal figure.
 
-Deliberately outside `aegis-tellus`: every measurement. Nothing in it reads a
+Deliberately outside `aegis-tellus`: every read. Nothing in it reads a
 RAPL counter, opens `/sys/class/powercap`, compiles or loads an eBPF program,
-walks a cgroup, connects to D-Bus, spawns a thread or sleeps. Every wattage it
-reports is a recorded constant labelled `Simulated` or `Modelled`, and nothing
-it produces carries `Measured`; `tests/stubbed_effects.rs` sweeps the crate's
+walks a cgroup, connects to D-Bus, spawns a thread or sleeps. A recorded
+constant is labelled `Simulated` or `Modelled`; only `MeasuredWattage`, built
+from counter text a caller read, carries `Measured` (M21), and the caller on
+the reference profile is `make verify-workstation` through
+`aegis-tellus-rapl`; `tests/stubbed_effects.rs` sweeps the crate's
 own sources for twenty-four recorded identifiers on two lists -- one that is a
 finding anywhere, one that is a finding only outside a string literal, because
-the register records the very paths M21 will read -- and fails if one appears
+the register records the very paths M21's gate reads -- and fails if one appears
 where it would mean the effect exists. That is a regression gate over an
 enumeration, not a proof over every such identifier, so a second check is held
 beside it: no line of code under `src/` names `std::` at all. Neither sees the
@@ -227,10 +234,26 @@ the deviation D83 limits to that binding. Its reference MPEG-2 frame,
 `src/reference.rs`, is third-party data under BSD-3-Clause and MIT, carried as
 file-level SPDX headers.
 
+`aegis-tellus-rapl` and `aegis-vesta-sandbox` exist so that `aegis-tellus`
+and `aegis-vesta` stay effect-free, and **P13 and P10 remain proposals all the
+same**: M21's gate proves one measured SCI and one sandboxed candidate
+evaluation on the reference profile, and neither crate is the telemetry daemon
+or the sandbox daemon its component is (`docs/build/workstation.md`).
+`aegis-tellus-rapl` reads nothing: the gate reads the root-only counter through
+the one `sudo -n cat` the maintainer admitted on 2026-09-29 and hands the text
+over, and its own sweep refuses any file, process or socket call in its
+sources. `aegis-vesta-sandbox` starts processes and opens sockets, all under
+deadlines; its closure is the first to resolve socket2, whose
+`SockAddr::vsock` is the safe `AF_VSOCK` address constructor the forbid lint
+needs, and `aegis-vesta`'s own closure stays free of it and of rustix. Its
+guest init is built statically, refuses to run as anything but process 1, and
+restarts only the microVM it runs in.
+
 `dependency_closure.rs`, beside the crate directories, is not a crate: it is
 the one definition of decision D78's closure rule, included by path into the
 manifest-hygiene tests of `aegis-athena`, `aegis-justitia`, `aegis-calliope`,
-`aegis-compositor`, `aegis-lictor`, `aegis-tellus` and `aegis-scaena`. Each of
+`aegis-compositor`, `aegis-lictor`, `aegis-tellus`, `aegis-scaena`,
+`aegis-tellus-rapl` and `aegis-vesta-sandbox`. Each of
 those sweeps reads its own crate's dependency closure from `cargo metadata`
 instead of the whole lock, so P17's Wayland and VA-API crates in the shared
 `Cargo.lock` trip none of them; a helper crate would have entered every

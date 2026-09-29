@@ -93,4 +93,15 @@ pub enum TellusError {
         /// Why the identifier was refused.
         reason: &'static str,
     },
+    /// An energy counter read, or a value derived from one, was refused.
+    ///
+    /// Milestone M21's fail-closed rule: an unreadable, empty, malformed or
+    /// out-of-range read is this error, and nothing stands in for it -- in
+    /// particular not a reading of zero, which downstream would read as "the
+    /// zone drew no energy" rather than "the counter could not be read".
+    #[error("an energy counter read of {reason} was refused; no default value stands in for it")]
+    Counter {
+        /// Why the read was refused.
+        reason: &'static str,
+    },
 }

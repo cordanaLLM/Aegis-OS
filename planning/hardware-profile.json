@@ -73,7 +73,8 @@
   "capabilities": {
     "kvm": {
       "present": true,
-      "evidence_command": "ls -l /dev/kvm"
+      "evidence_command": "ls -l /dev/kvm",
+      "note": "M21 (2026-09-29, run r20260929T200422-2476) booted 64 Firecracker 1.17.0 microVMs of 64 MiB each on /dev/kvm at once, as the invoking user, and tore them down; /dev/kvm is crw-rw-rw- root:kvm on the reference profile"
     },
     "tpm2": {
       "present": true,
@@ -89,7 +90,7 @@
     "rapl_energy_counters": {
       "present": true,
       "evidence_command": "ls /sys/class/powercap; cat /sys/class/powercap/intel-rapl:0/energy_uj",
-      "note": "package counters exist; /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 and root-readable only, so P13 telemetry needs a privileged daemon or a root test"
+      "note": "package counters exist; /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 and root-readable only, so P13 telemetry needs a privileged daemon or a root test; M21 (2026-09-29, runs r20260929T200422-2476 and r20260929T201527-d65a) reads the package-0 counter through one scoped sudo -n cat (the maintainer's decision of that day), an unprivileged read fails with EACCES, max_energy_range_uj reads 65532610987 for both zones, and a wrap was observed between two reads ten seconds apart"
     },
     "sched_ext": {
       "present": true,

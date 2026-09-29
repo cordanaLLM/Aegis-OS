@@ -385,10 +385,13 @@ race recorded here.
 and the field it lands in is called `pseudo_energy_uj_unmeasured`. No RAPL MSR,
 no `/sys/class/powercap` file and no ACPI meter is read anywhere in the object;
 the number is runtime in different units. The value is carried over from the
-imported P13 proposal unchanged so that M21 replaces it with a counter read and
-the diff shows exactly which figure changed. `tools/test_bpf_objects.py` pins the
-literal to `15000` written as a literal in the test, not to the macro that holds
-it.
+imported P13 proposal unchanged, so that a later counter read shows as a diff
+of exactly this figure. M21 did not replace it: it measures the package
+counter's delta for the M05 SCI engine (`docs/build/workstation.md`), and a
+socket-level counter apportioned per cgroup is a model, not a measurement
+(D60), so this literal stays what it is named. `tools/test_bpf_objects.py`
+pins the literal to `15000` written as a literal in the test, not to the macro
+that holds it.
 
 ## Provenance of `scx_cake.bpf.c` (D66)
 

@@ -61,8 +61,10 @@ impl VmmIdentity {
     /// Returns the version D58 pins for this monitor.
     ///
     /// A pin is not an admission: `docs/roadmap/toolchain-admission.md` records
-    /// which tool a gate runs, and neither monitor is admitted by any gate this
-    /// milestone touches.
+    /// which tool a gate runs. M21 admits Firecracker at this version, fetched
+    /// and pinned by digest for `make verify-workstation`; QEMU at this version
+    /// is admitted for the guest gates of M26, M23, M24 and M10 and runs no
+    /// sandbox.
     #[must_use]
     pub const fn pinned_version(self) -> &'static str {
         match self {

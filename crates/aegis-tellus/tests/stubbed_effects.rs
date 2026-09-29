@@ -79,8 +79,8 @@ const WATCHED_CODE: [&str; 19] = [
 
 /// Names that are a finding only outside a string literal.
 ///
-/// Each of these is recorded as data by this crate -- the powercap zone the
-/// M21 reader will read, the attribute it will read it from, the probe the
+/// Each of these is recorded as data by this crate -- the powercap zone M21's
+/// gate reads, the attribute it reads it from, the probe the
 /// graph names as a transport -- so a literal is a citation and anything else
 /// is a reach.
 const WATCHED_PATHS: [&str; 5] = ["/sys/", "/proc/", "powercap", "energy_uj", "kepler_power"];

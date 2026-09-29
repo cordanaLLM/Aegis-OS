@@ -3,7 +3,7 @@ PRAETORCTL ?= praetorctl
 
 .PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-a11y a11y-fetch verify-contract \
 	contract-fetch verify-kernel verify-bpf verify-latency verify-boot verify-display verify-sources \
-	verify-nucleus-kernel nucleus-kernel-fetch verify-reuse \
+	verify-nucleus-kernel nucleus-kernel-fetch verify-workstation workstation-fetch verify-reuse \
 	readiness test build boot release install-praetor-bump uninstall-praetor-bump
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
@@ -435,6 +435,74 @@ verify-nucleus-kernel:
 
 nucleus-kernel-fetch:
 	python3 tools/verify_nucleus_kernel.py --fetch
+
+# The workstation hardware slices gate (M21, D58, D60, D71): two halves on the
+# reference profile, each of which runs or says why it did not.
+#
+#   * RAPL (E21-1): /sys/class/powercap/* is enumerated and every zone's name,
+#     max_energy_range_uj and energy_uj mode recorded as measured; energy_uj is
+#     read once without privilege, which must fail, and twice a recorded
+#     interval apart through the one privileged command this repository runs,
+#     `sudo -n cat /sys/class/powercap/intel-rapl:0/energy_uj` (the
+#     maintainer's decision of 2026-09-29), each under a deadline.
+#     crates/aegis-tellus-rapl's aegis-tellus-rapl turns the reads into a
+#     rollover-safe delta, a Measured wattage behind the M05 seam and an SCI
+#     rate from the unchanged engine, and refuses the unprivileged read and the
+#     dram and psys zones. `python3 tools/verify_workstation.py --observe-wrap`
+#     keeps reading ten seconds apart until the counter is seen to wrap, at
+#     most 25 minutes;
+#   * sandbox (E21-2): crates/aegis-vesta-sandbox's static aegis-vesta-guest is
+#     packed as an initramfs /init, and aegis-vesta-sandbox boots microVMs the
+#     aegis-vesta controller admitted under the pinned Firecracker 1.17.0 with
+#     --no-api, no drive and no network interface: one candidate evaluation
+#     round-trips over AF_VSOCK, the 64th microVM is accepted with all 64
+#     running, the 65th and a request above the 1024 MiB guest limit are
+#     refused, and every process and socket is torn down. The gate then looks
+#     for any process, socket or network device the run left behind.
+#
+# It is deliberately NOT part of verify-all, for the reasons verify-boot and
+# verify-display are not: the CI runner has no powercap counter, no
+# passwordless sudo and no /dev/kvm, so wiring it into verify-all would put a
+# step into CI that can only skip. A gate that always skips is not a gate.
+# What CI does re-run is the half that needs no hardware:
+# tools/test_workstation_slices.py holds the pin, the one sudo command, the
+# program list, the skip rules, the recorded enumeration, the static-init
+# check, the initramfs writer and the report parser, and the crates' own tests
+# hold the rollover arithmetic, the fail-closed reader, the zone refusals, the
+# SCI from measured energy, the admission bound and the memory refusal. Both
+# run inside verify-all.
+#
+# A host that cannot run a half -- not Linux, no powercap zone, no sudo or no
+# passwordless sudo -n (classic sudo's or sudo-rs's refusal), no cargo, running
+# as root, another CPU than the reference profile's; not x86_64, no read-write
+# /dev/kvm, no fetched Firecracker or kernel, less than 9216 MiB available, or
+# no cargo -- prints
+# 'SKIP: <reason>; the <half> did not run.' and exits 0, the convention the
+# other hardware gates use. An exit 0 from this target is therefore evidence
+# only when the case lines are above it. A cache that is present but wrong is
+# a FAIL, not a skip. It never suppresses a failure.
+#
+# `make workstation-fetch` is the one networked step: it downloads the pinned
+# Firecracker release archive and guest kernel named by
+# build/sandbox/firecracker.pin.json with curl, refuses either if its sha256 or
+# size differs, checks the archive against the .sha256.txt the release
+# publishes, and extracts only the firecracker binary and its LICENSE, each
+# hashed against the pin. The jailer is not used.
+#
+# Host safety: no GPU, driver, module or sysctl is touched, nothing is
+# installed, sudo runs that one read and nothing else, and every microVM runs
+# as the invoking user with AF_VSOCK only, so no tap device exists. The cache,
+# the retained logs and every run live under AEGIS_WORKSTATION_DIR, default
+# ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-workstation; nothing is written into the
+# repository but cargo's target directory. A pass is development evidence on
+# the reference profile: it qualifies no hardware and closes no hardware,
+# isolation or release gate, and boot time and footprint are M22's (D71). See
+# docs/build/workstation.md.
+verify-workstation:
+	python3 tools/verify_workstation.py
+
+workstation-fetch:
+	python3 tools/verify_workstation.py --fetch
 
 verify-sources:
 	python3 tools/verify_preparation.py --sources

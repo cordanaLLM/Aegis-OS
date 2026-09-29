@@ -13,6 +13,46 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Added (workstation slices, RAPL energy and KVM sandboxing, milestone M21)
+
+- **Measured energy behind the M05 seam (E21-1).** `aegis-tellus` gains
+  `MeasuredWattage`: two readings of a zone's energy counter, a rollover-safe
+  delta at `max_energy_range_uj`, and a draw labelled `Measured` that the
+  unchanged SCI engine consumes. An unreadable or malformed read is an error,
+  never a zero, and `dram` and `psys` are refused (D60). The new
+  `crates/aegis-tellus-rapl` judges what the gate read: run
+  r20260929T200422-2476 measured 592707218 uJ over 5.015 s, 118.186 W and SCI
+  0.0862209967 gCO2eq per functional unit, and run r20260929T201527-d65a saw
+  the counter wrap between two reads and computed SCI across it. The accuracy
+  statement travels with every figure: AMD RAPL is a model-based estimate, and
+  only same-zone deltas are trusted.
+- **One scoped privileged read (maintainer, 2026-09-29).** The gate reads the
+  root-only counter through exactly `sudo -n cat
+  /sys/class/powercap/intel-rapl:0/energy_uj`, under a deadline, and runs
+  nothing else under sudo; its own unprivileged read must fail, and did, with
+  `EACCES`. M21's privileged-read criterion now records the decision.
+- **Firecracker microVMs on KVM (E21-2).** `crates/aegis-vesta-sandbox` boots
+  Firecracker 1.17.0, fetched and pinned by digest in
+  `build/sandbox/firecracker.pin.json`, for rows the `aegis-vesta` controller
+  admitted, with no drive, no network interface and no jailer. One candidate
+  evaluation, judged by P16's Pareto gate inside the guest, round-trips over
+  `AF_VSOCK`; the 64th microVM is accepted with all 64 running, the 65th and a
+  1025 MiB request are refused before any process starts, and every process
+  and socket is torn down. The static guest init links socket2 0.6.5, the one
+  crate M21 adds to the lock. E21-3, Venus pricing, is deferred to M12.
+- **`make verify-workstation` and `make workstation-fetch`, outside
+  `make verify-all`.** Each half runs or prints why it did not; a cache that
+  differs from its pin is a failure. Every run keeps the host model, kernel
+  and compiler in `host.json` beside its readings and everything it printed
+  in `gate.log`. The hardware-free half runs inside
+  `make verify-all`: `tools/test_workstation_slices.py` and 71 new crate tests.
+  `docs/build/workstation.md` is the evidence. Boot time and footprint are not
+  measured: D71 leaves them to M22.
+- **Registers brought in line.** The `aegis-vesta` register names M12 for
+  Venus and M21 and M22 for the `AF_VSOCK` transport, `aegis-athena` names M21
+  for the first evaluation over it, and the roadmap document's copy of M21's
+  third criterion now matches the D71 text in `planning/roadmap.json`.
+
 ### Added (the Nucleus kernel in a guest, milestone M10, still open)
 
 - **The first Nucleus kernel is pinned, verified and recorded (E10-4).**

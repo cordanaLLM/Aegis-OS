@@ -30,8 +30,9 @@
 //! # The boot-time literal is not a measurement
 //!
 //! [`SCAFFOLD_BOOT_TIME_MS`], [`BOOT_TIME_TARGET_MS`] and
-//! [`FOOTPRINT_TARGET_MIB`] are [`Unmeasured`] values. Nothing in this
-//! repository has booted a microVM; the figures are recorded because the
+//! [`FOOTPRINT_TARGET_MIB`] are [`Unmeasured`] values. M21's
+//! `aegis-vesta-sandbox` boots microVMs to prove the path and measures neither
+//! figure (D71 leaves both to M22); the figures are recorded because the
 //! sources state them, and REQ-P10-05 itself records that they are unmeasured.
 //! `tests/unmeasured_literals.rs` is what keeps them that way.
 //!

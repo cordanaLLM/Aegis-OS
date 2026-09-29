@@ -8,8 +8,9 @@
 //! watts, evaluates the ISO/IEC 21031:2024 SCI rate over them, and sleeps in a
 //! bounded loop. Milestone M05 extracts the part that can be checked without a
 //! RAPL counter or an eBPF probe -- the arithmetic, the threshold and the
-//! bounds -- and puts the simulated draw behind a seam so that M21 can replace
-//! it with a measured energy delta without touching any of it.
+//! bounds -- and puts the simulated draw behind a seam so that M21 could put a
+//! measured energy delta beside it without touching any of it, which M21 did:
+//! [`MeasuredWattage`].
 //!
 //! # The four things a reviewer should look at
 //!
@@ -22,11 +23,13 @@
 //! * [`SciEngine::should_defer`] is the threshold, compared strictly: exactly
 //!   [`DEFER_THRESHOLD_G_PER_KWH`] is not a deferral and the next
 //!   representable value above it is.
-//! * [`WattageSource`] is the seam. [`SimulatedWattage`] is the only
-//!   implementation this milestone ships, it carries a recorded constant per
-//!   zone, and it takes a [`ZoneList`]: a source that does not carry a zone
-//!   refuses a sample of it with [`TellusError::ZoneAbsent`] instead of
-//!   answering zero (decision D60).
+//! * [`WattageSource`] is the seam. [`SimulatedWattage`] carries a recorded
+//!   constant per zone (M05), and [`MeasuredWattage`] carries one zone's draw
+//!   derived from two readings of its energy counter (M21), with the
+//!   rollover handled by [`EnergyDelta::between`]. Both take a [`ZoneList`]: a
+//!   source that does not carry a zone refuses a sample of it with
+//!   [`TellusError::ZoneAbsent`] instead of answering zero (decision D60), and
+//!   an unreadable counter is [`TellusError::Counter`], never a reading.
 //! * [`contracts`] carries the typed edges -- M05's two and the carbon
 //!   telemetry update M16 added for the Forum shell, [`CarbonTelemetry`] --
 //!   and [`register`] records the P13 claims this crate cannot check --
@@ -54,15 +57,16 @@
 //!
 //! # What this crate does not do
 //!
-//! It measures nothing. There is no RAPL read, no `/sys/class/powercap`
+//! It reads nothing. There is no RAPL read, no `/sys/class/powercap`
 //! access, no eBPF program compiled loaded or attached, no cgroup read, no
-//! D-Bus connection, no thread and no sleep anywhere in it. Every wattage it
-//! reports is a recorded constant labelled [`Provenance::Simulated`] or
-//! [`Provenance::Modelled`]; nothing it produces carries
-//! [`Provenance::Measured`]. `tests/stubbed_effects.rs` sweeps this crate's own
-//! sources for a recorded list of identifiers any of those effects would have
-//! to name and fails if one appears -- a regression gate over an enumeration,
-//! not a proof over every such identifier.
+//! D-Bus connection, no thread and no sleep anywhere in it. A recorded
+//! constant is labelled [`Provenance::Simulated`] or [`Provenance::Modelled`];
+//! only [`MeasuredWattage`] carries [`Provenance::Measured`], and it is built
+//! from counter text a caller read -- on the reference profile, the gate
+//! `make verify-workstation` (M21). `tests/stubbed_effects.rs` sweeps this
+//! crate's own sources for a recorded list of identifiers any of those effects
+//! would have to name and fails if one appears -- a regression gate over an
+//! enumeration, not a proof over every such identifier.
 //!
 //! A pass of this crate's tests is evidence about the arithmetic, the bounds
 //! and the payload shapes. It closes no hardware, energy-measurement, image,
@@ -108,6 +112,7 @@ pub mod contracts;
 pub mod error;
 pub mod id;
 pub mod power;
+pub mod rapl;
 pub mod register;
 pub mod sci;
 
@@ -128,6 +133,11 @@ pub use crate::power::{
     MAX_CGROUP_SLICES, MAX_RAPL_ZONES, MODELLED_DRAM_WATTS, Provenance, REFERENCE_PROFILE_ZONES,
     RaplZone, SIMULATED_CORE_WATTS, SIMULATED_PACKAGE0_WATTS, SIMULATED_SERVICE_MILLIS,
     SampleDeadline, SimulatedWattage, SliceDraw, SliceTable, WattageSource, ZoneList, ZoneSample,
+};
+pub use crate::rapl::{
+    CounterPair, CounterRead, EnergyDelta, EnergyRange, EnergyReading, MAX_COUNTER_TEXT_BYTES,
+    MAX_INTERVAL_NANOS, MAX_PLAUSIBLE_ZONE_WATTS, MICROJOULES_PER_JOULE, MeasuredWattage,
+    NANOS_PER_SECOND, SampleInterval, unambiguous_interval_seconds,
 };
 pub use crate::register::{
     ClaimSource, ClaimStatus, P13_RECORDED_CLAIMS, REFERENCE_ENERGY_UJ_MODE,

@@ -51,6 +51,8 @@ Two rules follow from the clause and are applied below:
 | llvm-strip | floor 19.0.0; reference profile LLVM 22.1.8, same `extra/clang 22.1.8-2` toolchain | `tools/verify_bpf_objects.py`, `LLVM_STRIP_FLOOR`, read back from `llvm-strip --version` | nothing | M19 |
 | rt-tests (`cyclictest`) | floor 2.10; reference profile `cyclictest V 2.10`, distribution package `rt-tests 2.10-1.1` from `cachyos-extra-znver4` | `tools/verify_latency_fixture.py`, `TOOLCHAIN`, read back from `cyclictest --help` before anything is measured | nothing; no latency tool was admitted before, and none was installed | M23 |
 | Realtime kernel source | the M26 pin reused unchanged: `linux-7.2.5` with `CONFIG_PREEMPT_RT=y` from `build/kernel/50-aegis-requirement.config` | `build/kernel/source.pin.json`; the guest reports the release and the option back from inside itself | the distribution `linux-rt` package D57 recommended, which is **not** downloaded, installed or booted here | M23 (D57, D70) |
+| Firecracker | 1.17.0, release archive `firecracker-v1.17.0-x86_64.tgz` sha256 `06094a1108ae9e82aa4c23a775aa92758f53f1175d422270d9d6162cb9ade558`, binary sha256 `99ad0f5cd0514a88aad0e9ae8cfdb3cc3b4ab9d190e1194602406c786b5de7a5`, Apache-2.0 | `build/sandbox/firecracker.pin.json`; fetched by `make workstation-fetch`, hashed again and read back with `--version` before every run; the jailer is not used | the distribution package `firecracker 1.17.0-1.1` at `/usr/bin/firecracker`, which M06 probed and no gate runs | M21 (D58) |
+| Guest kernel for Firecracker | `vmlinux-6.18.44` from Firecracker's CI artifacts, sha256 `d8ced68bd61e27b6813e2c993cc53a4029c59e13210672180591c84109684fe4`, configuration sha256 `9fb2be18303d2f6e8ec35b3a20ecf1209f54a4ece10114a893cb37beabee7030` | `build/sandbox/firecracker.pin.json`; the gate hashes both and requires five configuration options before every run | nothing; no Firecracker guest was pinned before | M21 |
 
 The pinned Rust toolchain is materialised explicitly before the first cargo
 gate, because a runner image that ships rustup does not thereby ship the pinned
@@ -106,7 +108,8 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | accesskit | 0.25.1 (MIT OR Apache-2.0), crate checksum `ad442f58ee04714aaa0ba0a2768c1ea1935b29507bb22ddece8cbbc76db02932` | `[workspace.dependencies]`, `default-features = false`, used only by `crates/aegis-forum-shell` | the accessibility tree's data model: the P05 canvas model is exported as an `accesskit::TreeUpdate`; no platform adapter | M16 (D101) |
 | cros-libva | git revision `59384456ac2ae78c0c3e5515f41ef1efd9b802cf` of chromeos/cros-libva (package 0.0.13, BSD-3-Clause), the merge of #37 on 2026-09-01 and the head of `main` on 2026-09-29 | `[workspace.dependencies]`, `git` with `rev =`; locked as `git+https://github.com/chromeos/cros-libva?rev=59384456...#59384456...`; used only by `crates/aegis-scaena` | VA-API decode and DMA-BUF export through `Surface::export_prime` (D80) | M27 (D80) |
 | smithay-client-toolkit | 0.21.1 (MIT), crate checksum `74dc9ee14b0fdcb535f9556141bacac070c994a977d2240ee455d7438a617f00` | `[workspace.dependencies]`, `default-features = false`; used only by `crates/aegis-scaena` | the layer surface and the `zwp_linux_dmabuf_v1` client over wayland-client's pure-Rust backend; libwayland is neither linked nor loaded | M27 (D75) |
-| rustix | 1.1.5 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT), crate checksum `891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d` | `[workspace.dependencies]`, `features = ["net", "fs", "event"]`; used only by `crates/aegis-scaena` | `sendmsg` and `recvmsg` with `SCM_RIGHTS` and `MSG_CMSG_CLOEXEC`, `SO_RCVTIMEO` and `SO_SNDTIMEO`, `fstatfs`, `fstat`, `lseek`, `poll` on the Wayland connection fd under a deadline, and in tests `memfd_create` | M27 (D77) |
+| rustix | 1.1.5 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT), crate checksum `891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d` | `[workspace.dependencies]`, `features = ["net", "fs", "event"]`; used by `crates/aegis-scaena` and, since M21, by `crates/aegis-vesta-sandbox`, which adds the `system` feature | `sendmsg` and `recvmsg` with `SCM_RIGHTS` and `MSG_CMSG_CLOEXEC`, `SO_RCVTIMEO` and `SO_SNDTIMEO`, `fstatfs`, `fstat`, `lseek`, `poll` on the Wayland connection fd under a deadline, and in tests `memfd_create` (M27); `reboot(RebootCommand::Restart)`, with which the M21 guest init ends its microVM (M21) | M27 (D77); the `system` feature M21 |
+| socket2 | 0.6.5 (MIT OR Apache-2.0), crate checksum `c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4` | `[workspace.dependencies]`, `default-features = false`, `features = ["all"]`; used only by `crates/aegis-vesta-sandbox` | the guest's `AF_VSOCK` listener: `SockAddr::vsock` is a safe constructor of a `sockaddr_vm`, which rustix 1.1.5 does not offer and the workspace's `unsafe_code = "forbid"` would otherwise require | M21 |
 
 The resolved graph the first seven pull in is fixed by `Cargo.lock`: block-buffer
 0.12.1, cfg-if 1.0.4, cpufeatures 0.3.1, crypto-common 0.2.2, digest 0.11.3,
@@ -177,6 +180,16 @@ Since two thiserror versions are locked, Cargo writes every thiserror 2
 dependency line version-qualified (`"thiserror 2.0.20"`), and the lock-entry
 tests of `crates/aegis-athena` and `crates/aegis-tellus` strip that suffix
 before they compare their exact name lists.
+
+socket2 was admitted on 2026-09-29 against the crates.io API, read with a
+`User-Agent`: 0.6.5 of 2026-07-13 is its newest stable release (D69), licensed
+MIT OR Apache-2.0, and the lock's checksum is the one crates.io publishes. It
+resolves no crate the lock did not already carry: its dependencies are libc
+0.2.189 on Unix and windows-sys 0.61.2 on Windows, both locked before M21. The
+lock gained exactly three packages, socket2 and the two new members, and no
+existing entry changed version. socket2 declares `rust-version` 1.70, below the
+workspace's 1.87. rustix's `system` feature enables linux-raw-sys's `system`
+module and adds no package; Cargo does not lock features.
 
 The highest `rust-version` any resolved package declares is 1.87
 (accesskit 0.25.1), above smithay-client-toolkit's and wayland-protocols' 1.86,
@@ -824,6 +837,74 @@ M09's `make contract-fetch` built at commit
 against the fetch's identity record before running it, and passes imago's own
 `versions.json` from that checkout.
 
+## The workstation gate's toolchain, and the bytes it boots (M21)
+
+`make verify-workstation` (`tools/verify_workstation.py`) boots Firecracker
+microVMs and reads the RAPL counter; `make workstation-fetch` is its one
+networked step. Every value below was read on the reference profile on
+2026-09-29.
+
+**Firecracker is pinned by a file.** `build/sandbox/firecracker.pin.json`
+names the v1.17.0 GitHub release of 2026-09-10, the newest release on the
+GitHub API that day and the version D58 names. Its x86_64 archive,
+`firecracker-v1.17.0-x86_64.tgz`, is 7464385 bytes with sha256
+`06094a1108ae9e82aa4c23a775aa92758f53f1175d422270d9d6162cb9ade558`: the value
+the GitHub API reports as the asset's digest and the one the release's own
+`firecracker-v1.17.0-x86_64.tgz.sha256.txt` publishes, which the fetch
+re-reads and compares. Inside it, `firecracker-v1.17.0-x86_64` hashes to
+`99ad0f5cd0514a88aad0e9ae8cfdb3cc3b4ab9d190e1194602406c786b5de7a5`, the value
+the archive's own `SHA256SUMS` lists; it is a static-pie executable and prints
+`Firecracker v1.17.0`. The licence is the archive's `LICENSE`, Apache-2.0,
+sha256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`; its
+`NOTICE` adds that libseccomp, LGPL-2.1, is used in the build to produce the
+seccomp filters shipped beside the binary. Only the binary and the licence are
+extracted; nothing is vendored into the repository. The jailer is **not
+used**: it needs root to chroot and change user, and the maintainer's decision
+of 2026-09-29 admits no privilege beyond one scoped counter read. The
+distribution package `firecracker 1.17.0-1.1` on the reference profile is the
+same version and is not run by any gate.
+
+**The guest kernel is pinned by a file.** Firecracker supports 6.18 guests
+from v1.16.1 until 2028-06-01 and 6.1 guests only to 2026-09-02
+(`docs/kernel-policy.md` at v1.17.0), so the guest is the 6.18 build from the
+CI artifact set current when v1.17.0 was published,
+`firecracker-ci/20260909-a8e1c3830545-0/x86_64/vmlinux-6.18.44`, 27846248
+bytes, sha256
+`d8ced68bd61e27b6813e2c993cc53a4029c59e13210672180591c84109684fe4`, and its
+configuration `vmlinux-6.18.44.config`, sha256
+`9fb2be18303d2f6e8ec35b3a20ecf1209f54a4ece10114a893cb37beabee7030`. The bucket
+publishes no digest, so each is the sha256 computed at admission. The gate
+requires `CONFIG_BLK_DEV_INITRD=y`, `CONFIG_KVM_GUEST=y`,
+`CONFIG_SERIAL_8250_CONSOLE=y`, `CONFIG_VIRTIO_MMIO=y` and
+`CONFIG_VIRTIO_VSOCKETS=y` in that configuration. The kernel is GPL-2.0 and is
+downloaded, never vendored.
+
+**The guest init is built, not fetched.** `aegis-vesta-guest` is built by the
+pinned Rust toolchain with `--release --target x86_64-unknown-linux-gnu` and
+`RUSTFLAGS=-C target-feature=+crt-static`, which links the workstation's glibc
+statically: glibc 2.44 (`glibc 2.44+r24+g16be1518495f-1` on the reference
+profile). That archive is recorded, not pinned, like the iHD driver M27
+records: the gate refuses a guest whose ELF program headers name an
+interpreter, and the initramfs it packs is a local run artifact that is never
+distributed. The initramfs digest is printed with every run; every run of
+2026-09-29 packed the same bytes.
+
+### The workstation gate's programs
+
+`tools/test_workstation_slices.py` holds the gate's `PROGRAMS` list, refuses a
+program outside it before it starts, and requires every process to start from
+one of two call sites, each with a deadline.
+
+| Program | Invocation | Role |
+| :--- | :--- | :--- |
+| sudo | exactly `sudo -n cat /sys/class/powercap/intel-rapl:0/energy_uj`, under a 10 s deadline | the one privileged read; any other argument vector, sudo named bare or by path, is refused before it starts |
+| cargo | `cargo build --locked -p aegis-tellus-rapl`, `-p aegis-vesta-sandbox`, and the static guest build above | builds the three binaries on the locked graph |
+| rustc | `rustc --version` | printed with every run and kept in its `host.json` |
+| firecracker-v1.17.0-x86_64 | `--version` from the gate; `--no-api --config-file` from `aegis-vesta-sandbox` | the pinned monitor |
+| aegis-tellus-rapl | `run <readings document>` | the RAPL cases |
+| aegis-vesta-sandbox | `run <firecracker> <kernel> <initramfs> <run-dir>`, in its own session | the sandbox cases |
+| curl | in `make workstation-fetch` only | M24's admission (8.22.0); the gate itself never touches the network |
+
 ## Not yet admitted
 
 These are run by a gate but pinned by nothing, so they are gaps recorded here
@@ -831,6 +912,8 @@ rather than admissions:
 
 - `shellcheck`, run by the CI shell-lint step, comes from the runner image. No
   version is pinned and none is asserted.
+- The glibc static archive M21's guest init links comes from the
+  workstation's glibc package, recorded above and not pinned.
 - `python3`, which runs the preparation validator and its unit tests, comes from
   the runner image and from the workstation distribution.
 - `npx` and `pipx` are the delivery mechanism for four pinned linters; the
@@ -902,6 +985,13 @@ taken, no milestone may cite them as admitted toolchain.
   not among them, because the gate starts it only through M23's `boot()`.
   `make verify-nucleus-kernel` then reads each version back before it boots
   anything.
+- The M21 rows are checked by `tools/test_workstation_slices.py`, which holds
+  every digest in `build/sandbox/firecracker.pin.json` against an independent
+  copy, the one sudo command and the programs the gate may start.
+  `make verify-workstation` hashes the fetched binary, licence, kernel and
+  configuration against the pin and reads `firecracker --version` back before
+  anything boots; the socket2 row is held by
+  `crates/aegis-vesta-sandbox/tests/manifest_hygiene.rs`.
 - The M24 rows are checked by `tools/test_boot_harness.py` the same way, with
   the three OVMF images compared by digest. That test also holds the programs
   the boot harness may start, which contain nothing that writes a firmware

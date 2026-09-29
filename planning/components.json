@@ -630,10 +630,10 @@
       ],
       "activation_blockers": [
         "a P10 component daemon; crates/aegis-vesta holds the sandbox and capsule tables, the bounds and the two payloads, and starts no monitor and instantiates no WebAssembly module",
-        "a virtual machine monitor and a guest: no KVM ioctl, no Firecracker or QEMU process, no jailer and no guest kernel, all absent by design at M06",
+        "a P10 daemon that runs a monitor: M21 boots Firecracker 1.17.0 microVMs only for rows the aegis-vesta table admitted, from crates/aegis-vesta-sandbox and a pinned guest kernel, with no jailer, no drive and no network interface, and tears every one down (make verify-workstation, run r20260929T200422-2476); nothing runs a monitor outside that gate",
         "a WebAssembly runtime: D06 selects a Rust-native one at M06 and pins none; admission is docs/roadmap/toolchain-admission.md's business",
-        "a transport for the capsule request and the candidate evaluation, both stubbed; AF_VSOCK and Venus pricing are deferred to M21",
-        "real hardware or emulator evidence for each listed hardware requirement; the boot-time and footprint figures are recorded as unmeasured and M22 is where a measurement would come from"
+        "a transport for the capsule request, still stubbed; the candidate evaluation crosses AF_VSOCK out of a Firecracker guest at M21 (Firecracker's hybrid vsock, AF_UNIX on the host), but no message is priced (REQ-P10-03), and Venus pricing is deferred to M12 (E21-3)",
+        "real hardware or emulator evidence for each listed hardware requirement: KVM and the AF_VSOCK transport are exercised on the reference profile at M21 (64 microVMs running at once, the 65th refused), the accelerator requirement is not, and the boot-time and footprint figures stay unmeasured until M22 (D71)"
       ],
       "cheapest_first_slice": {
         "description": "A Rust crate-level unit-test suite for the existing aegis-vesta domain types and controllers already sketched in export-037 (MicroVmController, WasmCapsuleManager, IoUringThreadCore) run under `cargo test -p aegis-vesta` in a plain container with no Firecracker binary, no KVM device, and no external contract: (1) Micro",
@@ -806,7 +806,7 @@
       "activation_blockers": [
         "a P13 component daemon; crates/aegis-tellus holds the ISO/IEC 21031:2024 SCI rate arithmetic, the spatiotemporal defer threshold, the bounded cgroup slice table and the zone-list wattage seam, and is neither the Kepler telemetry probe nor the daemon that carries it (M05)",
         "kepler_power is compiled and verified (M19), and on the Nucleus-built kernel its tracepoint attaches and an idle cgroup's delta reads zero (M10, run r20260929T195935-62a3); what it accumulates is runtime times a declared TDP constant, not a counter reading",
-        "no RAPL or ACPI counter is read: /sys/class/powercap/intel-rapl:0/energy_uj is mode 0400 on the reference profile, so a measured delta needs a privileged reader (M21)",
+        "no daemon reads a RAPL or ACPI counter: M21's gate reads the package-0 counter, mode 0400, through the one scoped sudo -n cat the maintainer admitted on 2026-09-29, and crates/aegis-tellus-rapl turns two reads into a Measured draw and an SCI rate through the M05 seam (runs r20260929T200422-2476 and r20260929T201527-d65a, the second across an observed wrap); AMD RAPL is a model-based estimate, and no telemetry path carries the figure",
         "no transport for EMIT_CARBON_TELEMETRY or SPATIOTEMPORAL_TASK_SHIFT, both of which D77 moves from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; the task-shift payload is typed at M05 and the carbon telemetry payload at M16, which the P05 shell model consumes over a mocked socketpair only, and nothing carries either",
         "no individual blueprint report; evidence limited to architecture documents and trade-off guide",
         "real hardware or emulator evidence for each listed hardware requirement"
@@ -980,7 +980,7 @@
       ],
       "activation_blockers": [
         "a P16 component daemon; crates/aegis-athena holds the seven-stage candidate lifecycle, the Pareto promotion gate and the SHA-256 hash-chained checkpoint ledger, and is neither the evolution daemon nor anything that executes a candidate (M05)",
-        "no candidate is ever run: the P10 Vesta Firecracker microVM and AF_VSOCK transport REQ-P16-04 names are absent (M06, M22)",
+        "no candidate is run by any daemon: M21 judges one candidate evaluation with this crate's Pareto gate inside a Firecracker guest and carries it over AF_VSOCK (make verify-workstation, run r20260929T200422-2476); M22 measures the microVM, and nothing deploys or promotes on the answer",
         "no systemd-sysupdate client and no D-Bus transport for TRIGGER_SYSUPDATE_ROLLBACK; the promotion trigger is typed at M05 and carried by nothing, and StubSysupdate records calls rather than making them",
         "the checkpoint ledger is in memory and unsigned; no durable sink and no TPM2 sealing (M20)",
         "no individual blueprint report; evidence limited to architecture documents and trade-off guide"

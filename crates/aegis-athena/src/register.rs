@@ -226,6 +226,9 @@ pub const P16_RECORDED_CLAIMS: [RecordedClaim; 5] = [
 /// The milestone that supplies the P10 Vesta sandbox REQ-P16-04 names.
 ///
 /// Recorded so the deferral names where it goes rather than merely saying it
-/// is deferred. M06 types the P09-to-P10 capsule request; M22 is the microVM
-/// half that would actually run a candidate.
-pub const SANDBOX_DEFERRED_TO: &str = "M06 (typed request), M22 (microVM execution)";
+/// is deferred. M06 types the P09-to-P10 capsule request; M21 proves the path
+/// -- one candidate evaluation, judged by this crate's Pareto gate inside a
+/// Firecracker guest, round-trips over `AF_VSOCK` -- and M22 measures the
+/// microVM that would run a candidate for real.
+pub const SANDBOX_DEFERRED_TO: &str =
+    "M06 (typed request), M21 (one evaluation over AF_VSOCK), M22 (measured microVM execution)";
