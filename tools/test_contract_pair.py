@@ -15,7 +15,7 @@ command runs in, the digest the fetch records, and what nucleus's report must
 say for each row (D106) -- and the surfaces the gate runs through: the
 Makefile, CI, the admission page and the evidence page. The recorded outputs
 below are what imago 16f964b printed on the reference profile on 2026-09-28,
-and what nucleus 0a4eac9's verifier wrote on 2026-09-29, kept as bytes;
+and what nucleus 82aa6b7's verifier wrote on 2026-09-29, kept as bytes;
 nucleus's reports are abridged by dropping fields and rows, never by adding or
 changing one, and a variant nucleus did not write is built inside its test and
 named synthetic there. The sweeps at the end hold the gate to HISS-02, HISS-04
@@ -54,7 +54,7 @@ ALLOWED_PROGRAMS = {"git", "go", "python3", "<binary>"}
 # The only functions that may reach the network, and the commands that do.
 NETWORK_FUNCTIONS = {"fetch_identity", "fetch_checkout", "fetch_build"}
 PIN_COMMIT = "16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee"
-NUCLEUS_COMMIT = "0a4eac93f29fef432bfa9d892ad236568ce2f482"
+NUCLEUS_COMMIT = "82aa6b7a3c68a42a6330370c81ec642482014c9f"
 # The pinned commit's committer time as go writes vcs.time, and as `git log
 # --format=%ct` prints it.
 COMMITTED = "2026-09-16T13:01:55Z"
@@ -103,7 +103,7 @@ EMPTY_STDERR = (
     "Error: kernel requirement aegis-m18-kernel-requirement-0001: features: "
     "feature list is empty\n" * 2
 )
-# nucleus 0a4eac9's versions.json downstream.requirements, as the checkout holds it.
+# nucleus 82aa6b7's versions.json downstream.requirements, as the checkout holds it.
 VERSIONS = (
     b'{"downstream": {"repository": "cordanaLLM/imago", "requirements": ['
     b'{"label": "imago", "repository": "cordanaLLM/imago", "path": "kernel/requirement.json",'
@@ -112,15 +112,15 @@ VERSIONS = (
     b' "path": "build/kernel-requirement.json", "dispatched": false, "streams": ["realtime"]}'
     b"]}}"
 )
-# What `scripts/verify_kernel_requirement.py --report-json` wrote at 0a4eac9 for
-# build/kernel-requirement.json, abridged to one feature and without its policy.
+# What `scripts/verify_kernel_requirement.py --report-json` wrote at 82aa6b7 for
+# build/kernel-requirement.json, without its policy, abi, artifact or streams.
 # Each report below is abridged by dropping fields, streams and rows only:
-# nothing is added or changed. Gate run r20260929T090040-a024 kept the full
+# nothing is added or changed. Gate run r20260929T102414-7f8a kept the full
 # reports; a variant nucleus did not write is built inside its test and named
 # synthetic there.
 REPORT_HEAD = (
     b'{"schema": "nucleus.kernel-requirement-report.v1",'
-    b' "nucleus_revision": "0a4eac93f29fef432bfa9d892ad236568ce2f482",'
+    b' "nucleus_revision": "82aa6b7a3c68a42a6330370c81ec642482014c9f",'
     b' "evidence_level": "declared", '
 )
 PASS_REPORT = REPORT_HEAD + (
@@ -1358,11 +1358,13 @@ class NucleusRunTests(unittest.TestCase):
                 context, "nucleus-x", gate.KERNEL_REQUIREMENT, ["--sha256", "aegis-os=ab"]
             )
             argv, cwd = run.call_args.args[0], run.call_args.kwargs["cwd"]
-        self.assertEqual(argv[:3], [gate.PYTHON, "-I", "scripts/verify_kernel_requirement.py"])
-        self.assertEqual(argv[3:5], ["--requirement", f"aegis-os={gate.KERNEL_REQUIREMENT}"])
-        self.assertTrue(Path(argv[6]).is_absolute())
         self.assertEqual(
-            argv[7:], ["--nucleus-revision", NUCLEUS_COMMIT, "--sha256", "aegis-os=ab"]
+            argv[:4], [gate.PYTHON, "-I", "-B", "scripts/verify_kernel_requirement.py"]
+        )
+        self.assertEqual(argv[4:6], ["--requirement", f"aegis-os={gate.KERNEL_REQUIREMENT}"])
+        self.assertTrue(Path(argv[7]).is_absolute())
+        self.assertEqual(
+            argv[8:], ["--nucleus-revision", NUCLEUS_COMMIT, "--sha256", "aegis-os=ab"]
         )
         self.assertEqual(cwd, context.nucleus)
         self.assertEqual((result["exit"], record), (0, None))
@@ -1417,6 +1419,52 @@ class NucleusRunTests(unittest.TestCase):
                 with mock.patch.object(gate, "verify_requirement", return_value=answer):
                     problems, _ = quiet(gate.nucleus_case, context_in(base), "nucleus/x", rows)
                 self.assertEqual(bool(problems), failed, problems)
+
+
+# A verifier that imports a sibling module the way nucleus's does since 82aa6b7:
+# it puts its own directory on sys.path, which -I keeps off, and writes the report
+# it is asked for. Synthetic: nucleus did not write it.
+SIBLING_VERIFIER = (
+    "import sys\n"
+    "from pathlib import Path\n"
+    "sys.path.insert(0, str(Path(__file__).resolve().parent))\n"
+    "import sibling\n"
+    "Path(sys.argv[sys.argv.index('--report-json') + 1]).write_text(sibling.REPORT)\n"
+)
+
+
+class NucleusBytecodeTests(unittest.TestCase):
+    """The verifier's imports write nothing into the checkout the next run requires clean.
+
+    Run r20260929T102148-b707 found it: the first gate run at 82aa6b7 left
+    scripts/__pycache__ in the nucleus checkout, and the next one failed
+    contract/nucleus-checkout on it.
+    """
+
+    def checkout(self, base):
+        context = context_in(base)
+        scripts = context.nucleus / "scripts"
+        scripts.mkdir(parents=True)
+        (scripts / "verify_kernel_requirement.py").write_text(SIBLING_VERIFIER, encoding="utf-8")
+        (scripts / "sibling.py").write_text('REPORT = "{}"\n', encoding="utf-8")
+        return context
+
+    def test_the_gate_run_leaves_no_bytecode(self):
+        with tempfile.TemporaryDirectory() as base:
+            context = self.checkout(base)
+            result, record = gate.verify_requirement(context, "nucleus-x", gate.KERNEL_REQUIREMENT)
+            cached = sorted(context.nucleus.rglob("__pycache__"))
+        self.assertEqual((result["exit"], record, cached), (0, {}, []), result["stderr"])
+
+    def test_the_same_run_without_b_leaves_bytecode(self):
+        """Negative control: without -B this interpreter writes the cache the gate refuses."""
+        with tempfile.TemporaryDirectory() as base:
+            context = self.checkout(base)
+            argv = [gate.PYTHON, "-I", "scripts/verify_kernel_requirement.py"]
+            argv += ["--report-json", str(Path(base) / "report.json")]
+            code, _, stderr = gate.run(argv, gate.VALIDATE_TIMEOUT, cwd=context.nucleus)
+            cached = [path.name for path in context.nucleus.rglob("__pycache__")]
+        self.assertEqual((code, cached), (0, ["__pycache__"]), stderr)
 
 
 class NucleusCheckoutTests(unittest.TestCase):
