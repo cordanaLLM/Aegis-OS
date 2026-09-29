@@ -129,6 +129,11 @@ fn each_asserted_feature_is_traceable_to_its_probe_command() -> Fallible {
 /// symbol that is off is spelled `# CONFIG_X is not set`, so a pattern
 /// anchored on `CONFIG_` alone prints nothing for it and a reader cannot tell
 /// "not set" from "symbol absent".
+///
+/// `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS` joined on 2026-09-29 (D107): the
+/// same command, extended by that symbol, printed it as `y` on the running
+/// `7.2.8-1-cachyos`, and the profile's `kernel.added_note` says it is that
+/// kernel's reading, not the recorded release's.
 #[test]
 fn the_profile_reports_the_measured_symbol_states() -> Fallible {
     let profile = profile()?;
@@ -138,6 +143,10 @@ fn the_profile_reports_the_measured_symbol_states() -> Fallible {
         ("CONFIG_HZ_1000", ConfigState::BuiltIn),
         ("CONFIG_SCHED_CLASS_EXT", ConfigState::BuiltIn),
         ("CONFIG_BPF_LSM", ConfigState::BuiltIn),
+        (
+            "CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS",
+            ConfigState::BuiltIn,
+        ),
         ("CONFIG_DEBUG_INFO_BTF", ConfigState::BuiltIn),
         ("CONFIG_POWERCAP", ConfigState::BuiltIn),
         ("CONFIG_INTEL_RAPL", ConfigState::Module),

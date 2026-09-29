@@ -75,11 +75,12 @@ M11, and `cordanaLLM/imago` issue 46 tracks its emitter.
 
 The Nucleus edge reads the kernel requirement since `cordanaLLM/nucleus` pull
 request 35, merged as `0a4eac9` on 2026-09-29, and M09 pins it under D106, at
-`82aa6b7` since that day's re-pin. Its `scripts/verify_kernel_requirement.py`
-decodes `build/kernel-requirement.json` the way `crates/aegis-fabrica-defs` does
-and holds it against the kconfig fragments of the streams its `versions.json`
-binds Aegis to, `realtime` alone, in place of the hardcoded symbol list its
-issue 20 reported; its ADR-0007, still Proposed, is the policy. `make
+`82aa6b7` after that day's re-pin and at `852be74` since D107. Its
+`scripts/verify_kernel_requirement.py` decodes `build/kernel-requirement.json`
+the way `crates/aegis-fabrica-defs` does and holds it against the kconfig
+fragments of the streams its `versions.json` binds Aegis to, `realtime` alone,
+in place of the hardcoded symbol list its issue 20 reported; its ADR-0007,
+accepted on 2026-09-29, is the policy. `make
 verify-contract` runs that script from the pinned checkout and reads its JSON
 report: the requirement passes on `realtime`, a planted symbol no fragment sets
 is refused with the requirement's correlation id, an empty feature list is
@@ -97,10 +98,14 @@ are M10's to record (D92, D94): E10-4 and E10-5 read the release asset
 `imago.nucleus.kernel-artifact.v1` manifest imago verifies. Its first release,
 `v7.2.8-realtime-lusoris1`, was published on 2026-09-29 and M10 verifies and
 records it ([the Nucleus kernel gate](../build/nucleus-kernel.md)). That kernel
-satisfies the requirement as written and still cannot attach a BPF LSM program,
-because the requirement does not ask for the function tracer the BPF trampoline
-patches; whether it should was decision D107, decided on 2026-09-29: it should.
-D70's locally built kernel stays the interim for M23's latency fixture.
+satisfied the requirement as it was then written and still cannot attach a BPF
+LSM program, because the requirement did not ask for the function tracer the BPF
+trampoline patches. Decision D107 (2026-09-29) adds
+`CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS`, built-in, to
+`build/kernel-requirement.json`; imago re-vendored the new bytes, nucleus
+enables the tracer on every stream, M09 pins both at those commits, and M10
+waits for a Nucleus release built to it. D70's locally built kernel, rebuilt
+with the row, stays the interim for M23's latency fixture.
 
 Activation order: the ranked, blocking-state roadmap in `docs/roadmap/README.md`
 and `planning/roadmap.json` is authoritative (`make readiness` lists the ready

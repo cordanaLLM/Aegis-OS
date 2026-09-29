@@ -267,6 +267,22 @@ class PinnedInputTests(unittest.TestCase):
         support = set(gate.parse_config(gate.SUPPORT_FRAGMENT.read_text()))
         self.assertEqual(support & required, set())
 
+    def test_the_support_fragment_enables_the_tracer_the_d107_row_follows_from(self):
+        """Positive (D107): CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS has no prompt.
+
+        It follows from DYNAMIC_FTRACE, which needs FUNCTION_TRACER inside
+        FTRACE (kernel/trace/Kconfig in the pinned source), and
+        x86_64_defconfig sets no FUNCTION_TRACER. Without these three lines the
+        requirement row cannot survive olddefconfig; `make verify-kernel` would
+        find that, and this test finds it inside `make verify-all`.
+        """
+        payload = json.loads(gate.REQUIREMENT.read_text())
+        rows = {feature["symbol"]: feature["state"] for feature in payload["features"]}
+        self.assertEqual(rows.get("CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS"), "built-in")
+        support = gate.parse_config(gate.SUPPORT_FRAGMENT.read_text())
+        for symbol in ("CONFIG_FTRACE", "CONFIG_FUNCTION_TRACER", "CONFIG_DYNAMIC_FTRACE"):
+            self.assertEqual(support.get(symbol), "y", symbol)
+
     def test_the_pin_names_the_fragments_the_gate_applies(self):
         """Boundary: the pin is the only tracked statement of what is built."""
         pin = json.loads(gate.SOURCE_PIN.read_text())

@@ -13,6 +13,33 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Changed (the kernel requirement asks for the BPF trampoline, D107)
+
+- **`build/kernel-requirement.json` requires
+  `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS` built-in (REQ-P06-05).** A BPF LSM
+  program attaches through a BPF trampoline, which needs the `-mfentry` nop the
+  function tracer compiles in, and `CONFIG_BPF_LSM` does not depend on the
+  tracer; M10 found `action_gate` failing to attach with `-EBUSY` on
+  `v7.2.8-realtime-lusoris1`. The payload has fourteen rows, sha256
+  `92d74206ee5a`; the reference payload and both JSON Schemas are unchanged.
+  The reference profile records the symbol as `y`, read on `7.2.8-1-cachyos`.
+- **M09 pins the producers that carry it.** imago moves from `16f964b` to
+  `987b95a` (its pull request 52 re-vendors the new bytes) and nucleus from
+  `82aa6b7` to `852be74` (its pull request 47 enables the tracer on every
+  stream); nucleus at `82aa6b7` refuses the new payload. `make verify-contract`
+  passes all nineteen cases, and the recorded reports in
+  `tools/test_contract_pair.py` are re-captured from the run. A cache fetched
+  for the old pins fails `contract/identity` until `make contract-fetch` runs.
+- **M26's kernel carries the row.** `50-aegis-requirement.config` is rendered
+  again, `10-base-support.config` gains `CONFIG_FTRACE`,
+  `CONFIG_FUNCTION_TRACER` and `CONFIG_DYNAMIC_FTRACE`, and `make verify-kernel`
+  rebuilt the kernel and read the row back from the guest, all seven cases
+  passing; without the three lines the row does not survive `olddefconfig`.
+- **M10's gate labels the row as required.** The capability case records
+  `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS` as decided by the requirement case,
+  which now stops `v7.2.8-realtime-lusoris1` before any load. M10 stays open
+  until a Nucleus release built to the new requirement passes E10-1.
+
 ### Added (workstation slices, RAPL energy and KVM sandboxing, milestone M21)
 
 - **Measured energy behind the M05 seam (E21-1).** `aegis-tellus` gains

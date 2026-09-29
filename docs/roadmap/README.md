@@ -65,12 +65,13 @@ Current verified state at revision time:
   issue bodies are not kept current; ranks are read from
   `planning/roadmap.json`, which stays the source of truth.
 - cordanaLLM/imago and cordanaLLM/nucleus resolve. imago decodes both M18
-  payloads at the commit M09 pins (16f964b), nucleus verifies
-  `build/kernel-requirement.json` against the kconfig fragments of its
-  `realtime` stream at the commit M09 pins (0a4eac9 under D106, 82aa6b7 since
-  the re-pin of 2026-09-29), and neither producer has published an image or a
-  kernel yet (M09, D92, D106). The private readiness matrix is a superseded
-  2026-09-13 snapshot.
+  payloads at the commit M09 pins (16f964b until D107, 987b95a since), nucleus
+  verifies `build/kernel-requirement.json` against the kconfig fragments of its
+  `realtime` stream at the commit M09 pins (0a4eac9 under D106, 82aa6b7 after
+  the re-pin of 2026-09-29, 852be74 since D107), imago has published no image,
+  and nucleus's first kernel release, of 2026-09-29, is M10's to verify (M09,
+  D92, D106, D107). The private readiness matrix is a superseded 2026-09-13
+  snapshot.
 
 ## Method
 
@@ -752,6 +753,36 @@ Evidence:
   validates the three reviewed payloads against them. `cargo test --locked
   --all-features` passes on the pinned toolchain, and criterion 5 still holds
   for the crate: it contacts no producer.
+- Dated 2026-09-29, appended after done (D107); no exit criterion and no epic
+  text changes. build/kernel-requirement.json gains one row after
+  CONFIG_BPF_LSM: CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS, built-in, probe
+  kernel-config, required by REQ-P06-05. A BPF LSM program attaches through a
+  BPF trampoline, which patches the -mfentry nop the function tracer compiles
+  in, and CONFIG_BPF_LSM does not depend on the tracer in Kconfig; M10 found
+  action_gate failing to attach with -EBUSY on nucleus v7.2.8-realtime-lusoris1,
+  which has no function tracer. The payload is fourteen rows, 2232 bytes, sha256
+  92d74206ee5a4cc46bc9a8c209855c4a3d07a9ed47b003963fc73697ac8776ce (was
+  d796c408b4db5dd9e5f22d35c109a8dccadcdb14f3f68ce7de2cddc594d47adb);
+  build/kernel-requirement.reference.json and both JSON Schemas are unchanged,
+  and no crate source changes. tests/kernel_requirement.rs requires the new
+  symbol among the rows P06 needs, tests/array_form.rs counts fourteen features,
+  tests/kernel_fragment.rs holds the re-rendered
+  build/kernel/50-aegis-requirement.config byte for byte, and
+  tools/test_payload_schemas.py validates the new payload against
+  build/kernel-requirement.schema.json. Criterion 7 holds as before, the
+  reference profile refusing the product requirement on CONFIG_PREEMPT_RT alone:
+  planning/hardware-profile.json records
+  CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS=y, read on 2026-09-29 with the
+  profile's evidence command extended by that symbol, and every other symbol
+  read as recorded. That value is 7.2.8-1-cachyos's, as the profile's
+  kernel.added_note says: 7.2.4-1-cachyos, the recorded release, is no longer on
+  the host, so the symbol was not read on it. The consumers moved with the
+  payload: imago re-vendored the bytes (its pull request 52, 987b95a) and
+  nucleus enables the tracer on every stream (its pull request 47, 852be74),
+  both pinned in M09's entry of this date, and M26's configuration carries the
+  row (M26's entry of this date). `cargo test --locked --all-features` passes on
+  the pinned toolchain inside `make verify-all` (M09's entry of this date names
+  the run).
 
 Epics:
 
@@ -2096,6 +2127,51 @@ Evidence:
   host's own bash, mount, uname, gzip and sleep with their library closure;
   only the kernel under test is built here. The image, kernel-artifact, boot,
   hardware and release gates remain blocked
+- Dated 2026-09-29, appended after done (D107); no exit criterion and no epic
+  text changes. build/kernel/50-aegis-requirement.config is rendered again by
+  KernelRequirement::config_fragment from the D107 payload and carries
+  CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS=y (REQ-P06-05) after CONFIG_BPF_LSM,
+  fourteen assignments. The symbol has no prompt, and its chain was read from
+  the pinned linux-7.2.5 source, hashed against the pin: kernel/trace/Kconfig
+  makes it a def_bool depending on DYNAMIC_FTRACE_WITH_REGS ||
+  DYNAMIC_FTRACE_WITH_ARGS and on HAVE_DYNAMIC_FTRACE_WITH_DIRECT_CALLS,
+  DYNAMIC_FTRACE_WITH_REGS and DYNAMIC_FTRACE_WITH_ARGS are def_bools over
+  DYNAMIC_FTRACE, DYNAMIC_FTRACE depends on FUNCTION_TRACER, and FUNCTION_TRACER
+  has no default and sits inside if FTRACE; under config X86, arch/x86/Kconfig
+  selects HAVE_FUNCTION_TRACER, HAVE_DYNAMIC_FTRACE,
+  HAVE_DYNAMIC_FTRACE_WITH_REGS and HAVE_DYNAMIC_FTRACE_WITH_DIRECT_CALLS, and
+  x86_64_defconfig sets CONFIG_DEBUG_KERNEL=y, which defaults FTRACE on, and no
+  FUNCTION_TRACER. build/kernel/10-base-support.config therefore gains
+  CONFIG_FTRACE=y, CONFIG_FUNCTION_TRACER=y and CONFIG_DYNAMIC_FTRACE=y with
+  that chain named above them, and with what BPF_LSM itself depends on: FTRACE,
+  through BPF_EVENTS, which sits inside if FTRACE, but none of FUNCTION_TRACER,
+  DYNAMIC_FTRACE or DYNAMIC_FTRACE_WITH_DIRECT_CALLS (kernel/bpf/Kconfig); it
+  still assigns no payload symbol; tools/test_kernel_build.py requires the
+  three. Negative, by hand over the pinned tree: the support fragment of before
+  D107 with the new requirement fragment produced CONFIG_FTRACE=y,
+  '# CONFIG_FUNCTION_TRACER is not set' and no DYNAMIC_FTRACE line, which the
+  gate's own check refuses with 'CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS:
+  REQ-P06-05 requires built-in, observed unrecorded'. `make verify-kernel` ran
+  three times, each reading 14 requirement rows, passing all seven cases and
+  exiting 0: into a fresh AEGIS_KERNEL_BUILD_DIR (2026-09-29, 21:13:22 to
+  21:15:52 UTC: the tarball downloaded, its sha256 and signature verified and
+  extracted anew, the bzImage built in 112 s), over the same tree (21:23:38 to
+  21:26:30 UTC: a 16,954,368-byte bzImage and 19 modules as 7.2.5-aegis-m26 in
+  142 s), and over the same tree again after the last edit of any file the gate
+  reads, which narrowed the support fragment's comment on what BPF_LSM depends
+  on and changed no assignment, and after this change was rebased onto main at
+  a28be4e (21:53:55 to 21:57:34 UTC: a 16,954,368-byte bzImage and 19 modules in
+  126 s); a direct `python3 tools/verify_kernel_build.py` between the first two
+  gave the same. In the last two runs the guest's own /proc/config.gz was
+  byte-identical to the produced .config, 5,545 lines, sha256
+  90e08c39b2bcbacb257cb15e86d4e5d0fd82270105cd4b9d0c80d29f52088585, with
+  CONFIG_FTRACE, CONFIG_FUNCTION_TRACER, CONFIG_DYNAMIC_FTRACE and
+  CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS all y, and
+  kernel/readback-negative-missing-option refused the host's configuration on
+  CONFIG_PREEMPT_RT alone, the host carrying the new row. The rebuild reads the
+  configuration back and attaches nothing; that this configuration attaches
+  action_gate is M10's controlled comparison. docs/build/kernel.md records the
+  runs.
 
 Epics:
 
@@ -3047,7 +3123,7 @@ Cheapest exit: Run the pair against the pinned local checkouts without any
 hosted dispatch.
 
 Evidence (the 2026-09-27 and D92 disclosures, the scope, the closing summary
-and the dated D106 entries of 2026-09-29; every entry is in
+and the dated D106, re-pin and D107 entries of 2026-09-29; every entry is in
 `planning/roadmap.json`, and the runs are on `docs/build/contract-pair.md`):
 
 - Disclosure, in the shape M18 recorded, because a milestone that edits its own
@@ -3229,6 +3305,64 @@ and the dated D106 entries of 2026-09-29; every entry is in
   631a1b5, sha256 d796c408b4db) held by realtime at both levels; it ran on
   nucleus's runner, not in this gate, and is neither a built kernel nor a
   release, so it closes nothing in M10.
+- Dated 2026-09-29, appended after done (D107); no exit criterion and no epic
+  text changes. build/kernel-requirement.json gains the row
+  CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS built-in, probe kernel-config,
+  required by REQ-P06-05 (M18's entry of this date), so its fixture digest in
+  build/contract/producers.pin.json moves from
+  d796c408b4db5dd9e5f22d35c109a8dccadcdb14f3f68ce7de2cddc594d47adb to
+  92d74206ee5a4cc46bc9a8c209855c4a3d07a9ed47b003963fc73697ac8776ce, and both
+  producer pins move with it, each its producer's main on 2026-09-29, read with
+  `git ls-remote --heads`. imago moves from
+  16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee to
+  987b95a432e5c9aac1b4885b97fa2d3ff1b9d311, its pull request 52 and the only
+  commit between the two: it re-vendors
+  pkg/kernel/testdata/aegis-kernel-requirement.json with exactly these bytes,
+  moves two test counts from 13 to 14 and closes imago issue 51; go.mod still
+  declares go 1.27.1, and pkg/aegis/aegis.go still bounds MaxRetryAttempts at 10
+  and MaxPackages at 256. nucleus moves from
+  82aa6b7a3c68a42a6330370c81ec642482014c9f to
+  852be742eb173700d5ef93b0c6f867b855f9c640, its pull request 47, which sets
+  CONFIG_FTRACE, CONFIG_FUNCTION_TRACER, CONFIG_DYNAMIC_FTRACE and
+  CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS in kconfig/security-hardened.config
+  for every stream (its ADR-0011). At 852be74 versions.json still binds aegis-os
+  to cordanaLLM/Aegis-OS build/kernel-requirement.json on realtime with
+  dispatched false, and the verifier's command line, exit codes and report keys
+  are unchanged; it now sets sys.dont_write_bytecode itself (nucleus pull
+  request 41), and the gate keeps -I -B. At 82aa6b7 the verifier refuses the new
+  payload: run by hand from a separate checkout, it printed FAIL with
+  'aegis-m18-kernel-requirement-0001: realtime x86_64:
+  CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS (required-by REQ-P06-05) requires
+  built-in, observed unrecorded' and exited 1. Gates run on this revision, each
+  exit 0: `make contract-fetch` into a fresh cache (run f20260929T230809-e9ad:
+  both mains equal the pins, fresh depth-1 clones, and an imago binary stamped
+  v0.0.0-20260929210208-987b95a432e5 and vcs.time 2026-09-29T21:02:08Z, sha256
+  81c0f6d1277bca9592c46920c61cf79a44e024535a65207c0cede1587057727d, which
+  replaces 71186e11e258... because the module version and vcs.time go stamps
+  change with the commit); `make verify-contract` twice (runs
+  r20260929T230816-7c75 and r20260929T233252-ba31, nineteen PASS lines each:
+  contract/fixtures-identical over the 2232-byte copy,
+  kernel-requirement/accepted listing fourteen features, nucleus/accepted PASS
+  held by realtime on sha256 92d74206ee5a, the planted symbol refused with the
+  correlation id on sha256 ef59a2280044, NoFeatures, DigestMismatch and
+  CorrelationMismatch; the two wrote byte-identical reports and left both
+  checkouts clean); `make verify-all` with the contract pair gate running (run
+  r20260929T233538-b915), with praetorctl built from
+  8d0344e917f16a2b7e23b1ec5258133ddba783f2, the ci.yml pin before this change
+  was rebased onto main at a28be4e; and, after the rebase, `make
+  verify-contract` again (run r20260929T235617-b7ab, nineteen PASS lines,
+  reports byte-identical to the two above) and `make verify-all` with the
+  contract pair gate and every other gate running (run r20260929T235928-32d1),
+  with praetorctl built from 9e855dabefac0f78f4cec59dc88db7a8d588b87f, the
+  ci.yml pin there. A copy of a cache fetched for the old pins (run
+  r20260929T233158-d82f) failed contract/identity for both producers, exit 1,
+  and no other case ran. What imago printed for the product input, the kernel
+  requirement's header and the empty feature list is byte for byte what 16f964b
+  printed. The nucleus reports tools/test_contract_pair.py keeps were
+  re-captured from run r20260929T230816-7c75, abridged as before; beyond
+  nucleus_revision and the two document digests, the fields they keep are
+  unchanged. The evidence level stays declared, and M10's release stage now runs
+  imago 987b95a.
 
 Epics:
 
@@ -3554,8 +3688,11 @@ run is on `docs/build/nucleus-kernel.md`):
   epic or the cheapest exit was rewritten by this delivery, and M10 is not done.
   Eight points are recorded. (1) Criterion 4 and E10-1's positive are not met:
   action_gate loads through the Nucleus kernel's verifier and does not attach
-  (the E10-1 entry). (2) Criterion 7 says the requirement is checked against the
-  kernel's config inside the VM: the readback guest prints its own
+  (the E10-1 entry); since D107, dated 2026-09-29, E10-5's positive is not met
+  on that release either: the check criterion 7 names refuses it against the
+  fourteen-row requirement before any load (the criterion 7 entry). (2)
+  Criterion 7 says the requirement is checked against the kernel's config inside
+  the VM: the readback guest prints its own
   /proc/config.gz, tools/kernel_requirement_check.py decides every row on that
   text on the host, and the load guest hashes /proc/config.gz again and loads
   nothing unless the sha256 is the one checked; no Python runs in the guest. (3)
@@ -3597,10 +3734,24 @@ run is on `docs/build/nucleus-kernel.md`):
   ~/.cache/aegis-nucleus-kernel/control-function-tracer-20260929). The Nucleus
   kernel satisfies build/kernel-requirement.json as written, and so would M26's,
   which has the same gap; the requirement does not ask for the trampoline. What
-  would close E10-1 is decision D107 (decided 2026-09-29), recorded in docs/roadmap/README.md,
-  not taken here: a requirement row for CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS,
-  carried through M09's pinned fixtures once imago and nucleus vendor the new
-  bytes, and a Nucleus release built to it.
+  would close E10-1 is decision D107 (decided 2026-09-29: add the requirement
+  row), recorded in docs/roadmap/README.md, not taken here: a requirement row
+  for CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS, carried through M09's pinned
+  fixtures once imago and nucleus vendor the new bytes, and a Nucleus release
+  built to it. (Dated 2026-09-29, after D107 was recorded:
+  build/kernel-requirement.json now carries the row, M09 pins imago 987b95a and
+  nucleus 852be74, which vendor and hold it, and M26's configuration carries it
+  too; the statements above that the requirement does not ask for the
+  trampoline, that the Nucleus kernel satisfies it and that M26 has the same gap
+  describe the payload of these runs. Run r20260929T232643-b28e ran the gate
+  against the same release with the new requirement, into a fresh cache and with
+  imago 987b95a: the release stage passed,
+  nucleus/requirement-satisfied-before-any-load rejected
+  CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS with the correlation id, the
+  requirement stage's negative and boundary cases failed with it because the
+  configuration already carries that unmet row, and no M19 object was loaded.
+  E10-1 now waits for a Nucleus release built to the new requirement, which
+  nucleus's ADR-0011 names v7.2.8-realtime-lusoris2.)
 - The gate (2026-09-29): make verify-nucleus-kernel runs
   tools/verify_nucleus_kernel.py, outside make verify-all like verify-latency
   and verify-boot, and make nucleus-kernel-fetch is its one networked step. A
@@ -3879,8 +4030,9 @@ Risks, recorded from the cards and the private readiness matrix:
   imago's decoding of both M18 payloads (D92), but imago builds no image yet, so
   the result M11 waits for depends on producer work Aegis cannot do:
   cordanaLLM/imago issue 46. nucleus published its first kernel on 2026-09-29,
-  and M10 verified it; what M10 now waits for is D107, a kernel requirement that
-  asks for the BPF trampoline's prerequisite, and a release built to it.
+  and M10 verified it; D107 put the BPF trampoline's prerequisite into the
+  kernel requirement the same day, and what M10 now waits for is a Nucleus
+  release built to it.
 - Imported workflows suppress failures (REQ-CI-01, REQ-CI-02), and the imported
   integration script prints boot/TPM2 success without executing anything
   (REQ-BOOT-02). They stay inactive, and any activated gate must be rewritten.
@@ -5371,6 +5523,28 @@ against the decoder of `061bbde`.
   gains the `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS` row in its own change,
   which merges once imago and nucleus vendor the new bytes, and nucleus is asked
   for a release built to it. M10 stays open until that release passes E10-1.
+  **Recorded (2026-09-29):** imago pull request 52, merged as
+  `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311`, re-vendors the new bytes (2232
+  bytes, sha256
+  `92d74206ee5a4cc46bc9a8c209855c4a3d07a9ed47b003963fc73697ac8776ce`) and closes
+  imago issue 51; nucleus pull request 47, merged as
+  `852be742eb173700d5ef93b0c6f867b855f9c640`, sets `CONFIG_FTRACE`,
+  `CONFIG_FUNCTION_TRACER`, `CONFIG_DYNAMIC_FTRACE` and
+  `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS` for every stream (its ADR-0011).
+  Both were their producer's `main` when the row landed here:
+  `build/kernel-requirement.json` gains it, and M09 pins both commits and the
+  new digest, with `make contract-fetch` run f20260929T230809-e9ad and `make
+  verify-contract` run r20260929T230816-7c75 passing all nineteen cases; nucleus
+  at `82aa6b7` refuses the new payload on that row. M26's
+  `50-aegis-requirement.config` is rendered again, `10-base-support.config`
+  gains the tracer the row follows from, and `make verify-kernel` rebuilt the
+  kernel and read the row back from the guest, all seven cases passing. The
+  reference profile records the row as `y`, read on `7.2.8-1-cachyos`. M10's
+  gate against `v7.2.8-realtime-lusoris1` with the new requirement (run
+  r20260929T232643-b28e) stops at the requirement case on that row and loads
+  nothing; M10 stays open until a release built to it passes E10-1, which
+  nucleus's ADR-0011 names `v7.2.8-realtime-lusoris2`. The dated entries of M18,
+  M09 and M26 record the runs.
 
 ## Evidence
 

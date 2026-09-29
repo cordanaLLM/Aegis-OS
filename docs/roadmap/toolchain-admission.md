@@ -570,7 +570,9 @@ reads it. `docs/build/accessibility-harness.md` records the run.
 Every row below is a program `tools/verify_contract_pair.py` starts, or a
 producer commit it runs against, read back on the reference profile on
 2026-09-28, and the nucleus and `python3` rows again on 2026-09-29, when D106
-moved the nucleus pin and when it was re-pinned to `82aa6b7`.
+moved the nucleus pin and when it was re-pinned to `82aa6b7`. Both producer
+rows were read again that evening, when D107 moved imago to `987b95a` and
+nucleus to `852be74`.
 `tools/test_contract_pair.py` reads this table back and
 requires the Go floor, both commits and nucleus's verifier to be the ones
 `build/contract/producers.pin.json` records, and a row for every program the
@@ -582,8 +584,8 @@ and for the producers from `git ls-remote --heads`.
 | :--- | :--- | :--- | :--- | :--- |
 | `go` | floor 1.27.1, from imago's `go.mod` (`go 1.27.1`); reference profile go1.27.1 (`go 2:1.27.1-2`); CI 1.27.1 | `imago.go` in the pin, checked against the cached `go.mod`; every go command runs with `GOTOOLCHAIN=local`, so a Go below the floor is refused by the fetch rather than replaced by a download. CI's Go is the M00 row above: setup-go resolves Praetor's `go 1.27` to the newest 1.27 patch, 1.27.1, which meets the floor | 1.27.1 (stable), `go.dev/dl` | `make contract-fetch`: `go mod download`, `go mod verify` and the `-trimpath -buildvcs=true` build; the gate: `go version -m` and the offline stand-in build, with `GOPROXY=off` |
 | `git` | reference profile 2.55.0 (`git 2.55.0-1.1`) | recorded, not pinned; no source this gate relies on declares a minimum beyond the 2.32 that `GIT_CONFIG_GLOBAL` needs | 2.56.0, tag `v2.56.0`; the distribution ships 2.55.0 | `make contract-fetch`: `ls-remote --heads`, the depth-1 fetch and checkout; the gate: `rev-parse`, `status --untracked-files=all --ignored`, `ls-files -v` and `log` of the imago checkout, `rev-parse` and `status` of this repository, and the stand-in's commit. Every git command, and go's own git calls, run with `GIT_CONFIG_NOSYSTEM=1`, an empty `GIT_CONFIG_GLOBAL` and no inherited `GIT_*` variable |
-| `cordanaLLM/imago` | commit `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` | `imago.commit` in the pin; fetched by commit into a fresh directory, checked by `git rev-parse HEAD`, by the binary's `vcs.revision`, `vcs.time` and module version, and by the binary sha256 the fetch recorded | `main` at `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` | consumes both M18 payloads (`pkg/aegis`, `pkg/kernel`) |
-| `cordanaLLM/nucleus` | commit `82aa6b7a3c68a42a6330370c81ec642482014c9f` (was `0a4eac93f29fef432bfa9d892ad236568ce2f482` from D106 until the re-pin of 2026-09-29, and `8672247ff1bd22ed6b6b89d498116f20ff00c2ab` until D106) | `nucleus.commit` in the pin; fetched by commit into a fresh directory and checked by `git rev-parse HEAD`, a clean status and index, the presence of `scripts/verify_kernel_requirement.py` and the `versions.json` row that binds `aegis-os` to this repository's payload on `realtime` | `main` at `82aa6b7a3c68a42a6330370c81ec642482014c9f`, read 2026-09-29 | verifies `build/kernel-requirement.json` against the kconfig fragments of its bound stream at evidence level `declared` (nucleus#35, D106); its `--resolved-config` level (nucleus#36) needs a networked kernel-source resolve and is not run |
+| `cordanaLLM/imago` | commit `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311` (was `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` until D107) | `imago.commit` in the pin; fetched by commit into a fresh directory, checked by `git rev-parse HEAD`, by the binary's `vcs.revision`, `vcs.time` and module version, and by the binary sha256 the fetch recorded | `main` at `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311`, read 2026-09-29 | consumes both M18 payloads (`pkg/aegis`, `pkg/kernel`) |
+| `cordanaLLM/nucleus` | commit `852be742eb173700d5ef93b0c6f867b855f9c640` (was `82aa6b7a3c68a42a6330370c81ec642482014c9f` from the re-pin of 2026-09-29 until D107, `0a4eac93f29fef432bfa9d892ad236568ce2f482` from D106 until that re-pin, and `8672247ff1bd22ed6b6b89d498116f20ff00c2ab` until D106) | `nucleus.commit` in the pin; fetched by commit into a fresh directory and checked by `git rev-parse HEAD`, a clean status and index, the presence of `scripts/verify_kernel_requirement.py` and the `versions.json` row that binds `aegis-os` to this repository's payload on `realtime` | `main` at `852be742eb173700d5ef93b0c6f867b855f9c640`, read 2026-09-29 | verifies `build/kernel-requirement.json` against the kconfig fragments of its bound stream at evidence level `declared` (nucleus#35, D106); its `--resolved-config` level (nucleus#36) needs a networked kernel-source resolve and is not run |
 | `python3` | reference profile 3.14.7 (`python3 --version`); CI runs the Python of the `ubuntu-24.04` image | recorded, not pinned: the gate starts nucleus's verifier with the interpreter running the gate (`sys.executable`, which `make` starts as `python3`), `-I`, which ignores every `PYTHON*` variable and the user site, and `-B`, which keeps the sibling import from writing `scripts/__pycache__` into the checkout; the script and the sibling module it imports, `scripts/versions_query.py`, are standard-library only, and nucleus lints them for Python 3.11 (`target-version = "py311"`) and runs the script on CPython 3.12 in its CI | 3.14.7 of 2026-08-05, `python.org` | the gate: `scripts/verify_kernel_requirement.py --report-json`, six runs per gate run, from the nucleus checkout |
 
 A producer's `main` moving past its pin is recorded by the fetch, not followed:
@@ -832,10 +834,12 @@ asset by sha256 and size, `kernel.release` `7.2.8-lusoris1-realtime`,
 the keyless signer
 `https://github.com/cordanaLLM/nucleus/.github/workflows/publish-release.yml@refs/tags/v7.2.8-realtime-lusoris1`
 with issuer `https://token.actions.githubusercontent.com`. imago is the binary
-M09's `make contract-fetch` built at commit
-`16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee`; the gate checks its sha256
-against the fetch's identity record before running it, and passes imago's own
-`versions.json` from that checkout.
+M09's `make contract-fetch` built at the commit M09 pins: it was
+`16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` for the runs of 2026-09-29 and is
+`987b95a432e5c9aac1b4885b97fa2d3ff1b9d311` since D107, which changed only
+imago's vendored copy of the kernel requirement and two of its test files. The
+gate checks its sha256 against the fetch's identity record before running it,
+and passes imago's own `versions.json` from that checkout.
 
 ## The workstation gate's toolchain, and the bytes it boots (M21)
 

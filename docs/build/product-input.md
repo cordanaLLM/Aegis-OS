@@ -190,9 +190,13 @@ their output:
 | `ls /sys/kernel/iommu_groups \| wc -l` | `38` |
 | `uname -r` | `7.2.4-1-cachyos` |
 | `uname -m` | `x86_64` |
+| `zgrep '^CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS=' /proc/config.gz` | `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS=y` |
 
 Those values are transcribed into `planning/hardware-profile.json`, which is
-what the schema is checked against.
+what the schema is checked against. The last row joined on 2026-09-29 with
+D107's requirement row, and was read on the running `7.2.8-1-cachyos`: the
+`7.2.4-1-cachyos` kernel the other rows were read on is no longer installed,
+and the profile's `kernel.added_note` says so.
 
 The traceability is asserted rather than asserted-to. Each `ProbeSource` carries
 the exact path it reads, and the test compares that path against the

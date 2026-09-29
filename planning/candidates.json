@@ -65,7 +65,7 @@
       "missing": [
         "UKI synthesis: no ukify run and no UKI is produced by any gate here",
         "a P01 component crate; aegis-fabrica-defs owns the declarative inputs and is not the daemon",
-        "Imago result and artefact contracts: M09 pinned the request half against imago 16f964b (D92), and the Imago result is M11's",
+        "Imago result and artefact contracts: M09 pinned the request half against imago 16f964b (D92), at 987b95a since D107, and the Imago result is M11's",
         "a built image against the pinned snapshot; the pin is a configuration pin only",
         "real artefact and boot evidence"
       ],
@@ -844,7 +844,7 @@
       },
       "side_b": {
         "source_id": "public:docs/integration/stack.md",
-        "sha256": "32ec01f39ac47dc114b23c97ac6ca03e35575f74c446599c1d3577bc22a510f9",
+        "sha256": "759f28e1fc96303d75ffc52b80a052e581f3f3ae604d1d6e91a5ff755b0408ff",
         "summary": "The shared ownership table assigns kernel configuration, patch selection and artefact production to the Nucleus repository."
       },
       "affected_contract": "Aegis-side kernel requirement payload (LSM, sched_ext, BTF, RAPL, VFIO/IOMMU, KVM; ABI; architectures) and the image content list.",
@@ -1114,7 +1114,7 @@
       },
       "side_b": {
         "source_id": "public:docs/integration/stack.md",
-        "sha256": "32ec01f39ac47dc114b23c97ac6ca03e35575f74c446599c1d3577bc22a510f9",
+        "sha256": "759f28e1fc96303d75ffc52b80a052e581f3f3ae604d1d6e91a5ff755b0408ff",
         "summary": "Shared package reuse must respect language boundaries: a Go library is not a direct dependency of a Rust daemon without an adapter and contract tests."
       },
       "affected_contract": "Vesta capsule-execution contract and the crate dependency set; also the P09 -> P10 transport string.",
