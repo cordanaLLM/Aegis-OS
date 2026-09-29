@@ -532,4 +532,7 @@ three Aegis maxima; the converse does not hold and does not need to.
   `blocked_by` is done. Each still has an external BLOCKED-until criterion that
   holds: M11 waits for Imago to return an image/UKI and the product result, M10
   for a Nucleus-published kernel manifest. `ready` there is a register state,
-  not an unblocking.
+  not an unblocking. (Dated 2026-09-29, after this page: nucleus published
+  release `v7.2.8-realtime-lusoris1`, and M10 records it in
+  [the Nucleus kernel gate](nucleus-kernel.md). The statements above that
+  nucleus has no release describe the state this gate was delivered in.)

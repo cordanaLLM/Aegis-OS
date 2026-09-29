@@ -205,10 +205,13 @@ The reference profile column records what the machine in
 is development evidence only; see `docs/roadmap/hardware.md`.
 
 M11 and M10 are `ready` by rule (5): every milestone they are blocked by is
-done. Each still carries an external BLOCKED-until criterion that holds -- M11
-waits for Imago to return an image/UKI and its product result, M10 for a
-Nucleus-published kernel manifest (D92) -- so neither can close yet, and
-`ready` there is a register state, not an unblocking.
+done. M11 still carries an external BLOCKED-until criterion that holds: it
+waits for Imago to return an image/UKI and its product result. M10's held until
+2026-09-29, when nucleus published release `v7.2.8-realtime-lusoris1`; M10's
+run verified and recorded it and repeated the M19 loads on it, and M10 stays
+open because that kernel cannot attach `action_gate` (decision D107,
+`docs/build/nucleus-kernel.md`). `ready` is a register state for both, not an
+unblocking.
 
 ## Milestone exit criteria and epics
 
@@ -3445,7 +3448,9 @@ Cheapest exit: Boot the Nucleus kernel directly in QEMU/KVM with a minimal
 initramfs and repeat the M19 loads. The M19 host-kernel fixture does not close
 this milestone.
 
-Evidence:
+Evidence (the D92 disclosure of 2026-09-28, the disclosure of 2026-09-29, the
+E10-1 finding and the gate; every entry is in `planning/roadmap.json`, and the
+run is on `docs/build/nucleus-kernel.md`):
 
 - Disclosure, in the shape M18 recorded, because a milestone that edits its own
   bar must say so where the bar is judged: before any delivery, on 2026-09-28
@@ -3465,6 +3470,81 @@ Evidence:
   unblocking: the first exit criterion still holds, because nucleus has
   published no kernel manifest (nucleus #18, #20), and this entry is not
   evidence that any criterion is met.
+- Disclosure, in the shape M18 recorded, because a milestone must say where its
+  evidence differs from the letter of its bar (2026-09-29). No exit criterion,
+  epic or the cheapest exit was rewritten by this delivery, and M10 is not done.
+  Eight points are recorded. (1) Criterion 4 and E10-1's positive are not met:
+  action_gate loads through the Nucleus kernel's verifier and does not attach
+  (the E10-1 entry). (2) Criterion 7 says the requirement is checked against the
+  kernel's config inside the VM: the readback guest prints its own
+  /proc/config.gz, tools/kernel_requirement_check.py decides every row on that
+  text on the host, and the load guest hashes /proc/config.gz again and loads
+  nothing unless the sha256 is the one checked; no Python runs in the guest. (3)
+  M19's loader gained a tp-attach mode and a --map-set option
+  (bpf/loader/aegis_bpf_probe.c); its four M19 modes are unchanged and
+  tools/test_bpf_objects.py passes. (4) The objects are M19's sources compiled
+  by M19's gate functions, against a vmlinux.h dumped from the Nucleus kernel's
+  own BTF, extracted from the verified image, not the host's. (5) Guest loads
+  run under setpriv as uid 65534 with M19's capability set -all,+bpf,+perfmon;
+  PID 1 is root, so M19's sudo is absent, and tracefs is mounted group-owned by
+  gid 65534 because CAP_PERFMON does not bypass file permissions. (6) The
+  runtime probes the requirement names for powercap and the IOMMU groups are not
+  read in the guest: QEMU presents neither RAPL counters nor an IOMMU. (7)
+  cosign 2.6.3 is admitted by M10, having been admitted nowhere before, and held
+  below 3 because the reference profile's second copy, 3.1.3, deprecates the
+  --offline flag the gate passes; it verifies SHA256SUMS against the pinned
+  identity, tag commit and tag ref, while imago checks only that the bundle is
+  present. (8) tools/kernel_requirement_check.py reimplements in Python the
+  configuration and identity half of KernelRequirement::unmet (the criterion 7
+  entry); it does not decide the capability rows the Rust half reads from a
+  profile.
+- E10-1 NOT met (2026-09-29), runs r20260929T195935-62a3 and
+  r20260929T203240-505f: the negative holds, M19's unchecked-pointer variant
+  rejected with 'R7 invalid mem access 'ringbuf_mem_or_null''. The positive does
+  not: action_gate loads (load_rc=0) and its attach fails with 'failed to
+  attach: -EBUSY'. A BPF LSM program attaches through a BPF trampoline, which on
+  x86 patches the five-byte nop -mfentry leaves at the hook's entry;
+  __bpf_arch_text_poke in arch/x86/net/bpf_jit_comp.c returns -EBUSY when the
+  bytes there are not that nop, and the Nucleus kernel is built with
+  CONFIG_FUNCTION_TRACER not set, so no such nop exists, although
+  CONFIG_BPF_LSM=y and Kconfig does not make BPF_LSM depend on the tracer. The
+  hypothesis was checked: two kernels from M26's verified linux 7.2.5 source and
+  M26's configuration, one with CONFIG_FTRACE, CONFIG_FUNCTION_TRACER and
+  CONFIG_DYNAMIC_FTRACE on and otherwise differing only in the options those
+  select and the host's pahole version, booted through the same boot() with the
+  same initramfs, objects, loader and capabilities: the unchanged one failed
+  with -EBUSY and the other attached, the marker exec reached the ring buffer
+  and it detached with marker_seen=1 (kept under
+  ~/.cache/aegis-nucleus-kernel/control-function-tracer-20260929). The Nucleus
+  kernel satisfies build/kernel-requirement.json as written, and so would M26's,
+  which has the same gap; the requirement does not ask for the trampoline. What
+  would close E10-1 is decision D107 (decided 2026-09-29), recorded in docs/roadmap/README.md,
+  not taken here: a requirement row for CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS,
+  carried through M09's pinned fixtures once imago and nucleus vendor the new
+  bytes, and a Nucleus release built to it.
+- The gate (2026-09-29): make verify-nucleus-kernel runs
+  tools/verify_nucleus_kernel.py, outside make verify-all like verify-latency
+  and verify-boot, and make nucleus-kernel-fetch is its one networked step. A
+  host without the reference profile's capabilities prints a SKIP line that
+  names the reason and ends 'the Nucleus kernel gate did not run.', and exits 0:
+  not Linux (macOS and Windows name their platform), no read-write /dev/kvm, no
+  /proc/config.gz, a tool missing or outside its admitted range, no M09 contract
+  cache, or no fetched release, observed on 2026-09-29 with an empty cache
+  directory, and with a PATH naming /usr/bin/cosign 3.1.3, which the gate and
+  the fetch both refuse. A cache that is present but wrong is a FAIL, observed
+  the same day with symlinked assets and an altered SHA256SUMS.
+  tools/test_nucleus_kernel.py (82 tests) and
+  tools/test_kernel_requirement_check.py (30 tests), inside make verify-all,
+  hold the pin, the pre-boot refusal, the stage order, the signature's identity
+  and revision binding, the release floor, the D94 rules, the report parser, the
+  capability diff, the load checks, the skip lines, cosign's admitted range, the
+  fetch's refusal of other bytes, the admission and the programs the gate may
+  start. docs/build/nucleus-kernel.md records the run: r20260929T195935-62a3 was
+  the first to reach every case, and r20260929T203240-505f, started at 20:32:40
+  local time after the gate's files were last edited at 20:32:20, is the
+  recorded run, with the same eighteen outcomes. This is development evidence on
+  the reference profile only: the M19 host-kernel fixture does not close M10,
+  and a pass here would close neither the hardware nor the release gate.
 
 Epics:
 
@@ -3717,10 +3797,11 @@ roadmap through a reviewed change.
 Risks, recorded from the cards and the private readiness matrix:
 
 - Cross-repository contracts are verified for consumption only. M09 pins
-  imago's decoding of both M18 payloads (D92), but neither producer builds an
-  image or a kernel yet, so the results M11 and M10 wait for depend on producer
-  work Aegis cannot do: cordanaLLM/imago issue 46 and cordanaLLM/nucleus issues
-  18 and 20.
+  imago's decoding of both M18 payloads (D92), but imago builds no image yet, so
+  the result M11 waits for depends on producer work Aegis cannot do:
+  cordanaLLM/imago issue 46. nucleus published its first kernel on 2026-09-29,
+  and M10 verified it; what M10 now waits for is D107, a kernel requirement that
+  asks for the BPF trampoline's prerequisite, and a release built to it.
 - Imported workflows suppress failures (REQ-CI-01, REQ-CI-02), and the imported
   integration script prints boot/TPM2 success without executing anything
   (REQ-BOOT-02). They stay inactive, and any activated gate must be rewritten.
@@ -5184,6 +5265,33 @@ only, so an array led by another version is `Malformed` rather than
 array form of both payloads and of every nested struct, and a one-element array
 led by another version, the case the object-only peek alone decides, and fails
 against the decoder of `061bbde`.
+
+### Questions from the M10 run (2026-09-29)
+
+- **D107** Does the Aegis kernel requirement ask for what a BPF LSM program
+  needs to attach, and not only for `CONFIG_BPF_LSM`? Options: add a
+  `build/kernel-requirement.json` row, `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS`
+  built-in, probe `kernel-config`, required by REQ-P06-05, carried through
+  M09's pinned fixtures once imago and nucleus vendor the new bytes, and ask
+  nucleus for a release built to it; ask nucleus to enable the function tracer
+  without changing the requirement; or record E10-1's positive as unmet on this
+  kernel and leave both unchanged. Recommended: the first option. Why: M10's run
+  of 2026-09-29 (`docs/build/nucleus-kernel.md`) found the Nucleus kernel
+  `7.2.8-lusoris1-realtime` satisfies all thirteen features and still cannot
+  attach `action_gate`: the load succeeds and the attach returns `-EBUSY`,
+  because the BPF trampoline patches the `-mfentry` nop at the hook's entry and
+  the kernel is built with `CONFIG_FUNCTION_TRACER` not set. A controlled
+  comparison on M26's source and configuration, differing only in the function
+  tracer, attached with it and failed without it. `CONFIG_BPF_LSM` does not
+  depend on the tracer in Kconfig, so a requirement that names only
+  `CONFIG_BPF_LSM` admits a kernel that cannot run a BPF LSM program; M26's own
+  kernel has the same gap. The payload is the contract both producers vendor,
+  so the change is the maintainer's, and M10 stays open until a release built to
+  it passes E10-1.
+  **Decision (2026-09-29):** the first option. `build/kernel-requirement.json`
+  gains the `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS` row in its own change,
+  which merges once imago and nucleus vendor the new bytes, and nucleus is asked
+  for a release built to it. M10 stays open until that release passes E10-1.
 
 ## Evidence
 

@@ -10,9 +10,9 @@ quoted verifier output and the scheduler attach/detach readings, is in
 | `aegis_bpf_abi.h` | shared | record layout and declared bounds, included by both the objects and the loader |
 | `action_gate.bpf.c` | P06 | BPF LSM program on `lsm/bprm_check_security`, observe-only |
 | `kepler_power.bpf.c` | P13 | tracepoint program on `sched/sched_switch` |
-| `scx_cake.bpf.c` | P07 | sched_ext `struct_ops`. Loaded through the verifier, never attached |
+| `scx_cake.bpf.c` | P07 | sched_ext `struct_ops`. M19 loads it on the host and never attaches it; M10 attaches it only inside a guest |
 | `scx_cake_stub.bpf.c` | P07 | the boundary fixture: a `struct_ops` whose nine declared handlers are empty |
-| `loader/aegis_bpf_probe.c` | gate | retains the per-program verifier log, holds the deadlines, attaches and detaches |
+| `loader/aegis_bpf_probe.c` | gate | retains the per-program verifier log, holds the deadlines, attaches and detaches; M10 added `tp-attach` and `--map-set` |
 
 Run it with `make verify-bpf`. That target is deliberately **not** part of `make
 verify-all`, and the `Makefile` records why: it needs CAP_BPF, CAP_PERFMON, a
@@ -23,7 +23,8 @@ of which CI has. The half that needs no kernel runs in `verify-all` as
 Three things are worth knowing before reading the sources:
 
 - **Nothing here denies, schedules or measures anything.** `action_gate` returns
-  only `AEGIS_ACTION_ALLOW`, which is zero; `scx_cake` is never attached;
+  only `AEGIS_ACTION_ALLOW`, which is zero; on the host `scx_cake` is never
+  attached, and M10 attaches it for one second inside a guest only;
   `scx_cake_stub` is attached with `SCX_OPS_SWITCH_PARTIAL`, so no task is ever
   scheduled through it. Every threshold in `aegis_bpf_abi.h` is a declared
   budget, and the two values that could be mistaken for measurements carry
@@ -36,7 +37,8 @@ Three things are worth knowing before reading the sources:
 - **A pass is a non-qualifying local fixture.** The verifier that accepted these
   objects belongs to a kernel this repository neither builds nor configures, so
   it does not close M10's Nucleus-kernel verification and closes no image, boot,
-  hardware or release gate.
+  hardware or release gate. M10's run on the Nucleus kernel is recorded in
+  [`docs/build/nucleus-kernel.md`](../docs/build/nucleus-kernel.md).
 
 `.workingdir/prepared/scaffold/bpf/` (private, gitignored, not present in a
 clone) holds the imported proposal sketches these were rewritten from. They are

@@ -305,17 +305,27 @@ def library_closure(program):
     return sorted(set(re.findall(r"(/[^\s]+\.so[^\s]*)", stdout)))[:MAX_GUEST_LIBRARIES]
 
 
-def populate_guest(tree, run_script):
-    """Fill an initramfs tree with the host userspace the guest calls."""
+def install_programs(tree, programs, extra=()):
+    """Lay out a guest root and copy `programs` plus their library closure into it.
+
+    `programs` are names resolved on PATH; `extra` are already-built files
+    copied beside them under their own names. The userspace is this host's
+    own, and only the kernel under test is the one being examined. M10 builds
+    its guest through this function and `archive_tree`, so the direct-kernel
+    boot mechanics exist once.
+    """
     for name in ("usr/bin", "usr/lib", "proc", "dev", "sys"):
         (tree / name).mkdir(parents=True, exist_ok=True)
     for name in ("bin", "lib", "lib64"):
         (tree / name).symlink_to(f"usr/{'bin' if name == 'bin' else 'lib'}")
     libraries = set()
-    for name in GUEST_PROGRAMS:
+    resolved = []
+    for name in programs:
         program = shutil.which(name)
         if program is None:
             raise GateError(f"the guest needs {name}, which is not on PATH")
+        resolved.append((program, name))
+    for program, name in [*resolved, *((str(path), path.name) for path in extra)]:
         copied = tree / "usr" / "bin" / name
         shutil.copy2(program, copied)
         # The host ships mount set-uid. Copied into an archive owned by the
@@ -326,6 +336,11 @@ def populate_guest(tree, run_script):
     (tree / "usr" / "bin" / "sh").symlink_to("bash")
     for library in sorted(libraries)[:MAX_GUEST_LIBRARIES]:
         shutil.copy2(library, tree / "usr" / "lib" / Path(library).name)
+
+
+def populate_guest(tree, run_script):
+    """Fill an initramfs tree with the host userspace the guest calls."""
+    install_programs(tree, GUEST_PROGRAMS)
     for source, name in ((GUEST_INIT, "init"), (PROBE_SCRIPT, PROBE_SCRIPT.name)):
         target = tree / name
         shutil.copy2(source, target)
@@ -353,7 +368,11 @@ def build_initramfs(base):
         shutil.rmtree(tree)
     tree.mkdir(parents=True)
     populate_guest(tree, measurement_script())
-    archive = base / "guest" / "initramfs.cpio"
+    return archive_tree(tree, base / "guest" / "initramfs.cpio")
+
+
+def archive_tree(tree, archive):
+    """Archive `tree` as a newc cpio owned by root, and return the archive path."""
     names = "\n".join(
         sorted(str(path.relative_to(tree)) for path in tree.rglob("*"))[:MAX_GUEST_LINES]
     )

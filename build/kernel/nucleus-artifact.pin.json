@@ -1,0 +1,77 @@
+{
+  "schema": "aegis.m10.nucleus-kernel-pin.v1",
+  "note": "M10 development evidence only (D92, D94). The kernel under test is one cordanaLLM/nucleus built and published; Aegis boots it in a guest and does not construct it (docs/integration/stack.md). `make nucleus-kernel-fetch` is the one networked step: it downloads the assets named here from the release, refuses any whose sha256 or size differs, and runs cosign verify-blob on SHA256SUMS. The bytes are cached outside the repository under AEGIS_NUCLEUS_KERNEL_DIR and hashed against this file immediately before every boot.",
+  "provider": "cordanaLLM/nucleus",
+  "repository": "https://github.com/cordanaLLM/nucleus",
+  "tag": "v7.2.8-realtime-lusoris1",
+  "revision": "9e050cf8fc2fb62de943229f22ab104dce455e92",
+  "published": "2026-09-29T16:23:54Z",
+  "download": "https://github.com/cordanaLLM/nucleus/releases/download/v7.2.8-realtime-lusoris1",
+  "stream": "realtime",
+  "version": "7.2.8-lusoris1",
+  "kernel": {
+    "release": "7.2.8-lusoris1-realtime",
+    "config_digest": "sha256:e9510d2d1928d4e153b19cf3312c4184ce44b4186ec6fde286e001060ffd731a",
+    "image": "vmlinuz-7.2.8-lusoris1-realtime",
+    "config": "kernel-realtime-x86_64.config"
+  },
+  "manifest": {
+    "file": "kernel-realtime.manifest.json",
+    "schema": "imago.nucleus.kernel-artifact.v1",
+    "sha256": "c57416a1fc286eab54df65249d7502de1a6dbf601f1b064336b3abbf80cf0f4e",
+    "size": 2006
+  },
+  "checksums": {
+    "file": "SHA256SUMS",
+    "sha256": "62ceccf9b6730fce5790df8803375b3c1c32f67f1a6ca6bc94f7ba12b2c9c90f",
+    "size": 739
+  },
+  "bundle": {
+    "file": "SHA256SUMS.bundle",
+    "sha256": "6236ecc98882128f46783cf609c33ffbc68261df80cb591b443d051d4c64db2d",
+    "size": 9189
+  },
+  "signer": {
+    "scheme": "cosign-keyless-bundle",
+    "identity": "https://github.com/cordanaLLM/nucleus/.github/workflows/publish-release.yml@refs/tags/v7.2.8-realtime-lusoris1",
+    "identity-prefix": "https://github.com/cordanaLLM/nucleus/",
+    "issuer": "https://token.actions.githubusercontent.com"
+  },
+  "artifacts": [
+    {
+      "name": "kernel-realtime-x86_64.config",
+      "sha256": "e9510d2d1928d4e153b19cf3312c4184ce44b4186ec6fde286e001060ffd731a",
+      "size": 150532
+    },
+    {
+      "name": "kernel-realtime.cdx.json",
+      "sha256": "87fd7616e63f94c9414b12dcd88a5002aee07db25ccf0043a688c2b4332f21a7",
+      "size": 1514
+    },
+    {
+      "name": "kernel-realtime.spdx.json",
+      "sha256": "9631efcc8b68e691c3fd97c18a6743a1aada02f89852926c730c95a9d0ce5326",
+      "size": 2690
+    },
+    {
+      "name": "linux-headers-7.2.8-lusoris1-realtime_7.2.8-lusoris1_amd64.deb",
+      "sha256": "6c9a71dc510a55ea323f61a7fc2422f31eee8937319b75bc8f4dbd2af68f8559",
+      "size": 10901222
+    },
+    {
+      "name": "linux-image-7.2.8-lusoris1-realtime_7.2.8-lusoris1_amd64.deb",
+      "sha256": "41174d5f0d5dc2f1d30c072280b3d98e619b833ee85fd5c4d3133d31c09a864f",
+      "size": 18837706
+    },
+    {
+      "name": "linux-libc-dev_7.2.8-lusoris1_amd64.deb",
+      "sha256": "1b9aca31f12cea80cd1f215262d5323a7fae297f86b4a1f3f8a9637cfad888fb",
+      "size": 1556212
+    },
+    {
+      "name": "vmlinuz-7.2.8-lusoris1-realtime",
+      "sha256": "50ec65c5d6b77de9b14c1f2c0c2f07d668edcff3b44ce1a44196659cdc66d626",
+      "size": 16851968
+    }
+  ]
+}

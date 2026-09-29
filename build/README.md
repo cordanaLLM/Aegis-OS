@@ -80,6 +80,22 @@ overlay. It is **not** part of `make verify-all`; the reasoning is on the
 and the run, the PCR read-back and the scope limits are in
 `docs/build/boot-harness.md`.
 
+## Reviewed and gated (M10)
+
+| Path | What it declares |
+| :--- | :--- |
+| `kernel/nucleus-artifact.pin.json` | the kernel cordanaLLM/nucleus built and published: release tag and commit, the `imago.nucleus.kernel-artifact.v1` manifest and every asset by sha256 and size, `kernel.release`, `kernel.config_digest`, and the keyless signer identity and issuer |
+
+This pins a kernel Aegis boots and does not construct (D92). `make
+nucleus-kernel-fetch` downloads the assets, refuses any that differ from the
+pin and checks the cosign signature on `SHA256SUMS`; `make
+verify-nucleus-kernel` records what imago verifies, hashes the image
+immediately before every boot, checks `kernel-requirement.json` against the
+configuration the kernel reports from inside the guest (D94), and only then
+repeats the M19 loads. It is **not** part of `make verify-all`; the reasoning
+is on the `verify-nucleus-kernel` target in the `Makefile`, and the run, its
+one failure and the scope limits are in `docs/build/nucleus-kernel.md`.
+
 ## Still reserved
 
 Current candidates are indexed under `.workingdir/prepared/scaffold/build/`
