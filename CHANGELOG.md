@@ -11,6 +11,109 @@ are prepended above the preparation-history section below; do not hand-edit
 them. The preparation-history section records work that predates the first
 version and is never released.
 
+## 0.1.0 (2026-09-29)
+
+
+### Features
+
+* activate P06 aegis-justitia as the first component (milestone M02) ([#89](https://github.com/cordanaLLM/Aegis-OS/issues/89)) ([54aa628](https://github.com/cordanaLLM/Aegis-OS/commit/54aa628985d55d73044a6e2a41f2ce4109e6aee7))
+* activate the P03 and P15 validation slices (milestone M17) ([#102](https://github.com/cordanaLLM/Aegis-OS/issues/102)) ([106ea94](https://github.com/cordanaLLM/Aegis-OS/commit/106ea9431fbfb92141d96d771db16a79ec2a93a5))
+* activate the P11 and P14 leaf slices (milestone M08) ([#111](https://github.com/cordanaLLM/Aegis-OS/issues/111)) ([719cccb](https://github.com/cordanaLLM/Aegis-OS/commit/719cccb09f83f70877fb4d04631c85286ddb4210))
+* boot a pinned upstream image under KVM, OVMF and swtpm (M24) ([#138](https://github.com/cordanaLLM/Aegis-OS/issues/138)) ([da693ef](https://github.com/cordanaLLM/Aegis-OS/commit/da693ef4e553b494d14c5e9ac6a8cd5bd06acb40))
+* build the kernel here and read its configuration back (milestone M26) ([#101](https://github.com/cordanaLLM/Aegis-OS/issues/101)) ([17c5341](https://github.com/cordanaLLM/Aegis-OS/commit/17c534125578b40654bbce3d301c01ce9ee422cb))
+* build the kernel here while Nucleus is a scaffold (D70, M26) ([#93](https://github.com/cordanaLLM/Aegis-OS/issues/93)) ([d08f94c](https://github.com/cordanaLLM/Aegis-OS/commit/d08f94c5bb92702afe8a031a4e366f2613bd62ae))
+* build the P05 Forum shell model as a Rust crate (M16) ([#168](https://github.com/cordanaLLM/Aegis-OS/issues/168)) ([631a1b5](https://github.com/cordanaLLM/Aegis-OS/commit/631a1b5bf18a39f88913504f612f5ec2aded8c57))
+* complete milestone M01 with the component inventory and decision register ([#77](https://github.com/cordanaLLM/Aegis-OS/issues/77)) ([6d866c2](https://github.com/cordanaLLM/Aegis-OS/commit/6d866c2e4d8d816a5235fe8580bad5806e746df3))
+* compute the roadmap order instead of assigning it by hand ([#90](https://github.com/cordanaLLM/Aegis-OS/issues/90)) ([38a5217](https://github.com/cordanaLLM/Aegis-OS/commit/38a521783049dd0e18ff6a927eba1abc27b653de))
+* gate the Concordia tokens on axe-core in a digest-pinned container (M04) ([#145](https://github.com/cordanaLLM/Aegis-OS/issues/145)) ([dc5eac2](https://github.com/cordanaLLM/Aegis-OS/commit/dc5eac26860002ae7f8dd683618f922687e7c367))
+* gate the roadmap document against the register ([#100](https://github.com/cordanaLLM/Aegis-OS/issues/100)) ([c95adc9](https://github.com/cordanaLLM/Aegis-OS/commit/c95adc9479284d48bf6e0986e46eb922aa579040))
+* **kernel:** require the BPF trampoline's direct calls in the kernel requirement (D107) ([#177](https://github.com/cordanaLLM/Aegis-OS/issues/177)) ([4acc511](https://github.com/cordanaLLM/Aegis-OS/commit/4acc511d9675bb984c4f68aa9b32931e565db35d))
+* load the eBPF objects through the verifier on the host kernel (M19) ([#113](https://github.com/cordanaLLM/Aegis-OS/issues/113)) ([7105aec](https://github.com/cordanaLLM/Aegis-OS/commit/7105aecc22182f8c6fa9fcbc3e65257cc3e8ecb0))
+* measure RAPL energy and sandbox candidate evaluation in Firecracker (M21) ([#175](https://github.com/cordanaLLM/Aegis-OS/issues/175)) ([a28be4e](https://github.com/cordanaLLM/Aegis-OS/commit/a28be4e3bd0c40b06e30f5d257224cc3a0602b60))
+* measure the P07 and P08 tier thresholds on a realtime guest (M23) ([#115](https://github.com/cordanaLLM/Aegis-OS/issues/115)) ([2cdbd34](https://github.com/cordanaLLM/Aegis-OS/commit/2cdbd34f7e0b9234b77319555e1bab06012e1e96))
+* model the agent execution chain, P09 Minerva and P10 Vesta (milestone M06) ([#109](https://github.com/cordanaLLM/Aegis-OS/issues/109)) ([02b8d57](https://github.com/cordanaLLM/Aegis-OS/commit/02b8d57e82667a48d2323421f350ca90770f6bde))
+* model the evolution loop, P13 Tellus and P16 Athena (milestone M05) ([#108](https://github.com/cordanaLLM/Aegis-OS/issues/108)) ([e570d23](https://github.com/cordanaLLM/Aegis-OS/commit/e570d234734abd05e29d43703dc3a60652a05c6a))
+* model the P02 A/B candidate lifecycle (milestone M15) ([#99](https://github.com/cordanaLLM/Aegis-OS/issues/99)) ([b20d5b6](https://github.com/cordanaLLM/Aegis-OS/commit/b20d5b6e942bed85bd737f99896ce615782a07dc))
+* model the real-time control plane, P04, P07 and P08 (milestone M07) ([#112](https://github.com/cordanaLLM/Aegis-OS/issues/112)) ([1f1f91b](https://github.com/cordanaLLM/Aegis-OS/commit/1f1f91b4da83b8d0257039cab3d6a9950fef64cb))
+* pass VA-API frames to a layer surface over SCM_RIGHTS (M27) ([#172](https://github.com/cordanaLLM/Aegis-OS/issues/172)) ([eb8aa9b](https://github.com/cordanaLLM/Aegis-OS/commit/eb8aa9b78bc88b13097eb43f173564380c79faff))
+* pin the imago consumption contract against pinned producer main (M09) ([#152](https://github.com/cordanaLLM/Aegis-OS/issues/152)) ([be3f0a6](https://github.com/cordanaLLM/Aegis-OS/commit/be3f0a67c8dbecc8d93f619f9184c6089558e271))
+* pin the P06 consumer interface contracts (milestone M14) ([#94](https://github.com/cordanaLLM/Aegis-OS/issues/94)) ([16a6e78](https://github.com/cordanaLLM/Aegis-OS/commit/16a6e7885bfd546c537b89aa64a5bb23ccf0e5c7))
+* pin the product input and kernel requirement schemas (milestone M18) ([#98](https://github.com/cordanaLLM/Aegis-OS/issues/98)) ([5148ab2](https://github.com/cordanaLLM/Aegis-OS/commit/5148ab27bb4c9d32759e8739b97c05d9b423b912))
+* record the reference development profile and re-rank the roadmap against it ([#78](https://github.com/cordanaLLM/Aegis-OS/issues/78)) ([ffb498f](https://github.com/cordanaLLM/Aegis-OS/commit/ffb498f908921f9a486948bc801262d01804b130))
+* refuse an abort in any crate's library code ([#106](https://github.com/cordanaLLM/Aegis-OS/issues/106)) ([8016796](https://github.com/cordanaLLM/Aegis-OS/commit/801679608e31cc2193f21c9444f703adee92ef6f))
+* **tools:** bump the praetor pin automatically when praetor moves ([#132](https://github.com/cordanaLLM/Aegis-OS/issues/132)) ([5bfca8f](https://github.com/cordanaLLM/Aegis-OS/commit/5bfca8f9029d1842cf8277baf953df086a5bad0d))
+* untrack the Praetor bundle, register evasion hooks, add release train and docs portal ([#72](https://github.com/cordanaLLM/Aegis-OS/issues/72)) ([ed366b7](https://github.com/cordanaLLM/Aegis-OS/commit/ed366b789ebc61fbdd76b9ccd4a655476d07e993))
+* validate the P01/P02 definitions against host systemd (milestone M03) ([#95](https://github.com/cordanaLLM/Aegis-OS/issues/95)) ([61f2fe1](https://github.com/cordanaLLM/Aegis-OS/commit/61f2fe16bab7889e007b2fd1474b025023906e91))
+* verify and boot the first Nucleus kernel release against M19's eBPF objects (M10, partial) ([#173](https://github.com/cordanaLLM/Aegis-OS/issues/173)) ([9aa92ab](https://github.com/cordanaLLM/Aegis-OS/commit/9aa92abd2e5468ac3bf2d553664d96456e8408f2))
+
+
+### Bug Fixes
+
+* **contracts:** refuse array-form payloads and publish the v1 JSON Schemas ([#167](https://github.com/cordanaLLM/Aegis-OS/issues/167)) ([18c9791](https://github.com/cordanaLLM/Aegis-OS/commit/18c97911faee93ebe3d9ffb9bc03d7892796320b))
+* finish the rationale strings that were written truncated ([#104](https://github.com/cordanaLLM/Aegis-OS/issues/104)) ([cd15781](https://github.com/cordanaLLM/Aegis-OS/commit/cd157811905eaa4cc541ec1e6382e7c4cfeea1ef))
+* **latency:** keep the recorded host kernel as provenance (D73) ([#121](https://github.com/cordanaLLM/Aegis-OS/issues/121)) ([ef4fae1](https://github.com/cordanaLLM/Aegis-OS/commit/ef4fae19029b1497d34725835c2359674255c885))
+* **licensing:** label the vendored interfig tree MIT ([#142](https://github.com/cordanaLLM/Aegis-OS/issues/142)) ([a2a101b](https://github.com/cordanaLLM/Aegis-OS/commit/a2a101b91a55ed7813a92865096535fbc3df87f4))
+* M06 recorded a test count from a tree that never existed ([#110](https://github.com/cordanaLLM/Aegis-OS/issues/110)) ([e15e880](https://github.com/cordanaLLM/Aegis-OS/commit/e15e8803969e94767434403abfbf64e3c8993c0d))
+* M20 said the TPM tooling was both absent and installed ([#107](https://github.com/cordanaLLM/Aegis-OS/issues/107)) ([0860cb4](https://github.com/cordanaLLM/Aegis-OS/commit/0860cb4186146511ab4f8ed8fdfe692cc1585c48))
+* M23 carried another milestone's epics ([#114](https://github.com/cordanaLLM/Aegis-OS/issues/114)) ([daf540a](https://github.com/cordanaLLM/Aegis-OS/commit/daf540afe446af3b6f4f1e3c6ee77d4063c6a2d3))
+* settle who owns the epics two milestone pairs both claimed (D71, D72) ([#116](https://github.com/cordanaLLM/Aegis-OS/issues/116)) ([acbacf9](https://github.com/cordanaLLM/Aegis-OS/commit/acbacf92ad09836f435fca81d65de2bf353599b2))
+* **systemd:** find systemd-sysupdate in libexec and refresh the reference profile ([#131](https://github.com/cordanaLLM/Aegis-OS/issues/131)) ([aa851af](https://github.com/cordanaLLM/Aegis-OS/commit/aa851afcb718b9ce4ca54675d31ed8854226f192))
+* the boot harness is not gated on host firmware settings ([#91](https://github.com/cordanaLLM/Aegis-OS/issues/91)) ([562b82a](https://github.com/cordanaLLM/Aegis-OS/commit/562b82a625b4835a16a5096d8784e27028ff2bac))
+* **tools:** rebuild the praetor bump when Aegis main moves ([#141](https://github.com/cordanaLLM/Aegis-OS/issues/141)) ([3337fb3](https://github.com/cordanaLLM/Aegis-OS/commit/3337fb3d853dc14442743952ca45cd1988e4b715))
+
+
+### Documentation
+
+* add the source-cited least-resistance roadmap with blocking states ([34cdaee](https://github.com/cordanaLLM/Aegis-OS/commit/34cdaeefc7e5d8e599b489837f6e1bd543fdb6c8))
+* **adr:** make the P05 shell native Rust on gpui (ADR-0004) ([#155](https://github.com/cordanaLLM/Aegis-OS/issues/155)) ([061bbde](https://github.com/cordanaLLM/Aegis-OS/commit/061bbde94f83d765f08efb768d02dcbb6dbf909d))
+* record hosted ruleset and issue mirror readback for M00 ([#70](https://github.com/cordanaLLM/Aegis-OS/issues/70)) ([6a04387](https://github.com/cordanaLLM/Aegis-OS/commit/6a043871819b9ce72e82c2fa4c6e53f70aee5f15))
+* record maintainer decisions D01-D20 and ADR-0001/0002 ([#71](https://github.com/cordanaLLM/Aegis-OS/issues/71)) ([7a3fe3a](https://github.com/cordanaLLM/Aegis-OS/commit/7a3fe3adef2e3b8305cf7f7497b4c5975b33e77b))
+* record where kernels come from (D70) ([#92](https://github.com/cordanaLLM/Aegis-OS/issues/92)) ([c64da52](https://github.com/cordanaLLM/Aegis-OS/commit/c64da52f8e02ee15501d32160c102e70e8d07956))
+* **roadmap:** assign the open Concordia halves to M16 and M11 (D91) ([#146](https://github.com/cordanaLLM/Aegis-OS/issues/146)) ([54c710c](https://github.com/cordanaLLM/Aegis-OS/commit/54c710c115b214bf0ff549853528213c0f5c8bbf))
+* **roadmap:** refresh M09 producer records and open the desktop decisions (D74-D77) ([#123](https://github.com/cordanaLLM/Aegis-OS/issues/123)) ([426632f](https://github.com/cordanaLLM/Aegis-OS/commit/426632f7251e05376c0fe09a3cabbd2d070973d5))
+* **roadmap:** refresh the current-state lines after [#124](https://github.com/cordanaLLM/Aegis-OS/issues/124) ([#129](https://github.com/cordanaLLM/Aegis-OS/issues/129)) ([020bcd5](https://github.com/cordanaLLM/Aegis-OS/commit/020bcd5ad71eee837731eaef63a39e81ae1f34f8))
+* **roadmap:** register P17 aegis-scaena and settle the desktop decisions (D74-D83) ([#124](https://github.com/cordanaLLM/Aegis-OS/issues/124)) ([e96d4f6](https://github.com/cordanaLLM/Aegis-OS/commit/e96d4f6a879119603fb7084b8826af7379693562))
+* settle decisions D56, D58, D61 and D65 and record the version policy ([#88](https://github.com/cordanaLLM/Aegis-OS/issues/88)) ([698ccf2](https://github.com/cordanaLLM/Aegis-OS/commit/698ccf2b162dea8a7ed11c3dc5f4e080d626a7ca))
+
+
+### Continuous Integration
+
+* add the governance-only preparation gate and enrich the component inventory ([42a23c8](https://github.com/cordanaLLM/Aegis-OS/commit/42a23c84705e0bb13a61c443f42112b5fc1c9dca))
+* gate the release train behind RELEASE_TRAIN_ENABLED ([#73](https://github.com/cordanaLLM/Aegis-OS/issues/73)) ([6f80a6f](https://github.com/cordanaLLM/Aegis-OS/commit/6f80a6f69c2dc65db5bcbba7cf34f34565e81be8))
+
+
+### Miscellaneous Chores
+
+* add split licensing, community scaffold, and governance cleanup ([a2c9626](https://github.com/cordanaLLM/Aegis-OS/commit/a2c9626fa2d9665d80c93adf958622b64fa26242))
+* adopt golusoris and sveltesentio, declare os-image, and adopt HISS-21 platform neutrality ([#118](https://github.com/cordanaLLM/Aegis-OS/issues/118)) ([3ab8cda](https://github.com/cordanaLLM/Aegis-OS/commit/3ab8cda6972597622c719710eec4d9452e304eb4))
+* align the VS Code configuration with this repository's stack ([#74](https://github.com/cordanaLLM/Aegis-OS/issues/74)) ([3bedb62](https://github.com/cordanaLLM/Aegis-OS/commit/3bedb6271f8c0ba8c9e92b4ba2cefe5afee030eb))
+* **contracts:** re-pin nucleus to 82aa6b7 in the M09 contract gate ([#170](https://github.com/cordanaLLM/Aegis-OS/issues/170)) ([e3fe08a](https://github.com/cordanaLLM/Aegis-OS/commit/e3fe08a0eb622b438569198f0679f8ce935533c7))
+* declare the canonical remote and enable checkpoint publication ([4d0d798](https://github.com/cordanaLLM/Aegis-OS/commit/4d0d798377b1f4cc0a0d91cae1066eeff46f20eb))
+* enforce strict markdown, YAML, Python and shell lint with no blanket exemptions ([#76](https://github.com/cordanaLLM/Aegis-OS/issues/76)) ([b9cfd70](https://github.com/cordanaLLM/Aegis-OS/commit/b9cfd70383289c458b6d9288304016841af4160e))
+* **governance:** adopt praetor 7e7746a ([#122](https://github.com/cordanaLLM/Aegis-OS/issues/122)) ([9ec7c58](https://github.com/cordanaLLM/Aegis-OS/commit/9ec7c585679db9472f197c64b4a8e26e8cdf6c51))
+* **governance:** bump praetor to 077a483 ([#136](https://github.com/cordanaLLM/Aegis-OS/issues/136)) ([d3f5c3a](https://github.com/cordanaLLM/Aegis-OS/commit/d3f5c3af678dbe8814a2659df6cb7a4ab0d362ad))
+* **governance:** bump praetor to 1069c8a ([#133](https://github.com/cordanaLLM/Aegis-OS/issues/133)) ([7e4a774](https://github.com/cordanaLLM/Aegis-OS/commit/7e4a7741707601a912012979b0cfc30de835c690))
+* **governance:** bump praetor to 11ac5d8 ([#176](https://github.com/cordanaLLM/Aegis-OS/issues/176)) ([8aa9da4](https://github.com/cordanaLLM/Aegis-OS/commit/8aa9da4eed9c86684ac620ad509c095981bf4b5c))
+* **governance:** bump praetor to 11bfe2b ([#134](https://github.com/cordanaLLM/Aegis-OS/issues/134)) ([cb6f729](https://github.com/cordanaLLM/Aegis-OS/commit/cb6f72943858ca12720c9ad0a215c044a048bce3))
+* **governance:** bump praetor to 2b80971 ([#166](https://github.com/cordanaLLM/Aegis-OS/issues/166)) ([f522813](https://github.com/cordanaLLM/Aegis-OS/commit/f522813dd72f0335da8528c48dbc725efbfadbe7))
+* **governance:** bump praetor to 4ac59ce ([#137](https://github.com/cordanaLLM/Aegis-OS/issues/137)) ([d79ed9b](https://github.com/cordanaLLM/Aegis-OS/commit/d79ed9bd0e1be544703f902c778af0c10c525e5e))
+* **governance:** bump praetor to 54aeec6 ([#153](https://github.com/cordanaLLM/Aegis-OS/issues/153)) ([e10514a](https://github.com/cordanaLLM/Aegis-OS/commit/e10514a7ddcc067e982c8687a1bb9252b35ba522))
+* **governance:** bump praetor to 7325896 ([#130](https://github.com/cordanaLLM/Aegis-OS/issues/130)) ([f9c7162](https://github.com/cordanaLLM/Aegis-OS/commit/f9c7162b25999574b755fdeb77626dcb4a433663))
+* **governance:** bump praetor to 80b228b ([#144](https://github.com/cordanaLLM/Aegis-OS/issues/144)) ([d3730ab](https://github.com/cordanaLLM/Aegis-OS/commit/d3730ab6d2aa0a22b39d523c01f06b47c76916e2))
+* **governance:** bump praetor to 892dc10 ([#169](https://github.com/cordanaLLM/Aegis-OS/issues/169)) ([d08b09c](https://github.com/cordanaLLM/Aegis-OS/commit/d08b09cc2e70c84e34a6443dbef998911810257a))
+* **governance:** bump praetor to 8d0344e ([#171](https://github.com/cordanaLLM/Aegis-OS/issues/171)) ([16ac360](https://github.com/cordanaLLM/Aegis-OS/commit/16ac3604a4ae49841c9c9a47dee579d71f0bc0ae))
+* **governance:** bump praetor to 9e855da ([#174](https://github.com/cordanaLLM/Aegis-OS/issues/174)) ([679e9cc](https://github.com/cordanaLLM/Aegis-OS/commit/679e9cc624abfa259c3bf32e712409435bf6093c))
+* **governance:** bump praetor to a5ecb6f ([#143](https://github.com/cordanaLLM/Aegis-OS/issues/143)) ([dc55a08](https://github.com/cordanaLLM/Aegis-OS/commit/dc55a08d98fc16d8e94ec0b713423edf1db17733))
+* **governance:** bump praetor to d2b6a3b ([#154](https://github.com/cordanaLLM/Aegis-OS/issues/154)) ([5c69801](https://github.com/cordanaLLM/Aegis-OS/commit/5c69801046684c47150d8570f6940cb213670ef0))
+* install the roadmap toolchain on the reference profile and record it ([#87](https://github.com/cordanaLLM/Aegis-OS/issues/87)) ([657cb73](https://github.com/cordanaLLM/Aegis-OS/commit/657cb738e1f6e0b7a0faa5a601c64220e1779d78))
+* **lint:** keep Praetor's managed figure engine out of local style lint ([#135](https://github.com/cordanaLLM/Aegis-OS/issues/135)) ([8ef66dc](https://github.com/cordanaLLM/Aegis-OS/commit/8ef66dc2ffd28f866d7ac81e87849f0daa29215b))
+* make markdown and shell lint clean and enforce them in CI ([#75](https://github.com/cordanaLLM/Aegis-OS/issues/75)) ([41235df](https://github.com/cordanaLLM/Aegis-OS/commit/41235dfdbbfef262954158f1e8213338b078ea94))
+* pin verified Praetor bootstrap and checkpoint evaluator ([4a8b9b5](https://github.com/cordanaLLM/Aegis-OS/commit/4a8b9b5aaa9459376e38d4d9f3e4a131cfa54f0e))
+* prepare local OS planning and shared integration contracts ([32b4ff6](https://github.com/cordanaLLM/Aegis-OS/commit/32b4ff62b1c87f3e289282a56416e44bd04c5f3c))
+* refresh bootstrap from verified Praetor checkpoint ([1a7906d](https://github.com/cordanaLLM/Aegis-OS/commit/1a7906da881415f7679159257462feeeafcf2457))
+* rename the required check to Verification gate ([#105](https://github.com/cordanaLLM/Aegis-OS/issues/105)) ([b484136](https://github.com/cordanaLLM/Aegis-OS/commit/b4841368bc74d4c63f51024d8fb6564021f7979b))
+* say what this repository is instead of what it was ([#103](https://github.com/cordanaLLM/Aegis-OS/issues/103)) ([f711c19](https://github.com/cordanaLLM/Aegis-OS/commit/f711c1985d94ef21beb9a4b75920d3c2c0b675b4))
+
 ## 0.0.0 (preparation history, never released)
 
 ### Changed (the kernel requirement asks for the BPF trampoline, D107)
