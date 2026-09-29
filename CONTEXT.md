@@ -7,8 +7,9 @@ consistently in `planning/`, `docs/`, and the governance files.
 - **Concept**: the original sixteen-subsystem operating-system design captured
   in the private source archive. It is preserved, not redesigned; changing it
   requires an ADR. ADR-0001 and ADR-0002 supersede parts of the P04 and P11
-  blueprints, and ADR-0003 adds a seventeenth subsystem, P17, the one change to
-  the subsystem set.
+  blueprints, ADR-0003 adds a seventeenth subsystem, P17, the one change to the
+  subsystem set, and ADR-0004 replaces the P05 blueprint's Svelte and Wry
+  frontend with a native Rust shell.
 - **Subsystem (P01–P17)**: one of the seventeen parts of the OS design,
   identified by its `P` number and `aegis-*` name in `planning/components.json`.
   P01–P16 come from the concept archive; P17 aegis-scaena, the display runtime,

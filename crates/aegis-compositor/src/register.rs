@@ -8,8 +8,9 @@
 //! control-group memory ceiling set by a unit file (REQ-P04-05), a retrieval
 //! pipeline whose modules are swapped per task (REQ-P04-06), a sidecar
 //! dispatch whose owner two sources disagree about (dispute DSP-21), and a
-//! socket endpoint and budget only one source states (dispute DSP-14). This
-//! module is a register for them, in the shape `aegis-vesta` uses for P10.
+//! socket endpoint and budget that only one source states and decision D32
+//! adopted as a target (dispute DSP-14). This module is a register for them, in
+//! the shape `aegis-vesta` uses for P10.
 //!
 //! **It admits and refuses nothing, and it endorses nothing.** The status
 //! field is the point: a claim recorded as
@@ -128,11 +129,16 @@ pub const P04_RECORDED_CLAIMS: [RecordedClaim; 5] = [
     RecordedClaim {
         requirement: "DSP-14",
         summary: "only one source names the P04 to P05 socket path and its sub-100 \
-                  microsecond budget; the graph of record draws the edge with neither",
-        status: ClaimStatus::UnresolvedSourceConflict,
-        settled_by: "decision D32 and the P05 consumer slice at milestone M16. This crate \
-                     declares no P04 to P05 schema and binds no socket, so it asserts \
-                     neither the path nor the budget",
+                  microsecond budget; the graph of record draws the edge with neither, and \
+                  decision D32 adopted both on 2026-09-29: /run/aegis/compositor.sock and \
+                  under 100 microseconds per hop, a target and not a claim until measured",
+        status: ClaimStatus::DeferredTimingRequirement,
+        settled_by: "a contract test over the real P04 socket, which D32 names as the check \
+                     of the path and the per-hop budget once that socket exists; the P05 \
+                     consumer slice at milestone M16 records both values and asserts \
+                     neither. This crate declares no P04 to P05 schema and binds no socket, \
+                     so it asserts neither the path nor the budget, and no figure is \
+                     produced by this milestone",
         source: ClaimSource {
             export: "export-003",
             sha256_prefix: "13af15ffc316",

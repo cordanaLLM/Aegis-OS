@@ -57,6 +57,8 @@ that the remaining milestones need.
 | M20 | partial | Once an M11 image exists, the full slice runs here: a real swtpm PCR quote signing one M14 audit record, and /var unsealing under an enrolled PCR policy | Attestation rooted in a firmware-verified boot chain, for the PCR 7 reason above |
 | M21 | full | Measured RAPL energy deltas can replace the simulated wattage in the M05 engine today, and an AF_VSOCK candidate evaluation can round-trip | ACCURACY CAVEAT, and it is a real one |
 | M27 | full | VA-API decode on the Arc A380, the DMA-BUF passed over SCM_RIGHTS, and the host compositor importing and presenting it on a layer surface | That P04 serves either protocol: the compositor is KDE KWin, so a pass is the client half only (D79) |
+| M28 | full | A gpui layer surface on the host compositor, which advertises zwlr_layer_shell_v1 version 5; its AccessKit tree read back over AT-SPI on a private session bus (at-spi2-core 2.60.7 is installed, read 2026-09-29); and the 1,000-node frame and tree-update times measured on this GPU and driver | That P04 serves layer shell, since the compositor is KDE KWin and a pass is the client half only (D79), or any frame-time figure for another GPU, driver or compositor |
+| M29 | full | A pinned distribution guest booted under QEMU with KVM, running the M28 shell with a portal, an at-spi2 registry and a StatusNotifierWatcher on its session bus | That the Aegis image or P04 serves that session: the guest is neither |
 
 Milestones not listed need nothing from the profile: they are Rust, schema or
 documentation work that runs on any developer machine.

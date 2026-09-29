@@ -243,7 +243,7 @@
       },
       "decisions": [
         "D08 / ADR-0001: pure Rust compositor, recorded and applied at M07; the C wlroots mandate is superseded and no compositor library is admitted",
-        "D32: the P04 to P05 endpoint and budget stay open; M07 declares no P04 to P05 schema and binds no socket",
+        "D32 (2026-09-29): the P04 to P05 endpoint is /run/aegis/compositor.sock and the per-hop budget a target under 100 microseconds, asserted by a contract test once a real P04 socket exists and a target, not a claim, until measured (ADR-0001); M07 still declares no P04 to P05 schema and binds no socket",
         "D75 / ADR-0003: P17 is a Wayland client of P04 through MOUNT_LAYER_SURFACE (zwlr_layer_shell_v1 plus zwp_linux_dmabuf_v1); ADR-0001 governs how P04 is built and is not extended to P17's client libraries",
         "D79: evidence gathered against the host session's compositor is the client half only and is not evidence that P04 serves either protocol"
       ]
@@ -291,29 +291,31 @@
         }
       ],
       "candidate_sources": [
-        "blueprints/[Report P05] Project Forum - Non-Blocking Desktop Shell & Process Isolation.md",
-        "scaffold/ui/forum-shell/src/App.svelte"
+        "blueprints/[Report P05] Project Forum - Non-Blocking Desktop Shell & Process Isolation.md"
       ],
       "activation_blockers": [
         "component manifests and dependency locks",
         "real positive, negative and boundary tests",
         "pinned shared integration contract",
-        "UI package manifest, lockfile, and axe-core test setup absent",
-        "the canvas rows REQ-P05-09 to REQ-P05-15 (keyboard reach, no focus trap, paint-only culling, instrument semantics, focus under camera zoom, pointer alternatives, text resize) have no test yet",
+        "the P05 crate crates/aegis-forum-shell (M16) with its Cargo manifest, lock entry and AccessKit tree check, and the gpui shell with its live AT-SPI check (M28), are absent (D101, ADR-0004)",
+        "the canvas rows REQ-P05-09 to REQ-P05-15 (keyboard reach, no focus trap, paint-only culling, instrument semantics, focus under camera zoom, pointer alternatives, text resize) have no test yet: M16 plans REQ-P05-09 to REQ-P05-11 on the model, M28 REQ-P05-13 on rendered pixels and REQ-P05-11 over AT-SPI, and no milestone plans REQ-P05-12, REQ-P05-14 or REQ-P05-15",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],
       "cheapest_first_slice": {
-        "description": "Build the existing ui/forum-shell Svelte 5 status-bar component (export-043) with a local Vite dev server and run the existing Playwright + @axe-core/playwright accessibility spec (export-023, wired via 'make a11y' -> 'cd ui/forum-shell && npm run test:a11y' in export-009) against it, with all IPC/D-Bus inputs (composi",
+        "description": "Create crates/aegis-forum-shell (M16): the D96 lifecycle, the D74 canvas model with its accessibility tree exported as an accesskit::TreeUpdate (accesskit 0.25.1, the data model only), and the DecisionRequest and CarbonTelemetry consumers typed on the producers' Rust contracts, framed as line-delimited JSON-RPC 2.0 on a socketpair (D77), tested inside make verify-all with no toolkit, no display and no D-Bus bus. The Svelte status-bar scaffold (export-043) and its Playwright spec (export-023) are superseded by D101 (ADR-0004) and are not used.",
         "cost": "small",
         "needs_hardware": false,
         "needs_external_contract": false,
-        "verification": "Positive: axe-core scan against WCAG 2.1A/AA/2.2AA tags returns zero violations (export-023 'expect(accessibilityScanResults.violations).toEqual([])'). Negative: temporarily strip the ':focus-visible' outline CSS rule from the component and"
+        "verification": "Positive: 1,000 seeded nodes with 10 in view export 1,000 nodes in focus order, and every node has a role and a non-empty name. Negative: a planted unlabelled node fails the tree check; culling by dropping nodes fails the 1,000-node check; a transition out of Deleted is refused. Boundary: the third consecutive rate-limited window quarantines the process and the second does not; the empty canvas exports a labelled empty state."
       },
       "decisions": [
-        "D05: consumes Concordia tokens",
-        "D10: latest stable UI toolchain; sveltesentio adopted now, pinned per @sveltesentio/* package version",
-        "D74 / ADR-0003: the post-WIMP spatial canvas is P05's primary surface, rendered by the engine P17 hosts (D82 open); REQ-P05-09 to REQ-P05-15 state what the D81 accessibility target requires of that surface, and M16 tests four of them",
-        "D77: DISPATCH_DECISION_REQUEST from P06 and EMIT_CARBON_TELEMETRY from P13 move from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; the StatusNotifierWatcher (REQ-P05-05), the portal settings (REQ-P12-02) and AT-SPI2 (REQ-P12-03) stay on D-Bus"
+        "D05: consumes Concordia tokens; under D101 as Rust theme constants generated from the M04 token file (M28)",
+        "D10: latest stable UI toolchain; sveltesentio adopted now, pinned per @sveltesentio/* package version. Since D101 (2026-09-29) the P05 shell declares no npm package, so no @sveltesentio/* package either (D87's M16 answer: none)",
+        "D74 / ADR-0003: the post-WIMP spatial canvas is P05's primary surface, painted behind P17's surface contract by the native toolkit D82 and D102 chose (ADR-0004); REQ-P05-09 to REQ-P05-15 state what the D81 accessibility target requires of that surface, M16 tests REQ-P05-09 to REQ-P05-11 on the model and M28 tests REQ-P05-13 on rendered pixels",
+        "D77: DISPATCH_DECISION_REQUEST from P06 and EMIT_CARBON_TELEMETRY from P13 move from D-Bus to line-delimited JSON-RPC 2.0 over AF_UNIX; the StatusNotifierWatcher (REQ-P05-05), the portal settings (REQ-P12-02) and AT-SPI2 (REQ-P12-03) stay on D-Bus",
+        "D32 (2026-09-29): SYNC_DESKTOP_SHELL's endpoint is /run/aegis/compositor.sock and its per-hop budget a target under 100 microseconds, asserted by a contract test once a real P04 socket exists and a target, not a claim, until measured (ADR-0001); DSP-14 is resolved",
+        "D82, D101 and D102 / ADR-0004 (2026-09-29): the whole shell, canvas and chrome, is one native Rust program on gpui, git-pinned to one zed-industries/zed commit that M28 chooses and admits; its AccessKit tree reaches AT-SPI through accesskit_unix; Svelte and the Wry webview leave the P05 shell; the shell's accessibility check is an AccessKit tree check (M16 on the model, M28 over AT-SPI), and M29 runs the shell in a live session with the portal, at-spi2 and a StatusNotifierWatcher",
+        "D96 (2026-09-29): the lifecycle is the source-order chain with two recovery edges (Rate-Limited to Activated, Quarantined to Eligible but Inactive), every live state may go to Deleted, Deleted is terminal, and QUARANTINE_LIMIT = 3 consecutive rate-limited windows"
       ]
     },
     {
@@ -742,8 +744,8 @@
       ],
       "activation_blockers": [
         "activation binding: tools/verify_preparation.py binds activation evidence to a Cargo manifest, so the package.json and pnpm-lock.yaml M04 committed under ui/concordia-tokens cannot be admitted as activation evidence; M04 records evidence only and does not change the validator (D86)",
-        "pinned shared integration contract: the P05 consumer of the tokens (D05) is typed at M16",
-        "the portal half of REQ-P12-02 and the AT-SPI2 half of REQ-P12-03, whose CSS level M04 covers in browser emulation only (D89): open and owned by no milestone until a live-session P05 milestone is planned (D91); D91 assigns REQ-P12-06's Forum Shell scan to M16 (E16-4) and REQ-P12-01's UKI gating to M11 (E11-6)",
+        "pinned shared integration contract: the P05 consumer of the tokens (D05) is typed at M16, and the Rust theme constants the native shell compiles are generated from the token file at M28 (D101)",
+        "the portal half of REQ-P12-02 and the AT-SPI2 half of REQ-P12-03, whose CSS level M04 covers in browser emulation only (D89): owned by M29, the live-session P05 milestone planned on 2026-09-29 (D91, ADR-0004); D91 assigns REQ-P12-06's Forum Shell scan to M16 (E16-4), which D101 re-maps from axe-core to an AccessKit tree check, and REQ-P12-01's UKI gating to M11 (E11-6), which gates on the M04 PASS and, once M16 delivers it, the shell's tree check",
         "the D76 heads-up theme, which no milestone plans yet; M04 runs only its stub-override negative (REQ-P12-10)"
       ],
       "cheapest_first_slice": {
@@ -758,7 +760,9 @@
         "D16: 3px token, 2px floor",
         "D17: tokens without a monolithic CSS library",
         "D76: the heads-up visual language is an optional theme over the Concordia base tokens M04 creates; states differ by frame shape and text as well as colour, shaders and animation sit behind the reduced-motion preference (REQ-P12-02), and the fault flash stays within WCAG 2.2 SC 2.3.1 (REQ-P12-10 to REQ-P12-13)",
-        "D81: the new canvas, heads-up theme and display-runtime rows target EN 301 549 V4.1.1 / WCAG 2.2 AA, and each also names the EN 301 549 V3.2.1 (WCAG 2.1) clause, today's harmonised legal baseline; REQ-P12-08's pairing is not re-ruled. ENFORCE_RUNTIME_A11Y to P17 follows D05's producer-to-consumer direction (open decision D30 recommends the same direction for P12 to P15)"
+        "D81: the new canvas, heads-up theme and display-runtime rows target EN 301 549 V4.1.1 / WCAG 2.2 AA, and each also names the EN 301 549 V3.2.1 (WCAG 2.1) clause, today's harmonised legal baseline; REQ-P12-08's pairing is not re-ruled. ENFORCE_RUNTIME_A11Y to P17 follows D05's producer-to-consumer direction (open decision D30 recommends the same direction for P12 to P15)",
+        "D100 (2026-09-29): ESLint enforces HISS-01, HISS-04 and HISS-08 on the JavaScript and Svelte under ui/, ui/concordia-tokens today, offline in the pinned M04 container until cordanaLLM/praetor#589 ships a scanner; it lands with M16's delivery",
+        "D101 / ADR-0004 (2026-09-29): the Concordia tokens stay the single token source and also emit Rust theme constants for the native P05 shell (M28); the M04 gate keeps covering this component's CSS and its one Svelte 5 component, and never covered the shell"
       ]
     },
     {
@@ -1044,7 +1048,7 @@
         "the lock-sweep re-scope D78 records: crates/aegis-compositor/tests/manifest_hygiene.rs refuses wayland-backend and crates/aegis-lictor/tests/manifest_hygiene.rs refuses memmap2 anywhere in Cargo.lock, and smithay-client-toolkit resolves both",
         "the lock-entry tests crates/aegis-athena/tests/manifest_hygiene.rs:161 and crates/aegis-tellus/tests/manifest_hygiene.rs:162 compare dependency lines literally, and once cros-libva locks thiserror 1 beside thiserror 2, Cargo writes those lines version-qualified; M27 changes both in the same change",
         "the VA-API binding D80 records is not admitted: cros-libva git-pinned at 59384456ac2a needs bindgen, libclang, pkg-config and the libva headers at build time, and the Verification gate's ubuntu-24.04 runner lacks the libva headers: its image ships pkg-config 1.8.1 and clang 16-18 (with libclang1-18) but no libva-dev, no workflow step installs one, and bindgen arrives as a Cargo build dependency",
-        "no shell engine is chosen behind the surface contract (D82): no Servo, WPE WebKit or native-toolkit dependency is admitted, and no engine's exposed accessibility tree has been tested (REQ-P17-06)",
+        "the shell engine is chosen but not admitted: D82 and D102 (2026-09-29, ADR-0004) name gpui, git-pinned, but no gpui or accesskit_unix dependency is locked, the surface contract the engine sits behind is not fixed, and no engine's exposed accessibility tree has been tested (REQ-P17-06); M28 does all three",
         "P04 serves no Wayland protocol, so evidence against the host session's compositor covers the client half only (D79)",
         "real hardware evidence for each listed hardware requirement: planning/hardware-profile.json records the three display capabilities as advertised, not exercised"
       ],
@@ -1056,15 +1060,16 @@
         "verification": "Positive: the reference MPEG-2 frame decodes to CRC-32 0xa5713e52, the value cros-libva's own test asserts; each of the 60 fixture frames reads back the frame-index blocks drawn into it, checked on the decoded surface before export, and yields a zwp_linux_buffer_params_v1 created event and a wp_presentation presented event on the reference profile; and the fd the receiver attaches names the same inode as the one export_prime returned. Negative: an unpinned VA driver, a decode node other than the compositor's main device, an unadvertised format and modifier pair, a memfd offered as a DMA-BUF and a message whose fd count disagrees with its descriptor are each refused before anything is attached, and a planted zero-filled surface fails the content check. Boundary: 1 and 4 planes accepted, 0 and 5 refused; a plane ending exactly at the end of its buffer accepted, one byte further refused; the first and the sixtieth frame both present."
       },
       "decisions": [
-        "D74: P05's primary surface is the spatial canvas; P17 hosts the engine that renders it on its own layer surface once D82 chooses one",
+        "D74: P05's primary surface is the spatial canvas; P17 hosts the engine that renders it on its own layer surface, which D82 and D102 (2026-09-29, ADR-0004) name: gpui, admitted at M28",
         "D75 / ADR-0003: a new display-runtime component where the compositor composes. The shell engine and each video stream own separate Wayland surfaces, decoded video reaches the compositor as DMA-BUF through zwp_linux_dmabuf_v1, and the first slice uses no Servo, no wgpu and no unsafe code",
         "D77: control plane line-delimited JSON-RPC 2.0 over AF_UNIX; data plane DMA-BUF descriptors passed as SCM_RIGHTS; iceoryx2 only for a future high-rate stream that is not a GPU buffer",
         "D78: every other crate's lock-wide negative sweep reads that crate's own dependency closure, so P17's Wayland and VA-API dependencies do not trip it; implemented at M27",
         "D79: a run against the host session's compositor is development evidence on the reference profile for the client half only and closes no hardware gate",
-        "D79, 2026-09-28: M27 stays a leaf and unblocks no milestone; whether M12 re-runs its display path in the built image is decided when M12 is planned",
+        "D79, 2026-09-28: M27 stays a leaf and unblocks no milestone; whether M12 re-runs its display path in the built image is decided when M12 is planned; 2026-09-29 (ADR-0004): M28 and M29 wait on M27, so it is no longer a leaf; the M12 answer is unchanged",
         "D80: VA-API through cros-libva git-pinned at the chromeos/cros-libva #37 merge commit 59384456ac2ae78c0c3e5515f41ef1efd9b802cf, refreshed to a crates.io release once one carries the fix (D69)",
         "D80, codec, 2026-09-28: M27 decodes baseline Motion-JPEG through VAProfileJPEGBaseline plus one MPEG-2 intra frame; cros-libva has no bitstream parser and cros-codecs 0.0.6 requires exactly cros-libva 0.0.12, so H.264, HEVC and AV1 follow once a parser is admitted",
-        "D83: HISS-03 binds Aegis-authored code, so P17's frame loop allocates nothing per frame; cros-libva's per-picture allocation is a named deviation limited to the pinned binding (D80), reviewed when the binding is replaced"
+        "D83: HISS-03 binds Aegis-authored code, so P17's frame loop allocates nothing per frame; cros-libva's per-picture allocation is a named deviation limited to the pinned binding (D80), reviewed when the binding is replaced",
+        "D101 / ADR-0004 (2026-09-29): the whole P05 shell is native Rust on gpui and maps as a zwlr_layer_shell_v1 surface; M28 fixes the MOUNT_SHELL_CANVAS surface contract, whose consumer schema aegis-scaena owns under the M14 rule"
       ],
       "milestone": "M27"
     }

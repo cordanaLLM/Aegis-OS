@@ -28,7 +28,9 @@ The shared package producers are identified and released, so a consumer pins a
 published version rather than waiting for maturity: `golusoris/golusoris` for Go
 (module `github.com/golusoris/golusoris`, v0.12.0, EUPL-1.2, resolvable on the
 Go module proxy) and `golusoris/sveltesentio` for the UI surface (nineteen
-`@sveltesentio/*` packages published on npm, MIT, versioned per package). A Rust
+`@sveltesentio/*` packages published on npm, MIT, versioned per package). Since
+ADR-0004 (2026-09-29) sveltesentio no longer supplies the P05 shell, which is
+native Rust on gpui; it stays available for any web surface. A Rust
 shared-package producer from the same family is expected but does not exist yet;
 until one does, Rust components select crates through the template matrix, and
 that absence is the reason to keep the row generic rather than to add a producer

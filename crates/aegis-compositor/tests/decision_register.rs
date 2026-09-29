@@ -292,7 +292,7 @@ fn the_deferred_claims_stay_deferred() {
         ("REQ-P04-05", ClaimStatus::DeferredPrivilegedConfiguration),
         ("REQ-P04-06", ClaimStatus::DeferredSubsystem),
         ("DSP-21", ClaimStatus::UnresolvedSourceConflict),
-        ("DSP-14", ClaimStatus::UnresolvedSourceConflict),
+        ("DSP-14", ClaimStatus::DeferredTimingRequirement),
     ];
     for (requirement, status) in expected {
         let row = P04_RECORDED_CLAIMS
@@ -320,6 +320,29 @@ fn the_mesh_timing_target_produces_no_figure_here() {
 }
 
 // --- Boundary -------------------------------------------------------------
+
+/// Boundary: decision D32 settled the DSP-14 dispute on 2026-09-29, and the claim
+/// moves from an unresolved source conflict to a deferred timing requirement,
+/// not to a delivered one: the path and the budget are named, and the
+/// settlement still says this crate asserts neither.
+#[test]
+fn the_d32_endpoint_is_a_target_and_not_a_claim() {
+    let row = P04_RECORDED_CLAIMS
+        .iter()
+        .find(|claim| claim.requirement == "DSP-14");
+    let summary = row.map(|claim| claim.summary).unwrap_or_default();
+    let settled_by = row.map(|claim| claim.settled_by).unwrap_or_default();
+    assert!(summary.contains("decision D32"));
+    assert!(summary.contains("/run/aegis/compositor.sock"));
+    assert!(summary.contains("a target and not a claim"));
+    assert!(settled_by.contains("real P04 socket"));
+    assert!(settled_by.contains("asserts neither the path nor the budget"));
+    assert_ne!(
+        row.map(|claim| claim.status),
+        Some(ClaimStatus::UnresolvedSourceConflict),
+        "DSP-14 is settled by D32 and must not read as an open conflict"
+    );
+}
 
 /// Boundary: the claim register is exactly its recorded length, and the status
 /// names are distinct.

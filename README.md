@@ -35,10 +35,11 @@ private scratch-link policy.
 
 This repository develops Aegis OS, an image-based Linux operating system. The
 original sixteen-subsystem concept is preserved, not redesigned, and changes
-only through ADRs: ADR-0001 and ADR-0002 supersede parts of two blueprints, and
-ADR-0003 adds a seventeenth subsystem (P17, the display runtime). Components are
-activated one at a time against recorded evidence, and `make readiness` lists
-which components are activated and which are still proposals.
+only through ADRs: ADR-0001 and ADR-0002 supersede parts of two blueprints,
+ADR-0003 adds a seventeenth subsystem (P17, the display runtime), and ADR-0004
+makes the P05 desktop shell native Rust instead of a Svelte webview. Components
+are activated one at a time against recorded evidence, and `make readiness`
+lists which components are activated and which are still proposals.
 
 This repository qualifies preparation, governance, a source-cited roadmap,
 library crates, and the declarative image, partition and update definitions. It

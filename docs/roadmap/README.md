@@ -8,11 +8,11 @@ Status: reviewed draft; decisions D01-D20 recorded by the maintainer on
 Aegis OS is an image-based Linux OS with seventeen subsystems: the concept's
 sixteen (P01-P16) and P17 aegis-scaena, the display runtime that ADR-0003 adds
 under decision D75. They are Rust host daemons, kernel-space eBPF programs,
-mkosi/systemd-repart/systemd-sysupdate image definitions, and Svelte UI
-packages. P17 is the one change to the concept's subsystem set; ADR-0001 and
-ADR-0002 supersede parts of the P04 and P11 blueprints. This roadmap orders
-repository preparation and component activation so that each step yields
-verifiable evidence at the lowest cost.
+mkosi/systemd-repart/systemd-sysupdate image definitions, a native Rust desktop
+shell (ADR-0004) and Svelte UI packages. P17 is the one change to the concept's
+subsystem set; ADR-0001, ADR-0002 and ADR-0004 supersede parts of the P04, P11
+and P05 blueprints. This roadmap orders repository preparation and component
+activation so that each step yields verifiable evidence at the lowest cost.
 
 Outcome: a ranked, dependency-explicit path from the current state to a first
 real image with retained artifact, signature and boot evidence, then to
@@ -50,13 +50,19 @@ Current verified state at revision time:
   `Platform Neutrality (Windows)` and `Documentation Governance`.
 - Every milestone and epic is mirrored as a GitHub milestone and a `roadmap`
   issue; M27 is GitHub milestone 28, and E27-1 to E27-3 and E16-3 are issues
-  #125 to #128. E11-5 and E20-3, which D84 adds, are issues #139 and #140;
-  #52 and #53 carry the E11-1 and E11-2 text of D84 and D85, and #79 and #80
-  (E24-1, E24-2) are closed with M24; E16-4 and E11-6, which D91 adds, are
-  issues #147 and #148 (read back 2026-09-28). E11-7 and E10-4, which D92 adds,
-  and E10-5, which D94 adds, are issues #149 to #151; #49 to #51 (E09-1 to
-  E09-3) carry the D92 text and are closed with M09. `planning/roadmap.json`
-  stays the source of truth.
+  #125 to #128. E11-5 and E20-3, which D84 adds, are issues #139 and #140; #52
+  and #53 carry the E11-1 and E11-2 text of D84 and D85, and #79 and #80 (E24-1,
+  E24-2) are closed with M24; E16-4 and E11-6, which D91 adds, are issues #147
+  and #148 (read back 2026-09-28). E11-7 and E10-4, which D92 adds, and E10-5,
+  which D94 adds, are issues #149 to #151; #49 to #51 (E09-1 to E09-3) carry the
+  D92 text and are closed with M09. M28 and M29, which ADR-0004 adds on
+  2026-09-29, and their epics E28-1 to E28-6 and E29-1 to E29-4 have no GitHub
+  milestone or issue yet, and the M16 milestone with #47, #48, #128 and #147
+  (E16-1 to E16-4) and #148 (E11-6) still carry the text from before ADR-0004
+  until they are re-synced. The M27 milestone description also predates ADR-0004
+  and still says M27 unblocks nothing, and the rank lines in milestone
+  descriptions and issue bodies are not kept current (M27's reads rank 21);
+  ranks are read from `planning/roadmap.json`, which stays the source of truth.
 - cordanaLLM/imago and cordanaLLM/nucleus resolve. imago decodes both M18
   payloads at the commit M09 pins (16f964b), nucleus reads neither, and neither
   producer builds an image or a kernel yet (M09, D92). The private readiness
@@ -117,6 +123,14 @@ version before any gate runs. The admissions are:
 - M27: the VA-API binding's build tools (bindgen, libclang, pkgconf and the
   libva headers, D80) and the Wayland and socket crates M27 proposes
   (smithay-client-toolkit, rustix; D78 permits Wayland crates in P17)
+- M16: accesskit, the data model only (D101), and eslint, eslint-plugin-svelte
+  and svelte-eslint-parser for the D100 lint in the pinned M04 container
+- M28: gpui, git-pinned to one zed-industries/zed commit, and accesskit_unix
+  (D102), with the C libraries they reach (libxkbcommon, libwayland-client) and
+  the at-spi2 bus launcher and registry its AT-SPI cases start
+- M29: the pinned guest image and its session services (a layer-shell
+  compositor, xdg-desktop-portal, at-spi2-core, a StatusNotifierWatcher); QEMU
+  is M24's
 
 Milestones that only reuse an admitted toolchain say so.
 
@@ -169,16 +183,18 @@ score.
 | 15 | M24 | Local boot harness over an externally supplied artifact | done | large | yes | no | full | M15 | M11 |
 | 16 | M04 | UI accessibility harness: P12 Concordia tokens | done | medium | no | no | not-hardware | M02 | M16, M11 |
 | 17 | M09 | Cross-repository contract pin: one local request/result pair | done | small | no | yes | partial | M18 | M11, M10 |
-| 18 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | ready | small | no | no | not-hardware | M04, M14 | - |
-| 19 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
-| 20 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
-| 21 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
-| 22 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | ready | medium | yes | no | full | M07 | - |
-| 23 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
-| 24 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | ready | medium | yes | yes | partial | M09, M19, M23 | M12 |
-| 25 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
-| 26 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | partial | M25, M10, M11 | - |
-| 27 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
+| 18 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | ready | small | no | no | not-hardware | M04, M14 | M28 |
+| 19 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | ready | medium | yes | no | full | M07 | M28, M29 |
+| 20 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | ready | small | yes | no | full (privileged read) | M05 | - |
+| 21 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
+| 22 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
+| 23 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | blocked | large | yes | no | full | M16, M27 | M29 |
+| 24 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | blocked | medium | yes | no | full | M28, M27 | - |
+| 25 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
+| 26 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | ready | medium | yes | yes | partial | M09, M19, M23 | M12 |
+| 27 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
+| 28 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | partial | M25, M10, M11 | - |
+| 29 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
 
 The reference profile column records what the machine in
 `planning/hardware-profile.json` can evidence for that milestone. A pass there
@@ -1089,7 +1105,7 @@ Epics:
 
 ### M21 - Workstation hardware slices: RAPL counters and KVM sandboxing
 
-Rank 19. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
+Rank 20. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full
 (privileged read). Blocked by: M05. Unblocks: nothing.
 
@@ -1412,76 +1428,232 @@ Epics:
 
 Rank 18. State: ready. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: no. Reference profile:
-not-hardware. Blocked by: M04, M14. Unblocks: nothing.
+not-hardware. Blocked by: M04, M14. Unblocks: M28.
 
 Exit criteria:
 
-- ui/forum-shell has its package manifest and lockfile on the toolchain admitted
-  in M04
-- The shell state and typed process lifecycle are unit-tested with compositor,
-  Justitia and Tellus inputs stubbed
-- The DecisionRequest consumer is typed against the M14 schema; the P05/P12
-  token-edge direction (D05) is recorded
-- D77 framing: the two stubbed inbound edges D77 moves off D-Bus,
-  DISPATCH_DECISION_REQUEST from P06 and EMIT_CARBON_TELEMETRY from P13, each
-  arrive as one line-delimited JSON-RPC 2.0 message on a mocked AF_UNIX stream;
-  a line that is not valid JSON-RPC 2.0 is answered with a JSON-RPC error and
-  the stream continues; the StatusNotifierWatcher, the portal settings and
-  AT-SPI2 stay on D-Bus mocks; SYNC_DESKTOP_SHELL from P04 keeps the Unix socket
-  stream the graph records, whose endpoint and budget stay open under D32.
-- D74 canvas state: the canvas node registry, camera and QuadTree cull bounds
-  are part of the tested shell state, and culling changes only what is painted:
-  with 1,000 seeded nodes and 10 in view the exported accessibility snapshot
-  still lists all 1,000 in focus order (REQ-P05-11), and moving focus to a
-  culled node moves the camera to reveal it (REQ-P05-09).
-- REQ-P12-06 (D91): the M04 accessibility gate also scans ui/forum-shell in the
-  same digest-pinned container, with the D81 tag set and no impact filter, and
-  reports zero violations and zero incomplete on the shell's default state; the
-  shell reuses M04's toolchain admission and builds no second harness
+- crates/aegis-forum-shell is a written-out workspace member with a Cargo.lock
+  entry and [lints] workspace = true, so unsafe_code = "forbid" is inherited, on
+  the Rust toolchain M02 admitted; its package name is the component name,
+  aegis-forum-shell, which the activation binding in tools/verify_preparation.py
+  (verify_evidence_binding) requires of a component's manifest. accesskit 0.25.1
+  (MIT OR Apache-2.0), the data model only, is declared once in
+  [workspace.dependencies], locked, and recorded in
+  docs/roadmap/toolchain-admission.md before any gate runs. The crate's hygiene
+  test reads its own dependency closure (D78) and refuses a GUI toolkit, a
+  windowing or Wayland crate, a D-Bus crate, an AT-SPI adapter and an async
+  runtime there: gpui, winit, wayland-client, zbus, atspi, accesskit_unix and
+  tokio. No Node, pnpm, Playwright or npm package serves the shell (D101).
+- The typed process lifecycle is D96's and is unit-tested with compositor,
+  Justitia and Tellus inputs stubbed: the forward chain Eligible but Inactive ->
+  Activated -> Rate-Limited -> Quarantined -> Deleted in the source's order
+  (REQ-P05-03), the two recovery edges Rate-Limited -> Activated and Quarantined
+  -> Eligible but Inactive, every live state -> Deleted, and Deleted terminal. A
+  process is quarantined after QUARANTINE_LIMIT = 3 consecutive rate-limited
+  windows, a named constant.
+- The two inbound consumers decode the producers' Rust contract types directly,
+  with no schema file, no generated binding and no copy in a second language:
+  the DecisionRequest of aegis_justitia::contracts::decision_request (M14), and
+  a CarbonTelemetry update that this milestone types in crates/aegis-tellus,
+  where P13's schemas live, as aegis.p13-p05.carbon-telemetry.v1, because no
+  telemetry contract exists there yet
+  (crates/aegis-tellus/src/contracts/graph.rs records the payload as M16's). D31
+  stays open, so the payload carries neither an emission interval nor a delivery
+  deadline. The P05/P12 token-edge direction (D05) is recorded; under D101 the
+  shell consumes the tokens as Rust theme constants that M28 generates from the
+  M04 token file.
+- D77 framing: DISPATCH_DECISION_REQUEST from P06 and EMIT_CARBON_TELEMETRY from
+  P13 each arrive as one line-delimited JSON-RPC 2.0 message on a mocked AF_UNIX
+  stream (a socketpair) whose every read has a deadline and every line a byte
+  bound (HISS-02); a line that is not valid JSON-RPC 2.0 is answered with a
+  JSON-RPC error and the stream continues; the StatusNotifierWatcher, the portal
+  settings and AT-SPI2 stay on D-Bus mocks, and M29 runs them live.
+  SYNC_DESKTOP_SHELL from P04 keeps the Unix socket stream the graph records.
+  D32 (2026-09-29) adopts /run/aegis/compositor.sock as its endpoint and under
+  100 microseconds as its per-hop target; the crate records both as named
+  constants and no test here asserts either, because no real P04 socket exists:
+  a contract test asserts them once one does, and until it is measured the
+  figure is a target, not a claim (ADR-0001).
+- D74 canvas model: the node registry, camera and QuadTree cull bounds are part
+  of the tested shell state, and the accessibility tree is exported as an
+  accesskit::TreeUpdate built from that state, with no toolkit and no platform
+  adapter. Culling changes only what is painted: with 1,000 seeded nodes and 10
+  in view the TreeUpdate still carries all 1,000 nodes in focus order, each with
+  its role, name and bounds (REQ-P05-11); focusing a culled node moves the
+  camera until the node is in view (REQ-P05-09); and a keyboard-only walk over
+  the model reaches every node and invokes every action, while Escape and Tab
+  leave every instrument (REQ-P05-09, REQ-P05-10).
+- REQ-P12-06 (D91, re-mapped by D101): the shell's accessibility check is a tree
+  check over the exported TreeUpdate, not an axe-core scan. In the default state
+  and on the seeded canvas every node carries a role and a non-empty name, a
+  planted unlabelled node fails the check and is named, and the empty canvas
+  exports a labelled empty state. It runs inside make verify-all through cargo
+  test. The M04 gate is unchanged and keeps scanning the P12 token component
+  only; this milestone runs no browser, container or Node toolchain for the
+  shell.
+- D100: ESLint enforces HISS-01, HISS-04 and HISS-08 on the JavaScript and
+  Svelte under ui/ (ui/concordia-tokens today) until cordanaLLM/praetor#589
+  ships a JavaScript and Svelte scanner: eslint, eslint-plugin-svelte and
+  svelte-eslint-parser admitted with exact pins, a flat configuration with
+  max-lines-per-function 60, complexity 10, max-statements 50, no-eval,
+  no-implied-eval, no-new-func and a local rule that bans direct self-recursion,
+  zero warnings and no inline configuration, run offline in the pinned M04
+  container inside make verify-a11y. Positive: the committed JavaScript and
+  Svelte lint clean. Negative: one planted violation per rule family fails the
+  gate. Boundary: a 60-line function passes and a 61-line one fails. Mutual
+  recursion is not detected: there is no call-graph check.
+- Scope: the crate paints nothing, creates no window or surface, opens no real
+  socket and contacts no D-Bus daemon, so a pass is model-level evidence and
+  closes no accessibility gate for the running shell, which M28 checks over
+  AT-SPI and M29 in a live session. The rendered-pixel cases E16-3 carried until
+  2026-09-29 -- the measured focus ring at the minimum, 1.0 and maximum camera
+  scale, the 1.5 px scaled-layer negative and focus under a panel -- are M28's
+  (E28-4).
 
-Cheapest exit: Unit-test the Svelte store and lifecycle logic with mocked
-sockets, the two edges D77 moves framed as line-delimited JSON-RPC 2.0, and
-D-Bus mocks only for the platform interfaces.
+Cheapest exit: Unit-test the Rust lifecycle, the canvas model and its
+accesskit::TreeUpdate export, and the two consumers typed on the producers' Rust
+contracts, over a socketpair framed as line-delimited JSON-RPC 2.0, with D-Bus
+mocks only for the platform interfaces and no toolkit, display or bus.
+
+Evidence:
+
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, on 2026-09-29
+  under decisions D101 (the whole P05 shell is native, ADR-0004), D96, D100 and
+  D32, every exit criterion, the cheapest exit and all four epics were
+  rewritten, and two criteria were added. Criterion 1 read 'ui/forum-shell has
+  its package manifest and lockfile on the toolchain admitted in M04'; it now
+  names crates/aegis-forum-shell on the Rust toolchain and admits accesskit
+  0.25.1. Criterion 2 read 'The shell state and typed process lifecycle are
+  unit-tested with compositor, Justitia and Tellus inputs stubbed'; it now names
+  D96's edges and limit. Criterion 3 read 'The DecisionRequest consumer is typed
+  against the M14 schema; the P05/P12 token-edge direction (D05) is recorded';
+  it now types both consumers on the producers' Rust types and adds the
+  CarbonTelemetry contract to aegis-tellus. Criterion 4 read 'D77 framing: the
+  two stubbed inbound edges D77 moves off D-Bus, DISPATCH_DECISION_REQUEST from
+  P06 and EMIT_CARBON_TELEMETRY from P13, each arrive as one line-delimited
+  JSON-RPC 2.0 message on a mocked AF_UNIX stream; a line that is not valid
+  JSON-RPC 2.0 is answered with a JSON-RPC error and the stream continues; the
+  StatusNotifierWatcher, the portal settings and AT-SPI2 stay on D-Bus mocks;
+  SYNC_DESKTOP_SHELL from P04 keeps the Unix socket stream the graph records,
+  whose endpoint and budget stay open under D32.'; it drops the lead-in naming
+  the two edges as stubbed ones D77 moves off D-Bus, makes the mocked stream a
+  socketpair whose every read has a deadline and every line a byte bound
+  (HISS-02), adds that M29 runs the D-Bus interfaces live, and replaces its last
+  clause, 'whose endpoint and budget stay open under D32', with D32's endpoint
+  and target, which no test here asserts. Criterion 5 read 'D74 canvas state:
+  the canvas node registry, camera and QuadTree cull bounds are part of the
+  tested shell state, and culling changes only what is painted: with 1,000
+  seeded nodes and 10 in view the exported accessibility snapshot still lists
+  all 1,000 in focus order (REQ-P05-11), and moving focus to a culled node moves
+  the camera to reveal it (REQ-P05-09).'; it now reads 'D74 canvas model', the
+  snapshot is an accesskit::TreeUpdate built from the model with no toolkit and
+  no platform adapter, whose nodes each carry a role, name and bounds, 'to
+  reveal it' becomes 'until the node is in view', and the keyboard walk with
+  Escape and Tab (REQ-P05-10) joins it. Criterion 6 read 'REQ-P12-06 (D91): the
+  M04 accessibility gate also scans ui/forum-shell in the same digest-pinned
+  container, with the D81 tag set and no impact filter, and reports zero
+  violations and zero incomplete on the shell's default state; the shell reuses
+  M04's toolchain admission and builds no second harness'; it is now the
+  AccessKit tree check. The cheapest exit read 'Unit-test the Svelte store and
+  lifecycle logic with mocked sockets, the two edges D77 moves framed as
+  line-delimited JSON-RPC 2.0, and D-Bus mocks only for the platform
+  interfaces.' E16-3, titled 'Canvas state and D77 framing', carried REQ-P05-13
+  and read 'Positive: a keyboard-only walk over a seeded canvas reaches every
+  node and invokes every action, ending in the same store state as the pointer
+  path; from each instrument Escape restores focus to its node and Tab reaches
+  the next shell region; at the minimum, 1.0 and maximum camera scale the
+  measured focus ring is at least 2 px and 3:1; and a DecisionRequest and a
+  telemetry update each arrive as one JSON-RPC 2.0 line. Negative: culling
+  implemented by removing nodes from the snapshot fails the 1,000-node check, an
+  instrument with only a pointer handler fails the walk, a transcluded fragment
+  that swallows Tab fails, a focus ring drawn inside the scaled layer (1.5 px at
+  scale 0.5) fails, a focused node fully under a panel fails, and a line with
+  jsonrpc other than "2.0" is refused with an error while the stream continues.
+  Boundary: a node exactly on the cull boundary and a node straddling the
+  viewport edge are both listed; a 2.0 px focus ring passes and 1.9 px fails; a
+  partly covered focused node passes; Escape from the deepest nested instrument
+  returns focus to canvas level in exactly that many presses; a disabled
+  single-letter shortcut no longer fires; an empty canvas exposes a labelled
+  empty state.' Its rendered-pixel cases, the measured focus ring at the
+  minimum, 1.0 and maximum camera scale, the focus ring drawn inside the scaled
+  layer, the focused node fully under a panel, the 2.0 px and 1.9 px ring and
+  the partly covered focused node, need rendered pixels and move unchanged in
+  substance to M28's E28-4 with REQ-P05-13, so the shell's bar keeps them and
+  M16's no longer does. The rest of E16-3 is reworded for the model: the walk
+  ends in the same state rather than the same store state; the snapshot becomes
+  the accesskit::TreeUpdate, so culling by dropping or hiding nodes in it fails,
+  and boundary nodes are exported rather than listed; an instrument with only a
+  pointer action, not a pointer handler, fails the walk; an invalid jsonrpc line
+  is answered with a JSON-RPC error rather than refused with an error. Two
+  boundaries are added, focusing a culled node moves the camera until it is in
+  view and a line at the byte bound is accepted while one byte longer is
+  refused, and the empty-canvas boundary moves to E16-4, which already carried
+  it. E16-4, titled 'Forum Shell accessibility scan (D91)', read 'Positive: the
+  shell's default state and its seeded canvas scan with zero violations and zero
+  incomplete under the D81 tag set. Negative: a planted violation in the shell,
+  an unlabelled control, fails the gate. Boundary: the empty canvas is scanned
+  as well and passes with its labelled empty state.' The tree check that
+  replaces it is narrower and this entry says so: it asserts a role and a name
+  on every node and the labelled empty state, not the WCAG 2.2 AA rule set
+  axe-core applies to a DOM, because the native shell has no DOM; ADR-0004
+  records it as a negative consequence, and REQ-P05-08 moves from E16-1 to E16-4
+  with it. E16-1's acceptance read 'Positive: each lifecycle transition in the
+  source order succeeds. Negative: a transition from Deleted is rejected.
+  Boundary: Rate-Limited to Quarantined at the limit is exercised exactly.' and
+  E16-2's read 'Positive: DecisionRequest and Tellus telemetry payloads parse.
+  Negative: an unknown schema version is rejected. Boundary: a telemetry update
+  with zero watts renders without error.'; both are strengthened, with D96's
+  edges and limit and with decoding into the producers' types. The added
+  criteria are the D100 lint and the scope statement. blocked_by keeps M04,
+  whose token file is the single source the shell's theme constants derive from
+  (D05, D101), and M14, and M16 now unblocks M28. This entry is not evidence
+  that any criterion is met.
 
 Epics:
 
-- **E16-1 Forum shell state and lifecycle with stubs**. Requirements:
+- **E16-1 Forum shell crate and the D96 lifecycle with stubs**. Requirements:
   REQ-P05-01, REQ-P05-02, REQ-P05-03, REQ-P05-04, REQ-P05-05, REQ-P05-07,
-  REQ-P05-08, REQ-P04-07. Acceptance: Positive: each lifecycle transition in the
-  source order succeeds. Negative: a transition from Deleted is rejected.
-  Boundary: Rate-Limited to Quarantined at the limit is exercised exactly.
-- **E16-2 Consumer contracts and token-edge decision**. Requirements:
-  REQ-GRAPH-01, REQ-P13-04, REQ-P06-08. Acceptance: Positive: DecisionRequest
-  and Tellus telemetry payloads parse. Negative: an unknown schema version is
-  rejected. Boundary: a telemetry update with zero watts renders without error.
-- **E16-3 Canvas state and D77 framing**. Requirements: REQ-P05-09, REQ-P05-10,
-  REQ-P05-11, REQ-P05-13, REQ-P17-04. Acceptance: Positive: a keyboard-only walk
-  over a seeded canvas reaches every node and invokes every action, ending in
-  the same store state as the pointer path; from each instrument Escape restores
-  focus to its node and Tab reaches the next shell region; at the minimum, 1.0
-  and maximum camera scale the measured focus ring is at least 2 px and 3:1; and
-  a DecisionRequest and a telemetry update each arrive as one JSON-RPC 2.0 line.
-  Negative: culling implemented by removing nodes from the snapshot fails the
-  1,000-node check, an instrument with only a pointer handler fails the walk, a
-  transcluded fragment that swallows Tab fails, a focus ring drawn inside the
-  scaled layer (1.5 px at scale 0.5) fails, a focused node fully under a panel
-  fails, and a line with jsonrpc other than "2.0" is refused with an error while
-  the stream continues. Boundary: a node exactly on the cull boundary and a node
-  straddling the viewport edge are both listed; a 2.0 px focus ring passes and
-  1.9 px fails; a partly covered focused node passes; Escape from the deepest
-  nested instrument returns focus to canvas level in exactly that many presses;
-  a disabled single-letter shortcut no longer fires; an empty canvas exposes a
-  labelled empty state.
-- **E16-4 Forum Shell accessibility scan (D91)**. Requirements: REQ-P12-06.
-  Acceptance: Positive: the shell's default state and its seeded canvas scan
-  with zero violations and zero incomplete under the D81 tag set. Negative: a
-  planted violation in the shell, an unlabelled control, fails the gate.
-  Boundary: the empty canvas is scanned as well and passes with its labelled
-  empty state.
+  REQ-P04-07. Acceptance: Positive: each forward transition in the source order
+  succeeds, and Rate-Limited to Activated and Quarantined to Eligible but
+  Inactive succeed. Negative: every transition out of Deleted is refused, as is
+  a transition the table does not list, such as Eligible but Inactive to
+  Quarantined. Boundary: the third consecutive rate-limited window quarantines
+  the process and the second does not; a window within budget between two
+  rate-limited ones restarts the count.
+- **E16-2 Consumers typed on the producers' Rust contracts, and the token-edge
+  decision**. Requirements: REQ-GRAPH-01, REQ-P13-04, REQ-P06-08. Acceptance:
+  Positive: a DecisionRequest and a CarbonTelemetry update each decode into the
+  producer crate's own Rust type and update the shell state. Negative: an
+  unknown schema version is refused with a typed error. Boundary: a telemetry
+  update with zero watts decodes and updates the state without error.
+- **E16-3 Canvas model, AccessKit tree export and D77 framing**. Requirements:
+  REQ-P05-09, REQ-P05-10, REQ-P05-11, REQ-P17-04. Acceptance: Positive: a
+  keyboard-only walk over a seeded canvas model reaches every node and invokes
+  every action, ending in the same state as the pointer path; from each
+  instrument Escape restores focus to its node and Tab reaches the next shell
+  region; 1,000 seeded nodes with 10 in view export 1,000 nodes in focus order
+  in the accesskit::TreeUpdate; and a DecisionRequest and a telemetry update
+  each arrive as one JSON-RPC 2.0 line. Negative: culling implemented by
+  dropping or hiding nodes in the TreeUpdate fails the 1,000-node check, an
+  instrument with only a pointer action fails the walk, a transcluded fragment
+  that swallows Tab fails, and a line with jsonrpc other than "2.0" is answered
+  with a JSON-RPC error while the stream continues. Boundary: a node exactly on
+  the cull boundary and a node straddling the viewport edge are both exported;
+  focusing a culled node moves the camera until it is in view; Escape from the
+  deepest nested instrument returns focus to canvas level in exactly that many
+  presses; a disabled single-letter shortcut no longer fires; a line at the byte
+  bound is accepted and one byte longer is refused.
+- **E16-4 Forum Shell accessibility tree check (D91, re-mapped by D101)**.
+  Requirements: REQ-P12-06, REQ-P05-08. Acceptance: Positive: the default state
+  and the seeded canvas export a TreeUpdate in which every node has a role and a
+  non-empty name. Negative: a planted unlabelled node fails the check, and the
+  failure names it. Boundary: the empty canvas exports its labelled empty state
+  and passes.
 
 ### M25 - GPU DMA-BUF sharing and VFIO passthrough slices
 
-Rank 20. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 21. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M08, M17. Unblocks: M12.
 
@@ -1530,7 +1702,7 @@ Epics:
 
 ### M22 - P10 microVM sandbox measurements on KVM
 
-Rank 21. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 22. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M06. Unblocks: nothing.
 
@@ -2152,9 +2324,9 @@ Evidence:
 
 ### M27 - P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS
 
-Rank 22. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 19. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
-Blocked by: M07. Unblocks: nothing.
+Blocked by: M07. Unblocks: M28, M29.
 
 The first milestone of P17 aegis-scaena, added by D75 and ADR-0003. It is the
 cheapest slice that yields runtime evidence for the D75 and D77 paths: each
@@ -2164,10 +2336,11 @@ On the reference profile that compositor is the host session's KDE KWin, so
 every pass is the client half only (D79). The first slice decodes baseline
 Motion-JPEG and one MPEG-2 intra frame, the codec the maintainer chose on
 2026-09-28 (D80); H.264, HEVC and AV1 follow once a bitstream parser is
-admitted. M27 unblocks no milestone: on 2026-09-28 the maintainer kept it a leaf
-rather than a blocker of M12, and whether the built image re-runs its display
-path is decided when M12 is planned. No milestone plans a P04 that serves the
-protocols it uses (D79).
+admitted. M27 does not block M12: on 2026-09-28 the maintainer kept it a leaf
+rather than a blocker of M12 (D79), and whether the built image re-runs its
+display path is decided when M12 is planned. Since 2026-09-29 it blocks M28 and
+M29, which ADR-0004 plans, so it is no longer a leaf. No milestone plans a P04
+that serves the protocols it uses (D79).
 
 Exit criteria:
 
@@ -2405,6 +2578,243 @@ Epics:
   new value; the athena and tellus lock-entry tests pass with thiserror 1 and 2
   both locked and keep their exact name lists.
 
+### M28 - P05 native shell on gpui: layer surface, AT-SPI tree, frame time
+
+Rank 23. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: full.
+Blocked by: M16, M27. Unblocks: M29.
+
+The P05 shell on the toolkit D102 chose, planned on 2026-09-29 under D101 and
+ADR-0004. It puts M16's canvas model on gpui as a layer surface behind the P17
+surface contract this milestone fixes, exports the tree live over AT-SPI,
+generates the Concordia theme constants, measures the focus ring on rendered
+pixels and measures, rather than assumes, the 1,000-node frame and tree-update
+times.
+
+Exit criteria:
+
+- Toolchain admission before any gate runs (D102): gpui is declared once in
+  [workspace.dependencies] as a git dependency on the zed-industries/zed
+  repository with rev = the one commit this milestone chooses, recorded in
+  docs/roadmap/toolchain-admission.md with the date it was read, and locked;
+  `cargo tree --locked` shows the git source at that revision, and a manifest
+  that names a branch or a tag instead of a rev fails the admission test.
+  accesskit_unix is admitted at the version that commit resolves (0.22 at zed
+  main on 2026-09-29, against the current 0.24.0), and a version behind the
+  current release is recorded as D69 drift with its reason. Either accesskit
+  resolves to one version in the P05 closure, or the conversion between gpui's
+  accesskit (0.24.0 at zed main on 2026-09-29) and the 0.25.1 M16 exports is
+  written and tested; the admission says which. The C libraries gpui reaches,
+  libxkbcommon through the xkbcommon crate and libwayland-client through
+  wayland-backend's dlopen, are recorded with a floor and a reference value read
+  back before the gate runs. The licence of every package the pin resolves is
+  read from `cargo metadata --locked` and recorded, and any that is not a
+  permissive licence is named for a maintainer decision before a gate counts.
+- gpui enters through a workspace member of its own that depends on
+  crates/aegis-forum-shell, so the M16 model crate keeps its toolkit-free
+  closure and its tests keep running with no display, GPU or bus. That member is
+  written out, has [lints] workspace = true and contains no `unsafe` token in
+  its sources, and every other crate's closure sweep (D78) reports exactly what
+  it reported before this milestone.
+- The shell maps as a zwlr_layer_shell_v1 surface through gpui's layer-shell API
+  (crates/gpui/src/platform/layer_shell.rs), and this milestone fixes the P17
+  surface contract the shell sits behind, which ADR-0003 decision 3 and D82 left
+  unfixed: MOUNT_SHELL_CANVAS, P05 to P17, is one line-delimited JSON-RPC 2.0
+  request over AF_UNIX (D77) whose schema, owned by aegis-scaena as the consumer
+  under the M14 rule, names the layer-surface parameters the shell maps with
+  (the fields of gpui's LayerShellOptions: namespace, layer, anchor, exclusive
+  zone, exclusive edge, margin and keyboard interactivity). Every read has a
+  deadline and every line a byte bound (HISS-02). A compositor that does not
+  advertise zwlr_layer_shell_v1 yields gpui's LayerShellNotSupportedError, and
+  the case names it.
+- The AccessKit tree reaches AT-SPI live: gpui's accesskit_unix adapter (zbus
+  and atspi, no C accessibility library) exports the running shell's tree, and a
+  test reads it back with the atspi crate on a private D-Bus session with the
+  at-spi2 bus launcher and registry, their versions read back before the gate
+  runs and every call under a deadline (HISS-02). REQ-P17-06's exposure suite
+  runs there: interactive roles, accessible names, focus tracking, actions,
+  hidden state for unrendered nodes, bounds and incremental updates. With 1,000
+  seeded nodes and 10 in view all 1,000 are reachable over AT-SPI (REQ-P05-11),
+  and every node has a role and a name, the live half of M16's tree check
+  (REQ-P12-06, D101).
+- Concordia tokens as Rust theme constants (D05, D101): a generator reads
+  ui/concordia-tokens/concordia-tokens.css, the single token source M04
+  committed, and emits the Rust constants the shell compiles. A constant edited
+  by hand, or a token changed without regenerating, fails make verify-all, and
+  the D16 focus-ring token (3 px, 2 px floor) arrives through the generator,
+  which refuses a value below the floor.
+- Rendered pixels, moved from M16's E16-3 (REQ-P05-13): measured on the painted
+  surface rather than computed from the model, the focus ring at the minimum,
+  1.0 and maximum camera scale is at least 2 px and 3:1; a ring drawn inside the
+  scaled layer (1.5 px at scale 0.5) fails; a focused node fully under a panel
+  fails; 2.0 px passes and 1.9 px fails; a partly covered focused node passes.
+- Measured, not claimed (ADR-0001): with 1,000 seeded nodes the frame time and
+  the AccessKit tree-update time are measured on the reference profile over a
+  recorded number of frames and recorded with their distribution, the GPU, the
+  driver, the compositor and the zed commit. No figure is claimed before it is
+  measured, and a target, if one is set, is a recorded decision. Before the
+  frame-time case counts, this milestone records whether HISS-03 binds gpui's
+  per-frame work -- gpui rebuilds its AccessKit tree every frame
+  (crates/gpui/src/window/a11y.rs) -- the question D83 answered for P17's
+  decoder.
+- `make verify-shell`, a new target outside make verify-all like verify-display,
+  runs the live cases (surface, AT-SPI, pixels and timing) on the reference
+  profile; without its capabilities it prints `SKIP: <reason>; the native shell
+  gate did not run.` and exits 0, so an exit 0 is evidence only with the case
+  lines above it. The token generator, the surface-contract schema and every
+  case that needs no display run inside make verify-all.
+  docs/build/native-shell.md records the run that is evidence.
+- Labelling (D79): a run against the host session's compositor (KDE KWin on the
+  reference profile) is development evidence for the client half only. Nothing
+  here is evidence that P04 serves zwlr_layer_shell_v1, a pass closes no
+  hardware, accessibility or release gate, and the portal, the AT-SPI2 bridge of
+  a real session and the real StatusNotifierWatcher are M29's.
+
+Cheapest exit: Map one gpui layer surface on the reference profile that paints
+the M16 canvas model, read its AccessKit tree back over AT-SPI with the atspi
+crate on a private session bus, measure the 1,000-node frame and tree-update
+times, and test the token generator and the surface-contract schema inside make
+verify-all without a display.
+
+Epics:
+
+- **E28-1 gpui git pin, accesskit_unix and the shell's workspace member (D102,
+  D78)**. Requirements: REQ-WS-01. Acceptance: Positive: `cargo build --locked`
+  builds the shell member on the reference profile and on the Verification
+  gate's runner, and `cargo tree --locked` shows gpui's git source at the pinned
+  revision. Negative: a manifest that names a branch or a tag for gpui instead
+  of a rev fails the admission test, as does a resolved package whose licence is
+  not recorded; gpui planted in the M16 model crate's closure fails that crate's
+  sweep. Boundary: accesskit_unix at the version the pin resolves is recorded
+  beside the current release (D69); every other crate's closure sweep reports
+  exactly what it reported before this milestone.
+- **E28-2 Layer surface and the P17 shell-surface contract (ADR-0003 decision
+  3)**. Requirements: REQ-P17-02, REQ-P17-04. Acceptance: Positive: a
+  MOUNT_SHELL_CANVAS request round-trips over a socketpair as one JSON-RPC 2.0
+  line, and the shell maps a zwlr_layer_shell_v1 surface with its parameters on
+  the host compositor and receives its first configure. Negative: a line whose
+  jsonrpc member is not "2.0", an unknown schema version and an unknown layer
+  are each refused with a typed error; a compositor without zwlr_layer_shell_v1
+  yields LayerShellNotSupportedError and the case names it. Boundary: a line at
+  the byte bound is accepted and one byte longer refused; a silent peer fails at
+  its read deadline; a first configure that does not arrive fails at its
+  deadline and names the event.
+- **E28-3 Live AccessKit tree over AT-SPI (REQ-P17-06)**. Requirements:
+  REQ-P17-06, REQ-P05-11, REQ-P12-06. Acceptance: Positive: a fixture button is
+  exposed over AT-SPI with role button, a name and a click action, the focused
+  node is reported focused, and with 1,000 seeded nodes and 10 in view all 1,000
+  are reachable, each with a role and a name. Negative: the same button exposed
+  as a generic container fails; a planted unlabelled node fails and is named;
+  culling that removes nodes from the tree fails the 1,000-node check. Boundary:
+  a hidden subtree is reported hidden; a client started after the surface maps
+  still receives the full tree; an AT-SPI call that does not answer fails at its
+  deadline.
+- **E28-4 Focus ring measured on rendered pixels (moved from E16-3)**.
+  Requirements: REQ-P05-13. Acceptance: Positive: at the minimum, 1.0 and
+  maximum camera scale the focus ring measured on the painted surface is at
+  least 2 px and 3:1. Negative: a ring drawn inside the scaled layer (1.5 px at
+  scale 0.5) fails; a focused node fully under a panel fails. Boundary: a 2.0 px
+  ring passes and 1.9 px fails; a partly covered focused node passes.
+- **E28-5 Concordia tokens as Rust theme constants (D05, D101)**. Requirements:
+  REQ-P12-05, REQ-P05-06. Acceptance: Positive: the generated constants equal
+  the values in ui/concordia-tokens/concordia-tokens.css, and the shell compiles
+  against them. Negative: a hand-edited constant, or a token changed without
+  regenerating, fails make verify-all. Boundary: a focus-ring token at the 2 px
+  D16 floor is accepted and 1 px is refused by the generator.
+- **E28-6 1,000-node frame time and tree-update time, measured (ADR-0001)**.
+  Requirements: REQ-P05-11. Acceptance: Positive: with 1,000 seeded nodes the
+  frame time and the AccessKit tree-update time are measured over the recorded
+  number of frames on the reference profile and recorded with their
+  distribution, the GPU, the driver, the compositor and the zed commit.
+  Negative: a run whose tree held fewer than 1,000 nodes, or that ran with the
+  accessibility adapter inactive, is refused as a measurement. Boundary: a run
+  of exactly the recorded frame count is accepted and one frame short is
+  refused; no target is asserted unless a recorded decision sets one.
+
+### M29 - P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher
+
+Rank 24. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: full.
+Blocked by: M28, M27. Unblocks: nothing.
+
+The live-session P05 milestone D91 waited for, planned on 2026-09-29 (ADR-0004).
+It runs the M28 shell in a real session inside a VM, so the portal, the AT-SPI2
+bridge and the StatusNotifierWatcher are real daemons rather than the D-Bus
+mocks M16 uses.
+
+Exit criteria:
+
+- A live session in a VM on KVM: a pinned distribution guest image, not an Aegis
+  image (M11 builds that), boots under QEMU with M24's admission reused and runs
+  a Wayland compositor that advertises zwlr_layer_shell_v1, xdg-desktop-portal
+  with a settings backend, at-spi2-core and a StatusNotifierWatcher on the
+  session bus, each version read back from the guest before the cases run. The
+  guest image is pinned by sha256 and refused on a mismatch before it boots, and
+  every wait for a guest service has a deadline (HISS-02). The shell is the one
+  M28 builds, unchanged.
+- REQ-P12-02, the portal half D89 and D91 left open: in the live session the
+  shell reads org.freedesktop.portal.Settings over D-Bus at mount and applies a
+  change of the accessibility preferences it reads, the contrast and
+  reduced-motion settings REQ-P12-02 and D76 name, within one frame of the
+  change signal and without a restart. The setting names are read from the
+  guest's xdg-desktop-portal interface description when the milestone is
+  delivered, not assumed here.
+- REQ-P12-03, the AT-SPI2 half D89 and D91 left open: the shell's tree reaches
+  the session's at-spi2 registry, and an assistive-technology client started
+  after the shell maps, reading through the atspi crate, receives the full tree
+  and the focus events of a keyboard walk over the canvas.
+- REQ-P05-05's D-Bus half: on mount the shell registers with the session's real
+  StatusNotifierWatcher, and the watcher lists it. The compositor-socket half
+  stays with D32's contract test, which waits for a real P04 socket.
+- `make verify-session`, a new target outside make verify-all, runs the cases;
+  without KVM or the pinned guest image it prints `SKIP: <reason>; the live
+  session gate did not run.` and exits 0, so an exit 0 is evidence only with the
+  case lines above it. docs/build/live-session.md records the run that is
+  evidence.
+- Labelling: a pass is development evidence in a VM on the reference profile.
+  The guest's compositor is not P04, so D79's client-half rule applies; the
+  guest is not the Aegis image; and a pass closes no hardware, accessibility or
+  release gate. The image's accessibility precondition is M11's (REQ-P12-01),
+  not this milestone's claim.
+
+Cheapest exit: Boot one pinned distribution guest with a layer-shell compositor,
+xdg-desktop-portal, at-spi2-core and a StatusNotifierWatcher under QEMU with
+KVM, run the M28 shell in it, change one portal setting, read the tree back
+through the session's registry and list the watcher's items.
+
+Epics:
+
+- **E29-1 Portal settings drive the shell (REQ-P12-02, portal half)**.
+  Requirements: REQ-P12-02. Acceptance: Positive: the shell reads the portal's
+  accessibility settings at mount, and a change in the portal backend is applied
+  within one frame of the change signal, with no restart. Negative: a portal
+  that does not answer within its deadline leaves the shell on its defaults, and
+  the case records the timeout rather than a value. Boundary: changing the
+  setting and changing it back returns the shell to its original state; a change
+  made before the shell maps is applied at mount.
+- **E29-2 AT-SPI2 bridge in the live session (REQ-P12-03, AT-SPI2 half)**.
+  Requirements: REQ-P12-03, REQ-P17-06. Acceptance: Positive: an
+  assistive-technology client started after the shell maps receives the full
+  tree through the session's at-spi2 registry, and the focus events of a
+  keyboard walk over the canvas. Negative: with the registry stopped the case
+  fails and names the registry, rather than passing on the shell's own export.
+  Boundary: a client started before the shell maps and one started after it
+  receive the same tree; a focus event that does not arrive fails at its
+  deadline.
+- **E29-3 Real StatusNotifierWatcher (REQ-P05-05)**. Requirements: REQ-P05-05.
+  Acceptance: Positive: on mount the shell registers with the session's
+  StatusNotifierWatcher, and the watcher lists it. Negative: with no watcher on
+  the bus the registration fails with a typed error and the shell keeps running.
+  Boundary: a watcher that appears after the shell mounts is registered with
+  once, not twice.
+- **E29-4 Pinned guest session on KVM**. Requirements: REQ-P12-02, REQ-P12-03,
+  REQ-P05-05. Acceptance: Positive: the pinned guest boots under QEMU with KVM,
+  and the compositor, the portal, the at-spi2 registry and the watcher each
+  answer on the session bus with their versions read back. Negative: a guest
+  image whose sha256 differs from the pin is refused before it boots. Boundary:
+  a service that does not appear within its deadline fails the case and names
+  the service.
+
 ### M09 - Cross-repository contract pin: one local request/result pair
 
 Rank 17. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS.
@@ -2565,7 +2975,7 @@ Epics:
 
 ### M11 - Minimal image build with artifact, signature and boot evidence
 
-Rank 23. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 25. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M24, M04. Unblocks: M13, M20, M12.
 
@@ -2582,11 +2992,13 @@ Exit criteria:
   readback and dm-verity/LUKS2 unlock records
 - Scope: the minimal image carries no UI and no kernel-attached eBPF programs
   (D20); eBPF objects enter through M10 and M12
-- REQ-P12-01 (D91): the integration adapter requests an image/UKI build from
-  Imago, and accepts its return, only for a commit on which the M04
-  accessibility gate reported PASS; a FAIL, or a SKIP for a missing engine,
-  image or offline store, stops the request before it is sent. The image still
-  carries no UI (D20): the gate is a build precondition, not image content
+- REQ-P12-01 (D91, re-mapped by D101): the integration adapter requests an
+  image/UKI build from Imago, and accepts its return, only for a commit on which
+  the M04 accessibility gate reported PASS on the P12 token component and, once
+  M16 delivers it, the P05 shell's AccessKit tree check (E16-4) passed; a FAIL,
+  or a SKIP for a missing engine, image or offline store, stops the request
+  before it is sent. The image still carries no UI (D20): both checks are build
+  preconditions, not image content
 - The A/B sysupdate transfer is exercised once between root-a and root-b, and
   observed transitions are compared with the M15 state machine
 - The M24 harness is reused unchanged except for the one pin scheme D85 moves
@@ -2709,6 +3121,24 @@ Evidence:
   'BLOCKED until: Imago accepts the M09 manifest and returns an image/UKI with
   digest and signature', still holds -- imago accepts the manifest (M09) and
   returns nothing -- and this entry is not evidence that any criterion is met.
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, on 2026-09-29
+  under decision D101 (ADR-0004), the REQ-P12-01 criterion and E11-6's
+  acceptance were reworded. The criterion read 'REQ-P12-01 (D91): the
+  integration adapter requests an image/UKI build from Imago, and accepts its
+  return, only for a commit on which the M04 accessibility gate reported PASS; a
+  FAIL, or a SKIP for a missing engine, image or offline store, stops the
+  request before it is sent. The image still carries no UI (D20): the gate is a
+  build precondition, not image content', and E11-6 read 'Positive: with the M04
+  gate passing on the commit, the build request is sent and its record names the
+  accessibility run id. Negative: a planted accessibility violation stops the
+  request before it is sent. Boundary: a gate that printed SKIP stops it too; a
+  skip is not a pass.' Both now add the P05 shell's AccessKit tree check, which
+  replaces the scan of ui/forum-shell D91 had planned, as a second precondition
+  once M16 delivers it. Neither is a relaxation: the M04 precondition is
+  unchanged and one is added. Nothing else in this milestone changed; it stays
+  ready by the register rule while its external BLOCKED-until criterion holds,
+  and this entry is not evidence that any criterion is met.
 
 Epics:
 
@@ -2749,11 +3179,13 @@ Epics:
   fails exactly as a wholesale modification does. This acceptance moved from
   M24's E24-2 under D84 and runs on the M24 harness, changed only as E11-2
   allows.
-- **E11-6 UKI compilation gated on the accessibility pass (D91)**. Requirements:
-  REQ-P12-01. Acceptance: Positive: with the M04 gate passing on the commit, the
-  build request is sent and its record names the accessibility run id. Negative:
-  a planted accessibility violation stops the request before it is sent.
-  Boundary: a gate that printed SKIP stops it too; a skip is not a pass.
+- **E11-6 UKI compilation gated on the accessibility pass (D91, D101)**.
+  Requirements: REQ-P12-01. Acceptance: Positive: with the M04 gate and, once
+  M16 has delivered it, the shell's AccessKit tree check both passing on the
+  commit, the build request is sent and its record names the run of each.
+  Negative: a planted accessibility violation in either stops the request before
+  it is sent. Boundary: a gate that printed SKIP stops it too; a skip is not a
+  pass.
 - **E11-7 Imago product result for the M09 request (moved from E09-1 by D92)**.
   Requirements: REQ-P01-01, REQ-P01-06. Acceptance: Positive: an accepted
   request returns image digest, signature reference and boot-evidence fields:
@@ -2769,7 +3201,7 @@ Epics:
 
 ### M10 - eBPF objects re-verified against the Nucleus-pinned kernel in a VM
 
-Rank 24. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 26. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M19, M23. Unblocks: M12.
 
@@ -2868,7 +3300,7 @@ Epics:
 
 ### M20 - TPM2 attestation slice on swtpm: audit-record signing and /var unseal
 
-Rank 25. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 27. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: full.
 Blocked by: M11, M14. Unblocks: nothing.
 
@@ -2950,7 +3382,7 @@ Epics:
 
 ### M12 - GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths
 
-Rank 26. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 28. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M25, M10, M11. Unblocks: nothing.
 
@@ -3005,7 +3437,7 @@ Epics:
 
 ### M13 - Release signing and remote delivery (stack.md step 5)
 
-Rank 27. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 29. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: yes. Reference profile: partial.
 Blocked by: M11. Unblocks: nothing.
 
@@ -3696,14 +4128,14 @@ notebook export (version 2.0.0-DEV) and therefore proposal data; this section
 calls it the specification. On 2026-09-27 the maintainer selected four of its
 pillars for the design and decided D74 to D77 below, revising D75 on 2026-09-28.
 D78 to D80 record what that revision required, D81 sets the accessibility target
-of the new requirements, D82 is open, and D83 scopes HISS-03 on P17's frame
-path. The change to the concept is ADR-0003
-(public:docs/adr/0003-display-runtime-p17-scaena.md `706676855b65`): P17
-aegis-scaena is recorded as a proposal, and nothing is activated. Three rows of
-the specification's status table are wrong: `crates/aegis-ipc` and
-`crates/praetor` are marked implemented and neither exists (Praetor is the
-separate Go repository cordanaLLM/praetor), and there is no
-`crates/aegis-shell`; the recorded shell is P05 aegis-forum-shell. The
+of the new requirements, D82 was open until 2026-09-29, when ADR-0004 recorded
+its answer, and D83 scopes HISS-03 on P17's frame path. The change to the
+concept is ADR-0003 (public:docs/adr/0003-display-runtime-p17-scaena.md
+`706676855b65`): P17 aegis-scaena is recorded as a proposal, and nothing is
+activated. Three rows of the specification's status table are wrong:
+`crates/aegis-ipc` and `crates/praetor` are marked implemented and neither
+exists (Praetor is the separate Go repository cordanaLLM/praetor), and there is
+no `crates/aegis-shell`; the recorded shell is P05 aegis-forum-shell. The
 specification's seL4 memory-limit example does not apply to a Linux system. Not
 selected: 6DOF hand terminals with bare-hand gesture input, and TEE attestation
 beyond TPM2 (TDX, SEV-SNP, CCA).
@@ -3736,7 +4168,10 @@ beyond TPM2 (TDX, SEV-SNP, CCA).
   those rows. REQ-P05-11 makes culling paint-only, which overrides the
   specification's culling of off-screen nodes from layout, so every node stays
   reachable by assistive technology. Which engine renders the canvas is D82,
-  still open.
+  still open. Addendum (2026-09-29, ADR-0004): D82 is decided, native Rust with
+  AccessKit on gpui (D102). Under the re-scoped M16, M16 tests three of those
+  rows on the model (REQ-P05-09 to REQ-P05-11), and REQ-P05-13 moves to M28,
+  which renders pixels.
 - **D75** Does Aegis build a Rust-native display runtime (Servo, WebRender,
   wgpu) that mounts shell surfaces through `zwlr_layer_shell_v1` and imports
   hardware-decoded video as DMA-BUF without copies? Options: a new component on
@@ -3864,6 +4299,9 @@ beyond TPM2 (TDX, SEV-SNP, CCA).
   **M27 as a leaf (2026-09-28):** As recommended, M27 stays a leaf and unblocks
   no milestone; whether M12 re-runs its display path in the built image is
   decided when M12 is planned.
+  **M27 no longer a leaf (2026-09-29):** M28 and M29, planned under ADR-0004,
+  both wait on M27, so it unblocks them; the answer above about M12 is
+  unchanged.
 - **D80** Which VA-API binding does P17 use? Options: cros-libva git-pinned at
   the merge of chromeos/cros-libva#37; the single-author fork `libva` 0.1.4;
   bindings generated in this repository. Why: cros-libva 0.0.13 from crates.io
@@ -3915,6 +4353,11 @@ beyond TPM2 (TDX, SEV-SNP, CCA).
   the primary surface, so the engine's exposure decides whether the shell can be
   used with a screen reader at all, and the D75 revision removed the engine from
   the first slice so that this can be decided on evidence.
+  **Decision (2026-09-29):** The third option: a native Rust toolkit that paints
+  the canvas itself and exposes AccessKit, so no web engine, Servo or WPE
+  WebKit, is admitted for P05. D101 widens the choice from the canvas to the
+  whole shell and D102 names the toolkit, gpui, which M28 admits (ADR-0004,
+  public:docs/adr/0004-native-p05-shell-on-gpui.md `246799c4d9d1`).
 - **D83** Does HISS-03 (no dynamic heap allocation in hot loops) bind the
   third-party decoder that P17's frame path calls? Options: a scoped deviation,
   where HISS-03 binds Aegis-authored code and the decoder's own allocation is
@@ -4042,6 +4485,10 @@ delivered.
   Playwright spec cannot import from `node_modules`, `@sveltesentio/ui` 0.5.0
   brings Tailwind, in tension with D17, and no package carries the D16 width or
   the D76 stroke and motion tokens. **Decision (2026-09-28):** none in M04.
+  **For M16 (2026-09-29):** none. The question D87 left to M16, which
+  `@sveltesentio/*` packages the shell declares, is answered with no package,
+  and D101 makes it moot the same day: the shell is native Rust and declares no
+  npm package.
 - **D88** Where does the accessibility gate run? Options: inside `make
   verify-all` with a guard that prints a skip reason when no container engine is
   found or the digest-pinned image or the offline dependency store is not
@@ -4120,6 +4567,14 @@ delivered.
   the AT-SPI2 half of REQ-P12-03 stay open and owned by no milestone, listed
   with P12's activation blockers, until a live-session P05 milestone is
   planned.
+
+  **Recorded 2026-09-29 (ADR-0004).** The live-session P05 milestone this
+  decision waited for is M29, which owns the portal half of REQ-P12-02, the
+  AT-SPI2 half of REQ-P12-03 and REQ-P05-05's real StatusNotifierWatcher. D101
+  removes the premise that M16 creates `ui/forum-shell` on the M04 toolchain:
+  E16-4 is now an AccessKit tree check over the shell's exported tree, not the
+  M04 gate over a package, and E11-6 gates the build request on the M04 PASS
+  and, once M16 delivers it, that tree check.
 
 ### Decisions from the M09 delivery (2026-09-28)
 
@@ -4239,6 +4694,129 @@ gate runs.
   the `-lusoris1` localversion is a kernel name, so neither is a repository
   identity. **Decision (2026-09-28):** the first option;
   cordanaLLM/nucleus#28 lists each file and line.
+
+### Decisions of 2026-09-29
+
+The maintainer decided D96 to D102 on 2026-09-29, together with D32 and D82,
+which were open until then. D96 to D100 were decided first, for a JavaScript
+shell, before M16's implementation; D101 then made the whole P05 shell native
+the same day, which withdrew D97, D98 and D99 before any delivery and kept D96
+and D100. D82, D101 and D102 are recorded in ADR-0004
+(public:docs/adr/0004-native-p05-shell-on-gpui.md `246799c4d9d1`); D82's answer
+is appended to its entry above, D32's to its entry in
+`docs/roadmap/inventory.md`, and D87's answer for M16 to its entry above. M16
+and M11 change under them and disclose it in their evidence, and M28 and M29 are
+new.
+
+- **D96** Which transitions does the P05 typed lifecycle admit, and at what
+  limit does a rate-limited process become quarantined? REQ-P05-03 names five
+  states, Eligible but Inactive, Activated, Rate-Limited, Quarantined and
+  Deleted, and export-014 `659691a2d7d0` (section 6.3) refers to a figure the
+  export does not contain, so no source records an edge or a limit. Options: the
+  forward chain in the source's order with two recovery edges and a named limit;
+  the forward chain alone; any state to any state behind a guard. Why: E16-1's
+  acceptance asks for each transition in the source order to succeed, a
+  transition out of Deleted to be refused and the Rate-Limited to Quarantined
+  limit to be exercised exactly, which needs edges and a number the sources do
+  not give. **Decision (2026-09-29):** the first option, kept under D101. The
+  forward chain Eligible but Inactive to Activated to Rate-Limited to
+  Quarantined to Deleted, plus Rate-Limited to Activated when the process is
+  back within its budget and Quarantined to Eligible but Inactive on release.
+  Every live state may go to Deleted, and Deleted is terminal. A process is
+  quarantined after `QUARANTINE_LIMIT` = 3 consecutive rate-limited windows, a
+  named constant; E16-1's boundary runs the transition at exactly 3 and its
+  absence at 2. No other edge is admitted, an idle return from Activated
+  included.
+- **D97** What runs the shell's unit tests? Options: `node:test`, built into the
+  admitted Node 26.10.0; Vitest; Playwright alone. Why: no JavaScript unit
+  runner was admitted, and a new runner is a new admission row, Renovate rule
+  and lockfile entry. **Decision (2026-09-29):** `node:test` on the pinned Node.
+  **Withdrawn (2026-09-29, by D101)** before any delivery: the shell has no
+  JavaScript, and its unit tests are Rust tests that `cargo test` runs.
+- **D98** How is the DecisionRequest consumer typed against the M14 schema when
+  no machine-readable schema exists? Options: golden fixtures that the Rust
+  contract serializes and the JavaScript consumer validates; a JSON Schema
+  generated with schemars and checked with ajv; TypeScript types. **Decision
+  (2026-09-29):** Rust golden fixtures. **Withdrawn (2026-09-29, by D101)**
+  before any delivery: the native shell decodes the producers' Rust types
+  directly, so no consumer in a second language needs a fixture. The
+  CarbonTelemetry contract those fixtures would have needed is still M16's, in
+  `crates/aegis-tellus`.
+- **D99** Does `ui/forum-shell` get its own lockfile beside M04's, or do the UI
+  packages share one? Options: one pnpm workspace under `ui/` with one lockfile
+  and one offline store; a lockfile per package with the gate keyed per package;
+  the shell inside `ui/concordia-tokens`. **Decision (2026-09-29):** one
+  workspace. **Withdrawn (2026-09-29, by D101)** before any delivery: there is
+  no `ui/forum-shell`, so `ui/concordia-tokens` keeps M04's lockfile, pnpm
+  settings and toolchain pin where M04 committed them.
+- **D100** How is HISS enforced on the JavaScript and Svelte under `ui/`, which
+  `praetorctl audit` does not scan? cordanaLLM/praetor#589, filed 2026-09-29,
+  records that praetorctl's HISS scanners cover Go, Python and Rust only: a
+  planted recursion, an `eval` and a 73-line function in JavaScript all pass the
+  audit. Options: ESLint with the HISS limits, run offline in the pinned
+  accessibility container until praetor ships a scanner; wait for praetor;
+  hand-written checks in `tools/`. Why: HISS-01, HISS-04 and HISS-08 bind all
+  code. **Decision (2026-09-29):** ESLint, kept under D101 for the JavaScript
+  and Svelte that remain, `ui/concordia-tokens` today: eslint,
+  eslint-plugin-svelte and svelte-eslint-parser admitted with exact pins and
+  grouped in Renovate as M04's tools are, a flat configuration with
+  `max-lines-per-function` 60, `complexity` 10, `max-statements` 50, `no-eval`,
+  `no-implied-eval`, `no-new-func` and a local rule that bans direct
+  self-recursion, zero warnings, run in `make verify-a11y` offline in the pinned
+  container with one planted violation per rule family. Mutual recursion is not
+  detected: there is no call-graph check. The implementation lands with M16's
+  delivery, whose criteria carry it, and stands until praetor#589 ships a
+  scanner.
+- **D101** Does D82's native choice cover the canvas alone or the whole P05
+  shell? The register still modelled the chrome as Svelte in a Wry webview:
+  REQ-P05-02, REQ-P05-08, M16's `ui/forum-shell` package and D91's axe-core scan
+  of it. The whole shell was the recommended answer. Why: a DOM scanner cannot
+  reach a native surface, so a native canvas inside a Svelte and Wry chrome
+  would leave two engines and two accessibility trees in one shell, and
+  REQ-P17-01 records that WebKitGTK and Wry wrap the browser in GTK container
+  windows that meet realization timing locks with `zwlr_layer_shell_v1` on
+  Wayland. **Decision (2026-09-29):** the whole shell (ADR-0004). The canvas and
+  the chrome are one Rust program on one toolkit, whose AccessKit tree reaches
+  AT-SPI through accesskit_unix; Svelte and the Wry webview leave the P05 shell,
+  and no `ui/forum-shell` package is created. The Concordia tokens stay the
+  single token source and also emit Rust theme constants (M28). The shell's
+  accessibility check moves from axe-core and Playwright to an AccessKit tree
+  check, M16 on the exported `accesskit::TreeUpdate` and M28 over AT-SPI.
+  REQ-P05-02, REQ-P05-08, REQ-P12-01 and REQ-P12-06 keep their source text and
+  gain re-mapping notes. M04 is done and its evidence stands: its gate covers
+  the P12 token component, CSS and one Svelte 5 component, and never covered the
+  shell. As planning that follows the answer, from the maintainer's answers of
+  the same day: M16 becomes the Rust crate `crates/aegis-forum-shell`, named
+  after the component because the activation binding in
+  `tools/verify_preparation.py` requires that of a component's manifest, with
+  D96's lifecycle, D77's framing, consumers typed on the producers' Rust types
+  and the canvas model with its tree export; the E16-3 cases that need rendered
+  pixels move to M28; M28 (the native shell on gpui) and M29 (a live session in
+  a VM) are added; and E11-6 gates on the M04 PASS and, once M16 delivers it,
+  the shell's tree check. D101 decides P05 only: P15 Hestia's WebKitGTK (wry)
+  micro-frontend host (REQ-P15-01) and the P14 to P15 Svelte micro-frontend
+  (REQ-P14-06) are not re-ruled.
+- **D102** Which native toolkit paints the shell? Options: gpui
+  (zed-industries/zed, Apache-2.0), git-pinned; egui with an Aegis-written
+  layer-shell host; Xilem and Masonry; a spike of gpui against egui. Why, read
+  on 2026-09-29: gpui is the only candidate that ships a public
+  `zwlr_layer_shell_v1` API of its own
+  (`crates/gpui/src/platform/layer_shell.rs`) and wires accesskit_unix directly
+  rather than through winit, it has a `canvas` element and a
+  `TransformationMatrix` for a camera, and Zed uses it in production. Its risks:
+  its crates.io release, 0.2.2 of 2025-10-22, is eleven months old, so the pin
+  is a git revision; at zed `main` it resolves accesskit 0.24.0 and
+  accesskit_unix 0.22 against the current 0.25.1 and 0.24.0; it links
+  libxkbcommon, a C library, for Linux keymaps; and no published benchmark ties
+  1,000 nodes to a frame time. Disqualified on evidence: iced, Floem and Makepad
+  have no AccessKit or AT-SPI path, Freya depends on Skia (C++), and Slint is
+  licensed GPL-3.0-only or under proprietary licences, enables AccessKit only
+  behind a feature, and no pan-and-zoom canvas container was found in it.
+  **Decision (2026-09-29):** gpui, git-pinned (ADR-0004). The commit is chosen
+  and admitted at M28, not here, and refreshed to a crates.io release once one
+  carries what the shell needs (D69), the pattern D80 set for cros-libva; until
+  then no gpui or accesskit_unix dependency is admitted, and
+  `docs/roadmap/toolchain-admission.md` lists both as proposed.
 
 ## Evidence
 

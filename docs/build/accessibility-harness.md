@@ -37,6 +37,13 @@ it proves nothing about the desktop portal, AT-SPI2 or UKI compilation, and it
 is not release evidence. P12 stays a proposal in `planning/components.json`
 (D86).
 
+**The P05 shell will not run through this gate.** Since D101 (ADR-0004,
+2026-09-29) the shell is native Rust on gpui and has no DOM for axe-core to
+scan. Its accessibility check is an AccessKit tree check: M16 runs it on the
+exported `accesskit::TreeUpdate` inside `make verify-all`, and M28 over AT-SPI
+against the running shell. This gate is unchanged and keeps covering the P12
+token component, its CSS and its one Svelte 5 component.
+
 ## What is tracked, and what is not
 
 | Path | Role |
@@ -363,6 +370,13 @@ and the AT-SPI2 half of REQ-P12-03 stay open and owned by no milestone,
 listed with P12's activation blockers in `planning/components.json` and P12's
 row in `docs/roadmap/inventory.md`, until a live-session P05 milestone is
 planned.
+
+On 2026-09-29 D101 (ADR-0004) removed the premise of that assignment: there is
+no `ui/forum-shell` to scan. E16-4 is now an AccessKit tree check over the
+native shell's exported tree, E11-6 gates the build request on this gate's PASS
+and, once M16 delivers it, that tree check, and M29, the live-session P05
+milestone planned the same day, owns the portal half of REQ-P12-02 and the
+AT-SPI2 half of REQ-P12-03.
 
 ## Renovate tracks the pins forward
 
