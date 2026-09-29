@@ -732,7 +732,8 @@ class CacheTests(unittest.TestCase):
             context = filled_cache(base)
             (context.nucleus / ".git").rmdir()
             reasons = gate.cache_reasons(context)
-            self.assertEqual(gate.skip_reasons(context), (reasons, []))
+            with on_path("git", "go"):
+                self.assertEqual(gate.skip_reasons(context), (reasons, []))
         self.assertEqual(len(reasons), 1)
         self.assertIn("no nucleus checkout under", reasons[0])
 
@@ -744,7 +745,8 @@ class CacheTests(unittest.TestCase):
             context = filled_cache(base, {"imago": imago, "nucleus": LS_REMOTE_MAIN})
             (context.nucleus / ".git").rmdir()
             self.assertEqual(len(gate.cache_reasons(context)), 1)
-            reasons, stale = gate.skip_reasons(context)
+            with on_path("git", "go"):
+                reasons, stale = gate.skip_reasons(context)
         self.assertEqual(reasons, [])
         self.assertEqual(len(stale), 1)
         self.assertIn(f"nucleus: the cache was fetched for {LS_REMOTE_MAIN}", stale[0])
@@ -757,7 +759,8 @@ class CacheTests(unittest.TestCase):
             self.assertEqual(gate.stale_problems(context), [])
             context.identity.unlink()
             self.assertEqual(gate.stale_problems(context), [])
-            reasons, stale = gate.skip_reasons(context)
+            with on_path("git", "go"):
+                reasons, stale = gate.skip_reasons(context)
         self.assertEqual(stale, [])
         self.assertEqual(len(reasons), 1)
         self.assertIn("no identity record under", reasons[0])
