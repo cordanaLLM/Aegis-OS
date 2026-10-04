@@ -30,7 +30,7 @@ jobs:
   release-please:
     name: Release pull request
     if: vars.RELEASE_TRAIN_ENABLED == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       # Least privilege for this job only; the workflow default stays read.
@@ -61,7 +61,7 @@ jobs:
   disabled-notice:
     name: Release train disabled
     if: vars.RELEASE_TRAIN_ENABLED != 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - name: Explain why no release pull request is maintained
