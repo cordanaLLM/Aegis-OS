@@ -44,7 +44,7 @@ env:
 jobs:
   verify:
     name: Verification gate
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # 30 rather than 20 since M04: the accessibility gate's fetch pulls a
     # 912 MiB compressed image (2.53 GB unpacked) before the gate runs.
     timeout-minutes: 30
