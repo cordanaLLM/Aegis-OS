@@ -2,7 +2,7 @@
   "schema": "aegis.m04.a11y-toolchain-pin.v1",
   "note": "M04 development evidence only. The accessibility gate (tools/verify_a11y.py) runs the suite in the official Playwright image named here by digest, on the Node release named here by version and by the sha256 of its linux-x64 tarball on nodejs.org, whose SHASUMS256.txt was signed by the key named. pnpm is pinned once, by packageManager in package.json, and its binary by the integrity pnpm-lock.yaml records; every npm package is pinned by pnpm-lock.yaml. `make a11y-fetch` downloads these into a cache outside the repository; the gate itself never pulls or downloads and runs the container with networking disabled.",
   "image": {
-    "reference": "mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
+    "reference": "mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f",
     "platform-digests": {
       "linux/amd64": "sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7"
     },
