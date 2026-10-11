@@ -28,8 +28,10 @@
 Description=Project Justitia Action Interceptor Engine
 After=tpm2-abrmd.service
 
-# A gate that refuses to start is a gate that is not bypassed by rate limiting.
-StartLimitIntervalSec=0
+# The start rate limit stays at systemd's default (D108). A gate that keeps
+# failing reaches the limit and stays down, and while it is down every gated
+# action is refused. Switching the limit off would restart a failing gate
+# forever and report nothing.
 
 [Service]
 # Readiness is explicit: the interceptor reports itself ready rather than being

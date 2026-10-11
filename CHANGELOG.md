@@ -13,6 +13,21 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Changed (the interceptor unit contract keeps systemd's start limit, D108)
+
+- **`crates/aegis-justitia/contracts/justitia-interceptor.service` no longer
+  sets `StartLimitIntervalSec=0`.** Beside `Restart=always` it switched off
+  systemd's start rate limit, so a gate failing on every start would have been
+  restarted without bound. The default limit applies, and the contract states
+  that a gate which reaches it stays down and every gated action is refused.
+  The unit is still a contract file and installed nowhere; no restart behaviour
+  was measured.
+- **`tools/guest/aegis-boot-report.sh` runs under `set -eu`.** The M24 guest
+  report enabled `nounset` only, so a failed command passed unchecked.
+
+Both were found by the shell and systemd unit scans of the Praetor engine at
+`299d3be`, which the CI pin predates.
+
 ### Changed (the kernel requirement asks for the BPF trampoline, D107)
 
 - **`build/kernel-requirement.json` requires

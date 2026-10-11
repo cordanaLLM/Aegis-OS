@@ -426,6 +426,15 @@ unresolved with both admission paths kept representable. The hardened unit stays
 a contract file at `crates/aegis-justitia/contracts/justitia-
 interceptor.service`, reviewed by library code and installed nowhere.
 
+Dated 2026-10-11, appended after done (D108): the unit contract no longer sets
+`StartLimitIntervalSec=0`. Beside `Restart=always` that directive switched off
+systemd's start rate limit, so a gate failing on every start would have been
+restarted without bound and reported nothing. The default limit applies now, and
+the contract states what reaching it means: the gate stays down, and while it is
+down every gated action is refused. No required directive, exit criterion or
+epic changed. Nothing installs the unit, so the limit is a declared contract and
+no restart behaviour was measured.
+
 Not delivered, and not claimed: any transport. There is no D-Bus connection, no
 socket, no eBPF program and no TPM2 signing; a signature field is a field
 encoding, and nothing in the crate produces or verifies one. Nor is a transport
