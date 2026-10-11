@@ -29,8 +29,10 @@ env:
   YAMLLINT_VERSION: "1.38.0"
   FLAKE8_VERSION: "7.3.0"
   BLACK_VERSION: "26.5.1"
-  # Published Praetor commit that builds the praetorctl this gate pins.
-  PRAETOR_COMMIT: "11ac5d8ea360c2d71dd5647d1049d2f182d599f6"
+  # Published Praetor commit that builds the praetorctl this gate pins. The
+  # name is the one Praetor's hook launcher looks for under .github/workflows,
+  # so local hooks and this job resolve the same engine; a full commit SHA.
+  PRAETOR_REF: "11ac5d8ea360c2d71dd5647d1049d2f182d599f6"
   # D80 libva floor on this runner (maintainer decision of 2026-09-29): the
   # intel/libva release tarball, its sha256 as the GitHub release publishes it,
   # and the meson and ninja wheels that build it, each pinned by its PyPI sha256.
@@ -69,7 +71,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: cordanaLLM/praetor
-          ref: ${{ env.PRAETOR_COMMIT }}
+          ref: ${{ env.PRAETOR_REF }}
           path: praetor-src
           persist-credentials: false
 
@@ -85,7 +87,7 @@ jobs:
           CGO_ENABLED: "0"
           GOFLAGS: -mod=readonly
         run: |
-          test "$(git -C praetor-src rev-parse HEAD)" = "$PRAETOR_COMMIT"
+          test "$(git -C praetor-src rev-parse HEAD)" = "$PRAETOR_REF"
           mkdir -p "$RUNNER_TEMP/bin"
           ( cd praetor-src && go mod download && go mod verify \
             && go build -trimpath -buildvcs=false \

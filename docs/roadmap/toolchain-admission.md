@@ -33,7 +33,7 @@ Two rules follow from the clause and are applied below:
 | Rust (`rustc`, `cargo`) | 1.98.1 | `rust-toolchain.toml`, `channel = "1.98.1"`, materialised by rustup | distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.98 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.9.0-stable | `rust-toolchain.toml`, same `components` list | the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
-| praetorctl | source commit `11ac5d8ea360c2d71dd5647d1049d2f182d599f6` | `.github/workflows/ci.yml`, `PRAETOR_COMMIT`, verified with `git rev-parse` before the build | the previous pin, source commit `9e855dabefac0f78f4cec59dc88db7a8d588b87f`; the pin follows Praetor's `main` (see below) | M00 |
+| praetorctl | source commit `11ac5d8ea360c2d71dd5647d1049d2f182d599f6` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `9e855dabefac0f78f4cec59dc88db7a8d588b87f`; the pin follows Praetor's `main` (see below) | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; a build input for praetorctl and, since M09, for the imago `make contract-fetch` builds, held to imago's own floor below | M00; M09 for the imago build |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
 | reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, run through `pipx run` | nothing | M00 |
@@ -62,7 +62,7 @@ the evidence names the compiler that actually executed rather than a version
 string copied from this page.
 
 The praetorctl pin follows Praetor's `main` branch. The maintainer's standing
-rule, which this paragraph records, is that `PRAETOR_COMMIT` in
+rule, which this paragraph records, is that `PRAETOR_REF` in
 `.github/workflows/ci.yml` moves to the head of Praetor's `main` whenever `main`
 moves. Between two bumps the pin lags `main`, so the praetorctl CI builds can
 be older than a workstation build of the current head.
