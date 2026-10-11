@@ -816,6 +816,139 @@ class CleanupAndEvidenceTests(unittest.TestCase):
         self.assertIn("questions.meta.json is missing: the first", str(caught.exception))
 
 
+class KeptWorktreeTests(unittest.TestCase):
+    """A failed run's worktree is kept until the next run with work, never for ever."""
+
+    def failing_run(self, base, kept):
+        """Run `execute()` on PLAN in a cache holding `kept`; its prepare fails."""
+        cache, repo = Path(base) / "cache", Path(base) / "repo"
+        session = bump.Session(args(cache=str(cache), repo=repo), stream=io.StringIO())
+        for name in kept:
+            (cache / "work" / name).mkdir(parents=True)
+        (cache / "bin" / "aaaaaaa").mkdir(parents=True)
+
+        def prepare(_session, _plan, tree):
+            tree.mkdir(parents=True)
+            raise bump.BumpError("adopt failed (exit 1)", "detail")
+
+        done = bump.Result((), 0, "", "")
+        with mock.patch.object(bump, "run", return_value=done) as run, mock.patch.object(
+            bump, "prepare", side_effect=prepare
+        ):
+            code = bump.execute(session, PLAN)
+        return session, code, run
+
+    def test_a_failed_run_removes_what_the_failed_runs_before_it_kept(self):
+        """Negative, the leak itself: 121 failed heads once left 242 registered worktrees."""
+        kept = ("aegis-aaaaaaa", "praetor-aaaaaaa", "aegis-bbbbbbb", "praetor-bbbbbbb")
+        with tempfile.TemporaryDirectory() as base:
+            session, code, run = self.failing_run(base, kept)
+            work = session.cache / "work"
+            self.assertEqual(code, 1)
+            self.assertEqual([path.name for path in work.iterdir()], [f"aegis-{NEW[:7]}"])
+            self.assertFalse((session.cache / "bin" / "aaaaaaa").exists())
+            removed = sorted(
+                (Path(call.args[0][2]).name, Path(call.args[0][-1]).name)
+                for call in run.call_args_list
+                if "remove" in call.args[0]
+            )
+        self.assertEqual(
+            removed,
+            [
+                ("praetor.git", "praetor-aaaaaaa"),
+                ("praetor.git", "praetor-bbbbbbb"),
+                ("repo", "aegis-aaaaaaa"),
+                ("repo", "aegis-bbbbbbb"),
+            ],
+        )
+
+    def test_the_failure_records_and_the_evidence_stay(self):
+        """Positive: what a later run reads to skip a failed pair is not discarded."""
+        with tempfile.TemporaryDirectory() as base:
+            earlier = Path(base) / "cache" / "failed" / f"{OLD}-{BASE}"
+            earlier.parent.mkdir(parents=True)
+            earlier.write_text("/earlier.log\n", encoding="utf-8")
+            session, _code, _run = self.failing_run(base, ("aegis-aaaaaaa",))
+            self.assertTrue(earlier.is_file())
+            self.assertTrue(bump.failure_marker(session.cache, PLAN).is_file())
+            evidence = session.args.repo / ".workingdir" / "evidence"
+            self.assertTrue((evidence / f"praetor-bump-{NEW[:7]}.log").is_file())
+
+    def test_worktrees_past_the_bound_stay_and_are_counted(self):
+        """Boundary: the removal loop is bounded, and what it left is said, not hidden."""
+        count = bump.MAX_STALE_WORKTREES + 2
+        kept = tuple(f"aegis-{index:07x}" for index in range(count))
+        with tempfile.TemporaryDirectory() as base:
+            session, _code, _run = self.failing_run(base, kept)
+            left = [path for path in (session.cache / "work").iterdir() if path.name in kept]
+            self.assertEqual(len(left), 2)
+            self.assertIn("2 kept worktree(s) past the bound", session.stream.getvalue())
+
+
+class NotifierTests(unittest.TestCase):
+    """A failed run tells the workstation's notifier, or says that nobody was told."""
+
+    def session(self, base, notifier=True):
+        repo = Path(base) / "repo"
+        session = bump.Session(args(cache=str(Path(base) / "cache"), repo=repo), io.StringIO())
+        if notifier:
+            (repo / bump.NOTIFIER).parent.mkdir(parents=True)
+            (repo / bump.NOTIFIER).write_text("#!/bin/sh\n", encoding="utf-8")
+        return session
+
+    def red(self, session, code=0):
+        """Run `red()` with every command faked; return the notifier's argument lists."""
+        result = bump.Result((), code, "", "inbox refused the line\n" if code else "")
+        error = bump.BumpError("adopt failed (exit 1)", "detail")
+        with mock.patch.object(bump, "run", return_value=result) as run:
+            exit_code = bump.red(session, PLAN, session.cache / "work" / "aegis-x", error)
+        self.assertEqual(exit_code, 1)
+        return [call.args[0] for call in run.call_args_list]
+
+    def test_a_red_run_hands_one_line_to_the_notifier(self):
+        with tempfile.TemporaryDirectory() as base:
+            session = self.session(base)
+            calls = self.red(session)
+            self.assertEqual(len(calls), 1)
+            program, line = calls[0]
+            self.assertEqual(Path(program), session.args.repo / bump.NOTIFIER)
+            for part in ("praetor bump RED", OLD[:7], NEW[:7], BASE[:7], "adopt failed"):
+                self.assertIn(part, line)
+            self.assertIn(f"praetor-bump-{NEW[:7]}.log", line)
+            self.assertIn("announced through", session.stream.getvalue())
+
+    def test_without_a_notifier_the_run_says_nobody_was_told(self):
+        """Negative: a red run that tells nobody is named as one, and starts nothing."""
+        with tempfile.TemporaryDirectory() as base:
+            session = self.session(base, notifier=False)
+            self.assertEqual(self.red(session), [])
+            self.assertIn("not announced: no notifier at", session.stream.getvalue())
+
+    def test_a_failing_notifier_is_reported_and_the_run_stays_red(self):
+        """Boundary: the notifier's own failure does not turn into silence or a pass."""
+        with tempfile.TemporaryDirectory() as base:
+            session = self.session(base)
+            self.assertEqual(len(self.red(session, code=3)), 1)
+            text = session.stream.getvalue()
+            self.assertIn("failed (exit 3): inbox refused the line", text)
+            self.assertNotIn("announced through", text)
+
+    def test_a_failed_survey_and_a_crash_are_announced_too(self):
+        with tempfile.TemporaryDirectory() as base:
+            session = self.session(base)
+            with mock.patch.object(
+                bump, "survey", side_effect=bump.BumpError("git fetch failed (exit 128)")
+            ), mock.patch.object(bump, "notify") as told:
+                self.assertEqual(bump.guarded(session), 1)
+            self.assertIn("FAIL before its survey finished", told.call_args.args[1])
+            with mock.patch.object(
+                bump, "survey", side_effect=RuntimeError("boom")
+            ), mock.patch.object(bump, "notify") as told:
+                with self.assertRaises(RuntimeError):
+                    bump.guarded(session)
+            self.assertIn("crashed: RuntimeError: boom", told.call_args.args[1])
+
+
 class UnitFileTests(unittest.TestCase):
     """The systemd user units run the script, as the user, on the two triggers."""
 

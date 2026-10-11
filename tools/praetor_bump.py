@@ -24,7 +24,8 @@ One run:
 6. runs the repository's gates with the pinned praetorctl first on PATH;
 7. GREEN: commits with sign-off and force-pushes the one rolling branch,
    opening or updating its pull request. RED: pushes nothing, writes the log to
-   .workingdir/evidence/praetor-bump-<sha7>.log and keeps the worktree.
+   .workingdir/evidence/praetor-bump-<sha7>.log, keeps the worktree until the
+   next run that has work, and hands one line to the local notifier.
 
 It never skips a hook and never merges unless `--merge` is given and the
 repository allows auto-merge. See docs/build/praetor-bump.md.
@@ -71,6 +72,10 @@ ROLLING_BRANCH = "chore/praetor-pin-auto"
 # idempotency check reads both back from the open pull request.
 TARGET_MARKER = "Target: praetor "
 BASE_MARKER = "Base: aegis "
+# An optional local program in the primary checkout's gitignored state folder.
+# A failed run starts it with one line that says what failed; what it does with
+# the line (mail, chat, an inbox file) is the workstation's own choice.
+NOTIFIER = ".workingdir/hooks/praetor-bump-notify"
 
 # The gitignored state ledgers `praetorctl flavor audit` reads. They are copied
 # from the primary checkout, never symlinked: audit rejects a symlinked
@@ -1150,28 +1155,66 @@ def publish(session, plan, tree, report):
 
 
 def remove_worktrees(session, repository, pattern):
-    """Remove the worktrees of `repository` under the cache's work/ matching `pattern`."""
+    """Remove the worktrees of `repository` under the cache's work/ matching `pattern`.
+
+    Return how many matched past the bound and therefore stay.
+    """
     work = session.cache / "work"
-    trees = sorted(work.glob(pattern))[:MAX_STALE_WORKTREES] if work.is_dir() else []
-    for tree in trees:
+    found = sorted(work.glob(pattern)) if work.is_dir() else []
+    for tree in found[:MAX_STALE_WORKTREES]:
         session.run(
             ["git", "-C", repository, "worktree", "remove", "--force", tree], DEADLINE_QUICK
         )
         shutil.rmtree(tree, ignore_errors=True)
+    return len(found[MAX_STALE_WORKTREES:])
+
+
+def discard_kept(session):
+    """Remove the worktrees and binaries that earlier runs left in the cache.
+
+    A failed run keeps its worktree for inspection, and each Praetor head gets
+    its own. Every run that has work starts here, so the cache holds one run's
+    worktrees at most; each kept one would otherwise stay registered in the
+    primary checkout's `git worktree list`. Evidence logs and failure records
+    stay.
+    """
+    left = remove_worktrees(session, session.args.repo, "aegis-*")
+    left += remove_worktrees(session, session.cache / "praetor.git", "praetor-*")
+    shutil.rmtree(session.cache / "bin", ignore_errors=True)
+    if left:
+        session.note(
+            f"note: {left} kept worktree(s) past the bound of {MAX_STALE_WORKTREES} per "
+            f"repository stay under {session.cache / 'work'}; the next run removes more"
+        )
 
 
 def clean(session):
     """Remove every worktree and binary in the cache, and the failure records.
 
-    This run's worktrees go, and so do those that failed runs kept for earlier
-    Praetor heads: the pin this run proposes supersedes them, and each would
-    otherwise stay registered in the primary checkout's `git worktree list`.
+    The pin this run proposes supersedes the pairs that failed before it.
     Their evidence logs in .workingdir/evidence/ stay.
     """
-    remove_worktrees(session, session.args.repo, "aegis-*")
-    remove_worktrees(session, session.cache / "praetor.git", "praetor-*")
-    shutil.rmtree(session.cache / "bin", ignore_errors=True)
+    discard_kept(session)
     shutil.rmtree(session.cache / "failed", ignore_errors=True)
+
+
+def notify(session, line):
+    """Hand one failure line to the checkout's local notifier; return whether it took it.
+
+    The notifier is the file `NOTIFIER` names in the primary checkout, started
+    with the line as its only argument. Without one the failure is in the
+    journal only, and the run says so.
+    """
+    notifier = session.args.repo / NOTIFIER
+    if not notifier.is_file():
+        session.note(f"not announced: no notifier at {notifier}; the journal alone has this")
+        return False
+    result = session.run([notifier, line], DEADLINE_QUICK)
+    if result.code != 0:
+        session.note(f"not announced: {notifier} failed ({describe(result)}): {last_line(result)}")
+        return False
+    session.note(f"announced through {notifier}")
+    return True
 
 
 def red(session, plan, tree, error):
@@ -1186,6 +1229,11 @@ def red(session, plan, tree, error):
     write_exact(marker, f"{evidence}\n")
     pushed = pushed_state(session.pushed)
     session.note(f"RED: {error}; {pushed}; evidence: {evidence}; worktree kept: {tree}")
+    notify(
+        session,
+        f"praetor bump RED: {plan.pin[:7]} -> {plan.target[:7]} on Aegis {plan.base[:7]}: "
+        f"{error}; {pushed}; evidence: {evidence}",
+    )
     return 1
 
 
@@ -1193,6 +1241,7 @@ def execute(session, plan):
     """Carry out a planned bump; return the exit code."""
     tree = session.cache / "work" / f"aegis-{plan.target[:7]}"
     session.note(f"bumping praetor {plan.pin[:7]} -> {plan.target[:7]} on Aegis {plan.base[:7]}")
+    discard_kept(session)
     try:
         report = prepare(session, plan, tree)
         published = publish(session, plan, tree, report)
@@ -1209,10 +1258,20 @@ def locked(session):
         plan, code = survey(session)
     except BumpError as error:
         session.note(f"FAIL: {error}")
+        notify(session, f"praetor bump FAIL before its survey finished: {error}")
         return 1
     if plan is None:
         return code
     return execute(session, plan)
+
+
+def guarded(session):
+    """Run `locked`; announce an unexpected exception before it ends the run."""
+    try:
+        return locked(session)
+    except Exception as error:
+        notify(session, f"praetor bump crashed: {type(error).__name__}: {error}")
+        raise
 
 
 def default_cache():
@@ -1258,7 +1317,7 @@ def main(argv=None):
         if not held:
             session.note(f"SKIP: {reason}; this run did nothing")
             return 0
-        return locked(session)
+        return guarded(session)
 
 
 if __name__ == "__main__":

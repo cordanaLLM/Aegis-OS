@@ -43,6 +43,7 @@ set, so a missing ledger has to be restored explicitly. `bugs.meta.json` and
 | What did the last run do? | `journalctl --user -u aegis-praetor-bump.service` |
 | When does it run next? | `systemctl --user list-timers aegis-praetor-bump.timer` |
 | Why did a bump fail? | The journal first: every `FAIL:` and `RED:` line and any traceback is there. `.workingdir/evidence/praetor-bump-<sha7>.log` in the primary checkout exists only for a failure after the survey, not for a failed fetch or `gh pr list`, an unexpected exception or a stopped run |
+| Who is told when a run fails? | Whoever the local notifier tells: see [Failure notice](#failure-notice). Without one, nobody, and the journal line `not announced:` says so |
 | Run it once now | `systemctl --user start aegis-praetor-bump.service`, or `python3 tools/praetor_bump.py` |
 | Pause it | `systemctl --user disable --now aegis-praetor-bump.path aegis-praetor-bump.timer` |
 | Remove it | `make uninstall-praetor-bump` removes the units; [Clean up](#clean-up) removes the rest |
@@ -104,8 +105,10 @@ set, so a missing ledger has to be restored explicitly. `bugs.meta.json` and
    already open, so at most one bump pull request exists. Every worktree and
    binary in the cache is then removed. On a failure it writes the failing
    lines and the whole log to the evidence file named above, keeps the
-   worktree under `work/` in the cache directory, exits non-zero, and does not
-   retry the same Praetor and Aegis pair until `--retry` is passed. A failure
+   worktree under `work/` in the cache directory until the next run that has
+   work, hands one line to the [local notifier](#failure-notice), exits
+   non-zero, and does not retry the same Praetor and Aegis pair until
+   `--retry` is passed. A failure
    before the push pushes nothing. A failure after it, while opening or
    updating the pull request or queuing its merge, leaves the branch pushed,
    and the open pull request may still name the previous target. The `RED:`
@@ -124,16 +127,35 @@ Such a run leaves its journal but no evidence file and no failure marker.
 | Option | Effect |
 | :--- | :--- |
 | `--merge` | After a pass, queue `gh pr merge --squash --auto`, but only when the repository allows auto-merge. It does not today, so the flag only reports that. |
-| `--no-publish` | Commit in the worktree and stop: no push, no pull request. The worktree is kept. |
+| `--no-publish` | Commit in the worktree and stop: no push, no pull request. The worktree is kept until the next run that has work. |
 | `--retry` | Run a Praetor and Aegis pair that already failed. |
 | `--cache-dir`, `--repo`, `--praetor-url`, `--praetor-checkout` | Relocate the cache, the Aegis checkout, the Praetor source and the object donor. |
 
+## Failure notice
+
+A failed run starts `.workingdir/hooks/praetor-bump-notify` in the primary
+checkout, when that file exists, with one argument: a line naming the old pin,
+the target, the Aegis commit, the reason and the evidence file. The file is the
+workstation's own and is not committed; what it does with the line (mail, chat,
+an inbox file) is its choice. It runs under a 120 second deadline, and its own
+failure is a `not announced:` line in the journal, not a retry.
+
+The notice is sent for a `RED` run, for a `FAIL` before the survey finished and
+for an unexpected exception. It is not sent again for a pair that already
+failed (`RED (unchanged)`), and nothing is sent when systemd stops the service
+at its four-hour limit: that case is in the journal only.
+
 ## Clean up
 
-A successful run removes every worktree and binary in the cache, including the
-worktrees that earlier failed runs kept. Until then a failed run's worktree
-stays registered in the primary checkout. To delete one once it has been
-inspected, run from the primary checkout:
+A failed run keeps its worktree so the failure can be inspected. The next run
+that has work, for the same Praetor head with `--retry` or for a newer one,
+first removes every worktree and binary that earlier runs kept, so the cache
+holds one run's worktrees at most and the primary checkout's `git worktree
+list` does not grow with each failed head. A successful run removes them as
+well, together with the failure records. Past 64 kept worktrees per repository
+(`MAX_STALE_WORKTREES`) a run removes 64, prints how many stay, and the run
+after it continues. To delete a kept worktree once it has been inspected, run
+from the primary checkout:
 
 ```sh
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/aegis-praetor-bump"
