@@ -80,7 +80,11 @@ set, so a missing ledger has to be restored explicitly. `bugs.meta.json` and
    goes back to its content on `main`: `lefthook.yml`, the evasion interceptor
    and its six hook registrations, the editor settings and adopt's `*.bak`
    files. `.standards-baseline.json` goes back when only its timestamp and
-   commit changed. `AGENTS.md` goes back as well, followed by
+   commit changed. Its entries are never recorded by a bump: a finding the
+   new engine reports and the file does not hold fails the gates, and a
+   maintainer fixes it or records it with a reason, as with the
+   [ten planted lint cases](#limits). `AGENTS.md` goes back as well,
+   followed by
    `praetorctl compile-context`, so only the generated register block and the
    projections move. Each remaining change is then reverted unless
    `praetorctl compile-context --verify`, `praetorctl audit` or
@@ -193,6 +197,13 @@ git worktree prune
   after the one-at-a-time pass; past that no pair is tried. Past 256 candidates
   (`MAX_CANDIDATES`) the rest are kept without being tried. In both cases the
   pull request body lists those files as kept.
+- The debt baseline holds ten entries, the planted cases of the M16 lint
+  under `ui/concordia-tokens/hiss-lint/plants/` (decision D109 in the
+  [roadmap](../roadmap/README.md)). adopt keeps an existing baseline and
+  reports the ratchet's verdict only (`reconcileBaseline` in the engine at
+  `299d3be`), so a bump never records one. An engine whose scan finds more
+  fails the bump until the finding is fixed or the baseline is recorded
+  again by hand.
 - The script never bypasses a hook. A bump that the hooks reject is a failure
   with evidence, not something to force.
 - It never merges on its own. Merging stays a maintainer decision unless

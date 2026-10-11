@@ -28,6 +28,23 @@ version and is never released.
 Both were found by the shell and systemd unit scans of the Praetor engine at
 `299d3be`, which the CI pin predates.
 
+### Changed (the debt baseline records the ten planted lint cases, D109)
+
+- **`.standards-baseline.json` records ten infractions, previously none.** The
+  Praetor engine at `299d3be` scans JavaScript and Svelte and reports the
+  planted cases of the M16 lint under `ui/concordia-tokens/hiss-lint/plants/`.
+  Those files are defects on purpose: each is a case the ESLint gate must
+  refuse. They are recorded as debt with a reason and stay visible, instead of
+  moving into a directory the engine skips by name. The declared exception the
+  engine lacks is requested in cordanaLLM/praetor#1256.
+- **`README.md`'s governance block states ten recorded infractions.** The
+  pinned engine's audit compares the block with the baseline file.
+
+The engine CI pins, `11ac5d8`, has no such scanner and reports no active
+infraction, so CI checks the file and the block until the pin moves. The ratchet
+of the engine at `299d3be` was seen refusing an eleventh finding, and a swap of
+one recorded finding for a new one.
+
 ### Changed (Nucleus revision 2 passes every M10 case, milestone M10 done)
 
 - **`build/kernel/nucleus-artifact.pin.json` pins `v7.2.8-realtime-lusoris2`.**

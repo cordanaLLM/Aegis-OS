@@ -1781,6 +1781,32 @@ every entry is in `planning/roadmap.json`, and the runs are on
   by the D100 entry; criterion 8 by the scope entry. Each rests on cargo test or
   on the recorded gate runs inside make verify-all, and none on simulated
   output.
+- Dated 2026-10-11, appended after done (D109); no exit criterion and no epic
+  text changes. .standards-baseline.json records ten infractions, previously
+  none: the findings the Praetor engine at 299d3be reports in criterion 7's
+  plants under ui/concordia-tokens/hiss-lint/plants/, now that the engine scans
+  JavaScript and Svelte itself (cordanaLLM/praetor#589, closed 2026-10-01). They
+  are component.svelte (HISS-01 and HISS-08), dynamic-execution.js (HISS-08,
+  three), function-length.js (HISS-04, the 61-line function), inline-disable.js
+  (HISS-08) and self-recursion.js (HISS-01, three); the engine reports nothing
+  in at-the-limits.js, complexity.js and statements.js. Each plant is a defect
+  the D100 lint must refuse, so the files stay defective. D109 (decided
+  2026-10-11): the ten are recorded as debt with a stated reason and stay
+  visible in the baseline. They are not moved into a directory the engine skips
+  by name, because a skip by directory is an exemption without a bound. The
+  bounded, declared exception the engine does not offer yet is requested in
+  cordanaLLM/praetor#1256; once it exists the ten entries leave the baseline.
+  Checked on 2026-10-11 with both engines. The engine at 299d3be, run over its
+  own adopt output on this tree, refused the empty baseline with exactly these
+  ten findings (exit 1) and accepts the recorded one (exit 0, '10 active
+  infractions within the 10 recorded'); with an eval planted in a new file under
+  ui/concordia-tokens/tests/ it exited 1 and named that file, and it did so
+  again with one plant removed at the same time, so the ratchet compares
+  findings and not their count. The engine CI pins, 11ac5d8, has no such
+  scanner: it reports 0 active infractions within the 10 recorded, and its audit
+  passes with README.md's governance block at ten. Until the pin moves, CI
+  therefore checks the block and the file, not the ten findings. D100's ESLint
+  gate is unchanged.
 
 Epics:
 
