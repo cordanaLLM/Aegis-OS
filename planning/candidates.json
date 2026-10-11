@@ -273,7 +273,7 @@
       ],
       "missing": [
         "consumer contract schemas and their version gate (M14)",
-        "an action_gate attach on a Nucleus-built kernel: that kernel's verifier accepts the object and the kernel cannot attach it (M10, D107)",
+        "an action_gate attach outside a development guest: the Nucleus-built kernel attaches it under QEMU/KVM since revision 2 (M10, 2026-10-11, D107); no image carries that kernel and nothing was booted on hardware",
         "TPM2 record signing; the signer boundary ships unbound and fails closed (M20)",
         "the D-Bus transport",
         "a durable ledger sink; M02 ships the bounded in-memory sink only"
@@ -844,7 +844,7 @@
       },
       "side_b": {
         "source_id": "public:docs/integration/stack.md",
-        "sha256": "759f28e1fc96303d75ffc52b80a052e581f3f3ae604d1d6e91a5ff755b0408ff",
+        "sha256": "a70a41523df7aac809073322c6bf7ee9d9d86c9bc9e947d5bd91f724437b0801",
         "summary": "The shared ownership table assigns kernel configuration, patch selection and artefact production to the Nucleus repository."
       },
       "affected_contract": "Aegis-side kernel requirement payload (LSM, sched_ext, BTF, RAPL, VFIO/IOMMU, KVM; ABI; architectures) and the image content list.",
@@ -1114,7 +1114,7 @@
       },
       "side_b": {
         "source_id": "public:docs/integration/stack.md",
-        "sha256": "759f28e1fc96303d75ffc52b80a052e581f3f3ae604d1d6e91a5ff755b0408ff",
+        "sha256": "a70a41523df7aac809073322c6bf7ee9d9d86c9bc9e947d5bd91f724437b0801",
         "summary": "Shared package reuse must respect language boundaries: a Go library is not a direct dependency of a Rust daemon without an adapter and contract tests."
       },
       "affected_contract": "Vesta capsule-execution contract and the crate dependency set; also the P09 -> P10 transport string.",

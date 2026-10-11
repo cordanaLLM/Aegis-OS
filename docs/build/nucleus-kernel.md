@@ -3,18 +3,28 @@ SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-# The Nucleus kernel in a guest, and the hook it cannot attach
+# The Nucleus kernel in a guest, and the hook revision 1 could not attach
 
-Status: recorded observations from milestone M10, reference profile,
-2026-09-29
+Status: recorded observations from milestone M10, reference profile:
+revision 1 on 2026-09-29, and revision 2, which closes M10, on 2026-10-11
+
+`make verify-nucleus-kernel` verifies and records a kernel release that
+cordanaLLM/nucleus built and published, boots the kernel in a guest, checks
+the Aegis kernel requirement against the configuration the kernel reports
+from inside the guest, and only then repeats the M19 loads on it.
+
+**Revision 2 passes all eighteen cases.** The pinned release is
+`v7.2.8-realtime-lusoris2`, and run `r20261011T200131-87fa` of 2026-10-11
+exited 0; [Revision 2](#revision-2-every-case-passes) records it. Revision 1
+passed seventeen: its kernel could not attach a BPF LSM program, and the
+sections after that one keep that run and its finding as they were recorded.
+
+## Revision 1: seventeen of eighteen (2026-09-29)
 
 On 2026-09-29 cordanaLLM/nucleus published the first kernel it built with an
 `imago.nucleus.kernel-artifact.v1` manifest, release
 `v7.2.8-realtime-lusoris1`. M10's first exit criterion had waited for exactly
-that. `make verify-nucleus-kernel` verifies and records the release, boots
-the kernel in a guest, checks the Aegis kernel requirement against the
-configuration the kernel reports from inside the guest, and only then repeats
-the M19 loads on it. Run `r20260929T195935-62a3` was the first to reach every
+that. Run `r20260929T195935-62a3` was the first to reach every
 case, and passed seventeen of eighteen. Review then tightened the gate: the
 signature now binds the tag commit, the release record is written before the
 first boot, every case of a stage gates the next stage, cosign is held below
@@ -50,9 +60,73 @@ so the BPF trampoline an LSM program attaches through has no entry point to
 patch. The Aegis kernel requirement asked for `CONFIG_BPF_LSM`, which the
 kernel has, and not for the trampoline, and M26's own kernel lacked it too.
 [The finding](#the-finding-bpf-lsm-present-but-not-attachable) below records
-the controlled comparison that confirms the cause. M10 is therefore not done.
-Decision D107 has since added the trampoline's prerequisite to the requirement
-([below](#since-d107-the-requirement-asks-for-the-trampoline)).
+the controlled comparison that confirms the cause. M10 was therefore not done
+on revision 1. Decision D107 then added the trampoline's prerequisite to the
+requirement ([below](#since-d107-the-requirement-asks-for-the-trampoline)),
+and nucleus built revision 2 to it.
+
+## Revision 2: every case passes
+
+Nucleus published `v7.2.8-realtime-lusoris2` on 2026-09-29T22:49:49Z, with
+the function tracer and the BPF trampoline's direct calls built in.
+`build/kernel/nucleus-artifact.pin.json` pins it, and run
+`r20261011T200131-87fa`, on 2026-10-11, printed eighteen PASS lines and no
+FAIL. The release record was written at 18:01:33 UTC, before the first guest
+started.
+
+| Field | Recorded value |
+| :--- | :--- |
+| `kernel.release` | `7.2.8-lusoris2-realtime` |
+| `kernel.config_digest` | `sha256:5dec07f61567f046e923fd862f434f056943ced8dedeb963a7f483c761b24ae8` |
+| artifact digest (`SHA256SUMS`) | `sha256:440a656f451783a048ca2210c7dbfa558ec58ba1670c19239cb273f091d2e8a3` |
+| `vmlinuz-7.2.8-lusoris2-realtime` | `4cf748d5909cf4c543d27eb86a8cd0513961e41b5937672074ac21d21dc89081` |
+| provenance revision | `852be742eb173700d5ef93b0c6f867b855f9c640` |
+| manifest, by sha256 | `c27a42e85205ef684d90d12fd17c13b048eae4d93d624e5d14785138eb932938` |
+| imago | `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311`, M09's pin |
+
+What the run read, where it differs from revision 1:
+
+- **The signature binds the new tag.** cosign verified `SHA256SUMS` against
+  the workflow identity at `refs/tags/v7.2.8-realtime-lusoris2` and the
+  workflow SHA above. It refused a second identity under the same repository
+  and the commit ending in `641`.
+- **The guest is the published kernel.** It reported
+  `7.2.8-lusoris2-realtime`, `#lusoris2 SMP PREEMPT_RT`, and a
+  `/proc/config.gz` that hashes to the manifest's `kernel.config_digest`.
+- **The two rows the host used to supply are now the guest's own.**
+  `CONFIG_FUNCTION_TRACER` and `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS` both
+  read `y` in the guest.
+- **All fourteen requirement rows are satisfied before any load** (D94,
+  E10-5), and the planted defects are still rejected one by one with
+  `correlation-id aegis-m18-kernel-requirement-0001`.
+- **`action_gate` attaches** (E10-1). The marker exec reached the ring buffer
+  as one event: `filename=/aegis-m10/aegis_exec_prob`,
+  `comm=aegis_bpf_probe`, `kind=1`, `verdict=0`, `argc=1`, `cgroup_id=1`.
+
+The other outcomes are the ones revision 1 gave: the altered kernel image is
+refused before any boot, the 6.12 floor holds, `scx_cake` attaches and
+detaches, `kepler_power` attaches, and each negative is rejected with M19's
+recorded string.
+
+Two changes to the gate ride with the pin, both prompted by the shell scan of
+`praetorctl` at `299d3be`, which reports a discarded failure:
+
+- **The idle case reads its idle task.** PID 1 used to end the task that
+  occupies the idle cgroup and discard the result. It now prints
+  `IDLE-TASK <case> held` when the task was still there as the loader
+  returned, and `gone` otherwise. The gate fails the case on anything but
+  `held`, and refuses a report without the line: an emptied cgroup reads a
+  zero delta whatever the object does, so a zero is a reading only while the
+  cgroup was occupied. The run read `held`.
+- **The probe no longer discards grep's exit status.** Status 1, no line
+  naming a symbol, stays a reading. Any higher status ends the probe with
+  exit 2.
+
+The host's tools have moved since the reference values were recorded, and the
+run prints both: QEMU 11.1.2 (recorded 11.1.1), bash 5.3.20, mount 2.42.4,
+coreutils 9.12, gzip 1.15, clang and llvm-strip 23.1.1 (recorded 22.1.8).
+Each is at or above its floor in `docs/roadmap/toolchain-admission.md`, where
+a newer installed version prints beside the recorded one and is not refused.
 
 **Nothing here is a release artifact and nothing here qualifies hardware.**
 No package was installed, no module was loaded and no boot entry was written
@@ -117,8 +191,8 @@ hold that order inside `make verify-all`.
    tag commit and the tag as the certificate's workflow SHA and ref. A second
    identity under the same repository is refused, and so is a commit that
    differs in its last digit, so both are load-bearing. imago, the binary
-   M09's fetch built at the commit M09 pins (`16f964b` for the runs recorded
-   here, `987b95a` since D107), whose sha256 the gate checks against the
+   M09's fetch built at the commit M09 pins (`16f964b` for the runs of
+   2026-09-29, `987b95a` since D107), whose sha256 the gate checks against the
    fetch's identity record, runs `imago kernel artifact verify` with the
    stream, tag and version the pin expects, and returns what M10 records. The
    record is written to the run's `release-record.json` when this stage ends.
@@ -133,6 +207,10 @@ hold that order inside `make verify-all`.
    the gate checked.
 
 ## E10-4: the release, verified and recorded
+
+The values in this section and the next three are revision 1's, from the
+runs of 2026-09-29. The cases and their order are unchanged on revision 2,
+whose values are [above](#revision-2-every-case-passes).
 
 imago accepted the manifest against the downloaded assets. The values it
 returned, each equal to the pin, were written to the run's
@@ -252,7 +330,9 @@ wrote, absent from the unmutated object's log. The kepler value is the
 object's declared runtime-times-TDP figure, `pseudo_energy_uj_unmeasured`,
 not a meter reading. The idle cgroup holds one task that enters it after the
 attach and sleeps through the interval, so its row exists at both ends and
-its delta is a reading of zero, not an absent line.
+its delta is a reading of zero, not an absent line. Since 2026-10-11 the
+guest also reports whether that task was still there when the loader
+returned ([Revision 2](#revision-2-every-case-passes)).
 
 ## The finding: BPF LSM present but not attachable
 
@@ -337,7 +417,8 @@ unchanged by D107; the kernel is what no longer conforms. Nucleus's ADR-0011,
 at `852be74`, re-releases all four streams as revision 2,
 `v7.2.8-realtime-lusoris2` among them; its release list, read on 2026-09-29,
 held revision 1 only. M10 closes only when a release built to the new
-requirement passes E10-1.
+requirement passes E10-1. That release is revision 2, and it does
+([Revision 2](#revision-2-every-case-passes)).
 
 ## Two things M19 never exercised
 
@@ -366,11 +447,14 @@ four modes are unchanged, and `tools/test_bpf_objects.py` still passes.
 
 ## What this does not claim
 
-- It does not close M10. E10-1's positive fails on this kernel, as recorded
-  above.
+- Revision 1 did not close M10: E10-1's positive fails on that kernel, as
+  recorded above. Revision 2 closes it in the register, and nothing beyond
+  it.
 - It is development evidence on the reference profile, closing neither the
   hardware nor the release gate. The M19 host-kernel fixture closes nothing
   here either: it is exactly the fixture whose host supplied the trampoline.
+- No Nucleus kernel has booted on hardware. Both guests are QEMU/KVM guests
+  on the reference profile.
 - The guest's userspace, libbpf included, is the host's own; only the kernel
   is under test.
 - No SBOM content is checked; the two SBOMs are verified by digest only.

@@ -34,7 +34,7 @@
         "blueprints/[Report P01] Project Fabrica - OS Build System & UKI Synthesis.md"
       ],
       "activation_blockers": [
-        "Imago/Nucleus result and artifact contracts (M09 pinned the request half: imago consumes both M18 payloads, D92; the Imago result is M11's; the Nucleus kernel result arrived on 2026-09-29 as release v7.2.8-realtime-lusoris1, which M10 verifies and records (run r20260929T195935-62a3), and M10 stays open on E10-1, D107)",
+        "Imago/Nucleus result and artifact contracts (M09 pinned the request half: imago consumes both M18 payloads, D92; the Imago result is M11's; the Nucleus kernel result arrived on 2026-09-29, and M10 is done since 2026-10-11 on release v7.2.8-realtime-lusoris2, verified, recorded and booted in a guest (run r20261011T200131-87fa))",
         "pinned image/kernel inputs",
         "real artifact and boot evidence",
         "real hardware or emulator evidence for each listed hardware requirement"
@@ -96,7 +96,7 @@
         "blueprints/[Report P02] Project Janus & Vallum - Partition Geometry & Storage Security.md"
       ],
       "activation_blockers": [
-        "Imago/Nucleus result and artifact contracts (M09 pinned the request half: imago consumes both M18 payloads, D92; the Imago result is M11's; the Nucleus kernel result arrived on 2026-09-29 as release v7.2.8-realtime-lusoris1, which M10 verifies and records (run r20260929T195935-62a3), and M10 stays open on E10-1, D107)",
+        "Imago/Nucleus result and artifact contracts (M09 pinned the request half: imago consumes both M18 payloads, D92; the Imago result is M11's; the Nucleus kernel result arrived on 2026-09-29, and M10 is done since 2026-10-11 on release v7.2.8-realtime-lusoris2, verified, recorded and booted in a guest (run r20261011T200131-87fa))",
         "pinned image/kernel inputs",
         "real artifact and boot evidence",
         "real hardware or emulator evidence for each listed hardware requirement"
@@ -363,7 +363,7 @@
       ],
       "activation_blockers": [
         "pinned shared integration contract (consumer and hardened-unit schemas, M14)",
-        "a kernel that attaches action_gate: M19's verifier evidence is a host fixture, and the Nucleus-built kernel M10 boots accepts the object but cannot attach it, because it has no function tracer for the BPF trampoline to patch (run r20260929T195935-62a3, decision D107 (decided 2026-09-29: add the requirement row))",
+        "action_gate attached anywhere but a development guest: M19's verifier evidence is a host fixture, and the Nucleus-built kernel M10 boots attaches it under QEMU/KVM on the reference profile since revision 2 (run r20261011T200131-87fa, 2026-10-11; revision 1 could not, decision D107); no image carries that kernel and nothing was booted on hardware",
         "TPM2 record signing absent; the signer boundary fails closed (M20)",
         "real hardware or emulator evidence for each listed hardware requirement"
       ],

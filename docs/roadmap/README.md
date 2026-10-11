@@ -191,12 +191,12 @@ score.
 | 18 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | done | small | no | no | not-hardware | M04, M14 | M28 |
 | 19 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | done | medium | yes | no | full | M07 | M28, M29 |
 | 20 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | done | small | yes | no | full (privileged read) | M05 | - |
-| 21 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
-| 22 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
-| 23 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | ready | large | yes | no | full | M16, M27 | M29 |
-| 24 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | blocked | medium | yes | no | full | M28, M27 | - |
-| 25 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
-| 26 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | ready | medium | yes | yes | partial | M09, M19, M23 | M12 |
+| 21 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | done | medium | yes | yes | partial | M09, M19, M23 | M12 |
+| 22 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
+| 23 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
+| 24 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | ready | large | yes | no | full | M16, M27 | M29 |
+| 25 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | blocked | medium | yes | no | full | M28, M27 | - |
+| 26 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
 | 27 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
 | 28 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | partial | M25, M10, M11 | - |
 | 29 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
@@ -205,14 +205,14 @@ The reference profile column records what the machine in
 `planning/hardware-profile.json` can evidence for that milestone. A pass there
 is development evidence only; see `docs/roadmap/hardware.md`.
 
-M11 and M10 are `ready` by rule (5): every milestone they are blocked by is
-done. M11 still carries an external BLOCKED-until criterion that holds: it
-waits for Imago to return an image/UKI and its product result. M10's held until
-2026-09-29, when nucleus published release `v7.2.8-realtime-lusoris1`; M10's
-run verified and recorded it and repeated the M19 loads on it, and M10 stays
-open because that kernel cannot attach `action_gate` (decision D107,
-`docs/build/nucleus-kernel.md`). `ready` is a register state for both, not an
-unblocking.
+M11 is `ready` by rule (5): every milestone it is blocked by is done. It still
+carries an external BLOCKED-until criterion that holds: it waits for Imago to
+return an image/UKI and its product result, so `ready` is a register state
+there, not an unblocking. M10 is done since 2026-10-11: nucleus release
+`v7.2.8-realtime-lusoris2`, built to the requirement decision D107 raised,
+passed all eighteen cases of `make verify-nucleus-kernel` (run `r20261011T200131-87fa`,
+`docs/build/nucleus-kernel.md`). That is development evidence on the reference
+profile, and M12 stays blocked by M25 and M11.
 
 ## Milestone exit criteria and epics
 
@@ -1816,7 +1816,7 @@ Epics:
 
 ### M25 - GPU DMA-BUF sharing and VFIO passthrough slices
 
-Rank 21. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 22. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M08, M17. Unblocks: M12.
 
@@ -1865,7 +1865,7 @@ Epics:
 
 ### M22 - P10 microVM sandbox measurements on KVM
 
-Rank 22. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 23. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M06. Unblocks: nothing.
 
@@ -2839,7 +2839,7 @@ Epics:
 
 ### M28 - P05 native shell on gpui: layer surface, AT-SPI tree, frame time
 
-Rank 23. State: ready. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 24. State: ready. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M16, M27. Unblocks: M29.
 
@@ -2992,7 +2992,7 @@ Epics:
 
 ### M29 - P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher
 
-Rank 24. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 25. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M28, M27. Unblocks: nothing.
 
@@ -3394,7 +3394,7 @@ Epics:
 
 ### M11 - Minimal image build with artifact, signature and boot evidence
 
-Rank 25. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 26. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M24, M04. Unblocks: M13, M20, M12.
 
@@ -3620,7 +3620,7 @@ Epics:
 
 ### M10 - eBPF objects re-verified against the Nucleus-pinned kernel in a VM
 
-Rank 26. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 21. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M19, M23. Unblocks: M12.
 
@@ -3662,8 +3662,10 @@ initramfs and repeat the M19 loads. The M19 host-kernel fixture does not close
 this milestone.
 
 Evidence (the D92 disclosure of 2026-09-28, the disclosure of 2026-09-29, the
-E10-1 finding and the gate; every entry is in `planning/roadmap.json`, and the
-run is on `docs/build/nucleus-kernel.md`):
+E10-1 finding and the gate on revision 1, then the disclosure, the loads, the
+gate and the closing entry on revision 2 of 2026-10-11; every entry is in
+`planning/roadmap.json`, the release, capability and requirement entries of
+revision 2 among them, and the runs are on `docs/build/nucleus-kernel.md`):
 
 - Disclosure, in the shape M18 recorded, because a milestone that edits its own
   bar must say so where the bar is judged: before any delivery, on 2026-09-28
@@ -3775,6 +3777,86 @@ run is on `docs/build/nucleus-kernel.md`):
   recorded run, with the same eighteen outcomes. This is development evidence on
   the reference profile only: the M19 host-kernel fixture does not close M10,
   and a pass here would close neither the hardware nor the release gate.
+- Disclosure, in the shape M18 recorded, because the gate's own files changed
+  between the runs of 2026-09-29 and the run that closes the milestone
+  (2026-10-11). No exit criterion, epic or the cheapest exit is rewritten. Six
+  points are recorded. (1) build/kernel/nucleus-artifact.pin.json now pins
+  v7.2.8-realtime-lusoris2 (tag commit 852be742eb173700d5ef93b0c6f867b855f9c640,
+  published 2026-09-29T22:49:49Z), the release nucleus built to the fourteen-row
+  requirement of D107; revision 1 is no longer pinned, and every entry dated
+  2026-09-29 describes revision 1. (2) Point (1) of the disclosure of 2026-09-29
+  no longer describes the pinned kernel: E10-1's positive and E10-5's positive
+  are met on revision 2 (the entries below). Its points (2) to (8) stand
+  unchanged. (3) The idle case gained a reading. PID 1 used to end the idle task
+  and discard the result; it now prints whether that task was still in its
+  cgroup when the loader returned (IDLE-TASK held or gone), and the gate fails
+  the case on anything but held, or on a report without the line, because an
+  emptied cgroup reads a zero delta whatever the object does. This tightens
+  E10-3's boundary and relaxes nothing. (4) tools/guest/aegis-nucleus-probe.sh
+  no longer discards grep's exit status: status 1, no line naming a symbol,
+  stays a reading, and any higher status ends the probe with exit 2. Points (3)
+  and (4) answer two findings of the shell scan of praetorctl at 299d3be, which
+  reports a discarded failure. (5) The host's tools have moved since their
+  reference values were recorded, and the run prints both: QEMU 11.1.2 (recorded
+  11.1.1), bash 5.3.20 (5.3.15), mount 2.42.4 (2.42.3), coreutils 9.12 (9.11),
+  gzip 1.15 (1.14), clang and llvm-strip 23.1.1 (22.1.8). Each is inside the
+  range docs/roadmap/toolchain-admission.md admits, where a newer installed
+  version prints beside the recorded one instead of being refused; the page's
+  rows keep their recorded values, and the host kernel is 7.2.9-2-cachyos. (6)
+  Closing moves M10 from rank 26 to rank 21: tools/rank_roadmap.py places done
+  milestones before open ones, in their earlier order, so M25, M22, M28, M29 and
+  M11 each move down one place, to 22, 23, 24, 25 and 26. No rank_override is
+  recorded and no other milestone moves.
+- Criterion 4 and E10-1, E10-2 and E10-3 on revision 2 (2026-10-11), run
+  r20261011T200131-87fa; every load ran as uid 65534 with -all,+bpf,+perfmon and
+  every verifier log carries its load's nonce. E10-1 is met: action_gate loaded
+  and attached to its LSM hook, and the marker exec reached the ring buffer
+  (event filename=/aegis-m10/aegis_exec_prob comm=aegis_bpf_probe kind=1
+  verdict=0 argc=1); the -EBUSY of revision 1 is gone with the function tracer
+  built in, as the controlled comparison of 2026-09-29 predicted. Its negative
+  holds, M19's unchecked-pointer variant rejected with 'R7 invalid mem access
+  'ringbuf_mem_or_null'', and its boundary is the capability case: bpf is read
+  from the guest's LSM list, and CapabilityTests fails a guest without it.
+  E10-2: scx_cake's struct_ops attached with cake_tier_budget set to 4, root/ops
+  read aegis_cake with switch_all 1 during the hold and still at its end, and
+  the guest console recorded 'BPF scheduler "aegis_cake" disabled (unregistered
+  from user space)'; the unbounded variant was rejected with 'The sequence of
+  8193 jumps is too complex.'. E10-3: the sched_switch tracepoint attached and
+  runtime grew in cgroup 1, the root cgroup, across 4 readings; a missing
+  tracepoint was reported as tracepoint_attach_failed
+  tracepoint=sched/aegis_no_such_tracepoint errno=2; and the idle cgroup's
+  pseudo_energy_uj_unmeasured read 0 -> 0 over 3000 ms inside the attach window,
+  recorded as a value, with the idle task read as held when the loader returned.
+  That figure is the object's declared runtime-times-TDP value, not a meter
+  reading.
+- The gate on revision 2 (2026-10-11): make verify-nucleus-kernel exits 0 with
+  eighteen PASS lines and no FAIL (run r20261011T200131-87fa, started 20:01:30
+  local time on the committed tree and ended 20:02:05), where the recorded run
+  of 2026-09-29 exited 2 on the one E10-1 case. tools/test_nucleus_kernel.py (85
+  tests) and tools/test_kernel_requirement_check.py (30 tests), inside make
+  verify-all, hold the revision 2 pin and the idle task's reading besides what
+  they held before: a report reading held passes, one reading gone fails with
+  the reason named, and one without the line is refused. Mutation check,
+  restored: with the held condition removed from the gate the idle test fails.
+  docs/build/nucleus-kernel.md records the run.
+- Done, and each part by the entry named: criterion 1 and E10-4 by the revision
+  2 release entry (the manifest accepted by imago at M09's pin, the signature
+  bound to the tag commit, the record written before any boot, the altered copy
+  refused before boot, the 6.12 floor); criteria 2, 3 and 5 by the entry of
+  2026-09-29 and its revision 2 counterpart (KVM, the admitted emulator read
+  back, M23's boot() reused); criterion 4 and E10-1, E10-2 and E10-3 by the
+  revision 2 load entry (all three objects load and attach under the Nucleus
+  kernel's verifier, each negative rejected, the idle delta recorded as a
+  value); criterion 6 by the revision 2 capability entry; criterion 7 and E10-5
+  by the revision 2 requirement entry (fourteen rows satisfied before any load,
+  the planted defects rejected with the correlation id); criterion 8 by the
+  gate's own last line and by this sentence: the M19 host-kernel fixture does
+  not close M10, and this pass on the reference profile's VM is development
+  evidence only, closing neither the hardware nor the release gate. Each rests
+  on the recorded run r20261011T200131-87fa or on tools/test_nucleus_kernel.py
+  and tools/test_kernel_requirement_check.py inside make verify-all, and none on
+  simulated output. The disclosures of 2026-09-28, 2026-09-29 and 2026-10-11
+  stay part of the record.
 
 Epics:
 
@@ -4031,8 +4113,9 @@ Risks, recorded from the cards and the private readiness matrix:
   the result M11 waits for depends on producer work Aegis cannot do:
   cordanaLLM/imago issue 46. nucleus published its first kernel on 2026-09-29,
   and M10 verified it; D107 put the BPF trampoline's prerequisite into the
-  kernel requirement the same day, and what M10 now waits for is a Nucleus
-  release built to it.
+  kernel requirement the same day, and nucleus released revision 2 built to
+  it. M10 closed on that release on 2026-10-11, on the reference profile's VM
+  only; no Nucleus kernel has booted on hardware.
 - Imported workflows suppress failures (REQ-CI-01, REQ-CI-02), and the imported
   integration script prints boot/TPM2 success without executing anything
   (REQ-BOOT-02). They stay inactive, and any activated gate must be rewritten.
@@ -5545,6 +5628,12 @@ against the decoder of `061bbde`.
   nothing; M10 stays open until a release built to it passes E10-1, which
   nucleus's ADR-0011 names `v7.2.8-realtime-lusoris2`. The dated entries of M18,
   M09 and M26 record the runs.
+  **Closed (2026-10-11):** nucleus published `v7.2.8-realtime-lusoris2` at
+  `852be742eb173700d5ef93b0c6f867b855f9c640` on 2026-09-29T22:49:49Z. M10 pins
+  it, and run `r20261011T200131-87fa` of `make verify-nucleus-kernel` passed all
+  eighteen cases: the guest reads `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS=y`,
+  all fourteen requirement rows are satisfied before any load, and
+  `action_gate` attaches. M10 is done; its dated entries record the run.
 
 ## Evidence
 
