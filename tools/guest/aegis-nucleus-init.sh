@@ -100,11 +100,14 @@ aegis_idle_case() {
 	/bin/sh -c 'echo "$$" >"$1/cgroup.procs"; exec /bin/sleep 30' aegis-idle "$IDLE" &
 	idle=$!
 	if wait "$loader"; then status=0; else status=$?; fi
-	kill "$idle" 2>/dev/null || true
+	# A reading, not a cleanup detail: a task that had already left means the
+	# cgroup was empty for part of the interval, and an empty cgroup reads zero.
+	if kill "$idle" 2>/dev/null; then occupant=held; else occupant=gone; fi
 	/bin/cat "$STAGE/out"
 	echo "${MARK}-CASE-STATUS ${name} ${status}"
 	aegis_log "$name" "$log"
 	echo "${MARK}-CASE-END ${name}"
+	echo "${MARK}-IDLE-TASK ${name} ${occupant}"
 }
 
 {

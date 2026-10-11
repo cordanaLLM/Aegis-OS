@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Boot the Nucleus-built kernel in a guest and repeat the M19 loads on it (M10).
 
-The kernel under test is the one cordanaLLM/nucleus built and published as
-release ``v7.2.8-realtime-lusoris1`` with an ``imago.nucleus.kernel-artifact.v1``
-manifest. `build/kernel/nucleus-artifact.pin.json` pins every asset by sha256
-and size, the tag's commit, and the keyless signer. Nothing here builds,
+The kernel under test is the one cordanaLLM/nucleus built and published with
+an ``imago.nucleus.kernel-artifact.v1`` manifest.
+`build/kernel/nucleus-artifact.pin.json` names the release and pins every asset
+by sha256 and size, the tag's commit, and the keyless signer. Nothing here builds,
 installs or packages a kernel: the image is a file under
 ``AEGIS_NUCLEUS_KERNEL_DIR`` (default
 ``${XDG_CACHE_HOME:-$HOME/.cache}/aegis-nucleus-kernel``), filled by
@@ -1412,9 +1412,15 @@ def idle_case(context, text, results):
     """E10-3 boundary: an idle cgroup's delta over the interval is a recorded zero."""
     result = results[CASE_TP]
     cgroup = int(guest_field(text, f"IDLE-CGROUP {CASE_TP}"))
+    occupant = guest_field(text, f"IDLE-TASK {CASE_TP}")
     rows = power_rows(result["output"])
     begin, end = rows.get(("begin", cgroup)), rows.get(("end", cgroup))
     problems = []
+    if occupant != "held":
+        problems.append(
+            f"the idle task read {occupant!r}, not 'held', when the loader returned; "
+            "an empty cgroup reads zero whatever the object does"
+        )
     if begin is None or end is None:
         problems.append(f"cgroup {cgroup} has no reading at both ends of the interval")
         begin = end = (0, 0)
@@ -1429,6 +1435,7 @@ def idle_case(context, text, results):
         f"idle cgroup {cgroup}: pseudo_energy_uj_unmeasured {begin[1]} -> {end[1]}, delta "
         f"{delta[1]} uJ recorded as a value; runtime delta {delta[0]} ns",
         f"interval {IDLE_HOLD_MS} ms inside the attach window, after {IDLE_SETTLE_MS} ms settle",
+        f"the idle task was still in the cgroup when the loader returned: {occupant}",
         "the value is the object's declared runtime-times-TDP figure, not a meter reading",
     ]
     return report(context, "kepler_power/nucleus-idle-zero-delta-recorded", problems, notes)

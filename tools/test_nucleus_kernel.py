@@ -105,7 +105,7 @@ def readback_report(nonce, config, release=None, probe=None):
         f"{MARK}-NONCE {nonce}",
         f"{MARK}-PHASE readback",
         f"{MARK}-UNAME-R {release or PIN['kernel']['release']}",
-        f"{MARK}-UNAME-V #lusoris1 SMP PREEMPT_RT",
+        f"{MARK}-UNAME-V #lusoris2 SMP PREEMPT_RT",
     ]
     if probe is not None:
         lines += [f"{MARK}-PROBE-BEGIN", *probe, f"{MARK}-PROBE-END", f"{MARK}-PROBE-STATUS 0"]
@@ -137,9 +137,9 @@ class PinTests(unittest.TestCase):
 
     def test_the_tracked_pin_is_complete(self):
         self.assertEqual(gate.pin_problems(PIN), [])
-        self.assertEqual(PIN["tag"], "v7.2.8-realtime-lusoris1")
-        self.assertEqual(PIN["revision"], "9e050cf8fc2fb62de943229f22ab104dce455e92")
-        self.assertEqual(PIN["kernel"]["release"], "7.2.8-lusoris1-realtime")
+        self.assertEqual(PIN["tag"], "v7.2.8-realtime-lusoris2")
+        self.assertEqual(PIN["revision"], "852be742eb173700d5ef93b0c6f867b855f9c640")
+        self.assertEqual(PIN["kernel"]["release"], "7.2.8-lusoris2-realtime")
         self.assertEqual(len(gate.asset_rows(PIN)), 3 + len(PIN["artifacts"]))
 
     def test_the_signer_is_an_exact_identity_under_the_producer(self):
@@ -826,10 +826,17 @@ class GuestLoadTests(unittest.TestCase):
             "power_end cgroup_id=24 runtime_ns=0 pseudo_energy_uj_unmeasured=0\n"
         )
         context, results = self.results(gate.CASE_TP, rows, 0, "# run-nonce aegis-1-n\n")
-        text = f"{MARK}-IDLE-CGROUP {gate.CASE_TP} 24\n"
+        cgroup_line = f"{MARK}-IDLE-CGROUP {gate.CASE_TP} 24\n"
+        text = cgroup_line + f"{MARK}-IDLE-TASK {gate.CASE_TP} held\n"
         passed, out = quiet(gate.idle_case, context, text, results)
         self.assertTrue(passed, out)
         self.assertEqual(context.recorded["kepler.idle_delta"]["pseudo_energy_uj_unmeasured"], 0)
+        left = cgroup_line + f"{MARK}-IDLE-TASK {gate.CASE_TP} gone\n"
+        passed, out = quiet(gate.idle_case, context, left, results)
+        self.assertFalse(passed)
+        self.assertIn("the idle task read 'gone'", out)
+        with self.assertRaisesRegex(gate.GateError, "printed no IDLE-TASK"):
+            gate.idle_case(context, cgroup_line, results)
         moved = rows.replace(
             "power_end cgroup_id=24 runtime_ns=0", "power_end cgroup_id=24 runtime_ns=5"
         )
