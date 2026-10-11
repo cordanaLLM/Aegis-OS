@@ -659,7 +659,9 @@ ubuntu-26.04 carries 2.23.0), both below the floor. As the maintainer decided on
 2026-09-29 (D80), the job builds the pinned release tarball rather than
 lowering the floor or changing the runner image, in
 `.github/workflows/ci.yml` before `make verify-all`, and caches the installed
-prefix under `~/.cache/aegis-libva/2.24.1`, keyed on every pin below.
+prefix under `~/.cache/aegis-libva/2.24.1`, keyed on every pin below and on
+the word `werror`, so that a build made before warnings became errors is not
+restored.
 `tools/test_display_toolchain.py` holds the workflow's `env:` values to this
 table.
 
@@ -670,10 +672,14 @@ table.
 | ninja | 1.13.2, wheel sha256 `65a24341b5ac09fcadcc37082660be40a94174e51a937fabf6e2cae26225fa2c` (manylinux x86_64) | `NINJA_VERSION` and `NINJA_WHEEL_SHA256`, the same install | runs the libva build; the newest release on PyPI on 2026-09-29 |
 | libdrm headers | unpinned: the runner's `libdrm-dev` from its signed Ubuntu archive | `pkg-config --atleast-version=2.4.75 libdrm`, the floor libva's `meson.build` requires for `libva-drm`, printed and held before the build | `libva-drm`, which cros-libva links; the image ships no libdrm headers |
 
-The build runs `meson setup` with `--prefix=$HOME/.cache/aegis-libva/2.24.1
---libdir=lib --buildtype=release -Dwith_x11=no -Dwith_glx=no -Dwith_wayland=no
--Dwith_win32=no -Denable_docs=false`, then `meson compile` and `meson install`;
-only the DRM backend, which cros-libva links, is built. The step after it
+The build runs `meson setup --werror` with
+`--prefix=$HOME/.cache/aegis-libva/2.24.1 --libdir=lib --buildtype=release
+-Dwith_x11=no -Dwith_glx=no -Dwith_wayland=no -Dwith_win32=no
+-Denable_docs=false`, then `meson compile` and `meson install`; only the DRM
+backend, which cros-libva links, is built. `--werror` turns a compiler warning
+into a failed step (HISS-10); a libva release that warns under the runner's
+compiler therefore stops the gate until the pin or the build changes. The step
+after it
 exports `PKG_CONFIG_PATH`, so cros-libva's build script finds the prefix, and
 `LD_LIBRARY_PATH`, because Cargo adds a build script's search path to the
 loader path only inside the target directory, and it reads the installed

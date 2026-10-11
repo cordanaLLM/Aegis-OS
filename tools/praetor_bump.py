@@ -823,14 +823,30 @@ def fresh_worktree(session, repository, path, commit):
     session.must(add + [path, commit], DEADLINE_QUICK, what=f"creating worktree {path.name}")
 
 
+def build_steps(binary):
+    """Return the commands that build praetorctl into `binary`, in CI's order.
+
+    `go vet` runs before the build so that a finding stops the bump where it
+    stops the Verification gate; the engine's audit counts a Go build lane
+    without it as one that tolerates warnings (HISS-10).
+    """
+    return (
+        ["go", "mod", "download"],
+        ["go", "mod", "verify"],
+        ["go", "vet", "./..."],
+        ["go", "build", "-trimpath", "-buildvcs=false", "-o", binary, "./cmd/standardsctl"],
+    )
+
+
 def build_praetorctl(session, target):
     """Build praetorctl at `target` exactly as CI does; return its source worktree.
 
     The binary becomes `session.binary`, which every later command finds first
     on PATH; the source worktree is what adopt reads as `--lock-source-root`.
 
-    CI checks the commit out, runs `go mod download` and `go mod verify`, and
-    builds with CGO_ENABLED=0 GOFLAGS=-mod=readonly and -trimpath -buildvcs=false.
+    CI checks the commit out, runs `go mod download`, `go mod verify` and
+    `go vet ./...`, and builds with CGO_ENABLED=0 GOFLAGS=-mod=readonly and
+    -trimpath -buildvcs=false (`build_steps`).
     CI installs the Go version go.mod declares and sets GOTOOLCHAIN=local; here
     GOTOOLCHAIN stays at the workstation's setting, whose default `auto` builds
     with the local Go when it satisfies go.mod and fetches the one go.mod names
@@ -844,12 +860,7 @@ def build_praetorctl(session, target):
     binary = session.cache / "bin" / target[:7] / "praetorctl"
     binary.parent.mkdir(parents=True, exist_ok=True)
     build = {"CGO_ENABLED": "0", "GOFLAGS": "-mod=readonly"}
-    steps = (
-        ["go", "mod", "download"],
-        ["go", "mod", "verify"],
-        ["go", "build", "-trimpath", "-buildvcs=false", "-o", binary, "./cmd/standardsctl"],
-    )
-    for step in steps:
+    for step in build_steps(binary):
         session.must(step, DEADLINE_BUILD, cwd=source, extra=build, what=" ".join(step[:3]))
     session.binary = binary
     session.note(f"built praetorctl at {target[:7]}: {binary}")

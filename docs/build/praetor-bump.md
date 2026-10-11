@@ -65,9 +65,12 @@ set, so a missing ledger has to be restored explicitly. `bugs.meta.json` and
    next to this one only lends objects to the first clone (`git clone
    --reference-if-able --dissociate`); the script never writes to it.
 2. **Build.** It builds `praetorctl` at that commit with the Verification
-   gate's build steps and flags: `go mod download`, `go mod verify`, then
-   `go build -trimpath -buildvcs=false ./cmd/standardsctl` with
-   `CGO_ENABLED=0` and `GOFLAGS=-mod=readonly`. The Go toolchain is the
+   gate's build steps and flags: `go mod download`, `go mod verify`,
+   `go vet ./...`, then `go build -trimpath -buildvcs=false
+   ./cmd/standardsctl` with `CGO_ENABLED=0` and `GOFLAGS=-mod=readonly`. A vet
+   finding stops the bump before a binary exists, as it stops the gate.
+   `tools/test_praetor_bump.py` holds the workflow to the script's step list.
+   The Go toolchain is the
    workstation's, under its own `GOTOOLCHAIN` setting, whereas CI installs the
    version Praetor's `go.mod` declares and sets `GOTOOLCHAIN=local`.
 3. **Adopt.** In a fresh worktree of Aegis `main` under the cache directory it
