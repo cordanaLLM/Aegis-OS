@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: EUPL-1.2 OR GPL-2.0-only
 //
 // P07 boundary fixture: a sched_ext struct_ops in which every handler the object
 // declares is a stub. This is the ONLY object milestone M19 attaches to the host

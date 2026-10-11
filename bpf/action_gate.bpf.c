@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: EUPL-1.2 OR GPL-2.0-only
 //
 // P06 `action_gate`: the exec observation point, as a BPF LSM program.
 //

@@ -66,7 +66,7 @@ vocabulary.
 | `docs/roadmap/` | Roadmap, cited requirements, dependency-ordered tasks, and the toolchain admission matrix |
 | `docs/adr/` | Architecture decision records |
 | `docs/integration/stack.md` | Shared ownership and cross-repository contracts |
-| `LICENSING.md`, `REUSE.toml` | Split licence: EUPL-1.2 technical material, CC BY-SA 4.0 prose |
+| `LICENSING.md`, `REUSE.toml` | Split licence: EUPL-1.2 technical material, CC BY-SA 4.0 prose; code the Linux kernel loads is `EUPL-1.2 OR GPL-2.0-only` |
 | `Cargo.toml`, `rust-toolchain.toml`, `crates/` | Rust workspace and pinned toolchain; `[workspace] members` is the live crate list |
 | `build/` | Tracked image, partition and update definitions and the product input and kernel requirement manifests; `build/README.md` maps each file to the gate that reads it |
 | `tests/` | Reserved for real component, image, boot and hardware acceptance tests; the only active content is the recorded negative and boundary fixtures for the P01/P02 definition gate |

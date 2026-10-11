@@ -14,6 +14,10 @@ quoted verifier output and the scheduler attach/detach readings, is in
 | `scx_cake_stub.bpf.c` | P07 | the boundary fixture: a `struct_ops` whose nine declared handlers are empty |
 | `loader/aegis_bpf_probe.c` | gate | retains the per-program verifier log, holds the deadlines, attaches and detaches; M10 added `tp-attach` and `--map-set` |
 
+The four objects and `aegis_bpf_abi.h` are `EUPL-1.2 OR GPL-2.0-only`, the
+loader is `EUPL-1.2`; [`LICENSING.md`](../LICENSING.md) states the exception
+and why it stops at what the kernel loads.
+
 Run it with `make verify-bpf`. That target is deliberately **not** part of `make
 verify-all`, and the `Makefile` records why: it needs CAP_BPF, CAP_PERFMON, a
 kernel with BTF and BPF LSM, and for one case the machine's CPU scheduler, none
