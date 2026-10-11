@@ -25,7 +25,7 @@
 # Everything is bounded: one fixed list of four PCRs, no network, no write
 # outside the serial line. The harness applies its own deadline to the guest.
 
-set -u
+set -eu
 
 PATH=/usr/bin:/bin:/usr/sbin:/sbin
 export PATH

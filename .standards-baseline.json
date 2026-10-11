@@ -1,8 +1,95 @@
 {
   "version": 1,
-  "generated_at": "2026-09-27T21:25:59Z",
+  "generated_at": "2026-10-11T18:18:42Z",
   "repository": "cordanaLLM/Aegis-OS",
-  "commit_sha": "ef4fae19029b1497d34725835c2359674255c885",
-  "total_infractions": 0,
-  "infractions": []
+  "commit_sha": "96e5727560dfa51bbe7f3b9624294a050ddd84ae",
+  "total_infractions": 10,
+  "increase_rationale": "Ten planted negative cases under ui/concordia-tokens/hiss-lint/plants: each is a defect the HISS ESLint gate of M16 (D100) must refuse, so the files stay defective by design. Recorded as debt, not exempted by directory; the engine request for a declared exception is cordanaLLM/praetor#1256.",
+  "infractions": [
+    {
+      "rule_id": "HISS-01",
+      "file_path": "ui/concordia-tokens/hiss-lint/plants/component.svelte",
+      "line_number": 12,
+      "symbol": "nest",
+      "message": "Direct recursion in nest; the call graph must form an acyclic DAG",
+      "anchor": "fn:nest",
+      "fingerprint": "ui/concordia-tokens/hiss-lint/plants/component.svelte:HISS-01:fn:nest#1"
+    },
+    {
+      "rule_id": "HISS-08",
+      "file_path": "ui/concordia-tokens/hiss-lint/plants/component.svelte",
+      "line_number": 16,
+      "message": "Banned dynamic eval() execution in JavaScript",
+      "anchor": "text:b6ba4962ec53",
+      "fingerprint": "ui/concordia-tokens/hiss-lint/plants/component.svelte:HISS-08:text:b6ba4962ec53#1"
+    },
+    {
+      "rule_id": "HISS-08",
+      "file_path": "ui/concordia-tokens/hiss-lint/plants/dynamic-execution.js",
+      "line_number": 6,
+      "message": "Banned dynamic eval() execution in JavaScript",
+      "anchor": "fn:run",
+      "fingerprint": "ui/concordia-tokens/hiss-lint/plants/dynamic-execution.js:HISS-08:fn:run#1"
+    },
+    {
+      "rule_id": "HISS-08",
+      "file_path": "ui/concordia-tokens/hiss-lint/plants/dynamic-execution.js",
+      "line_number": 7,
+      "message": "setTimeout or setInterval given a string evaluates it as code",
+      "anchor": "fn:run",
+      "fingerprint": "ui/concordia-tokens/hiss-lint/plants/dynamic-execution.js:HISS-08:fn:run#2"
+    },
+    {
+      "rule_id": "HISS-08",
+      "file_path": "ui/concordia-tokens/hiss-lint/plants/dynamic-execution.js",
+      "line_number": 8,
+      "message": "Banned Function constructor compiles code at run time",
+      "anchor": "fn:run",
+      "fingerprint": "ui/concordia-tokens/hiss-lint/plants/dynamic-execution.js:HISS-08:fn:run#3"
+    },
+    {
+      "rule_id": "HISS-04",
+      "file_path": "ui/concordia-tokens/hiss-lint/plants/function-length.js",
+      "line_number": 6,
+      "symbol": "tooLong",
+      "message": "Function 'tooLong' (61 LOC) exceeds HISS-04 / NASA Rule 4 limit of 60 LOC",
+      "anchor": "fn:tooLong",
+      "fingerprint": "ui/concordia-tokens/hiss-lint/plants/function-length.js:HISS-04:fn:tooLong#1"
+    },
+    {
+      "rule_id": "HISS-08",
+      "file_path": "ui/concordia-tokens/hiss-lint/plants/inline-disable.js",
+      "line_number": 9,
+      "message": "Banned dynamic eval() execution in JavaScript",
+      "anchor": "fn:run",
+      "fingerprint": "ui/concordia-tokens/hiss-lint/plants/inline-disable.js:HISS-08:fn:run#1"
+    },
+    {
+      "rule_id": "HISS-01",
+      "file_path": "ui/concordia-tokens/hiss-lint/plants/self-recursion.js",
+      "line_number": 7,
+      "symbol": "factorial",
+      "message": "Direct recursion in factorial; the call graph must form an acyclic DAG",
+      "anchor": "fn:factorial",
+      "fingerprint": "ui/concordia-tokens/hiss-lint/plants/self-recursion.js:HISS-01:fn:factorial#1"
+    },
+    {
+      "rule_id": "HISS-01",
+      "file_path": "ui/concordia-tokens/hiss-lint/plants/self-recursion.js",
+      "line_number": 13,
+      "symbol": "viaClosure",
+      "message": "Direct recursion in viaClosure; the call graph must form an acyclic DAG",
+      "anchor": "fn:viaClosure",
+      "fingerprint": "ui/concordia-tokens/hiss-lint/plants/self-recursion.js:HISS-01:fn:viaClosure#1"
+    },
+    {
+      "rule_id": "HISS-01",
+      "file_path": "ui/concordia-tokens/hiss-lint/plants/self-recursion.js",
+      "line_number": 18,
+      "symbol": "walk",
+      "message": "Direct recursion in walk; the call graph must form an acyclic DAG",
+      "anchor": "fn:walk",
+      "fingerprint": "ui/concordia-tokens/hiss-lint/plants/self-recursion.js:HISS-01:fn:walk#1"
+    }
+  ]
 }
