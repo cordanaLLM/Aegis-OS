@@ -192,13 +192,13 @@ score.
 | 19 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | done | medium | yes | no | full | M07 | M28, M29 |
 | 20 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | done | small | yes | no | full (privileged read) | M05 | - |
 | 21 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | done | medium | yes | yes | partial | M09, M19, M23 | M12 |
-| 22 | M25 | GPU DMA-BUF sharing and VFIO passthrough slices | ready | medium | yes | no | full | M08, M17 | M12 |
+| 22 | M25 | GPU host slices on the reference profile: DMA-BUF and VFIO | ready | medium | yes | no | full | M08, M17 | M12 |
 | 23 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
 | 24 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | ready | large | yes | no | full | M16, M27 | M29 |
 | 25 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | blocked | medium | yes | no | full | M28, M27 | - |
 | 26 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
 | 27 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
-| 28 | M12 | GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths | blocked | large | yes | yes | partial | M25, M10, M11 | - |
+| 28 | M12 | GPU component paths in the booted image: DMA-BUF, VFIO, P2PDMA | blocked | large | yes | yes | partial | M25, M10, M11 | - |
 | 29 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
 
 The reference profile column records what the machine in
@@ -1849,14 +1849,15 @@ Epics:
   failure names it. Boundary: the empty canvas exports its labelled empty state
   and passes.
 
-### M25 - GPU DMA-BUF sharing and VFIO passthrough slices
+### M25 - GPU host slices on the reference profile: DMA-BUF and VFIO
 
 Rank 22. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M08, M17. Unblocks: M12.
 
 Split from M12 after the reference profile was recorded, so a locally verifiable
-slice no longer waits behind one that is not.
+slice no longer waits behind one that is not. D110 states where the line between
+the two runs.
 
 Exit criteria:
 
@@ -1871,8 +1872,9 @@ Exit criteria:
   reference profile) is recorded separately and never gates an unprivileged run
 - drm_sched is recorded as measured, not assumed: amdgpu is the drm_sched
   provider on the reference profile, i915 is not, and the Intel card serves
-  drm_sched only if it is rebound to the xe driver, which is recorded as a
-  decision before it is relied upon
+  drm_sched once rebound from i915 to xe, which the installed kernel supports
+  (CONFIG_DRM_XE=m with a PCI alias for this device); the rebind is recorded as
+  a decision before it is relied upon
 - VFIO BAR mapping is demonstrated by binding a GPU that is the sole occupant of
   its IOMMU group and that has no connected display output at bind time, both
   verified and recorded
@@ -1880,6 +1882,12 @@ Exit criteria:
   card) rather than assumed
 - A pass here is development evidence on the reference profile and closes no
   hardware gate
+- Scope against M12 (D110): this milestone is the host half of the GPU work,
+  measuring the two paths the reference profile can evidence (DMA-BUF sharing
+  across vendor drivers and VFIO passthrough of a single-occupant IOMMU group)
+  on the reference-profile host with no Aegis image involved; the component
+  paths built on these results (E12-1 to E12-3), their re-measurement inside a
+  booted Aegis image and the P2PDMA path belong to M12 and are not claimed here
 
 Cheapest exit: Demonstrate DMA-BUF export and import across two of the three
 vendor drivers and bind one GPU through VFIO, replacing scaffold literals with
@@ -4010,7 +4018,7 @@ Epics:
   is refused, so PCR 11 is load-bearing rather than incidental. This acceptance
   moved from M24's E24-2 under D84.
 
-### M12 - GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths
+### M12 - GPU component paths in the booted image: DMA-BUF, VFIO, P2PDMA
 
 Rank 28. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
@@ -4038,15 +4046,19 @@ Exit criteria:
   reframed to DMA-BUF plus host-mediated BAR transfer — which M25 evidences on
   this profile — or explicitly deferred to real datacentre hardware; no
   criterion is allowed to read as satisfied by the RTX 4090.
-- The DMA-BUF and VFIO results from M25 are consumed as inputs and explicitly
-  not re-derived; what this milestone adds is re-measurement inside a booted
-  Aegis image plus the P2P path.
+- Scope against M25 (D110): the DMA-BUF and VFIO results from M25 are consumed
+  as inputs and explicitly not re-derived. This milestone is the component half
+  on top of them (E12-1 to E12-3): re-measurement inside a booted Aegis image,
+  the P2PDMA path and the GPU template boundary. Where E12-2 cites requirements
+  E25-1 also cites (REQ-P03-03, REQ-P03-06), E25-1 covers what the host can
+  evidence under D59 and E12-2 covers the rest inside the booted image.
 - One criterion states that any pass obtained on the reference profile is
   development evidence only and that the P2P scaffold literals stay literals
   until the named hardware exists.
 
-Cheapest exit: Order the paths by hardware availability: DMA-BUF sharing first,
-then VFIO BAR mapping, then P2PDMA.
+Cheapest exit: Take the M25 results as inputs and order the in-image paths by
+hardware availability: DMA-BUF sharing first, then VFIO BAR mapping, then P2PDMA
+once the named hardware exists.
 
 Epics:
 
@@ -5669,6 +5681,27 @@ against the decoder of `061bbde`.
   eighteen cases: the guest reads `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS=y`,
   all fourteen requirement rows are satisfied before any load, and
   `action_gate` attaches. M10 is done; its dated entries record the run.
+
+### Decision from the planning review (2026-10-11)
+
+- **D110** Do M12 and M25 stay two milestones? The planning review of
+  2026-10-08 (#185) found that their titles and epics read as the same ground:
+  E12-1 and E25-2 both name DMA-BUF sharing, and E12-2 and E25-1 both name VFIO
+  and cite REQ-P03-03 and REQ-P03-06. Options: merge M25 back into M12; keep
+  both and state the split; or leave both as they are. Recommended: keep both
+  and state the split. Why: M25 was split out under D59 because the reference
+  profile evidences DMA-BUF sharing and VFIO passthrough today, while M12 waits
+  for a booted M11 image and for hardware the profile lacks. A merge would put
+  the locally verifiable slice back behind the blocked one, and leaving the
+  texts unchanged keeps two milestones that a reader cannot tell apart.
+  **Decision (2026-10-11):** keep both. M25 is the host half: the two paths the
+  reference profile can evidence, measured on the reference-profile host with
+  no Aegis image involved. M12 is the component half on top of it: the paths of
+  E12-1 to E12-3 inside a booted Aegis image, the P2PDMA path and the GPU
+  template boundary, taking the M25 results as inputs. Both titles now say
+  which half they are, M25 gains a scope criterion, M12's existing one and its
+  cheapest exit are reworded, and no rank, state, blocker, epic or requirement
+  binding changes.
 
 ## Evidence
 

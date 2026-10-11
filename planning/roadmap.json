@@ -1658,7 +1658,7 @@
     },
     {
       "id": "M25",
-      "title": "GPU DMA-BUF sharing and VFIO passthrough slices",
+      "title": "GPU host slices on the reference profile: DMA-BUF and VFIO",
       "rank": 22,
       "state": "ready",
       "blocked_by": [
@@ -1685,7 +1685,8 @@
         "drm_sched is recorded as measured, not assumed: amdgpu is the drm_sched provider on the reference profile, i915 is not, and the Intel card serves drm_sched once rebound from i915 to xe, which the installed kernel supports (CONFIG_DRM_XE=m with a PCI alias for this device); the rebind is recorded as a decision before it is relied upon",
         "VFIO BAR mapping is demonstrated by binding a GPU that is the sole occupant of its IOMMU group and that has no connected display output at bind time, both verified and recorded",
         "Resizable BAR state is recorded as measured (BAR1 current size on the discrete card) rather than assumed",
-        "A pass here is development evidence on the reference profile and closes no hardware gate"
+        "A pass here is development evidence on the reference profile and closes no hardware gate",
+        "Scope against M12 (D110): this milestone is the host half of the GPU work, measuring the two paths the reference profile can evidence (DMA-BUF sharing across vendor drivers and VFIO passthrough of a single-occupant IOMMU group) on the reference-profile host with no Aegis image involved; the component paths built on these results (E12-1 to E12-3), their re-measurement inside a booted Aegis image and the P2PDMA path belong to M12 and are not claimed here"
       ],
       "cheapest_exit": "Demonstrate DMA-BUF export and import across two of the three vendor drivers and bind one GPU through VFIO, replacing scaffold literals with measured values.",
       "epics": [
@@ -2424,7 +2425,7 @@
     },
     {
       "id": "M12",
-      "title": "GPU-backed slices: DMA-BUF, VFIO and P2PDMA paths",
+      "title": "GPU component paths in the booted image: DMA-BUF, VFIO, P2PDMA",
       "rank": 28,
       "state": "blocked",
       "blocked_by": [
@@ -2452,10 +2453,10 @@
         "The P2PDMA precondition is stated as a measured absence with its probe: `ls -d /sys/bus/pci/devices/*/p2pdma` returns no matches on the reference profile, so no p2pmem provider exists and this path cannot be evidenced here at any cost in effort.",
         "The hardware dependency is named concretely rather than as 'a suitable GPU': a CMB-capable enterprise NVMe controller or a datacentre-class GPU, recorded as a procurement item with the reason (GPUDirect Storage and RDMA are not offered on GeForce AD102).",
         "Per D59, every P03/P09 exit criterion phrased as 'CUDA GPUDirect' is either reframed to DMA-BUF plus host-mediated BAR transfer — which M25 evidences on this profile — or explicitly deferred to real datacentre hardware; no criterion is allowed to read as satisfied by the RTX 4090.",
-        "The DMA-BUF and VFIO results from M25 are consumed as inputs and explicitly not re-derived; what this milestone adds is re-measurement inside a booted Aegis image plus the P2P path.",
+        "Scope against M25 (D110): the DMA-BUF and VFIO results from M25 are consumed as inputs and explicitly not re-derived. This milestone is the component half on top of them (E12-1 to E12-3): re-measurement inside a booted Aegis image, the P2PDMA path and the GPU template boundary. Where E12-2 cites requirements E25-1 also cites (REQ-P03-03, REQ-P03-06), E25-1 covers what the host can evidence under D59 and E12-2 covers the rest inside the booted image.",
         "One criterion states that any pass obtained on the reference profile is development evidence only and that the P2P scaffold literals stay literals until the named hardware exists."
       ],
-      "cheapest_exit": "Order the paths by hardware availability: DMA-BUF sharing first, then VFIO BAR mapping, then P2PDMA.",
+      "cheapest_exit": "Take the M25 results as inputs and order the in-image paths by hardware availability: DMA-BUF sharing first, then VFIO BAR mapping, then P2PDMA once the named hardware exists.",
       "epics": [
         {
           "id": "E12-1",
