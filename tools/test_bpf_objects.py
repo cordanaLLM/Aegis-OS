@@ -286,10 +286,12 @@ class LicenceClasses(unittest.TestCase):
     def plant(self, **licences):
         """Write a two-object tree; a keyword replaces one file's SPDX expression."""
         tag = "SPDX-License-" + "Identifier: "
+        program = '#include "abi.h"\nchar L[] SEC("license") = "GPL";\n'
+        loader = '#include "../abi.h"\nint main(void) { return 0; }\n'
         rows = {
-            "one.bpf.c": (KERNEL_LOADED_LICENCE, '#include "abi.h"\nchar L[] SEC("license") = "GPL";\n'),
+            "one.bpf.c": (KERNEL_LOADED_LICENCE, program),
             "abi.h": (KERNEL_LOADED_LICENCE, "#define BOUND 4\n"),
-            "loader/probe.c": (PROJECT_LICENCE, '#include "../abi.h"\nint main(void) { return 0; }\n'),
+            "loader/probe.c": (PROJECT_LICENCE, loader),
         }
         for name, (licence, body) in rows.items():
             licence = licences.get(name.replace("/", "_").replace(".", "_"), licence)
