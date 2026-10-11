@@ -13,6 +13,21 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Changed (M12 and M25 state which half of the GPU work each one is, D110)
+
+- **M25 is retitled "GPU host slices on the reference profile: DMA-BUF and
+  VFIO" and M12 "GPU component paths in the booted image: DMA-BUF, VFIO,
+  P2PDMA".** The planning review of 2026-10-08 (#185) found that the two read
+  as the same ground. Both stay: M25 measures on the reference-profile host
+  with no Aegis image involved, and M12 takes those results as inputs for the
+  paths inside a booted image, the P2PDMA path and the GPU template boundary.
+- **Each milestone carries a scope criterion that names the other.** M12's
+  cheapest exit starts from the M25 results. No rank, state, blocker, epic or
+  requirement binding changes.
+- **The roadmap document's drm_sched criterion of M25 reads as the register
+  does.** The document still carried the wording from before the xe rebind was
+  recorded as supported by the installed kernel.
+
 ### Changed (the Verification gate's two native builds fail on a warning)
 
 - **The praetorctl build runs `go vet ./...` before `go build`.** A vet
