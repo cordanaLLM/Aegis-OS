@@ -23,6 +23,13 @@ profiles:
 facets:
     - agent:sandboxed
     - docs:seo-portal
+# Declined adoption steps. dev-container: the engine's DevContainer bootstrap is a base64 bundle of
+# its own source tree (bootstrap kind "source-bundle"). This repository does not commit that bundle:
+# /.devcontainer/ stays a local, regenerable folder (.gitignore). Declined until the engine ships a
+# digest-pinned release-artifact bootstrap; then this entry is removed and the facet adopted.
+adoption:
+    decline:
+        - dev-container
 # Standard overrides only increase strictness, except review_mode: single_maintainer, which lets the
 # only maintainer merge while no second reviewer or review bot exists. Restore independent review then;
 # the profile's required count stays declared so restoration keeps its minimum. Owner-approved 2026-09-27.
