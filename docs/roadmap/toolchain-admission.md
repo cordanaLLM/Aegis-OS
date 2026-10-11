@@ -824,16 +824,22 @@ gate and the fetch therefore read the version back and refuse anything below
 
 **The kernel is pinned by a file, not by a tool.**
 `build/kernel/nucleus-artifact.pin.json` names cordanaLLM/nucleus release
-`v7.2.8-realtime-lusoris1`, tag commit
-`9e050cf8fc2fb62de943229f22ab104dce455e92`, the
+`v7.2.8-realtime-lusoris2`, tag commit
+`852be742eb173700d5ef93b0c6f867b855f9c640`, the
 `imago.nucleus.kernel-artifact.v1` manifest by sha256
-`c57416a1fc286eab54df65249d7502de1a6dbf601f1b064336b3abbf80cf0f4e`, every
-asset by sha256 and size, `kernel.release` `7.2.8-lusoris1-realtime`,
+`c27a42e85205ef684d90d12fd17c13b048eae4d93d624e5d14785138eb932938`, every
+asset by sha256 and size, `kernel.release` `7.2.8-lusoris2-realtime`,
 `kernel.config_digest`
-`sha256:e9510d2d1928d4e153b19cf3312c4184ce44b4186ec6fde286e001060ffd731a`, and
+`sha256:5dec07f61567f046e923fd862f434f056943ced8dedeb963a7f483c761b24ae8`, and
 the keyless signer
-`https://github.com/cordanaLLM/nucleus/.github/workflows/publish-release.yml@refs/tags/v7.2.8-realtime-lusoris1`
-with issuer `https://token.actions.githubusercontent.com`. imago is the binary
+`https://github.com/cordanaLLM/nucleus/.github/workflows/publish-release.yml@refs/tags/v7.2.8-realtime-lusoris2`
+with issuer `https://token.actions.githubusercontent.com`. Until 2026-10-11
+the file named revision 1, `v7.2.8-realtime-lusoris1` at tag commit
+`9e050cf8fc2fb62de943229f22ab104dce455e92`, the kernel of the runs of
+2026-09-29. The tool rows above keep the values read then; the run of
+2026-10-11 printed newer installed versions beside seven of them
+([the gate page](../build/nucleus-kernel.md#revision-2-every-case-passes)).
+imago is the binary
 M09's `make contract-fetch` built at the commit M09 pins: it was
 `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` for the runs of 2026-09-29 and is
 `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311` since D107, which changed only

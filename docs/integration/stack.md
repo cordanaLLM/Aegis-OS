@@ -103,9 +103,11 @@ LSM program, because the requirement did not ask for the function tracer the BPF
 trampoline patches. Decision D107 (2026-09-29) adds
 `CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS`, built-in, to
 `build/kernel-requirement.json`; imago re-vendored the new bytes, nucleus
-enables the tracer on every stream, M09 pins both at those commits, and M10
-waits for a Nucleus release built to it. D70's locally built kernel, rebuilt
-with the row, stays the interim for M23's latency fixture.
+enables the tracer on every stream, and M09 pins both at those commits.
+Nucleus's second release, `v7.2.8-realtime-lusoris2`, is built to it: M10
+pins it, and on 2026-10-11 every M10 case passed on it in a guest on the
+reference profile, the BPF LSM attach included. D70's locally built kernel,
+rebuilt with the row, stays the interim for M23's latency fixture.
 
 Activation order: the ranked, blocking-state roadmap in `docs/roadmap/README.md`
 and `planning/roadmap.json` is authoritative (`make readiness` lists the ready
