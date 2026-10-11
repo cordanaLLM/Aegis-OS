@@ -13,6 +13,20 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Changed (the Verification gate's two native builds fail on a warning)
+
+- **The praetorctl build runs `go vet ./...` before `go build`.** A vet
+  finding in the pinned Praetor commit now fails the Verification gate.
+  `tools/praetor_bump.py` runs the same step, so a bump stops on such a commit
+  before it proposes it, and `tools/test_praetor_bump.py` holds the workflow to
+  the script's step list.
+- **The libva build runs `meson setup --werror`.** The cache key carries the
+  word `werror`, so the runner rebuilds once with the flag instead of restoring
+  the earlier build.
+
+Both lanes were reported by the build-warning check (HISS-10) of the Praetor
+engine at `299d3be`, which the CI pin predates.
+
 ### Changed (the interceptor unit contract keeps systemd's start limit, D108)
 
 - **`crates/aegis-justitia/contracts/justitia-interceptor.service` no longer

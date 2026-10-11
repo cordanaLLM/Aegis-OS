@@ -678,6 +678,62 @@ class RunHelperTests(unittest.TestCase):
         self.assertIn("git status failed (exit 1): fatal: bad thing", str(caught.exception))
 
 
+class BuildStepTests(unittest.TestCase):
+    """The bump builds praetorctl with the steps the Verification gate runs."""
+
+    def build(self, base, failing=None):
+        """Run `build_praetorctl()` on a fake `run`; return the session and the go commands."""
+        seen = []
+
+        def fake(argv, deadline, cwd=None, env=None):
+            if "rev-parse" in argv:
+                return bump.Result(tuple(argv), 0, f"{NEW}\n", "")
+            if argv[0] == "go":
+                seen.append(" ".join(str(part) for part in argv[:3]))
+            code = 1 if failing is not None and list(argv[:2]) == ["go", failing] else 0
+            return bump.Result(tuple(argv), code, "", "vet: finding\n" if code else "")
+
+        session = bump.Session(args(cache=str(base / "cache")), stream=io.StringIO())
+        with mock.patch.object(bump, "run", side_effect=fake):
+            try:
+                bump.build_praetorctl(session, NEW)
+            except bump.BumpError as error:
+                return session, seen, error
+        return session, seen, None
+
+    def test_vet_runs_after_the_module_checks_and_before_the_build(self):
+        with tempfile.TemporaryDirectory() as base:
+            session, seen, error = self.build(Path(base))
+        self.assertIsNone(error)
+        self.assertEqual(
+            seen, ["go mod download", "go mod verify", "go vet ./...", "go build -trimpath"]
+        )
+        self.assertEqual(session.binary.name, "praetorctl")
+
+    def test_a_vet_finding_stops_the_bump_before_the_build(self):
+        """Negative: no binary is built, and none is put on PATH for the later gates."""
+        with tempfile.TemporaryDirectory() as base:
+            session, seen, error = self.build(Path(base), failing="vet")
+        self.assertIsInstance(error, bump.BumpError)
+        self.assertEqual(seen[-1], "go vet ./...")
+        self.assertNotIn("go build -trimpath", seen)
+        self.assertIsNone(session.binary)
+
+    def test_the_binary_is_the_last_step_s_output_and_nothing_else_writes_it(self):
+        """Boundary: only the build step names the binary."""
+        steps = bump.build_steps(Path("/cache/bin/praetorctl"))
+        naming = [step for step in steps if Path("/cache/bin/praetorctl") in step]
+        self.assertEqual(naming, [steps[-1]])
+
+    def test_the_committed_workflow_runs_every_step_the_bump_runs(self):
+        """The two lists cannot drift: each step's command is in the gate's build step."""
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        for step in bump.build_steps(Path("praetorctl")):
+            command = " ".join(str(part) for part in step[:3])
+            with self.subTest(command=command):
+                self.assertIn(command, workflow)
+
+
 class GateListTests(unittest.TestCase):
     """The bump runs the gates CI runs, with the pinned praetorctl."""
 
