@@ -43,7 +43,7 @@ BRANCHES = (ast.If, ast.For, ast.While, ast.IfExp, ast.ExceptHandler, ast.With, 
 WORKFLOW = f"""env:
   MARKDOWNLINT_VERSION: "0.23.2"
   # Published Praetor commit that builds the praetorctl this gate pins.
-  PRAETOR_COMMIT: "{OLD}"
+  PRAETOR_REF: "{OLD}"
 jobs: {{}}
 """
 
@@ -55,7 +55,7 @@ def admission_page(pin=OLD):
         "Status: recorded admissions, current as of 2026-09-13\n\n"
         "| Tool | Pinned version | How it is pinned | Replaces | Admitted by |\n"
         "| :--- | :--- | :--- | :--- | :--- |\n"
-        f"| praetorctl | source commit `{pin}` | `.github/workflows/ci.yml`, `PRAETOR_COMMIT`, "
+        f"| praetorctl | source commit `{pin}` | `.github/workflows/ci.yml`, `PRAETOR_REF`, "
         "verified with `git rev-parse` before the build | nothing | M00 |\n"
         "| lefthook | 2.1.12 | `.github/workflows/ci.yml` | nothing | M00 |\n"
     )
@@ -83,7 +83,7 @@ def complexity(function):
 
 
 class PinTests(unittest.TestCase):
-    """PRAETOR_COMMIT is read and moved in ci.yml, and nothing else changes."""
+    """PRAETOR_REF is read and moved in ci.yml, and nothing else changes."""
 
     def test_the_pin_is_read_and_moved(self):
         self.assertEqual(bump.read_pin(WORKFLOW), OLD)
@@ -109,16 +109,20 @@ class PinTests(unittest.TestCase):
                     bump.rewrite_pin(WORKFLOW, bad)
 
     def test_a_missing_or_doubled_pin_is_refused(self):
-        """Boundary: exactly one PRAETOR_COMMIT line, never zero or two."""
-        doubled = WORKFLOW + f'  PRAETOR_COMMIT: "{OLD}"\n'
-        for text in (WORKFLOW.replace("PRAETOR_COMMIT", "PRAETOR_REF"), doubled):
+        """Boundary: exactly one PRAETOR_REF line, never zero or two.
+
+        The zero case carries the pin under its former name, PRAETOR_COMMIT: the
+        engine's hook launcher reads PRAETOR_REF only, so the old name is no pin.
+        """
+        doubled = WORKFLOW + f'  PRAETOR_REF: "{OLD}"\n'
+        for text in (WORKFLOW.replace("PRAETOR_REF", "PRAETOR_COMMIT"), doubled):
             with self.subTest(text=text[-60:]):
                 with self.assertRaises(bump.BumpError):
                     bump.rewrite_pin(text, NEW)
 
     def test_the_comment_naming_the_pin_is_not_the_pin(self):
-        """Boundary: only the `PRAETOR_COMMIT:` key line counts."""
-        commented = WORKFLOW.replace("# Published", f"# PRAETOR_COMMIT {NEW} was published")
+        """Boundary: only the `PRAETOR_REF:` key line counts."""
+        commented = WORKFLOW.replace("# Published", f"# PRAETOR_REF {NEW} was published")
         self.assertEqual(bump.read_pin(commented), OLD)
 
 
