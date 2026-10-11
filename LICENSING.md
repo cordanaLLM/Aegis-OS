@@ -41,10 +41,40 @@ source](https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl
 locally. The admitted version is recorded in
 `docs/roadmap/toolchain-admission.md`.
 
-Kernel-loaded eBPF programs must additionally declare the licence string the
-kernel requires to load GPL-only helpers. The EUPL v1.2 Appendix lists GPL v2
-and v3 as compatible licences; each activated eBPF source records its kernel
-licence string next to its SPDX header.
+### Exception: code the Linux kernel loads
+
+Source that the Linux kernel loads is licensed `EUPL-1.2 OR GPL-2.0-only`: you
+may take it under either licence. This is the one exception to the scope above.
+
+- **Covered:** eBPF programs, sched_ext schedulers, and every header compiled
+  into such an object. Today that is the four `bpf/*.bpf.c` sources and
+  `bpf/aegis_bpf_abi.h`.
+- **Not covered:** everything else. The user-space loader in `bpf/loader/`
+  includes the same header, takes it under the EUPL, and stays `EUPL-1.2`
+  itself, as do the tools that build and check these objects.
+
+Each of these objects hands the kernel the licence string `"GPL"`. The kernel
+compares that string with a fixed list
+([`include/linux/license.h`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/license.h))
+and marks only a matching program as allowed to call its GPL-only functions. The
+kernel's licensing rules read `"GPL"` as "licensed under GPL version 2" and
+leave the exact licence to the SPDX identifier in the source file
+([`MODULE_LICENSE`](https://docs.kernel.org/process/license-rules.html)). The
+dual expression makes the two agree: the file itself names the GPL as a licence
+it is offered under, where the earlier single `EUPL-1.2` header left that to
+the compatible-licence list in the EUPL Appendix.
+
+The EUPL arm keeps the later-version choice described above. The verbatim GPL
+text is in
+[`LICENSES/GPL-2.0-only.txt`](https://github.com/cordanaLLM/Aegis-OS/blob/main/LICENSES/GPL-2.0-only.txt),
+byte-identical to the [SPDX License List](https://spdx.org/licenses/GPL-2.0-only)
+text and held to a pinned digest by `make verify-all`, like the texts above.
+
+The expression is a file-level SPDX header, never a `REUSE.toml` table.
+`tools/test_bpf_objects.py`, which runs in `make verify-all`, derives the
+covered set (each `*.bpf.c` under `bpf/` and each header one includes) and fails
+in both directions: a covered file without the dual expression, and any other C
+file under `bpf/` that carries it.
 
 ## Original research and presentation: CC BY-SA 4.0
 

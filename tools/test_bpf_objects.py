@@ -35,6 +35,59 @@ def source(name):
     return (BPF_DIR / name).read_text(encoding="utf-8")
 
 
+# REUSE-IgnoreStart -- the two expressions and the tag pattern below are test
+# data, not this file's own licence declaration; without these markers `reuse
+# lint` reads them as one and reports an invalid expression.
+PROJECT_LICENCE = "EUPL-1.2"
+KERNEL_LOADED_LICENCE = "EUPL-1.2 OR GPL-2.0-only"
+SPDX_TAG = re.compile(r"SPDX-License-Identifier:[ \t]*([^\n]*)")
+# REUSE-IgnoreEnd
+KERNEL_SOURCE_SUFFIX = ".bpf.c"
+LOCAL_INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]+"([^"\n]+)"', re.MULTILINE)
+LICENCE_SECTION = 'SEC("license")'
+SPDX_HEAD_BYTES = 400
+
+
+def kernel_loaded(bpf_dir):
+    """What the kernel loads: each `*.bpf.c` and each header one of them includes.
+
+    One level of local includes; `spdx_findings` refuses a header that includes
+    another, so a nested header cannot escape the set. A quoted include with no
+    file in the tree is a generated header (`vmlinux.h`, dumped from the running
+    kernel's BTF into the gate's work directory) and is not this tree's to label.
+    """
+    loaded = set()
+    for path in sorted(bpf_dir.rglob("*" + KERNEL_SOURCE_SUFFIX)):
+        loaded.add(path)
+        for name in LOCAL_INCLUDE.findall(path.read_text(encoding="utf-8")):
+            header = (path.parent / name).resolve()
+            if header.is_file():
+                loaded.add(header)
+    return loaded
+
+
+def spdx_findings(bpf_dir):
+    """One line per C source or header under bpf_dir whose licence is not its class's.
+
+    LICENSING.md, "Exception: code the Linux kernel loads": the dual expression
+    belongs to the kernel-loaded set and to nothing else.
+    """
+    loaded = kernel_loaded(bpf_dir.resolve())
+    findings = []
+    for path in sorted(bpf_dir.resolve().rglob("*.[ch]")):
+        text = path.read_text(encoding="utf-8")
+        match = SPDX_TAG.search(text[:SPDX_HEAD_BYTES])
+        declared = match.group(1).removesuffix("*/").strip() if match else None
+        expected = KERNEL_LOADED_LICENCE if path in loaded else PROJECT_LICENCE
+        if declared != expected:
+            findings.append(f"{path.name}: declares {declared!r}, expected {expected!r}")
+        if path not in loaded and LICENCE_SECTION in text:
+            findings.append(f"{path.name}: kernel licence section outside a {KERNEL_SOURCE_SUFFIX}")
+        if path.suffix == ".h" and path in loaded and LOCAL_INCLUDE.search(text):
+            findings.append(f"{path.name}: kernel-loaded header includes a local header")
+    return findings
+
+
 def recipe_lines(text, target):
     """The recipe lines of one Makefile target, with the leading tab removed.
 
@@ -199,15 +252,108 @@ class Provenance(unittest.TestCase):
         self.assertIn("/usr/bin/scx_cake", text)
         self.assertIn("not a fork", text)
 
-    def test_every_tracked_bpf_source_carries_an_spdx_identifier(self):
-        # REUSE-IgnoreStart -- the expected tag below is test data, not this
-        # file's own licence declaration; without these markers `reuse lint`
-        # reads it as one and reports an invalid expression.
-        expected = "SPDX-License-Identifier: EUPL-1.2"
-        # REUSE-IgnoreEnd
-        for path in sorted(BPF_DIR.rglob("*.c")) + sorted(BPF_DIR.rglob("*.h")):
-            head = path.read_text(encoding="utf-8")[:400]
-            self.assertIn(expected, head, str(path))
+    def test_every_tracked_bpf_source_carries_the_licence_of_its_class(self):
+        """Positive: the four objects and their shared header are dual, the loader is not."""
+        self.assertEqual(spdx_findings(BPF_DIR), [])
+        names = sorted(path.name for path in kernel_loaded(BPF_DIR.resolve()))
+        self.assertEqual(
+            names,
+            [
+                "action_gate.bpf.c",
+                "aegis_bpf_abi.h",
+                "kepler_power.bpf.c",
+                "scx_cake.bpf.c",
+                "scx_cake_stub.bpf.c",
+            ],
+        )
+
+    def test_every_object_that_declares_gpl_to_the_kernel_offers_the_gpl(self):
+        for path in sorted(BPF_DIR.glob("*" + KERNEL_SOURCE_SUFFIX)):
+            text = path.read_text(encoding="utf-8")
+            self.assertIn('char LICENSE[] SEC("license") = "GPL";', text, path.name)
+            self.assertIn(KERNEL_LOADED_LICENCE, text[:SPDX_HEAD_BYTES], path.name)
+
+
+class LicenceClasses(unittest.TestCase):
+    """The dual licence covers what the kernel loads and nothing else (LICENSING.md)."""
+
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(self.scratch.cleanup)
+        self.root = Path(self.scratch.name)
+        (self.root / "loader").mkdir()
+
+    def plant(self, **licences):
+        """Write a two-object tree; a keyword replaces one file's SPDX expression."""
+        tag = "SPDX-License-" + "Identifier: "
+        rows = {
+            "one.bpf.c": (KERNEL_LOADED_LICENCE, '#include "abi.h"\nchar L[] SEC("license") = "GPL";\n'),
+            "abi.h": (KERNEL_LOADED_LICENCE, "#define BOUND 4\n"),
+            "loader/probe.c": (PROJECT_LICENCE, '#include "../abi.h"\nint main(void) { return 0; }\n'),
+        }
+        for name, (licence, body) in rows.items():
+            licence = licences.get(name.replace("/", "_").replace(".", "_"), licence)
+            head = "" if licence is None else f"// {tag}{licence}\n"
+            (self.root / name).write_text(head + body, encoding="utf-8")
+
+    def test_a_tree_with_each_class_under_its_own_licence_has_no_finding(self):
+        self.plant()
+        self.assertEqual(spdx_findings(self.root), [])
+
+    def test_a_kernel_loaded_object_under_the_project_licence_alone_is_refused(self):
+        self.plant(one_bpf_c=PROJECT_LICENCE)
+        self.assertEqual(
+            spdx_findings(self.root),
+            [f"one.bpf.c: declares {PROJECT_LICENCE!r}, expected {KERNEL_LOADED_LICENCE!r}"],
+        )
+
+    def test_a_header_compiled_into_an_object_is_refused_without_the_gpl_arm(self):
+        self.plant(abi_h=PROJECT_LICENCE)
+        self.assertEqual(
+            spdx_findings(self.root),
+            [f"abi.h: declares {PROJECT_LICENCE!r}, expected {KERNEL_LOADED_LICENCE!r}"],
+        )
+
+    def test_the_exception_does_not_reach_the_user_space_loader(self):
+        """Boundary: the loader includes the dual header and stays under the project licence."""
+        self.plant(loader_probe_c=KERNEL_LOADED_LICENCE)
+        self.assertEqual(
+            spdx_findings(self.root),
+            [f"probe.c: declares {KERNEL_LOADED_LICENCE!r}, expected {PROJECT_LICENCE!r}"],
+        )
+
+    def test_a_longer_expression_and_a_missing_tag_are_refused(self):
+        self.plant(one_bpf_c=KERNEL_LOADED_LICENCE + " OR MIT", abi_h=None)
+        findings = spdx_findings(self.root)
+        self.assertEqual(len(findings), 2)
+        self.assertIn("abi.h: declares None", findings[0])
+        self.assertIn("OR MIT", findings[1])
+
+    def test_a_c_comment_tag_is_read_without_its_closing_marker(self):
+        self.plant()
+        tag = "SPDX-License-" + "Identifier: "
+        (self.root / "abi.h").write_text(
+            f"/* {tag}{KERNEL_LOADED_LICENCE} */\n#define BOUND 4\n", encoding="utf-8"
+        )
+        self.assertEqual(spdx_findings(self.root), [])
+
+    def test_a_kernel_licence_section_outside_an_object_is_refused(self):
+        self.plant()
+        with (self.root / "loader/probe.c").open("a", encoding="utf-8") as handle:
+            handle.write('char L[] SEC("license") = "GPL";\n')
+        self.assertEqual(
+            spdx_findings(self.root),
+            [f"probe.c: kernel licence section outside a {KERNEL_SOURCE_SUFFIX}"],
+        )
+
+    def test_a_kernel_loaded_header_that_includes_another_is_refused(self):
+        self.plant()
+        with (self.root / "abi.h").open("a", encoding="utf-8") as handle:
+            handle.write('#include "more.h"\n')
+        self.assertEqual(
+            spdx_findings(self.root),
+            ["abi.h: kernel-loaded header includes a local header"],
+        )
 
 
 class GateWiring(unittest.TestCase):

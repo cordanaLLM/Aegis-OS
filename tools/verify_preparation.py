@@ -22,6 +22,11 @@ LICENSE_TEXTS = {
     # The reference MPEG-2 frame's upstream terms (M27): it carries file-level
     # SPDX headers, never a REUSE.toml table, so LICENSE_IDS stays exact.
     "LICENSES/BSD-3-Clause.txt": "5a93d5831e1297ab10fe643e1a631e83be392896da14ee2951285a79012df69d",
+    # The second licence of the code the Linux kernel loads (LICENSING.md,
+    # "Exception: code the Linux kernel loads"). Those files carry file-level
+    # SPDX headers too, never a REUSE.toml table; tools/test_bpf_objects.py
+    # holds the expression to that set. Digest = the SPDX License List text.
+    "LICENSES/GPL-2.0-only.txt": "aaf135472f81c5b4a0dca9367e5bb5e9750032b5bebe5442b36e4c0a47430df3",
 }
 LICENSE_IDS = {"EUPL-1.2", "CC-BY-SA-4.0"}
 # Vendored third-party trees and the only identifier REUSE.toml may give each.
