@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: EUPL-1.2 OR GPL-2.0-only
 //
 // P13 `kepler_power`: the per-cgroup accounting probe, as a tracepoint program.
 //
