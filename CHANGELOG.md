@@ -28,6 +28,27 @@ version and is never released.
 Both were found by the shell and systemd unit scans of the Praetor engine at
 `299d3be`, which the CI pin predates.
 
+### Changed (Nucleus revision 2 passes every M10 case, milestone M10 done)
+
+- **`build/kernel/nucleus-artifact.pin.json` pins `v7.2.8-realtime-lusoris2`.**
+  Nucleus built it to the requirement D107 extended, with the function tracer
+  and the BPF trampoline's direct calls built in. Run
+  `r20261011T200131-87fa` of `make verify-nucleus-kernel`, on 2026-10-11,
+  passed all eighteen cases: the release verifies against the new tag's
+  workflow identity, the guest reports the pinned configuration digest, all
+  fourteen requirement rows are satisfied, and `action_gate` attaches, which
+  revision 1 could not do. `docs/build/nucleus-kernel.md` records the values.
+- **The idle case reads its idle task.** The guest prints whether the task
+  that occupies the idle cgroup was still there when the loader returned, and
+  the gate fails the case on anything but `held` or on a report without the
+  line. The probe no longer discards grep's exit status: 1 stays a reading,
+  anything higher ends it with exit 2. Both answer findings of the engine's
+  shell scan at `299d3be`.
+- **M10 is `done` in the register and moves from rank 26 to 21.** M25, M22,
+  M28, M29 and M11 each move down one rank, as `tools/rank_roadmap.py`
+  computes it. The evidence is a QEMU/KVM guest on the reference profile: no
+  image was built and no Nucleus kernel was booted on hardware.
+
 ### Changed (the kernel requirement asks for the BPF trampoline, D107)
 
 - **`build/kernel-requirement.json` requires

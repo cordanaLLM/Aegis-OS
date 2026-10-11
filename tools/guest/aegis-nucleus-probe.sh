@@ -31,9 +31,16 @@ fi
 # three the criterion names: a BPF LSM program attaches through a BPF
 # trampoline, which patches the 5-byte nop -mfentry leaves at the hook's entry,
 # and a kernel built without the function tracer has no such nop.
+# grep exits 1 when no line names a symbol, which is a reading (no lines); any
+# higher status is a failed read and ends the probe.
+matched=0
 gzip -dc /proc/config.gz |
 	grep -E '^(# )?CONFIG_(SCHED_CLASS_EXT|BPF_LSM|BPF_SYSCALL|DEBUG_INFO_BTF|FUNCTION_TRACER|DYNAMIC_FTRACE_WITH_DIRECT_CALLS)[ =]' ||
-	true
+	matched=$?
+if [ "$matched" -gt 1 ]; then
+	echo "aegis-nucleus-probe: reading /proc/config.gz failed with status ${matched}" >&2
+	exit 2
+fi
 
 if [ -r /sys/kernel/security/lsm ]; then
 	echo "LSM $(cat /sys/kernel/security/lsm)"

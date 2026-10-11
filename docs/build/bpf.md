@@ -447,8 +447,9 @@ stand down. Nothing is suppressed: a case that fails fails the target.
   kernel whose configuration this project controls. A stock distribution kernel
   cannot stand in for that, however current its verifier. M10's first run
   showed why: this host's kernel has the function tracer the BPF trampoline
-  patches, the Nucleus kernel does not, and `action_gate` attaches here and not
-  there (`docs/build/nucleus-kernel.md`).
+  patches, the first Nucleus release did not, and `action_gate` attached here
+  and not there (`docs/build/nucleus-kernel.md`, which also records the second
+  release attaching it on 2026-10-11).
 - It does not build, boot or publish anything. Image, boot, hardware,
   accessibility and release remain separate blocked gates.
 - It measures nothing. No burst, latency, frame time, energy or power figure

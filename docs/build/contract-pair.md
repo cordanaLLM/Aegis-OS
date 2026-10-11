@@ -648,4 +648,6 @@ three Aegis maxima; the converse does not hold and does not need to.
   not an unblocking. (Dated 2026-09-29, after this page: nucleus published
   release `v7.2.8-realtime-lusoris1`, and M10 records it in
   [the Nucleus kernel gate](nucleus-kernel.md). The statements above that
-  nucleus has no release describe the state this gate was delivered in.)
+  nucleus has no release describe the state this gate was delivered in.
+  Dated 2026-10-11: M10 is done on the second release,
+  `v7.2.8-realtime-lusoris2`; M11's condition is unchanged.)
