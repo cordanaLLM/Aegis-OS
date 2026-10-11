@@ -7,8 +7,12 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 Status: tooling, installed per workstation; adopted 2026-09-28
 
-CI builds `praetorctl` from the Praetor commit that `PRAETOR_COMMIT` in
-`.github/workflows/ci.yml` names. The maintainer decided on 2026-09-28 that this
+CI builds `praetorctl` from the Praetor commit that `PRAETOR_REF` in
+`.github/workflows/ci.yml` names. The variable carries that name because
+Praetor's hook launcher reads `PRAETOR_REF` under `.github/workflows` to pick
+the engine local hooks run; under its former name, `PRAETOR_COMMIT`, the
+launcher would find no pin and fall back to whatever `praetorctl` is on `PATH`.
+The maintainer decided on 2026-09-28 that this
 pin follows Praetor's `main` whenever `main` moves, and that the bump runs on
 the maintainer's workstation rather than in GitHub Actions. A pull request
 opened with the Actions token starts no CI in this repository; one pushed from
@@ -84,7 +88,7 @@ set, so a missing ledger has to be restored explicitly. `bugs.meta.json` and
    together, then one file at a time, then in pairs, because some files only
    pass together, such as `.paperclip/harness.json` and the register digest
    in `.standards.yaml`.
-5. **Pin.** It moves `PRAETOR_COMMIT` and the praetorctl row of the
+5. **Pin.** It moves `PRAETOR_REF` and the praetorctl row of the
    [toolchain admission matrix](../roadmap/toolchain-admission.md), where the
    previous pin becomes the "Replaces" value.
 6. **Gates.** With the new `praetorctl` first on `PATH` it runs
