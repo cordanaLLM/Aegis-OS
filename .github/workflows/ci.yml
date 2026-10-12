@@ -212,7 +212,12 @@ jobs:
       # present, so the cargo evidence sits inside this one job. That is
       # deliberate: the branch ruleset requires exactly the "Verification gate"
       # check, and a separate job would not be required and could be skipped.
+      # AEGIS_REQUIRED_GATES names the definition gates this check requires: a
+      # gate listed here that cannot run prints FAIL instead of SKIP, so the
+      # required check cannot pass on a gate that never ran (tools/gate_policy.py).
       - name: Verification gate
+        env:
+          AEGIS_REQUIRED_GATES: systemd,mkosi
         run: make verify-all
 
       - name: REUSE compliance
