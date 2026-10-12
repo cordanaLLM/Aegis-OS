@@ -7,29 +7,27 @@
   before proposing.
 - Rule 0 Terminal Disposition: every run ends with structured disposition:
   in_review or blocked.
-- Ed25519 Exit-0 Receipts: attach cryptographic execution receipts to all PR
-  proposals.
+- Ed25519 Exit-0 Receipts: only `praetorctl gate run` without `--dry-run` mints
+  one; attach minted receipt to PR proposal; report no unminted receipt.
 - Timeout != failure. Re-check open PRs before retry; prevent duplicate PRs.
 - Text register internal: `caveman` skill: fragments, no filler, verbatim
   code/paths/errors; facts, paths, commands, verdict.
 
-## AGit Push Protocol
-
-<!-- markdownlint-disable MD013 -->
+## Push Protocol
 
 ```bash
-git push origin HEAD:refs/for/main -o topic=<issue-id> && git push origin HEAD:refs/heads/paperclip/<issue-id>
+git push origin HEAD:refs/heads/paperclip/<issue-id>
 ```
-
-<!-- markdownlint-enable MD013 -->
 
 ## High-Integrity Invariants
 
-- HISS-01: Acyclic DAG control flow (no recursion)
-- HISS-02: Scalar upper bounds on all loops; context timeout on all input and
-  output
-- HISS-04: McCabe Cyclomatic <= 10, Cognitive <= 15, Func LOC <= 75
-- HISS-07: Zero .unwrap() / .expect(); all errors handled or wrapped
-- HISS-10: Zero-warning tolerance across compiler, linters, and formatters
-- HISS-15: 3D testing mandatory (Positive, Negative, Boundary >= 2 checks/dim)
-- HISS-16: Canonical AGENTS.md compiled to vendor harnesses
+- HISS-01: recursion prohibited; call graph = DAG; C/C++: zero `goto`
+- HISS-02: scalar upper bound on every loop; explicit deadline on every I/O call
+- HISS-04: McCabe cyclomatic <= 10, cognitive <= 12, statements <= 40; func
+  LOC <= 60 (audit ceiling)
+- HISS-07: every error handled or wrapped with context; Rust: zero `.unwrap()` /
+  `.expect()` outside tests
+- HISS-10: zero warnings: compiler, linter, format sweeps
+- HISS-15: positive + negative + boundary tests, every public interface
+- HISS-16: single canonical `AGENTS.md`; vendor files compiled via `praetorctl
+  compile-context`

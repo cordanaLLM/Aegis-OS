@@ -36,10 +36,16 @@ adoption:
 overrides:
     branch_protection:
         review_mode: single_maintainer
+exceptions:
+    - rule: "HISS-11"
+      path: ".github/workflows/release.yml"
+      reason: "nothing is released: no artefact is built or published and the release gate stays blocked"
+      expires: "2027-01-09"
 register:
     sources:
         expected: 13
-        sha256: sha256:4c7b874749da032aacc4828175306035b1e432097b03793b3f406333ab37b3c6
+        sha256:
+            sha256:4a3763841806a9c247ae88d5fd472199a3b279e7ef4c2d2c01b004b108e449cb
         inputs:
             - path: .paperclip/harness.json
               surface: prompts

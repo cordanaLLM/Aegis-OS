@@ -207,6 +207,13 @@ git worktree prune
   `299d3be`), so a bump never records one. An engine whose scan finds more
   fails the bump until the finding is fixed or the baseline is recorded
   again by hand.
+- The script commits the pin, the admission row and adopt's output, nothing
+  else. A change that the new engine requires and the pinned engine refuses
+  has to enter with the bump itself and is added by hand: the HISS-11
+  exception of 2026-10-11 (see `CHANGELOG.md`) was such a change, because the
+  engine at `11ac5d8` refuses the `exceptions` key of `.standards.yaml`.
+  cordanaLLM/praetor#1254 asks the engine for a bump command that carries
+  such a change.
 - The script never bypasses a hook. A bump that the hooks reject is a failure
   with evidence, not something to force.
 - It never merges on its own. Merging stays a maintainer decision unless
