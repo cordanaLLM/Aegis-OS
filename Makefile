@@ -1,7 +1,7 @@
 SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
-.PHONY: verify-all verify-rust verify-systemd verify-mkosi verify-a11y a11y-fetch verify-contract \
+.PHONY: verify-all verify-rust verify-systemd verify-mkosi definitions-fetch verify-a11y a11y-fetch verify-contract \
 	contract-fetch verify-kernel verify-bpf verify-latency verify-boot verify-display verify-sources \
 	verify-nucleus-kernel nucleus-kernel-fetch verify-workstation workstation-fetch verify-reuse \
 	readiness test build boot release install-praetor-bump uninstall-praetor-bump
@@ -81,6 +81,24 @@ verify-systemd:
 # so this gate validates a definition and constructs no image (D56).
 verify-mkosi:
 	python3 tools/verify_mkosi_definitions.py
+
+# The pinned userland for the two definition gates above. A run that sets
+# AEGIS_DEFINITIONS_CONTAINER=1 runs each gate inside a local image instead of on
+# the host's tools: the Arch Linux base image by digest, with systemd, mkosi and
+# the file system tools the repart definitions format with, all installed from
+# one Arch Linux Archive snapshot. build/definitions/toolchain.pin.json records
+# the digest, the snapshot and every package version. CI sets the variable,
+# because the ubuntu-24.04 runner ships systemd 255 and no mkosi, and names both
+# gates in AEGIS_REQUIRED_GATES. A run that selects the container and finds no
+# image fails; it never falls back to the host's tools.
+#
+# `make definitions-fetch` is the one networked step: it pulls the base image,
+# installs the pinned packages, and removes the image again unless pacman reports
+# each package at exactly its pinned version. The gates never pull; they run the
+# image without a network, with the repository and the root file system
+# read-only. See tools/definitions_container.py.
+definitions-fetch:
+	python3 tools/definitions_container.py --fetch
 
 # The accessibility gate (M04, D16, D65, D76, D81): the P12 Concordia token
 # file and its one Svelte 5 component are installed from the lockfile, linted

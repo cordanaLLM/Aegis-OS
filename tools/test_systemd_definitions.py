@@ -516,9 +516,11 @@ class RequiredGateTests(unittest.TestCase):
 
     def _main(self, required, which=None, banners=None):
         out = io.StringIO()
-        with patch.dict(gate.os.environ, {"AEGIS_REQUIRED_GATES": required}), patch.object(
-            gate.shutil, "which", side_effect=which or fake_which()
-        ), patch.object(gate, "run", side_effect=fake_run(banners or {})), patch.object(
+        with patch.dict(
+            gate.os.environ, {"AEGIS_REQUIRED_GATES": required, "AEGIS_DEFINITIONS_CONTAINER": ""}
+        ), patch.object(gate.shutil, "which", side_effect=which or fake_which()), patch.object(
+            gate, "run", side_effect=fake_run(banners or {})
+        ), patch.object(
             gate.sys, "argv", ["verify_systemd_definitions.py"]
         ), contextlib.redirect_stdout(
             out

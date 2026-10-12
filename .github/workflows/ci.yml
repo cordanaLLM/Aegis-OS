@@ -208,11 +208,29 @@ jobs:
       - name: Fetch the contract pair's pinned producer
         run: make contract-fetch
 
+      # The systemd and mkosi definition gates need systemd 261 and mkosi 27; the
+      # runner ships systemd 255 and no mkosi. This is their one networked step:
+      # it pulls the Arch Linux base image by the digest
+      # build/definitions/toolchain.pin.json names, installs the pinned packages
+      # from one Arch Linux Archive snapshot, and removes the image again unless
+      # pacman reports every package at its pinned version. The gates then run
+      # inside it without a network, with the repository mounted read-only.
+      - name: Fetch the definition gates' pinned image
+        run: make definitions-fetch
+
       # make verify-all runs the crate gate itself once a workspace manifest is
       # present, so the cargo evidence sits inside this one job. That is
       # deliberate: the branch ruleset requires exactly the "Verification gate"
       # check, and a separate job would not be required and could be skipped.
+      # AEGIS_REQUIRED_GATES names the definition gates this check requires: a
+      # gate listed here that cannot run prints FAIL instead of SKIP, so the
+      # required check cannot pass on a gate that never ran (tools/gate_policy.py).
+      # AEGIS_DEFINITIONS_CONTAINER=1 runs both inside the image fetched above;
+      # without that image they fail, never falling back to the runner's tools.
       - name: Verification gate
+        env:
+          AEGIS_DEFINITIONS_CONTAINER: "1"
+          AEGIS_REQUIRED_GATES: systemd,mkosi
         run: make verify-all
 
       - name: REUSE compliance

@@ -29,6 +29,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+import definitions_container
 import gate_policy
 from host import target as posix_target
 
@@ -550,6 +551,9 @@ def main():
     parser.parse_args()
     if gate_policy.refuse_unknown():
         return 1
+    routed = definitions_container.dispatch(GATE, Path(__file__).name)
+    if routed is not None:
+        return routed
     admitted = guard()
     if admitted is None:
         return 1 if gate_policy.is_required(GATE) else 0
