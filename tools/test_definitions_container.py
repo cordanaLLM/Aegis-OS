@@ -75,6 +75,44 @@ class PinTests(unittest.TestCase):
         self.assertEqual(len(tag.split(":")[1]), container.TAG_LENGTH)
 
 
+class AdmissionPageTests(unittest.TestCase):
+    HEADING = "## The definition gates' container (M03, M18)"
+
+    def _rows(self):
+        page = (container.ROOT / "docs" / "roadmap" / "toolchain-admission.md").read_text()
+        section = page.split(self.HEADING, 1)[1].split("\n## ", 1)[0]
+        rows = {}
+        for line in section.splitlines():
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if len(cells) == 3 and cells[0] not in {"Input", ":---"}:
+                rows[cells[0].strip("`")] = cells[1]
+        return rows
+
+    def test_every_pinned_package_is_admitted_at_its_version(self):
+        """Positive: the page and the pin name the same packages and versions."""
+        pin, _ = container.load_pin()
+        rows = self._rows()
+        packages = {name: rows[name].strip("`") for name in rows if name in pin["packages"]}
+        self.assertEqual(packages, pin["packages"])
+
+    def test_the_page_names_no_package_the_pin_lacks(self):
+        """Negative: a row for a package the image does not install is a stale row."""
+        pin, _ = container.load_pin()
+        extra = (
+            set(self._rows()) - set(pin["packages"]) - {"base image", "Arch Linux Archive snapshot"}
+        )
+        self.assertEqual(extra, set())
+
+    def test_the_image_and_snapshot_match_the_pin(self):
+        """Boundary: the digest and the snapshot date are the pin's, byte for byte."""
+        pin, _ = container.load_pin()
+        rows = self._rows()
+        self.assertIn(f"`{pin['image']['reference']}`", rows["base image"])
+        for digest in pin["image"]["platform-digests"].values():
+            self.assertIn(f"`{digest}`", rows["base image"])
+        self.assertEqual(rows["Arch Linux Archive snapshot"], f"`{pin['archive']['snapshot']}`")
+
+
 class ContainerfileTests(unittest.TestCase):
     def test_every_pinned_input_reaches_the_build(self):
         """Positive: the base by digest, the snapshot server and every package."""

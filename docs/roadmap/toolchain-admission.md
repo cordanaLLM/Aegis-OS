@@ -41,8 +41,8 @@ Two rules follow from the clause and are applied below:
 | yamllint | 1.38.0 | `.github/workflows/ci.yml`, `YAMLLINT_VERSION`, run through `pipx run` | nothing | M00 |
 | flake8 | 7.3.0 | `.github/workflows/ci.yml`, `FLAKE8_VERSION`, run through `pipx run` | nothing | M00 |
 | black | 26.5.1 | `.github/workflows/ci.yml`, `BLACK_VERSION`, run through `pipx run` | nothing | M00 |
-| systemd (`systemd-repart`, `systemd-sysupdate`) | floor 261; reference profile `systemd 261 (261.3-1-arch)`, the value the outcomes were recorded on; the reference profile reads `systemd 262 (262-1-arch)` since 2026-09-25 | `tools/verify_systemd_definitions.py`, `SYSTEMD_FLOOR = 261` and `REFERENCE_PROFILE_SYSTEMD`; each tool is taken from `PATH`, else from `/usr/lib/systemd`, printed, and held to the floor by its own `--version` before the gate runs (`systemctl --version` is printed as a cross-check only) | nothing | M03 |
-| mkosi | 27; distribution package `extra/mkosi 27-1` on the reference profile | `build/mkosi.conf`, `MinimumVersion=27`, which mkosi itself enforces, and `tools/verify_mkosi_definitions.py`, `MKOSI_FLOOR = 27` and `REFERENCE_PROFILE_MKOSI`, read back from `mkosi --version` before the gate runs | the M01 register's inherited `mkosi v24+` floor from export-007, which was a range rather than a pin and which no gate enforced | M18 (D14, D56) |
+| systemd (`systemd-repart`, `systemd-sysupdate`) | floor 261; reference profile `systemd 261 (261.3-1-arch)`, the value the outcomes were recorded on; the reference profile reads `systemd 262 (262-1-arch)` since 2026-09-25 | `tools/verify_systemd_definitions.py`, `SYSTEMD_FLOOR = 261` and `REFERENCE_PROFILE_SYSTEMD`; each tool is taken from `PATH`, else from `/usr/lib/systemd`, printed, and held to the floor by its own `--version` before the gate runs (`systemctl --version` is printed as a cross-check only); CI runs the gate inside the image pinned below, at systemd `262-1` | nothing | M03 |
+| mkosi | 27; distribution package `extra/mkosi 27-1` on the reference profile | `build/mkosi.conf`, `MinimumVersion=27`, which mkosi itself enforces, and `tools/verify_mkosi_definitions.py`, `MKOSI_FLOOR = 27` and `REFERENCE_PROFILE_MKOSI`, read back from `mkosi --version` before the gate runs; CI runs the gate inside the image pinned below, at mkosi `27.1-1` | the M01 register's inherited `mkosi v24+` floor from export-007, which was a range rather than a pin and which no gate enforced | M18 (D14, D56) |
 | Linux source | `linux-7.2.5`, sha256 `55ddf0df8325d9dad96fcff7bd93977d22e3f50af06527572af59b77c7632b78` | `build/kernel/source.pin.json`; the digest is re-checked on every run and the detached signature is verified against key `647F28654894E3BD457199BE38DBBDC86092693E` | nothing; no kernel source was pinned before | M26 (D70) |
 | Kernel base configuration | `x86_64_defconfig` of the pinned source, plus two tracked fragments | `build/kernel/source.pin.json`; the requirement fragment is byte-identical to `KernelRequirement::config_fragment` and no full `.config` is tracked | nothing | M26 (D70) |
 | clang (BPF target) | floor 19.0.0; reference profile `clang version 22.1.8`, distribution package `extra/clang 22.1.8-2` | `tools/verify_bpf_objects.py`, `CLANG_FLOOR` and `REFERENCE_PROFILE_CLANG`, read back from `clang --version` and `clang -print-targets` before anything is compiled | the M26 row recording clang as installed and **not** admitted, because no gate ran it; M19 runs it | M19 |
@@ -234,15 +234,18 @@ runs. Raising the floor to 262 would drop that 261 evidence without adding any.
 What the floor does **not** claim: that an older systemd cannot read these
 definitions. It claims only that the exit codes and diagnostics this repository
 records were observed on 261, and that a gate running below the floor would be
-reporting against unobserved behaviour. CI runners at the time of writing ship
-an older systemd, so the gate skips there and says so; the definition parser
-`crates/aegis-fabrica-defs` runs everywhere and covers the same files without
-systemd. Until 2026-09-28 the stated reason on the ubuntu-24.04 runner was the
-wrong one: its systemd 255.4-1ubuntu8.17 ships `systemd-sysupdate` only in
-`/usr/lib/systemd`, and the gate looked on `PATH` alone, so CI printed
-`SKIP: systemd-sysupdate not on PATH` (read in the logs at `61f2fe1` and
-`020bcd5`). With the libexec step the gate should find the tool there and skip
-on the floor; no CI run of that change has been read yet.
+reporting against unobserved behaviour. The ubuntu-24.04 runner ships an older
+systemd, so CI runs the gate inside a pinned image instead (see the definition
+gates' container below); the definition parser `crates/aegis-fabrica-defs` runs
+everywhere and covers the same files without systemd. Until 2026-09-28 the
+stated reason on the ubuntu-24.04 runner was the wrong one: its systemd
+255.4-1ubuntu8.17 ships `systemd-sysupdate` only in `/usr/lib/systemd`, and the
+gate looked on `PATH` alone, so CI printed `SKIP: systemd-sysupdate not on PATH`
+(read in the logs at `61f2fe1` and `020bcd5`). With the libexec step the gate
+finds the tool there and stops on the floor: CI run 38304569459 for #200, which
+required the gate without the container, printed `systemd-sysupdate at
+/usr/lib/systemd/systemd-sysupdate reports 'systemd 255 (255.4-1ubuntu8.17)',
+below the admitted floor systemd 261` and failed.
 
 ## The mkosi pin, and why its floor enforces itself
 
@@ -275,6 +278,45 @@ validation in Aegis while Imago is a scaffold, and `make verify-mkosi` now runs
 What the row does **not** claim: that an image was built. `mkosi summary`
 resolves configuration and prints it; it downloads nothing, writes nothing into
 the repository and constructs no image. The image gate stays blocked.
+
+## The definition gates' container (M03, M18)
+
+The systemd and mkosi rows above are floors, because both tools are
+distribution packages the host provides. The ubuntu-24.04 runner provides
+systemd 255 and no mkosi, below both floors, so CI cannot run either gate on
+the runner's own tools. CI runs them instead inside a local image whose every
+input `build/definitions/toolchain.pin.json` pins exactly:
+
+| Input | Pinned value | Role |
+| :--- | :--- | :--- |
+| base image | `docker.io/library/archlinux:base-20261004.0.606936@sha256:4e77cf2ea5f410e6f8be5abf93ccf17ce2436e87a138c167208356711a405dbd`; linux/amd64 `sha256:2fd1ae548076c67bcd41098ddd44e799058010e8d55f085d453dbb890e706860` | pulled by digest only; its dated tag matches the snapshot, so the install upgrades and never downgrades |
+| Arch Linux Archive snapshot | `2026/10/04` | the only mirror pacman reads while the image is built |
+| `systemd` | `262-1` | `systemd-repart` and `systemd-sysupdate` for `make verify-systemd` |
+| `mkosi` | `27.1-1` | `mkosi summary` for `make verify-mkosi` |
+| `python` | `3.14.7-1` | runs the two gate scripts |
+| `dosfstools` | `4.2-5` | `Format=vfat` in `build/repart.d/00-esp.conf` |
+| `erofs-utils` | `1.9.4-1` | `Format=erofs` in `build/repart.d/10-root-a.conf` |
+| `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/repart.d/20-var.conf` |
+| `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/repart.d/20-var.conf` |
+
+`make definitions-fetch` is the one networked step. It pulls the base image,
+installs the packages from the snapshot, and removes the image again unless
+`pacman -Q` reports every package at exactly the version above. A run that sets
+`AEGIS_DEFINITIONS_CONTAINER=1` then runs each gate inside that image with
+`--pull=never`, `--network=none`, a read-only root file system and the
+repository mounted read-only, and prints the image and snapshot it used. A run
+that selects the container and finds no image fails; it never falls back to the
+host's tools. CI sets the variable and names both gates in
+`AEGIS_REQUIRED_GATES`, so a gate that cannot run there fails the required
+check instead of skipping.
+
+`tools/test_definitions_container.py` reads this table back: each package and
+version, the image reference and the snapshot must match the pin file, and the
+pinned systemd and mkosi must be at or above the gates' floors.
+
+What the container does **not** change: the floors and reference values above.
+A host with its own systemd 261 or newer and mkosi 27 or newer still runs the
+gates on its own tools when the variable is unset.
 
 ## The kernel build toolchain, and the source it builds (M26)
 
