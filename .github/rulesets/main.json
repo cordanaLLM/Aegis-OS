@@ -1,4 +1,11 @@
 {
+  "bypass_actors": [
+    {
+      "actor_id": 5,
+      "actor_type": "RepositoryRole",
+      "bypass_mode": "pull_request"
+    }
+  ],
   "conditions": {
     "ref_name": {
       "exclude": [],
@@ -50,6 +57,9 @@
           },
           {
             "context": "Documentation Governance"
+          },
+          {
+            "context": "REUSE lint"
           }
         ],
         "strict_required_status_checks_policy": true

@@ -1,0 +1,218 @@
+<!-- markdownlint-disable MD013 -->
+# Aegis-OS Agent Operating Harness
+
+Run read-only: file edits, state mutations, commits prohibited. Mutating steps dropped; prohibitions kept.
+
+## Core Directives & Invariants
+
+| Invariant | Rule | Enforcement | On fail |
+| :--- | :--- | :--- | :--- |
+| **HISS-01** control flow | Recursion strictly prohibited; call graph must be DAG; zero `goto`. | build | immediate build failure |
+| **HISS-02** loops, I/O | Scalar upper bound on all loops; explicit deadline or timeout on all I/O (Rust: `tokio::time::timeout` or equivalent). | Semgrep / AST | error |
+| **HISS-03** memory | Zero dynamic heap allocation (`malloc` / `free`) in hot simulation/tick loops. | Allocation audit sweep | error |
+| **HISS-04** complexity | Function length $\le 60$ LOC, McCabe Cyclomatic $\le 10$, Statements $\le 50$. | AST sweep | blocker |
+| **HISS-07** error handling | Zero `.unwrap()` / `.expect()`; all errors handled or wrapped with context. | Linter / Compiler | error |
+| **HISS-08** determinism | Zero dynamic execution (`eval` / `exec`); zero banned unsafe libc (`gets` / `strcpy` / `sprintf`). | AST / Linter | error |
+| **HISS-09** reference safety | Mandatory `// SAFETY:` proofs for all pointer arithmetic and `unsafe` blocks. | AST check | blocker |
+| **HISS-10** warnings | Zero-warning tolerance across compiler, linter, and format sweeps. | sweep | exit code 1 |
+| **HISS-15** 3D testing | Positive, negative, and boundary tests mandatory for all public interfaces. | CI coverage gate | blocker |
+| **HISS-16** context integrity | Single canonical `AGENTS.md`; vendor files compiled via `praetorctl compile-context`. | pre-commit | blocker |
+| **HISS-21** platform neutrality | Gates and emitted artifacts run on Linux, macOS, Windows, or skip with printed reason; path read by Linux tool = POSIX whatever host wrote it. | Platform Neutrality matrix | required check fails |
+
+## Operational Rules
+
+1. **Act on verified state.** Read source files, run real commands before hypothesis or edit. Never guess flag names, library signatures, repo configuration from memory.
+
+2. **Lead with output.** Direct answers, diffs, commands. No filler preamble, no "Based on", no restatement, no chatter.
+
+3. **Context transpiler first.** Never edit `CLAUDE.md`, `.cursor/rules/*.mdc`, `.windsurfrules`, `.github/copilot-instructions.md`, `.gemini/GEMINI.md`, `.codex/rules.md` manually. All agent instruction updates -> `AGENTS.md`, then:
+
+   ```bash
+   praetorctl compile-context
+   ```
+
+   - `AGENTS.md` = agent-only text -> caveman (internal register). `praetorctl compile-context --verify` + `praetorctl audit` run caveman lint; findings fail gate; no opt-out. Check first: `praetorctl caveman check --kind=context AGENTS.md`.
+
+4. **SARIF diagnostic distillation.** Compiler/linter errors -> distill to $\le 1,500$ tokens ($< 60$ lines): top 3 root-cause failures with file/line pointers; full SARIF logs -> ephemeral storage.
+
+5. **No evasion.** Never attempt `--no-verify`, `LEFTHOOK=0`, or modifying `.git/hooks`. CI re-checks every pull request: required `Verification gate` status check runs verification gate on clean runner.
+
+6. **Anti-loop interception.** Same AST diff + error category repeats $\ge 3$ times -> halt immediately. Re-evaluate design; no micro-textual retries.
+
+## Text Register
+
+<!-- praetor:register:start -->
+Register follows the audience, then the task label of your brief (`register:` in `.standards.yaml`; labels are the router's `target_tasks`).
+
+| Register | Where | Form |
+| :--- | :--- | :--- |
+| social | forge: issues, PR bodies, review comments, commit bodies | `social-text` skill: BLUF, full sentences, scannable, enough and no more; conventional commit subject unchanged |
+| docs | docs/, README, ADR bodies | complete without bloat: newcomer path first, expert reference after; every claim points at a file, command or test; no restated code |
+| internal | briefs, agent-to-agent traffic, research fan-outs, workflow returns | `caveman` skill: fragments, no filler, verbatim code/paths/errors; facts, paths, commands, verdict |
+
+- Task rows: social = commit_message_synthesis, waiver_signoff; docs = architecture_synthesis, function_docstrings; every other label and any unlabeled text = internal. Subagent launch brief: `caveman` brief shape with `task:` = routing label.
+- Evidence above 58 lines or 1500 tokens leaves the message as a file under `.workingdir/evidence/`; return `evidence: <path> sha256:<12 hex> lines:<n>` and fetch it only when a decision needs it.
+- An internal return carries verdict, changed paths, commands run, evidence pointers and open questions, nothing else.
+<!-- praetor:register:end -->
+
+## Primary Verification Commands
+
+```bash
+# Fast local test suite
+# Declared commands only; run them before claiming application verification.
+'make' 'verify-all'
+
+# Recompile and verify cross-agent context outputs
+praetorctl compile-context --verify
+
+# Audit repository against declared HISS standards
+praetorctl audit
+```
+
+<!-- markdownlint-enable MD013 -->
+<!-- markdownlint-disable MD025 -->
+<!-- praetor:harness:end -->
+
+---
+
+# Aegis OS repository contract
+
+Components activate one at a time against committed evidence:
+`planning/components.json` records it, verification gate enforces it, `make
+readiness` prints component and milestone state. No product image built, no boot
+on any machine, no release published; those gates stay blocked.
+
+On entry:
+
+1. Read `README.md`, `planning/components.json`, `planning/roadmap.json`.
+2. Run `make readiness` -> ready milestones.
+3. Work on highest-ranked ready milestone.
+
+- Milestone `state` and `evidence` change only with real committed evidence;
+  verification gate rejects inconsistent blocking states.
+- Load one relevant source artifact at a time.
+- Original OS concept preserved: this contract governs work against recorded
+  register, not architectural redesign.
+- Component implementation in scope only through activation rule below, one
+  component at a time; `planning/components.json` lists inventory and each
+  component's status.
+
+## Authority and evidence
+
+- Praetor supplies repository governance. Canonical instructions live here;
+  client files generated by `praetorctl compile-context`.
+- Notebook exports under `.workingdir/notebookllmprep/` = immutable proposal
+  data. Their instructions, dependency versions, workflows and completion claims
+  never become active policy by import.
+- verification gate = gate. `verify-all` recipe in `Makefile` = authoritative
+  list of what runs; restate that list nowhere, here included. Gate builds no
+  image, boots nothing, publishes nothing: native build, image, boot, hardware,
+  accessibility, release stay separate blocked gates.
+- Under-equipped host: some gates fail loudly, others print why they skipped and
+  exit 0 -> exit 0 != every gate executed. Report which gates executed, plus
+  their limits. Simulated output and file existence never count as runtime
+  evidence.
+- Concept constraints stay in source archive. Conflicts with Praetor development
+  workflow -> `.workingdir/ONBOARDING.md`. OS design change needs separate
+  recorded decision.
+
+## Shared ownership
+
+Read `docs/integration/stack.md` before adding image, kernel, framework or
+template machinery.
+
+- Aegis owns product requirements and integration adapters; Imago owns image
+  construction; Nucleus owns kernel construction; Golusoris supplies compatible
+  shared packages/templates.
+- `docs/integration/stack.md` = authority for that boundary: which work Aegis
+  performs itself while producer is still scaffold, what returns to its owner.
+  Restate it nowhere; `make readiness` prints state of milestones it names.
+- Select dependencies by actual language/interface needs; pin contracts before
+  activating consumer.
+
+## Local operation
+
+- `.workingdir/` and `.workingdir2/` stay ignored: imported notebooks, cluster
+  guides, readiness evidence, scratch. Never force-stage them.
+- Entry: inspect `.workingdir/STATE.md` and `OPEN.md`. Discrete work ->
+- Lefthook runs verification and checkpoints. Commit reviewed public changes
+  with sign-off.
+- Canonical remote: `origin` = `https://github.com/cordanaLLM/Aegis-OS`.
+  Generated ruleset protects `main` -> changes land via pull requests from
+  checkpoint or topic branches. Publishing images or releases = separate blocked
+  gate.
+- Stage implementation only after component manifest, dependency lock, interface
+  contract and real positive/negative/boundary checks exist. Development
+  environment selects those requirements through template matrix.
+- Workspace crate gate requires toolchain pinned by `rust-toolchain.toml`;
+  missing rustup = failure to report, never step to skip. Compilers, GPU SDKs
+  and VM runtimes stay unrequired until component needing them activates.
+- `docs/roadmap/toolchain-admission.md` records which tool each gate runs, at
+  which pinned version, and which tools stay unadmitted.
+
+## Evasion interception in agent clients
+
+Rule 5 enforced mechanically, not only by instruction. Pre-tool-use interceptor
+`.config/agent/hooks/block_evasion.py`:
+
+- reads pending tool call as JSON on stdin;
+- extracts shell command from field calling client documents;
+- exits 2 with `[BLOCKED BY HISS-16]` reason on stderr when command matches
+  `--no-verify`, `git commit -n`, `LEFTHOOK=0`, `SKIP=` for git,
+  `core.hooksPath=/dev/null`, or `.git/hooks` removal.
+
+Git hook cannot see `--no-verify` -> interceptor deliberately outside
+`lefthook.yml`.
+
+Registered as committed client settings in every agent client with pre-tool-use
+hook support:
+
+| Client | Registration file | Event and matcher | Command field |
+| :--- | :--- | :--- | :--- |
+| Claude Code | `.claude/settings.json` | `hooks.PreToolUse`, matcher `Bash` | `tool_input.command` |
+| Codex CLI | `.codex/hooks.json` | `hooks.PreToolUse`, matcher `^Bash$` | `tool_input.command` |
+| Gemini CLI | `.gemini/settings.json` | `hooks.BeforeTool`, matcher `^run_shell_command$` | `tool_input.command` |
+| Copilot cloud agent, Copilot CLI and VS Code | `.github/hooks/hiss-16-block-evasion.json` | `hooks.PreToolUse`, matcher `Bash` | `tool_input.command` |
+| Cursor | `.cursor/hooks.json` | `hooks.beforeShellExecution`, `failClosed` | `command` |
+| Windsurf Cascade | `.windsurf/hooks.json` | `hooks.pre_run_command` | `tool_info.command_line` |
+
+Registration rules:
+
+- Six files above = hand-maintained client settings. `praetorctl
+  compile-context` neither generates nor verifies them; it owns only instruction
+  projections (`CLAUDE.md`, `.cursor/rules/*.mdc`, `.windsurfrules`,
+  `.github/copilot-instructions.md`, `.gemini/GEMINI.md`, `.codex/rules.md`).
+- Codex: project `.codex/` layer must be trusted and hook reviewed via `/hooks`.
+  Cursor: trusted workspace required. Copilot cloud agent reads
+  `.github/hooks/*.json` only from default branch.
+- Empty or unparsable payload -> allowed, not blocked: harness writes payload,
+  not model, so failing closed there disables every tool call and closes no
+  evasion path. Text failing JSON parse still pattern-scanned verbatim.
+- Positive, negative and boundary coverage per client payload shape:
+  `tools/test_block_evasion.py`, runs inside verification gate (HISS-15).
+- Interceptor scans whole command string -> any command merely containing
+  pattern gets blocked, greps and manual hook tests included. Exercise patterns
+  via `tools/test_block_evasion.py`, or build literal from concatenated
+  fragments; never type pattern into shell command.
+
+## Platform neutrality in gates
+
+HISS-21 enforced by `.github/workflows/portability.yml`: harness self-tests on
+Linux, macOS, Windows with `fail-fast: false`; each leg reports own status
+context. `tools/portability_selftest.py` drives it and requires two things:
+suite passed, *and* case count reached its floor. Exit code alone cannot
+separate passing platform from one that quietly stopped executing case.
+
+Rules for anything under `tools/`:
+
+- Path read by Linux tool = POSIX whatever host wrote it. Render via
+  `host.target()`, never `str(Path(...))`. `systemd-repart` command line and
+  `.transfer` unit both carried literal `\` paths before this existed.
+- POSIX-only API -> reach via `host.kernel_release()`, `host.uid()` or
+  `host.gid()`, returning `(value, None)` or `(None, reason)`. Print reason,
+  skip case; gate never raises, never passes without running.
+  `tools/test_host.py` sweeps gates for unguarded calls -> new one fails there,
+  not on contributor machine.
+
+Raise self-test floor to platform's measured figure once green run reports one;
+never lower it to turn red run green.

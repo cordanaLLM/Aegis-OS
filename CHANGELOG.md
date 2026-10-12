@@ -13,6 +13,22 @@ version and is never released.
 
 ## 0.0.0 (preparation history, never released)
 
+### Changed (the supply-chain gap of the unreleased tree is a declared exception)
+
+- **`.standards.yaml` declares one exception: rule HISS-11 for
+  `.github/workflows/release.yml`, until 2027-01-09.** The profile policy
+  asks for SLSA Build Level 3, a cosign signature and an SBOM. No workflow
+  builds or publishes an artefact yet, and the release gate stays blocked
+  (roadmap M13), so the Praetor engine at `d5b64b5` measures Level 0 and
+  fails its supply-chain check. The path is the one the engine names for
+  this gap; the file does not exist yet. The maintainer decided on
+  2026-10-11 to declare the gap with an expiry rather than to build the
+  release workflow ahead of its milestone. After the expiry the audit fails
+  again, as it does without the entry.
+- **The engine pin moves in the same commit.** The engine at the previous
+  pin refuses the `exceptions` key, so the entry could not land first;
+  this bump was built by hand with the steps of `tools/praetor_bump.py`.
+
 ### Changed (M12 and M25 state which half of the GPU work each one is, D110)
 
 - **M25 is retitled "GPU host slices on the reference profile: DMA-BUF and
