@@ -27,6 +27,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+import gate_policy
 from host import target as posix_target
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -37,6 +38,9 @@ ROOT = Path(__file__).resolve().parent.parent
 MKOSI_FLOOR = 27
 REFERENCE_PROFILE_MKOSI = "mkosi 27"
 REFERENCE_PROFILE_MKOSI_PACKAGE = "extra/mkosi 27-1"
+# This gate's name in AEGIS_REQUIRED_GATES: a run that lists it fails, rather
+# than skips, when mkosi is absent or below the floor.
+GATE = "mkosi"
 DEFINITION_DIRECTORY = "build"
 MAIN_IMAGE = "IMAGE: main"
 OUTPUT_STANZA = "OUTPUT:"
@@ -310,20 +314,20 @@ def report(case, code, problems, diagnostics):
 def guard():
     """Return the host banner when the gate may run, or None after saying why."""
     if shutil.which("mkosi") is None:
-        print("SKIP: mkosi not on PATH; the mkosi definition gate did not run.")
+        gate_policy.did_not_run(GATE, "mkosi not on PATH")
         return None
     code, stdout, _ = run(["mkosi", "--version"])
     banner = stdout.splitlines()[0].strip() if stdout else ""
     version = parse_mkosi_version(banner) if code == 0 else None
     if version is None:
-        print("SKIP: no mkosi version could be read; the mkosi definition gate did not run.")
+        gate_policy.did_not_run(GATE, "no mkosi version could be read")
         return None
     if version < MKOSI_FLOOR:
-        print(
-            f"SKIP: host reports {banner!r}, below the admitted floor mkosi "
-            f"{MKOSI_FLOOR}; the definition gate did not run. The recorded "
-            f"reference profile is {REFERENCE_PROFILE_MKOSI!r} "
-            f"({REFERENCE_PROFILE_MKOSI_PACKAGE})."
+        gate_policy.did_not_run(
+            GATE,
+            f"host reports {banner!r}, below the admitted floor mkosi {MKOSI_FLOOR}",
+            f"The recorded reference profile is {REFERENCE_PROFILE_MKOSI!r} "
+            f"({REFERENCE_PROFILE_MKOSI_PACKAGE}).",
         )
         return None
     return banner
@@ -342,9 +346,11 @@ def run_cases(base):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args()
+    if gate_policy.refuse_unknown():
+        return 1
     banner = guard()
     if banner is None:
-        return 0
+        return 1 if gate_policy.is_required(GATE) else 0
     print(f"mkosi definition gate on {banner!r} (floor mkosi {MKOSI_FLOOR}).")
     try:
         with tempfile.TemporaryDirectory(prefix="aegis-mkosi-") as base:

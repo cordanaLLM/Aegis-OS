@@ -313,10 +313,13 @@ class GuardTests(unittest.TestCase):
         which = which or fake_which(
             {"systemd-repart": self.REPART}, {"systemd-sysupdate": self.SYSUPDATE}
         )
-        with patch.object(gate.shutil, "which", side_effect=which):
-            with patch.object(gate, "run", side_effect=fake_run(banners)):
-                with contextlib.redirect_stdout(out or io.StringIO()):
-                    return gate.guard()
+        # A run that requires this gate prints FAIL instead of SKIP; these cases
+        # read the unrequired wording, whatever the surrounding run requires.
+        with patch.dict(gate.os.environ, {"AEGIS_REQUIRED_GATES": ""}):
+            with patch.object(gate.shutil, "which", side_effect=which):
+                with patch.object(gate, "run", side_effect=fake_run(banners)):
+                    with contextlib.redirect_stdout(out or io.StringIO()):
+                        return gate.guard()
 
     def test_a_host_at_the_floor_is_admitted(self):
         """Positive: tools at the recorded reference profile run the gate."""
@@ -506,6 +509,51 @@ class ShippedDefinitionTests(unittest.TestCase):
         )
         transfers = sorted(p.name for p in (gate.ROOT / "build" / "sysupdate.d").iterdir())
         self.assertEqual(transfers, ["10-root.transfer"])
+
+
+class RequiredGateTests(unittest.TestCase):
+    """A gate named in AEGIS_REQUIRED_GATES fails where it would have skipped."""
+
+    def _main(self, required, which=None, banners=None):
+        out = io.StringIO()
+        with patch.dict(gate.os.environ, {"AEGIS_REQUIRED_GATES": required}), patch.object(
+            gate.shutil, "which", side_effect=which or fake_which()
+        ), patch.object(gate, "run", side_effect=fake_run(banners or {})), patch.object(
+            gate.sys, "argv", ["verify_systemd_definitions.py"]
+        ), contextlib.redirect_stdout(
+            out
+        ):
+            return gate.main(), out.getvalue()
+
+    def test_a_required_gate_without_its_tools_fails(self):
+        """Negative: the planted CI defect, a required gate on a host without systemd."""
+        code, printed = self._main("systemd")
+        self.assertEqual(code, 1)
+        self.assertIn("FAIL", printed)
+        self.assertIn("systemd-repart is neither on PATH", printed)
+        self.assertNotIn("SKIP", printed)
+
+    def test_a_required_gate_below_the_floor_fails(self):
+        """Boundary: tools present one release below the floor still fail when required."""
+        which = fake_which({name: f"/usr/bin/{name}" for name in gate.GATE_TOOLS})
+        old = {f"/usr/bin/{name}": f"systemd {gate.SYSTEMD_FLOOR - 1}" for name in gate.GATE_TOOLS}
+        code, printed = self._main("mkosi, systemd", which, old)
+        self.assertEqual(code, 1)
+        self.assertIn("below the admitted floor", printed)
+        self.assertIn(gate.REFERENCE_PROFILE_SYSTEMD, printed)
+
+    def test_an_unrequired_gate_still_skips_by_name(self):
+        """Positive: a development host without systemd tools reports a named skip."""
+        code, printed = self._main("")
+        self.assertEqual(code, 0)
+        self.assertIn("SKIP", printed)
+        self.assertIn("the systemd definition gate did not run", printed)
+
+    def test_requiring_another_gate_leaves_this_one_skipping(self):
+        """Boundary: only the gates named are required."""
+        code, printed = self._main("mkosi")
+        self.assertEqual(code, 0)
+        self.assertIn("SKIP", printed)
 
 
 if __name__ == "__main__":
