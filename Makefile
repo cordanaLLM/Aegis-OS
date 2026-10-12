@@ -65,14 +65,18 @@ verify-rust:
 # definitions are run through the host's own systemd, with the recorded
 # negative and boundary cases. The script guards itself: a host without
 # systemd-repart/systemd-sysupdate, or one below the admitted floor, prints why
-# it did not run instead of reporting a pass. It never suppresses a failure.
+# it did not run instead of reporting a pass. It never suppresses a failure. A
+# run that lists `systemd` in AEGIS_REQUIRED_GATES turns that skip into a
+# failure (tools/gate_policy.py), so a required check cannot pass on a gate
+# that never ran.
 verify-systemd:
 	python3 tools/verify_systemd_definitions.py
 
 # The P01 image-definition gate (M18): build/mkosi.conf is parsed by the host's
 # own mkosi, with the floor cases run from scratch copies. It guards itself the
 # same way verify-systemd does: a host without mkosi, or one below the admitted
-# floor, prints why it did not run instead of reporting a pass. `mkosi summary`
+# floor, prints why it did not run instead of reporting a pass; listing `mkosi`
+# in AEGIS_REQUIRED_GATES turns that skip into a failure. `mkosi summary`
 # resolves configuration and prints it; it downloads nothing and builds nothing,
 # so this gate validates a definition and constructs no image (D56).
 verify-mkosi:

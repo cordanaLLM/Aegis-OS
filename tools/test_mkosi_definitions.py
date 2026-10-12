@@ -291,9 +291,11 @@ class ScratchTests(unittest.TestCase):
 
 class GuardTests(unittest.TestCase):
     def _guard(self, which, code, banner):
-        with patch.object(gate.shutil, "which", return_value=which), patch.object(
-            gate, "run", return_value=(code, banner, "")
-        ):
+        # A run that requires this gate prints FAIL instead of SKIP; these cases
+        # read the unrequired wording, whatever the surrounding run requires.
+        with patch.dict(gate.os.environ, {"AEGIS_REQUIRED_GATES": ""}), patch.object(
+            gate.shutil, "which", return_value=which
+        ), patch.object(gate, "run", return_value=(code, banner, "")):
             stdout = io.StringIO()
             with contextlib.redirect_stdout(stdout):
                 return gate.guard(), stdout.getvalue()
@@ -316,6 +318,51 @@ class GuardTests(unittest.TestCase):
         self.assertIsNone(banner)
         self.assertIn("below the admitted floor", printed)
         self.assertIn(gate.REFERENCE_PROFILE_MKOSI_PACKAGE, printed)
+
+
+class RequiredGateTests(unittest.TestCase):
+    """A gate named in AEGIS_REQUIRED_GATES fails where it would have skipped."""
+
+    def _main(self, required, which=None, banner=""):
+        out = io.StringIO()
+        with patch.dict(gate.os.environ, {"AEGIS_REQUIRED_GATES": required}), patch.object(
+            gate.shutil, "which", return_value=which
+        ), patch.object(gate, "run", return_value=(0, banner, "")), patch.object(
+            gate.sys, "argv", ["verify_mkosi_definitions.py"]
+        ), contextlib.redirect_stdout(
+            out
+        ):
+            return gate.main(), out.getvalue()
+
+    def test_a_required_gate_without_mkosi_fails(self):
+        """Negative: the planted CI defect, a required gate on a host without mkosi."""
+        code, printed = self._main("mkosi")
+        self.assertEqual(code, 1)
+        self.assertIn("FAIL", printed)
+        self.assertIn("mkosi not on PATH", printed)
+        self.assertNotIn("SKIP", printed)
+
+    def test_a_required_gate_below_the_floor_fails(self):
+        """Boundary: mkosi one major below the floor still fails when required."""
+        code, printed = self._main(
+            "systemd,mkosi", "/usr/bin/mkosi", f"mkosi {gate.MKOSI_FLOOR - 1}\n"
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("below the admitted floor", printed)
+        self.assertIn(gate.REFERENCE_PROFILE_MKOSI_PACKAGE, printed)
+
+    def test_an_unrequired_gate_still_skips_by_name(self):
+        """Positive: a development host without mkosi reports a named skip."""
+        code, printed = self._main("")
+        self.assertEqual(code, 0)
+        self.assertIn("SKIP", printed)
+        self.assertIn("the mkosi definition gate did not run", printed)
+
+    def test_requiring_another_gate_leaves_this_one_skipping(self):
+        """Boundary: only the gates named are required."""
+        code, printed = self._main("systemd")
+        self.assertEqual(code, 0)
+        self.assertIn("SKIP", printed)
 
 
 if __name__ == "__main__":

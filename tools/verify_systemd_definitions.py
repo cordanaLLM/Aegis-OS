@@ -29,6 +29,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+import gate_policy
 from host import target as posix_target
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,6 +57,9 @@ MAX_DIAGNOSTIC_LINES = 4096
 # The two tools both gates run. Each is looked up on PATH first and then in
 # SYSTEMD_LIBEXEC, and the gate prints which copy it used.
 GATE_TOOLS = ("systemd-repart", "systemd-sysupdate")
+# This gate's name in AEGIS_REQUIRED_GATES: a run that lists it fails, rather
+# than skips, when the tools above are absent or below the floor.
+GATE = "systemd"
 # systemd's libexec directory, `systemdutildir` in systemd.pc. systemd 262 moved
 # systemd-sysupdate "back from bindir to libexecdir" and names this path "the
 # most compatible way to call it" (NEWS, CHANGES WITH 262); 261 had installed it
@@ -501,7 +505,7 @@ def guard():
     """
     tools, missing = resolve_tools()
     if missing:
-        print(f"SKIP: {'; '.join(missing)}; the systemd definition gate did not run.")
+        gate_policy.did_not_run(GATE, "; ".join(missing))
         return None
     banners, refusals = {}, []
     for name in GATE_TOOLS:
@@ -510,9 +514,10 @@ def guard():
             refusals.append(refusal)
         banners[name] = banner
     if refusals:
-        print(
-            f"SKIP: {'; '.join(refusals)}; the systemd definition gate did not run. "
-            f"The recorded reference profile is {REFERENCE_PROFILE_SYSTEMD!r}."
+        gate_policy.did_not_run(
+            GATE,
+            "; ".join(refusals),
+            f"The recorded reference profile is {REFERENCE_PROFILE_SYSTEMD!r}.",
         )
         return None
     return banners, tools
@@ -543,9 +548,11 @@ def run_cases(base, tools):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args()
+    if gate_policy.refuse_unknown():
+        return 1
     admitted = guard()
     if admitted is None:
-        return 0
+        return 1 if gate_policy.is_required(GATE) else 0
     banners, tools = admitted
     print(f"systemd definition gate on {describe(banners)} (floor systemd {SYSTEMD_FLOOR}).")
     cross_check = systemctl_banner() or "no banner"
