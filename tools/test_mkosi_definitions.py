@@ -325,9 +325,11 @@ class RequiredGateTests(unittest.TestCase):
 
     def _main(self, required, which=None, banner=""):
         out = io.StringIO()
-        with patch.dict(gate.os.environ, {"AEGIS_REQUIRED_GATES": required}), patch.object(
-            gate.shutil, "which", return_value=which
-        ), patch.object(gate, "run", return_value=(0, banner, "")), patch.object(
+        with patch.dict(
+            gate.os.environ, {"AEGIS_REQUIRED_GATES": required, "AEGIS_DEFINITIONS_CONTAINER": ""}
+        ), patch.object(gate.shutil, "which", return_value=which), patch.object(
+            gate, "run", return_value=(0, banner, "")
+        ), patch.object(
             gate.sys, "argv", ["verify_mkosi_definitions.py"]
         ), contextlib.redirect_stdout(
             out

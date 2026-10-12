@@ -1,0 +1,23 @@
+{
+  "schema": "aegis.definitions-toolchain-pin.v1",
+  "note": "M03 and M18 development evidence only. The systemd and mkosi definition gates run on the host's own tools; a run that sets AEGIS_DEFINITIONS_CONTAINER=1 runs them instead inside the image named here, which is how CI runs them, because the ubuntu-24.04 runner ships systemd 255 and no mkosi. The image is the official Arch Linux base image by digest, with every package below installed from one Arch Linux Archive snapshot. `make definitions-fetch` is the one networked step: it pulls the base image, installs the packages, and refuses the image unless pacman reports each package at exactly the version recorded here. The gates themselves never pull and run the container without a network, with the repository and the root file system read-only.",
+  "image": {
+    "reference": "docker.io/library/archlinux:base-20261004.0.606936@sha256:4e77cf2ea5f410e6f8be5abf93ccf17ce2436e87a138c167208356711a405dbd",
+    "platform-digests": {
+      "linux/amd64": "sha256:2fd1ae548076c67bcd41098ddd44e799058010e8d55f085d453dbb890e706860"
+    }
+  },
+  "archive": {
+    "snapshot": "2026/10/04",
+    "server": "https://archive.archlinux.org/repos/2026/10/04/$repo/os/$arch"
+  },
+  "packages": {
+    "systemd": "262-1",
+    "mkosi": "27.1-1",
+    "python": "3.14.7-1",
+    "dosfstools": "4.2-5",
+    "erofs-utils": "1.9.4-1",
+    "btrfs-progs": "7.1-1",
+    "cryptsetup": "2.8.8-1"
+  }
+}
