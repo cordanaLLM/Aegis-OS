@@ -138,6 +138,11 @@ PRAETOR_GATES = (
     ("audit", ("audit",)),
     ("flavor audit", ("flavor", "audit", ".")),
 )
+# `praetorctl audit` exits 0 on a [WARN] line; `make verify-all` runs it through
+# this file, which fails on one (HISS-10). The bump judges the audit the same
+# way, or it reverts a file whose refresh only silences a warning, such as the
+# .gitignore private-artifact block, and the pin bump then fails verify-all.
+AUDIT_STRICT = "tools/audit_strict.py"
 
 # Deadlines in seconds (HISS-02). Every external command gets one.
 DEADLINE_QUICK = 120
@@ -934,11 +939,19 @@ def revert(session, tree, path, code):
     session.must(["git", "-C", tree, "checkout", "HEAD", "--", path], DEADLINE_QUICK)
 
 
+def praetor_argv(binary, arguments):
+    """Return the command of one Praetor gate; the audit runs through AUDIT_STRICT."""
+    if arguments[0] == "audit":
+        return [sys.executable, AUDIT_STRICT, binary, *arguments]
+    return [binary, *arguments]
+
+
 def praetor_gates(session, tree, quiet=False):
     """Run the Praetor gates; return (all passed, the failing lines)."""
     failures = []
     for name, arguments in PRAETOR_GATES:
-        result = session.run([session.binary, *arguments], DEADLINE_QUICK, cwd=tree, quiet=quiet)
+        argv = praetor_argv(session.binary, arguments)
+        result = session.run(argv, DEADLINE_QUICK, cwd=tree, quiet=quiet)
         if result.code != 0:
             failures.append(failure_lines(name, result))
     return not failures, "\n".join(failures)
@@ -1017,7 +1030,7 @@ def gate_commands(binary, markdownlint, mkdocs=None, site=None):
             DEADLINE_VERIFY_ALL,
         ),
         ("compile-context --verify", [binary, "compile-context", "--verify"], DEADLINE_QUICK),
-        ("audit", [binary, "audit"], DEADLINE_QUICK),
+        ("audit", praetor_argv(binary, ("audit",)), DEADLINE_QUICK),
         ("flavor audit", [binary, "flavor", "audit", "."], DEADLINE_QUICK),
         ("markdownlint-cli2", ["npx", "--yes", f"markdownlint-cli2@{markdownlint}"], DEADLINE_LINT),
         ("yamllint", ["yamllint", "."], DEADLINE_LINT),
