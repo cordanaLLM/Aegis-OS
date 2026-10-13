@@ -1,0 +1,8 @@
+#include <stdio.h>
+#include <string.h>
+
+void copy(char *dst, const char *src)
+{
+	strcpy(dst, src);
+	sprintf(dst, "%s", src);
+}

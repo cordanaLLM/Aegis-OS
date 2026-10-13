@@ -1,0 +1,81 @@
+---
+# Repository semgrep rules, run by the Verification gate (.github/workflows/ci.yml)
+# with --metrics=off and no registry configuration, so the rule set is the one
+# committed here and the result does not move when a registry pack changes.
+# Each rule names the invariant it holds; the gate's planted control step makes
+# every rule here fire once per run, so a rule that stops matching fails CI.
+rules:
+  - id: hiss-08-python-dynamic-execution
+    message: HISS-08 forbids dynamic execution; eval, exec and compile run text as code.
+    severity: ERROR
+    languages: [python]
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+      - pattern: compile(...)
+
+  - id: hiss-08-python-shell-execution
+    message: >-
+      HISS-08: a shell string is dynamic execution; pass an argument list without shell=True.
+    severity: ERROR
+    languages: [python]
+    pattern-either:
+      - pattern: subprocess.$FN(..., shell=True, ...)
+      - pattern: os.system(...)
+      - pattern: os.popen(...)
+
+  - id: hiss-08-python-unsafe-deserialisation
+    message: >-
+      HISS-08: pickle, marshal and yaml.load without a safe loader execute data as code.
+    severity: ERROR
+    languages: [python]
+    pattern-either:
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+      - pattern: marshal.load(...)
+      - pattern: marshal.loads(...)
+      - patterns:
+          - pattern: yaml.load(...)
+          - pattern-not: yaml.load(..., Loader=yaml.SafeLoader, ...)
+          - pattern-not: yaml.load(..., Loader=yaml.CSafeLoader, ...)
+
+  - id: hiss-08-python-insecure-tempfile
+    message: tempfile.mktemp returns a name another process can claim first; use mkstemp.
+    severity: ERROR
+    languages: [python]
+    pattern: tempfile.mktemp(...)
+
+  - id: hiss-08-javascript-dynamic-execution
+    message: HISS-08 forbids dynamic execution; eval and the Function constructor run text as code.
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+      - pattern: Function(...)
+
+  - id: hiss-08-c-banned-libc
+    message: HISS-08 bans gets, strcpy and sprintf; use the bounded forms.
+    severity: ERROR
+    languages: [c]
+    pattern-either:
+      - pattern: gets(...)
+      - pattern: strcpy(...)
+      - pattern: sprintf(...)
+
+  - id: workflow-untrusted-input-in-run
+    message: >-
+      A pull request's text fields expand into the shell script before it runs; pass them
+      through env: and quote the variable.
+    severity: ERROR
+    languages: [yaml]
+    paths:
+      include:
+        - "/.github/workflows/*.yml"
+        - "/.github/workflows/*.yaml"
+    patterns:
+      - pattern: "run: $CMD"
+      - metavariable-regex:
+          metavariable: $CMD
+          regex: >-
+            (?s).*\$\{\{\s*github\.(head_ref|event\.(pull_request|issue|comment|review|review_comment|head_commit|commits|discussion)\.[A-Za-z0-9_.]*(title|body|message|label|name|email|ref)).*

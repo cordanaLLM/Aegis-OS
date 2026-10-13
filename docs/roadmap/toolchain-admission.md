@@ -1,6 +1,6 @@
 # Toolchain admission matrix
 
-Status: recorded admissions, current as of 2026-10-12
+Status: recorded admissions, current as of 2026-10-13
 
 ## Purpose and limits
 
@@ -33,7 +33,7 @@ Two rules follow from the clause and are applied below:
 | Rust (`rustc`, `cargo`) | 1.98.1 | `rust-toolchain.toml`, `channel = "1.98.1"`, materialised by rustup | distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.98 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.9.0-stable | `rust-toolchain.toml`, same `components` list | the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
-| praetorctl | source commit `6622361940dc66399d027f3a203884bce2f616ac` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `d5b64b51983a872c5d403753315e429263f47865`; the pin follows Praetor's `main` (see below) | M00 |
+| praetorctl | source commit `3bbde07342bdece12c46f74b0ee2c1f51129478f` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `6622361940dc66399d027f3a203884bce2f616ac`; the pin follows Praetor's `main` (see below) | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; a build input for praetorctl and, since M09, for the imago `make contract-fetch` builds, held to imago's own floor below | M00; M09 for the imago build |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
 | reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, run through `pipx run` | nothing | M00 |
@@ -41,6 +41,9 @@ Two rules follow from the clause and are applied below:
 | yamllint | 1.38.0 | `.github/workflows/ci.yml`, `YAMLLINT_VERSION`, run through `pipx run` | nothing | M00 |
 | flake8 | 7.3.0 | `.github/workflows/ci.yml`, `FLAKE8_VERSION`, run through `pipx run` | nothing | M00 |
 | black | 26.5.1 | `.github/workflows/ci.yml`, `BLACK_VERSION`, run through `pipx run` | nothing | M00 |
+| gitleaks | 8.30.1 | `.github/workflows/ci.yml`, `GITLEAKS_VERSION` plus the `GITLEAKS_SHA256` checksum of the release archive; scans every commit, reviewed false positives in `.gitleaksignore` | the dated `declared-linters` exception the 3bbde07 adoption wrote | the 3bbde07 pin, 2026-10-13 |
+| semgrep | 1.180.0 | `.github/workflows/ci.yml`, `SEMGREP_VERSION`, run through `pipx run` with the local rules in `.config/semgrep/hiss.yml` only and `--metrics=off` | the same exception | the 3bbde07 pin, 2026-10-13 |
+| trivy | 0.75.0 | `.github/workflows/ci.yml`, `TRIVY_VERSION` plus the `TRIVY_SHA256` checksum of the release archive; the binary, not `aquasecurity/trivy-action`, whose tags the March 2026 compromise rewrote (CVE-2026-33634) | the same exception | the 3bbde07 pin, 2026-10-13 |
 | systemd (`systemd-repart`, `systemd-sysupdate`) | floor 261; reference profile `systemd 261 (261.3-1-arch)`, the value the outcomes were recorded on; the reference profile reads `systemd 262 (262-1-arch)` since 2026-09-25 | `tools/verify_systemd_definitions.py`, `SYSTEMD_FLOOR = 261` and `REFERENCE_PROFILE_SYSTEMD`; each tool is taken from `PATH`, else from `/usr/lib/systemd`, printed, and held to the floor by its own `--version` before the gate runs (`systemctl --version` is printed as a cross-check only); CI runs the gate inside the image pinned below, at systemd `262-1` | nothing | M03 |
 | mkosi | 27; distribution package `extra/mkosi 27-1` on the reference profile | `build/mkosi.conf`, `MinimumVersion=27`, which mkosi itself enforces, and `tools/verify_mkosi_definitions.py`, `MKOSI_FLOOR = 27` and `REFERENCE_PROFILE_MKOSI`, read back from `mkosi --version` before the gate runs; CI runs the gate inside the image pinned below, at mkosi `27.1-1` | the M01 register's inherited `mkosi v24+` floor from export-007, which was a range rather than a pin and which no gate enforced | M18 (D14, D56) |
 | Linux source | `linux-7.2.5`, sha256 `55ddf0df8325d9dad96fcff7bd93977d22e3f50af06527572af59b77c7632b78` | `build/kernel/source.pin.json`; the digest is re-checked on every run and the detached signature is verified against key `647F28654894E3BD457199BE38DBBDC86092693E` | nothing; no kernel source was pinned before | M26 (D70) |

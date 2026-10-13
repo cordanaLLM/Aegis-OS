@@ -1,0 +1,6 @@
+# Reviewed gitleaks findings that are not secrets, one fingerprint each
+# (commit:path:rule:line), so the same text in any other commit still fails.
+# Fedora 44's public primary signing-key fingerprint, quoted from the boot gate's report.
+da693ef4e553b494d14c5e9ac6a8cd5bd06acb40:docs/build/boot-harness.md:generic-api-key:67
+# The systemd-sysupdate setting VerityMatchKey=root, not a credential.
+61f2fe16bab7889e007b2fd1474b025023906e91:crates/aegis-fabrica-defs/tests/transfer_definitions.rs:generic-api-key:70

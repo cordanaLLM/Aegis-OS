@@ -1,0 +1,12 @@
+import os
+import pickle
+import subprocess
+import tempfile
+
+import yaml
+
+eval("1")
+subprocess.run("true", shell=True)
+pickle.loads(b"")
+yaml.load("a: 1")
+tempfile.mktemp()
