@@ -4,9 +4,11 @@
 //! The built `aegis-scaena-display` binary: its mode dispatch and the exit
 //! codes it reaches without the reference profile (2 skipped, 64 usage).
 //!
-//! Every run here has an empty environment, so no `WAYLAND_DISPLAY` or
-//! `XDG_RUNTIME_DIR` names a compositor: both modes stop at the connection
-//! and skip before any render node is opened. A pass on the reference
+//! Every run here has an empty environment apart from the loader path, so no
+//! `WAYLAND_DISPLAY` or `XDG_RUNTIME_DIR` names a compositor: both modes stop
+//! at the connection and skip before any render node is opened. The loader
+//! path carries over because CI links the binary against the pinned libva
+//! build outside the system library path (`.github/workflows/ci.yml`). A pass on the reference
 //! profile stays the hand-run `make verify-display`, and so does telling the
 //! two modes apart: both stop at the same connection here, so a swapped
 //! dispatch passes this file.
@@ -26,12 +28,17 @@ const BINARY: &str = env!("CARGO_BIN_EXE_aegis-scaena-display");
 /// The usage line the binary prints on a refused command line.
 const USAGE: &str = "usage: aegis-scaena-display run|driver-probe";
 
+/// Where the dynamic loader finds libva when it is not a system library.
+const LOADER_PATH: &str = "LD_LIBRARY_PATH";
+
 /// The banner each mode prints before it connects.
 const BANNER: &str = "Display slice (M27, D79)";
 
-/// Runs the binary with `args` and an empty environment.
+/// Runs the binary with `args` and an environment that holds only the
+/// loader path of this test run, empty when it has none.
 fn display(args: &[&str]) -> Result<Transcript, String> {
-    binary_transcript::run(BINARY, args, &[])
+    let loader = std::env::var(LOADER_PATH).unwrap_or_default();
+    binary_transcript::run(BINARY, args, &[(LOADER_PATH, &loader)])
 }
 
 /// Asserts that `args` is refused as a usage error before any connection.
