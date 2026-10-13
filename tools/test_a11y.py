@@ -217,15 +217,15 @@ class PinTests(unittest.TestCase):
             "eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
         )
         self.assertEqual(pin["image"]["browser"]["revision"], "1243")
-        self.assertTrue(pin["pnpm"]["integrity"].startswith("sha512-qFWBneHJ"))
+        self.assertTrue(pin["pnpm"]["integrity"].startswith("sha512-FK7QKe24"))
 
     def test_the_node_and_pnpm_lines_are_the_decided_ones(self):
         """D65: the 26.x line, exact; D43 as decided at M04: pnpm 12.x, exact."""
         pin = gate.load_pin()
         self.assertEqual(pin["node"]["version"].split(".")[0], "26")
         self.assertEqual(pin["pnpm"]["version"].split(".")[0], "12")
-        self.assertEqual(pin["node"]["version"], "26.10.0")
-        self.assertEqual(pin["pnpm"]["version"], "12.6.0")
+        self.assertEqual(pin["node"]["version"], "26.11.1")
+        self.assertEqual(pin["pnpm"]["version"], "12.11.2")
 
     def test_a_full_digest_pins_and_a_truncated_one_is_refused(self):
         digest = "sha256:" + "ab" * 32
@@ -275,7 +275,7 @@ class PinTests(unittest.TestCase):
         drifts = {
             "packageManager": ("packageManager", "pnpm@12.5.0"),
             "not pnpm": ("packageManager", "npm@11.0.0"),
-            "engines.node": ("engines", {"node": "24.20.0", "pnpm": "12.6.0"}),
+            "engines.node": ("engines", {"node": "24.20.0", "pnpm": "12.11.2"}),
             "range": ("devDependencies", dict(manifest["devDependencies"], svelte="^5.57.1")),
             "playwright": (
                 "devDependencies",
@@ -285,12 +285,12 @@ class PinTests(unittest.TestCase):
         for name, (key, value) in drifts.items():
             with self.subTest(drift=name):
                 self.assertTrue(gate.manifest_problems(pin, dict(manifest, **{key: value}), lock))
-        stale = lock.replace("version: 12.6.0", "version: 12.5.0", 1)
+        stale = lock.replace("version: 12.11.2", "version: 12.5.0", 1)
         self.assertTrue(gate.manifest_problems(pin, manifest, stale))
 
     def test_the_pnpm_integrity_is_read_from_the_lockfile(self):
         lock = text(gate.LOCKFILE)
-        self.assertRegex(gate.lock_integrity(lock, "12.6.0"), r"^sha512-[A-Za-z0-9+/]{86}==$")
+        self.assertRegex(gate.lock_integrity(lock, "12.11.2"), r"^sha512-[A-Za-z0-9+/]{86}==$")
         with self.assertRaises(gate.GateError):
             gate.lock_integrity(lock, "12.5.0")
 
@@ -798,7 +798,7 @@ class ReportTests(unittest.TestCase):
 
     def readback(self, **changes):
         found = {
-            "node": "v26.10.0",
+            "node": "v26.11.1",
             "playwrightTest": "1.63.0",
             "playwrightCore": "1.63.0",
             "axeCore": "4.13.0",
