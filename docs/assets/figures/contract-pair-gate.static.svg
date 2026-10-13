@@ -1,0 +1,47 @@
+<svg role="img" aria-labelledby="figure-title figure-desc" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1233.5" height="315" viewBox="0 0 1233.5 315" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<title id="figure-title">The contract pair gate</title>
+<desc id="figure-desc">One networked fetch fills a cache; the offline gate checks its identity, then feeds the payloads to imago and nucleus.</desc>
+<!-- interfig (c) 2025 Vectorize AI, Inc. MIT https://github.com/vectorize-io/hindsight/tree/ccfe85b4851957ac2adf88b4a9ddf9668b2882f1/hindsight-interfig -->
+<metadata id="figure-spec"><![CDATA[{"props":{"layout":{"direction":"row","children":[{"direction":"column","gap":40,"children":[{"id":"pin","label":"producers.pin.json","sub":"commits, bounds, digests","shape":"store"},{"id":"fetch","label":"make contract-fetch","sub":"the one networked step"},{"id":"cache","label":"Contract cache","sub":"checkouts, binary, identity","shape":"store"}]},{"id":"gate","label":"make verify-contract","sub":"offline"},{"id":"identity","label":"Identity cases pass?","shape":"decision"},{"direction":"column","children":[{"id":"imago","label":"imago binary","sub":"decodes, refuses"},{"id":"nucleus","label":"nucleus verifier","sub":"kernel requirement"}]},{"id":"runs","label":"Run record","sub":"argv, exit, output, reports","shape":"store"}]},"edges":[{"from":"pin","to":"fetch","label":"pinned commits"},{"from":"fetch","to":"cache","label":"clone, build"},{"from":"pin","to":"gate","label":"pin"},{"from":"cache","to":"gate","label":"cache"},{"from":"gate","to":"identity"},{"from":"identity","to":"imago","label":"payloads"},{"from":"identity","to":"nucleus","label":"requirement"},{"from":"imago","to":"runs"},{"from":"nucleus","to":"runs"}],"steps":[{"label":"Fetch","caption":"The only step that reaches the network.","flow":[{"edges":"pin->fetch","say":"The fetch reads both producers and their commits from the pin."},{"edges":"fetch->cache","say":"It clones imago and nucleus at those commits, builds imago, and writes the identity record last."}]},{"label":"Gate","caption":"Nothing a producer prints counts until its identity checks out.","flow":[{"edges":["pin->gate","cache->gate"],"say":"The gate reads the pin and the cache, never the network."},{"edges":"gate->identity","say":"Five identity cases run first: pin, identity record, both checkouts and the binary provenance."},{"edges":["identity->imago","identity->nucleus"],"say":"Then imago decodes or refuses each payload, and nucleus verifies the kernel requirement."},{"edges":["imago->runs","nucleus->runs"],"say":"Every invocation, payload and report is retained under the run id."}]},{"label":"Skip or fail","caption":"An exit 0 is evidence only with case lines above it.","flow":[{"edges":"cache->gate","say":"Without go, git or a cached piece, the gate prints SKIP with its reason and exits 0."},{"edges":"gate->identity","say":"A cache fetched for another pin, or a binary that is not the pinned build, fails and names make contract-fetch."}]}]}}]]></metadata>
+<style>
+svg { --accent:#0074d9; --fg:#1c1e21; --muted:#606770; --bg:#ffffff; --surface:#f5f7fa; --border:#d0d7de; --card-on:#eef5fd; }
+@media (prefers-color-scheme: dark) { svg { --accent:#3396e8; --fg:#e3e3e3; --muted:#9aa0a6; --bg:#1b1b1d; --surface:#242526; --border:#3a3b3c; --card-on:#1d2733; } }
+.label { fill: var(--fg); font-size: 14px; font-weight: 500; text-anchor: middle; }
+.sub { fill: var(--muted); font-size: 12px; text-anchor: middle; }
+.frame { fill: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+.edgelabel { fill: var(--muted); font-size: 11px; text-anchor: middle; font-family: ui-monospace, Menlo, monospace; }
+.row { fill: var(--fg); font-size: 11px; }
+.row.mono { font-size: 10.5px; font-family: ui-monospace, Menlo, monospace; }
+.muted { fill: var(--muted); }
+.tag { font-size: 9px; font-weight: 600; letter-spacing: .03em; text-anchor: middle; }
+.mark { fill: var(--accent); font-size: 11px; font-weight: 600; text-anchor: end; }
+.chip { fill: #fff; font-size: 11.5px; text-anchor: middle; }
+.steplabel { fill: var(--fg); font-size: 13px; font-weight: 600; text-anchor: middle; font-family: ui-monospace, Menlo, monospace; }
+.caption { fill: var(--muted); font-size: 13.5px; text-anchor: middle; }
+
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="var(--muted)"/></marker></defs>
+<rect width="100%" height="100%" fill="var(--bg)"/>
+<g transform="translate(0 0)">
+<path d="M26.7 36 a 92.3 12 0 0 1 184.6 0 v 43 a 92.3 12 0 0 1 -184.6 0 z" fill="var(--bg)" stroke="var(--border)"/><path d="M26.7 36 a 92.3 12 0 0 0 184.6 0" fill="none" stroke="var(--border)"/><text x="119" y="61" class="label">producers.pin.json</text><text x="119" y="76" class="sub">commits, bounds, digests</text>
+<rect x="32.5" y="131" width="173" height="53" rx="10" fill="var(--bg)" stroke="var(--border)"/><text x="119" y="155.5" class="label">make contract-fetch</text><text x="119" y="170.5" class="sub">the one networked step</text>
+<path d="M24 236 a 95 12 0 0 1 190 0 v 43 a 95 12 0 0 1 -190 0 z" fill="var(--bg)" stroke="var(--border)"/><path d="M24 236 a 95 12 0 0 0 190 0" fill="none" stroke="var(--border)"/><text x="119" y="261" class="label">Contract cache</text><text x="119" y="276" class="sub">checkouts, binary, identity</text>
+<rect x="270" y="131" width="180.4" height="53" rx="10" fill="var(--bg)" stroke="var(--border)"/><text x="360.2" y="155.5" class="label">make verify-contract</text><text x="360.2" y="170.5" class="sub">offline</text>
+<polygon points="631.6,126.5 756.8,157.5 631.6,188.5 506.4,157.5" fill="var(--bg)" stroke="var(--border)"/><text x="631.6" y="162.5" class="label">Identity cases pass?</text>
+<rect x="821.3" y="90.5" width="133.8" height="53" rx="10" fill="var(--bg)" stroke="var(--border)"/><text x="888.2" y="115" class="label">imago binary</text><text x="888.2" y="130" class="sub">decodes, refuses</text>
+<rect x="812.8" y="171.5" width="150.7" height="53" rx="10" fill="var(--bg)" stroke="var(--border)"/><text x="888.2" y="196" class="label">nucleus verifier</text><text x="888.2" y="211" class="sub">kernel requirement</text>
+<path d="M1019.5 136 a 95 12 0 0 1 190 0 v 43 a 95 12 0 0 1 -190 0 z" fill="var(--bg)" stroke="var(--border)"/><path d="M1019.5 136 a 95 12 0 0 0 190 0" fill="none" stroke="var(--border)"/><text x="1114.5" y="161" class="label">Run record</text><text x="1114.5" y="176" class="sub">argv, exit, output, reports</text>
+<path id="p-pin-&gt;fetch" d="M 119 91 C 119 111, 119 111, 119 131" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)"/><rect x="71.2" y="102" width="95.6" height="18" rx="9" fill="var(--bg)" stroke="var(--border)"/><text x="119" y="115" class="edgelabel">pinned commits</text>
+<path id="p-fetch-&gt;cache" d="M 119 184 C 119 204, 119 204, 119 224" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)"/><rect x="77" y="195" width="84" height="18" rx="9" fill="var(--bg)" stroke="var(--border)"/><text x="119" y="208" class="edgelabel">clone, build</text>
+<path id="p-pin-&gt;gate" d="M 211.32 57.5 C 240.66 57.5, 240.66 148.66666666666666, 270 148.66666666666666" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)"/><rect x="224.9" y="94.1" width="31.5" height="18" rx="9" fill="var(--bg)" stroke="var(--border)"/><text x="240.7" y="107.1" class="edgelabel">pin</text>
+<path id="p-cache-&gt;gate" d="M 214 257.5 C 242 257.5, 242 166.33333333333331, 270 166.33333333333331" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)"/><rect x="220.4" y="202.9" width="43.2" height="18" rx="9" fill="var(--bg)" stroke="var(--border)"/><text x="242" y="215.9" class="edgelabel">cache</text>
+<path id="p-gate-&gt;identity" d="M 450.4 157.5 C 478.4 157.5, 478.4 157.5, 506.4 157.5" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)"/>
+<path id="p-identity-&gt;imago" d="M 756.8 157.5 C 789.04 157.5, 789.04 117, 821.28 117" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)"/><rect x="758.7" y="128.3" width="60.6" height="18" rx="9" fill="var(--bg)" stroke="var(--border)"/><text x="789" y="141.3" class="edgelabel">payloads</text>
+<path id="p-identity-&gt;nucleus" d="M 756.8 157.5 C 784.8 157.5, 784.8 198, 812.8 198" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)"/><rect x="745.7" y="168.8" width="78.1" height="18" rx="9" fill="var(--bg)" stroke="var(--border)"/><text x="784.8" y="181.8" class="edgelabel">requirement</text>
+<path id="p-imago-&gt;runs" d="M 955.04 117 C 987.28 117, 987.28 146.33333333333334, 1019.52 146.33333333333334" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)"/>
+<path id="p-nucleus-&gt;runs" d="M 963.52 198 C 991.52 198, 991.52 168.66666666666666, 1019.52 168.66666666666666" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)"/>
+
+</g>
+
+
+</svg>
