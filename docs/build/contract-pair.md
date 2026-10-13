@@ -158,6 +158,10 @@ The verifier's command line, exit codes and report keys are unchanged, and
 
 ## How one run works
 
+```figure
+contract-pair-gate
+```
+
 `make contract-fetch` runs, in order: `go version` against the floor;
 `git ls-remote --heads` against both producers, keeping the output; a depth-1
 fetch of imago, then of nucleus, each at its pinned commit into a fresh
