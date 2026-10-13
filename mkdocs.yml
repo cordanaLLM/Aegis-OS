@@ -27,9 +27,14 @@ copyright: >-
 docs_dir: docs
 site_dir: site
 
-# Build inputs that must not be published as site assets.
+# Build inputs that must not be published as site assets: the figure specs
+# render into docs/assets/figures/ and the hook below places them.
 exclude_docs: |
   requirements.txt
+  /figures/
+
+hooks:
+  - tools/figures/mkdocs_hook.py
 
 theme:
   name: material
