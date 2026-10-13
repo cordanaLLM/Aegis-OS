@@ -24,6 +24,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import audit_strict
 import host
 import praetor_bump as bump
 
@@ -732,6 +733,49 @@ class BuildStepTests(unittest.TestCase):
             command = " ".join(str(part) for part in step[:3])
             with self.subTest(command=command):
                 self.assertIn(command, workflow)
+
+
+class StrictAuditTests(unittest.TestCase):
+    """The reconcile gates judge the audit as `make verify-all` does: a [WARN] fails it."""
+
+    WARNING = "[WARN] .gitignore private-artifact block matches v2; re-adopt to refresh\n"
+
+    def gates(self, audit_text):
+        """Run `praetor_gates` over an audit that exits 0 and prints `audit_text`."""
+
+        def fake(argv, deadline, cwd=None, env=None):
+            if "audit" not in argv or "flavor" in argv:
+                return bump.Result(tuple(argv), 0, "", "")
+            # The bare engine exits 0 on a warning; the strict reader judges the text.
+            strict = len(argv) > 1 and argv[1] == bump.AUDIT_STRICT
+            code = 1 if strict and audit_strict.judge(0, audit_text) else 0
+            return bump.Result(tuple(argv), code, audit_text, "")
+
+        session = bump.Session(args(), stream=io.StringIO())
+        session.binary = Path("praetorctl")
+        with mock.patch.object(bump, "run", side_effect=fake):
+            return bump.praetor_gates(session, Path("."))
+
+    def test_the_audit_runs_through_the_strict_reader(self):
+        """Positive: the audit, and only the audit, goes through tools/audit_strict.py."""
+        binary = Path("praetorctl")
+        argv = bump.praetor_argv(binary, ("audit",))
+        self.assertEqual(argv, [sys.executable, "tools/audit_strict.py", binary, "audit"])
+        self.assertEqual(
+            bump.praetor_argv(binary, ("flavor", "audit", ".")), [binary, "flavor", "audit", "."]
+        )
+        gates = {name: argv for name, argv, _deadline in bump.gate_commands(binary, "0.23.2")}
+        self.assertEqual(gates["audit"], argv)
+
+    def test_a_warning_fails_the_reconcile_gates(self):
+        """Negative: an audit that exits 0 with a [WARN] line fails, so adopt's fix is kept."""
+        passed, failing = self.gates(self.WARNING + audit_strict.SUMMARY + "\n")
+        self.assertFalse(passed)
+        self.assertIn("re-adopt to refresh", failing)
+
+    def test_a_clean_audit_passes_the_reconcile_gates(self):
+        """Boundary: the summary line alone passes; no marker is not a warning."""
+        self.assertEqual(self.gates(audit_strict.SUMMARY + "\n"), (True, ""))
 
 
 class GateListTests(unittest.TestCase):
