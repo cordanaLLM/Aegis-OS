@@ -181,7 +181,9 @@ fn judge_rust_version(
         return Err(format!("rust-version {declared:?} is not the pin {pin:?}"));
     }
     if highest > pin {
-        return Err(format!("the graph declares {highest:?}, above the pin {pin:?}"));
+        return Err(format!(
+            "the graph declares {highest:?}, above the pin {pin:?}"
+        ));
     }
     Ok(())
 }
@@ -417,8 +419,11 @@ fn the_workspace_rust_version_is_the_pinned_toolchain() -> Result<(), String> {
 fn a_rust_version_off_the_pin_is_refused() -> Result<(), String> {
     let pin = toolchain_pin(&read("rust-toolchain.toml")).ok_or("no channel")?;
     let (major, minor, patch) = pin;
-    let below = workspace_rust_version(&format!("rust-version = \"{major}.{}\"", minor.saturating_sub(1)))
-        .ok_or("unparsed")?;
+    let below = workspace_rust_version(&format!(
+        "rust-version = \"{major}.{}\"",
+        minor.saturating_sub(1)
+    ))
+    .ok_or("unparsed")?;
     let error = judge_rust_version(below, pin, below)
         .err()
         .ok_or("a rust-version below the pin passed")?;
