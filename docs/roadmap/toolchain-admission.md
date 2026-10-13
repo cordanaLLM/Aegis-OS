@@ -582,15 +582,15 @@ listing.
 | Tool | Pinned version | How it is pinned | Latest upstream, read 2026-09-28 | Role |
 | :--- | :--- | :--- | :--- | :--- |
 | Node.js | 26.11.1; tarball sha256 `3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651` | `toolchain.pin.json` and `engines.node`, exact, with `engineStrict`; the sha256 is the one in `SHASUMS256.txt`, signed by `5BE8A3F6C8A5C01D106C0AD820B1A390B168D356` | 26.11.1 of 2026-10-07, read 2026-10-13, the Current line, which enters Active LTS on 2026-10-28; the newest LTS is 24.21.0 of 2026-09-07 | runs vite and Playwright inside the container |
-| pnpm | 12.6.0; `@pnpm/exe.linux-x64` integrity `sha512-qFWBneHJAJ73W4whtbaFOL1M/7DBC6ILHXuxc7ZPtEhfPuT1zeZiGrmKHoMAfJA+mcm6xhOFljqVTUS+00Jabw==` | `packageManager` and `engines.pnpm`; the integrity is pnpm-lock.yaml's | 12.6.0 of 2026-09-22 (`latest`); `next-12` is 12.8.1 | installs from the lockfile, offline |
-| `@playwright/test` | 1.63.0 | `package.json`, exact; pnpm-lock.yaml | 1.63.0 of 2026-09-04 | the test runner; the image tag must carry the same version |
-| `chromium-headless-shell` | revision 1243, Chromium 153.0.8010.12 | `toolchain.pin.json`, read back from `playwright-core/browsers.json` and from the launched browser | the revision `@playwright/test` 1.63.0 bundles | the browser the suite drives, baked into the image |
+| pnpm | 12.11.2; `@pnpm/exe.linux-x64` integrity `sha512-FK7QKe24AYgppJwO3mpooYptduuvIGqKJPi5ac7MdnWkjUy46JBfYhCW0grnkWKC8YOf0x+vGviuQqJEj3SpQQ==` | `packageManager` and `engines.pnpm`; the integrity is pnpm-lock.yaml's | 12.11.2 of 2026-10-09 (`latest`); `next-12` is 12.13.0 | installs from the lockfile, offline |
+| `@playwright/test` | 1.64.0 | `package.json`, exact; pnpm-lock.yaml | 1.64.0 of 2026-10-07 | the test runner; the image tag must carry the same version |
+| `chromium-headless-shell` | revision 1248, Chromium 156.0.8078.4 | `toolchain.pin.json`, read back from `playwright-core/browsers.json` and from the launched browser | the revision `@playwright/test` 1.64.0 bundles | the browser the suite drives, baked into the image |
 | `axe-core` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0 of 2026-08-05 | the rule engine; D81 runs its WCAG 2.2 AA tag set |
 | `@axe-core/playwright` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0 of 2026-08-11 | injects axe-core into the page |
 | `svelte` | 5.57.1 | `package.json`, exact; pnpm-lock.yaml | 5.57.1 of 2026-09-18 | the one component |
 | `vite` | 8.3.1 | `package.json`, exact; pnpm-lock.yaml | 8.3.1 of 2026-09-24 | the static build and `vite preview` |
 | `@sveltejs/vite-plugin-svelte` | 7.3.1 | `package.json`, exact; pnpm-lock.yaml | 7.3.1 of 2026-09-23 | compiles the component in the build |
-| Playwright image | `mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27`; linux/amd64 `sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7` | `toolchain.pin.json`; pulled and run by digest only | `v1.63.0-noble`, built 2026-09-04, 912 MiB compressed | Ubuntu 24.04 with the browsers and their libraries; its own Node 24.20.0 is not used |
+| Playwright image | `mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f`; linux/amd64 `sha256:bc72a8df40831ded821e3cbc79c318c21b44d6e51dff9fd89ace7a8249c5b462` | `toolchain.pin.json`; pulled and run by digest only | `v1.64.0-noble`, built 2026-10-08, 940 MiB compressed | Ubuntu 24.04 with the browsers and their libraries; its own Node 24.20.0 is not used |
 | `podman` | 6.1.2 on the reference profile (`podman 6.1.2-1.1`), rootless | the preferred engine when on `PATH`; `AEGIS_A11Y_ENGINE` overrides | 6.1.2 of 2026-09-16 | runs each step; the CI runner's is 4.9.3 |
 | `docker` | 29.8.1 on the reference profile (`docker 1:29.8.1-1.1`) | the fallback engine, run with `--user` | 29.8.1 of 2026-09-15 | runs each step where podman is absent |
 | `curl` | 8.22.0 on the reference profile | recorded, not pinned; started only by `--fetch` (`make a11y-fetch`), with `--proto =https` and a deadline | 8.22.0 of 2026-09-02 | `--fetch` only: downloads the Node tarball and the pnpm binary, each kept only when it hashes to its pin |
@@ -606,7 +606,8 @@ every program the gate may start on the host. The reference profile's own Node
 (v26.10.0) and pnpm (10.29.3) are not what the gate runs; the M01 drift
 register's "Node 20 vs 22" row is closed with the exact Node pin above
 (26.10.0 when closed, 26.11.1 since 2026-10-13), and
-pnpm 12.6.0 replaces the reference profile's 10.29.3 for this gate.
+pnpm 12.11.2 (12.6.0 until 2026-10-14) replaces the reference profile's
+10.29.3 for this gate.
 
 What these rows do **not** claim: that the host's Playwright browser cache is
 pinned. `~/.cache/ms-playwright` held chromium-1228 on 2026-09-13 and

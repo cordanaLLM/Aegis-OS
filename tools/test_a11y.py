@@ -68,7 +68,7 @@ CONTAINER_PROGRAMS = {"cp", "pnpm", "node"}
 # exactly these, and a CSS framework added to it fails here.
 ADMITTED_PACKAGES = {
     "@axe-core/playwright": "4.13.0",
-    "@playwright/test": "1.63.0",
+    "@playwright/test": "1.64.0",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "axe-core": "4.13.0",
     "svelte": "5.57.1",
@@ -210,14 +210,14 @@ class PinTests(unittest.TestCase):
 
     def test_the_committed_pin_loads_with_its_derived_values(self):
         pin = gate.load_pin()
-        self.assertEqual(pin["image"]["playwright"], "1.63.0")
+        self.assertEqual(pin["image"]["playwright"], "1.64.0")
         self.assertEqual(
             pin["image"]["by-digest"],
             "mcr.microsoft.com/playwright@sha256:"
-            "eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
+            "06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f",
         )
-        self.assertEqual(pin["image"]["browser"]["revision"], "1243")
-        self.assertTrue(pin["pnpm"]["integrity"].startswith("sha512-qFWBneHJ"))
+        self.assertEqual(pin["image"]["browser"]["revision"], "1248")
+        self.assertTrue(pin["pnpm"]["integrity"].startswith("sha512-FK7QKe24"))
 
     def test_the_node_and_pnpm_lines_are_the_decided_ones(self):
         """D65: the 26.x line, exact; D43 as decided at M04: pnpm 12.x, exact."""
@@ -225,7 +225,7 @@ class PinTests(unittest.TestCase):
         self.assertEqual(pin["node"]["version"].split(".")[0], "26")
         self.assertEqual(pin["pnpm"]["version"].split(".")[0], "12")
         self.assertEqual(pin["node"]["version"], "26.11.1")
-        self.assertEqual(pin["pnpm"]["version"], "12.6.0")
+        self.assertEqual(pin["pnpm"]["version"], "12.11.2")
 
     def test_a_full_digest_pins_and_a_truncated_one_is_refused(self):
         digest = "sha256:" + "ab" * 32
@@ -257,7 +257,7 @@ class PinTests(unittest.TestCase):
                 reference="mcr.microsoft.com/playwright@sha256:"
             ),
             "platform": lambda pin: pin["image"]["platform-digests"].update({"x": "sha256:ab"}),
-            "revision": lambda pin: pin["image"]["browser"].update(revision="r1243"),
+            "revision": lambda pin: pin["image"]["browser"].update(revision="r1248"),
             "node-version": lambda pin: pin["node"].update(version="26.10"),
             "node-sha": lambda pin: pin["node"].update(sha256="ab"),
         }
@@ -275,7 +275,7 @@ class PinTests(unittest.TestCase):
         drifts = {
             "packageManager": ("packageManager", "pnpm@12.5.0"),
             "not pnpm": ("packageManager", "npm@11.0.0"),
-            "engines.node": ("engines", {"node": "24.20.0", "pnpm": "12.6.0"}),
+            "engines.node": ("engines", {"node": "24.20.0", "pnpm": "12.11.2"}),
             "range": ("devDependencies", dict(manifest["devDependencies"], svelte="^5.57.1")),
             "playwright": (
                 "devDependencies",
@@ -285,12 +285,12 @@ class PinTests(unittest.TestCase):
         for name, (key, value) in drifts.items():
             with self.subTest(drift=name):
                 self.assertTrue(gate.manifest_problems(pin, dict(manifest, **{key: value}), lock))
-        stale = lock.replace("version: 12.6.0", "version: 12.5.0", 1)
+        stale = lock.replace("version: 12.11.2", "version: 12.5.0", 1)
         self.assertTrue(gate.manifest_problems(pin, manifest, stale))
 
     def test_the_pnpm_integrity_is_read_from_the_lockfile(self):
         lock = text(gate.LOCKFILE)
-        self.assertRegex(gate.lock_integrity(lock, "12.6.0"), r"^sha512-[A-Za-z0-9+/]{86}==$")
+        self.assertRegex(gate.lock_integrity(lock, "12.11.2"), r"^sha512-[A-Za-z0-9+/]{86}==$")
         with self.assertRaises(gate.GateError):
             gate.lock_integrity(lock, "12.5.0")
 
@@ -799,8 +799,8 @@ class ReportTests(unittest.TestCase):
     def readback(self, **changes):
         found = {
             "node": "v26.11.1",
-            "playwrightTest": "1.63.0",
-            "playwrightCore": "1.63.0",
+            "playwrightTest": "1.64.0",
+            "playwrightCore": "1.64.0",
             "axeCore": "4.13.0",
             "axePlaywright": "4.13.0",
             "svelte": "5.57.1",
@@ -808,10 +808,10 @@ class ReportTests(unittest.TestCase):
             "eslint": "10.12.0",
             "eslintPluginSvelte": "3.23.1",
             "svelteEslintParser": "1.9.0",
-            "headlessShell": {"revision": "1243", "browserVersion": "153.0.8010.12"},
+            "headlessShell": {"revision": "1248", "browserVersion": "156.0.8078.4"},
             "browsersPath": "/ms-playwright",
             "revisionPresent": True,
-            "launched": "153.0.8010.12",
+            "launched": "156.0.8078.4",
         }
         found.update(changes)
         return found
@@ -822,7 +822,7 @@ class ReportTests(unittest.TestCase):
         for key, value in (
             ("node", "v24.20.0"),
             ("revisionPresent", False),
-            ("headlessShell", {"revision": "1228", "browserVersion": "153.0.8010.12"}),
+            ("headlessShell", {"revision": "1228", "browserVersion": "156.0.8078.4"}),
             ("launched", "152.0.0.0"),
             ("svelte", "5.57.0"),
             ("eslint", "10.10.0"),
@@ -949,7 +949,7 @@ def passing_found():
     return {
         "default-state": {
             "axe": "4.13.0",
-            "browser": "153.0.8010.12",
+            "browser": "156.0.8078.4",
             "runOnly": {"type": "tag", "values": list(gate.D81_TAGS)},
             "counts": {"violations": 0, "incomplete": 0, "passes": 22, "inapplicable": 41},
             "violations": [],
