@@ -475,7 +475,7 @@ class PreparationTests(unittest.TestCase):
             "unblocks": [],
             "cost": "small",
             "exit_criteria": ["evidence"],
-            "epics": [{"id": f"E{mid}-1"}],
+            "epics": [{"id": f"E{mid[1:]}-1", "title": f"epic of {mid}"}],
         }
         row.update(extra)
         return row
@@ -678,6 +678,50 @@ class PreparationTests(unittest.TestCase):
         self.write_roadmap_document(rows, table=extra, sections=extra)
         with self.assertRaises(ValueError):
             check.verify_roadmap_document(rows)
+
+    def test_each_epic_belongs_to_one_milestone(self):
+        """Positive: distinct epics pass; negative: a copied id or title; boundary: no title."""
+        first = self.milestone("M00", 0, "done", evidence=["a2c9626"])
+        self.write_roadmap([first, self.milestone("M01", 1, "ready", ["M00"])])
+        self.assertEqual(len(check.verify_roadmap()), 2)
+        planted = [
+            self.milestone("M01", 1, "ready", ["M00"], epics=[{"id": "E00-1", "title": "x"}]),
+            self.milestone(
+                "M01", 1, "ready", ["M00"], epics=[{"id": "E01-1", "title": "epic of M00"}]
+            ),
+            self.milestone("M01", 1, "ready", ["M00"], epics=[{"id": "E10-1", "title": "y"}]),
+        ]
+        for row in planted:
+            self.write_roadmap([first, row])
+            with self.assertRaises(ValueError):
+                check.verify_roadmap()
+        untitled = self.milestone(
+            "M01", 1, "ready", ["M00"], epics=[{"id": "E01-1"}, {"id": "E01-2"}]
+        )
+        self.write_roadmap([first, untitled])
+        self.assertEqual(len(check.verify_roadmap()), 2)
+
+    def test_planning_prose_ends_on_a_full_stop(self):
+        """Positive: finished sentences; negative: a sliced rationale; boundary: trailing space."""
+
+        def row(rationale, exit_text="Read it back."):
+            profile = {"support": "full", "requires": [], "rationale": rationale}
+            return self.milestone(
+                "M00", 0, "ready", reference_profile=profile, cheapest_exit=exit_text
+            )
+
+        for good in ("It boots.", "Does it boot?", "It boots. "):
+            self.write_roadmap([row(good)])
+            self.assertEqual(len(check.verify_roadmap()), 1)
+        for bad in (
+            row("swtpm and tpm2-tools are instal"),
+            row("It boots", exit_text="Read it back"),
+        ):
+            self.write_roadmap([bad])
+            with self.assertRaises(ValueError):
+                check.verify_roadmap()
+        self.write_roadmap([self.milestone("M00", 0, "ready", reference_profile=None)])
+        self.assertEqual(len(check.verify_roadmap()), 1)
 
     def test_roadmap_rejects_inconsistent_states(self):
         bad = [

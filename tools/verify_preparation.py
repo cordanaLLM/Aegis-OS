@@ -341,6 +341,51 @@ def verify_milestone(row, by_id):
             raise ValueError(f"Milestone {row['id']} is ranked before its blocker {blocker}")
 
 
+def verify_epic_ownership(rows):
+    """Every epic belongs to exactly one milestone, and its id names that milestone.
+
+    M23 once carried byte-identical copies of M07's epics, and two milestone
+    pairs claimed the same epic until D71 and D72 settled them. A copied epic
+    keeps either its id or its title, so both are refused across milestones.
+    """
+    owner_of_id, owner_of_title = {}, {}
+    for row in rows:
+        prefix = f"E{row['id'][1:]}-"
+        for epic in row["epics"]:
+            if not epic.get("id", "").startswith(prefix):
+                raise ValueError(
+                    f"Milestone {row['id']} holds epic {epic.get('id')!r}; its epics are {prefix}N"
+                )
+            for key, owners in ((epic["id"], owner_of_id), (epic.get("title"), owner_of_title)):
+                if key is None:
+                    continue
+                if owners.get(key, row["id"]) != row["id"]:
+                    raise ValueError(
+                        f"Epic {key!r} is claimed by both {owners[key]} and {row['id']}"
+                    )
+                owners[key] = row["id"]
+
+
+PROSE_FIELDS = (("reference_profile", "rationale"), (None, "cheapest_exit"))
+
+
+def verify_prose_endings(rows):
+    """Planning prose ends on a sentence terminator, so a sliced string cannot pass.
+
+    Twelve reference_profile.rationale strings were once cut at 400 characters,
+    some mid-word, and six more lacked a full stop.
+    """
+    for row in rows:
+        for parent, field in PROSE_FIELDS:
+            holder = (row.get(parent) or {}) if parent else row
+            text = holder.get(field)
+            if text is not None and not text.rstrip().endswith((".", "!", "?")):
+                name = f"{parent}.{field}" if parent else field
+                raise ValueError(
+                    f"Milestone {row['id']} {name} ends {text[-24:]!r}, not on a full stop"
+                )
+
+
 def verify_ranking(milestones):
     """The committed order must match the ranking controller, or record why not."""
     sys.path.insert(0, str(ROOT / "tools"))
@@ -371,6 +416,8 @@ def verify_roadmap():
     by_id = {row["id"]: row for row in rows}
     for row in rows:
         verify_milestone(row, by_id)
+    verify_epic_ownership(rows)
+    verify_prose_endings(rows)
     indegree = {row["id"]: len(row["blocked_by"]) for row in rows}
     ready = [key for key, degree in indegree.items() if degree == 0]
     visited = 0
