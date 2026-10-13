@@ -224,7 +224,7 @@ class PinTests(unittest.TestCase):
         pin = gate.load_pin()
         self.assertEqual(pin["node"]["version"].split(".")[0], "26")
         self.assertEqual(pin["pnpm"]["version"].split(".")[0], "12")
-        self.assertEqual(pin["node"]["version"], "26.10.0")
+        self.assertEqual(pin["node"]["version"], "26.11.1")
         self.assertEqual(pin["pnpm"]["version"], "12.6.0")
 
     def test_a_full_digest_pins_and_a_truncated_one_is_refused(self):
@@ -798,7 +798,7 @@ class ReportTests(unittest.TestCase):
 
     def readback(self, **changes):
         found = {
-            "node": "v26.10.0",
+            "node": "v26.11.1",
             "playwrightTest": "1.63.0",
             "playwrightCore": "1.63.0",
             "axeCore": "4.13.0",
