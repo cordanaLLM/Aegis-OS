@@ -321,3 +321,44 @@ fn the_facility_budget_and_the_table_bound_hold_at_their_edges() -> Fallible {
     );
     Ok(())
 }
+
+// --- holds_capacity (REQ-P05-07) ------------------------------------------
+
+/// Positive: Activated and Rate-Limited hold capacity; the table is written
+/// out from REQ-P05-07, not read from the crate.
+#[test]
+fn running_states_hold_capacity() {
+    assert!(Activated.holds_capacity());
+    assert!(RateLimited.holds_capacity());
+}
+
+/// Negative: an eligible, a quarantined and a deleted process hold none.
+#[test]
+fn idle_isolated_and_gone_states_hold_no_capacity() {
+    assert!(!EligibleButInactive.holds_capacity());
+    assert!(!Quarantined.holds_capacity());
+    assert!(!Deleted.holds_capacity());
+}
+
+/// Boundary: over every state, exactly the two running ones hold capacity,
+/// and a window is accepted exactly where capacity is held (a live state
+/// without capacity answers `NotRunning`, Deleted answers `Terminal`).
+#[test]
+fn capacity_is_held_by_exactly_the_states_that_accept_a_window() -> Fallible {
+    let holders = [Activated, RateLimited];
+    for state in ProcessState::ALL {
+        assert_eq!(
+            state.holds_capacity(),
+            holders.contains(&state),
+            "{state:?}"
+        );
+        let mut life = at(state)?;
+        let verdict = life.observe(WithinBudget);
+        match state {
+            Deleted => assert_eq!(verdict, Err(LifecycleError::Terminal)),
+            _ if state.holds_capacity() => assert!(verdict.is_ok(), "{state:?}"),
+            _ => assert_eq!(verdict, Err(LifecycleError::NotRunning { state })),
+        }
+    }
+    Ok(())
+}
