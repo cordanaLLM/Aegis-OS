@@ -144,8 +144,8 @@ published 2026-09-10), with no feature and no dependency of its own. Its
 `rust-version` is 1.87, above the 1.85 the workspace declared when it was
 admitted; the pinned toolchain is 1.98.1, so every gate compiles it, and
 Cargo's MSRV-aware resolver picks it only because `0.25.1` is the lowest
-version the requirement admits. Since M27 the workspace declares 1.87, the
-highest `rust-version` in the resolved graph (see below).
+version the requirement admits. Since D111 the workspace declares the pinned
+toolchain, 1.98.1 (see below).
 `crates/aegis-forum-shell/tests/manifest_hygiene.rs` asserts the
 declaration, the lock entry, and that the crate's own dependency closure
 (D78) holds no gpui, winit, wayland-client, zbus, atspi, accesskit_unix or
@@ -191,17 +191,19 @@ resolves no crate the lock did not already carry: its dependencies are libc
 0.2.189 on Unix and windows-sys 0.61.2 on Windows, both locked before M21. The
 lock gained exactly three packages, socket2 and the two new members, and no
 existing entry changed version. socket2 declares `rust-version` 1.70, below the
-workspace's 1.87. rustix's `system` feature enables linux-raw-sys's `system`
+pinned toolchain. rustix's `system` feature enables linux-raw-sys's `system`
 module and adds no package; Cargo does not lock features.
 
 The highest `rust-version` any resolved package declares is 1.87
-(accesskit 0.25.1), above smithay-client-toolkit's and wayland-protocols' 1.86,
-so the workspace's `rust-version` moved from 1.85 to 1.87 and no further;
-`crates/aegis-scaena/tests/manifest_hygiene.rs` reads the highest value back
-from `cargo metadata --locked` and holds the workspace to it.
-`rust-toolchain.toml` stays at 1.98.1. Raising the declared MSRV switched on
-clippy's `manual_is_multiple_of`, which checks nothing below 1.87, and its
-three findings were rewritten with `is_multiple_of` in the same change.
+(accesskit 0.25.1), above smithay-client-toolkit's and wayland-protocols' 1.86.
+M27 set the workspace's `rust-version` to that value, and raising it from 1.85
+switched on clippy's `manual_is_multiple_of`, whose three findings were
+rewritten with `is_multiple_of`. The value was false: the workspace uses
+let-chains, stable since 1.88, and `cargo +1.87 check --workspace` failed with
+ten E0658 errors on 2026-10-13. D111 replaced the rule: the workspace declares
+the `rust-toolchain.toml` pin, 1.98.1, the only toolchain any gate builds on,
+and `crates/aegis-scaena/tests/manifest_hygiene.rs` holds the declaration to
+the pin and every resolved package's `rust-version` at or below it.
 
 ## The systemd floor, and why it is a floor rather than a pin
 

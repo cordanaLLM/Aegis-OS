@@ -17,6 +17,8 @@ on:
 
 permissions:
   contents: read
+  # The engine audit inside `make verify-all` reads main's workflow runs.
+  actions: read
 
 concurrency:
   group: preparation-${{ github.ref }}
@@ -58,9 +60,10 @@ jobs:
   verify:
     name: Verification gate
     runs-on: ubuntu-24.04
-    # 30 rather than 20 since M04: the accessibility gate's fetch pulls a
-    # 912 MiB compressed image (2.53 GB unpacked) before the gate runs.
-    timeout-minutes: 30
+    # The job took at most 397 s over its 40 latest successful runs on
+    # 2026-10-13, the accessibility gate's 912 MiB image fetch (about 70 s)
+    # included; tools/verify_preparation.py holds every job to 15 minutes.
+    timeout-minutes: 15
     steps:
       # HISS-18: a draft stops here, before any work, and fails, so a
       # required check never reports a skipped draft as a pass. Marking the
@@ -257,6 +260,9 @@ jobs:
       - name: Verification gate
         env:
           AEGIS_DEFINITIONS_CONTAINER: "1"
+          # The engine audit reads the forge with this token; without one it
+          # skips the workflow-run and live branch protection checks.
+          GITHUB_TOKEN: ${{ github.token }}
           AEGIS_REQUIRED_GATES: systemd,mkosi
         run: make verify-all
 

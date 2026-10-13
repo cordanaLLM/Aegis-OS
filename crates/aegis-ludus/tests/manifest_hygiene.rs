@@ -62,10 +62,12 @@ fn declared_dependencies(manifest: &str) -> Vec<String> {
         let line = line.trim();
         if line.starts_with('[') {
             inside = line == "[dependencies]";
-        } else if inside && !line.is_empty() && !line.starts_with('#') {
-            if let Some((name, _)) = line.split_once(['=', '.']) {
-                names.push(name.trim().to_owned());
-            }
+        } else if inside
+            && !line.is_empty()
+            && !line.starts_with('#')
+            && let Some((name, _)) = line.split_once(['=', '.'])
+        {
+            names.push(name.trim().to_owned());
         }
     }
     names.sort_unstable();
@@ -245,8 +247,8 @@ fn the_crate_inherits_the_workspace_lints_and_toolchain() {
     let root = read("Cargo.toml");
     assert!(root.contains("unsafe_code = \"forbid\""));
     assert!(
-        root.contains("rust-version = \"1.87\""),
-        "M27: the highest rust-version the resolved graph declares (accesskit 0.25.1)"
+        root.contains("rust-version = \"1.98.1\""),
+        "D111: the workspace rust-version is the rust-toolchain.toml pin"
     );
     let pinned = read("rust-toolchain.toml");
     assert!(
