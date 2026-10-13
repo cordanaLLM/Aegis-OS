@@ -3,7 +3,7 @@
 
 //! M27 criteria 1 to 3 and E27-3: the crate's membership, its admitted
 //! dependencies, its own dependency closure (D78) and the workspace
-//! `rust-version` those dependencies set.
+//! `rust-version`, which D111 sets to the pinned toolchain.
 //!
 //! The closure is read through `crates/dependency_closure.rs`, the one
 //! definition of the D78 rule every re-scoped sweep includes. P17's own sweep
@@ -160,6 +160,32 @@ fn workspace_rust_version(manifest: &str) -> Option<RustVersion> {
         .lines()
         .find(|line| line.starts_with("rust-version = \""))?;
     rust_version(line.strip_prefix("rust-version = \"")?.strip_suffix('"')?)
+}
+
+/// The toolchain `rust-toolchain.toml` pins, from its `channel` line.
+fn toolchain_pin(toolchain: &str) -> Option<RustVersion> {
+    let line = toolchain
+        .lines()
+        .find(|line| line.starts_with("channel = \""))?;
+    rust_version(line.strip_prefix("channel = \"")?.strip_suffix('"')?)
+}
+
+/// D111: the workspace `rust-version` is the pinned toolchain, and no
+/// resolved package declares more than that pin.
+fn judge_rust_version(
+    declared: RustVersion,
+    pin: RustVersion,
+    highest: RustVersion,
+) -> Result<(), String> {
+    if declared != pin {
+        return Err(format!("rust-version {declared:?} is not the pin {pin:?}"));
+    }
+    if highest > pin {
+        return Err(format!(
+            "the graph declares {highest:?}, above the pin {pin:?}"
+        ));
+    }
+    Ok(())
 }
 
 /// The Rust sources of this crate, found with an explicit stack.
@@ -374,18 +400,41 @@ fn no_engine_or_transport_crate_is_locked_anywhere() {
     assert!(found.is_empty(), "Cargo.lock resolves {found:?}");
 }
 
-/// Positive (criterion 2): the workspace `rust-version` equals the highest
-/// `rust-version` any resolved package declares, read from `cargo metadata`.
+/// Positive (criterion 2, D111): the workspace `rust-version` equals the
+/// `rust-toolchain.toml` pin, and the highest `rust-version` any resolved
+/// package declares, read from `cargo metadata`, is not above it.
 #[test]
-fn the_workspace_rust_version_is_the_highest_the_graph_declares() -> Result<(), String> {
+fn the_workspace_rust_version_is_the_pinned_toolchain() -> Result<(), String> {
     let (highest, names) = highest_declared(&metadata()?)?;
     let declared = workspace_rust_version(&read("Cargo.toml")).ok_or("no rust-version")?;
-    assert_eq!(declared, highest, "declared by {names:?}");
-    assert!(names.iter().any(|name| name == "accesskit"), "{names:?}");
-    Ok(())
+    let pin = toolchain_pin(&read("rust-toolchain.toml")).ok_or("no channel")?;
+    judge_rust_version(declared, pin, highest).map_err(|error| format!("{error}; {names:?}"))
 }
 
 // --- Negative -------------------------------------------------------------
+
+/// Negative (D111): a `rust-version` one release below the pin is refused,
+/// and so is a resolved package that declares one release above it.
+#[test]
+fn a_rust_version_off_the_pin_is_refused() -> Result<(), String> {
+    let pin = toolchain_pin(&read("rust-toolchain.toml")).ok_or("no channel")?;
+    let (major, minor, patch) = pin;
+    let below = workspace_rust_version(&format!(
+        "rust-version = \"{major}.{}\"",
+        minor.saturating_sub(1)
+    ))
+    .ok_or("unparsed")?;
+    let error = judge_rust_version(below, pin, below)
+        .err()
+        .ok_or("a rust-version below the pin passed")?;
+    assert!(error.contains("is not the pin"), "{error}");
+    let above = (major, minor.saturating_add(1), patch);
+    let error = judge_rust_version(pin, pin, above)
+        .err()
+        .ok_or("a dependency above the pin passed")?;
+    assert!(error.contains("above the pin"), "{error}");
+    Ok(())
+}
 
 /// Negative (criterion 2): no source of this crate holds the keyword the
 /// workspace's forbid lint refuses, outside comment lines.
@@ -546,20 +595,22 @@ fn a_manifest_that_omits_this_crate_fails_the_membership_check() -> Result<(), S
 
 // --- Boundary -------------------------------------------------------------
 
-/// Boundary (E27-3): a `rust-version` one release above the graph's highest
-/// is not equal to it, and neither is one below.
+/// Boundary (D111): a resolved package that declares exactly the pin is
+/// admitted, and one patch release above it is not; a pin read without a
+/// patch release is the `.0` release.
 #[test]
-fn the_rust_version_is_not_one_release_more() -> Result<(), String> {
-    let (highest, _) = highest_declared(&metadata()?)?;
-    let (major, minor, patch) = highest;
-    for text in [
-        format!("rust-version = \"{major}.{}\"", minor.saturating_add(1)),
-        format!("rust-version = \"{major}.{}\"", minor.saturating_sub(1)),
-    ] {
-        assert_ne!(workspace_rust_version(&text), Some(highest), "{text}");
-    }
-    let exact = format!("rust-version = \"{major}.{minor}.{patch}\"");
-    assert_eq!(workspace_rust_version(&exact), Some(highest));
+fn the_graph_may_reach_the_pin_and_no_further() -> Result<(), String> {
+    let pin = toolchain_pin(&read("rust-toolchain.toml")).ok_or("no channel")?;
+    let (major, minor, patch) = pin;
+    judge_rust_version(pin, pin, pin)?;
+    let error = judge_rust_version(pin, pin, (major, minor, patch.saturating_add(1)))
+        .err()
+        .ok_or("one patch release above the pin passed")?;
+    assert!(error.contains("above the pin"), "{error}");
+    assert_eq!(
+        toolchain_pin(&format!("channel = \"{major}.{minor}\"")),
+        Some((major, minor, 0))
+    );
     Ok(())
 }
 

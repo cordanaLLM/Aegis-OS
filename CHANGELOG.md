@@ -29,6 +29,19 @@ version and is never released.
   pin refuses the `exceptions` key, so the entry could not land first;
   this bump was built by hand with the steps of `tools/praetor_bump.py`.
 
+### Fixed (the workspace rust-version is the pinned toolchain, D111)
+
+- **The root `Cargo.toml` declares `rust-version = "1.98.1"`, the
+  `rust-toolchain.toml` pin.** The 1.87 that M27 set was false: the workspace
+  uses let-chains, stable since 1.88, and `cargo +1.87 check --workspace`
+  fails with ten E0658 errors. No gate builds below the pin, so the pin is
+  the only version the repository proves.
+- **`crates/aegis-scaena/tests/manifest_hygiene.rs` holds the declaration to
+  the pin and the resolved graph at or below it.** A `rust-version` one
+  release below the pin and a resolved package declaring one release above it
+  each fail; a package declaring exactly the pin passes. The literal
+  assertions in aegis-hephaestus, aegis-ludus and aegis-minerva read the pin.
+
 ### Changed (M12 and M25 state which half of the GPU work each one is, D110)
 
 - **M25 is retitled "GPU host slices on the reference profile: DMA-BUF and
