@@ -35,7 +35,7 @@ concurrency:
 jobs:
   build:
     name: Build documentation
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       # HISS-18: a draft stops here, before any work, and fails, so a
@@ -80,7 +80,7 @@ jobs:
     name: Deploy to GitHub Pages
     if: github.event_name != 'pull_request'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read

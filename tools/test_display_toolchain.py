@@ -63,6 +63,33 @@ def workflow_pins():
     return dict(ENV_PIN.findall(WORKFLOW.read_text(encoding="utf-8")))
 
 
+CACHE_KEY = re.compile(r'^          key: "(libva-[^"]*)"$', re.M)
+RUNNER_LITERAL = re.compile(r"(?:ubuntu|macos|windows)-\d")
+IMAGE_STEP = "name: Name the runner image for the libva cache key"
+IMAGE_OUTPUT = "${{ steps.runner-image.outputs.image }}"
+
+
+def libva_cache_key_reasons(text):
+    """Return why the libva cache key could restore another image's build.
+
+    A prefix built on one runner image links against that image's libraries,
+    so the key must name the image the job runs on, read at run time, never a
+    literal that outlives a runner move.
+    """
+    keys = CACHE_KEY.findall(text)
+    if len(keys) != 1:
+        return [f"expected one libva cache key, found {len(keys)}"]
+    key = keys[0]
+    reasons = []
+    if RUNNER_LITERAL.search(key):
+        reasons.append("the libva cache key names a literal runner image")
+    if IMAGE_OUTPUT not in key:
+        reasons.append("the libva cache key does not name the runner image step's output")
+    elif IMAGE_STEP not in text or text.index(IMAGE_STEP) > text.index(key):
+        reasons.append("the runner image step does not run before the libva cache")
+    return reasons
+
+
 class ReadVersionTests(unittest.TestCase):
     """One row read back from a program on PATH."""
 
@@ -206,6 +233,39 @@ class AdmissionTests(unittest.TestCase):
         self.assertLess(
             recipe.index("python3 tools/display_toolchain.py"),
             recipe.index("cargo build --locked"),
+        )
+
+
+class LibvaCacheKeyTests(unittest.TestCase):
+    """The libva prefix is never restored onto another runner image."""
+
+    def test_the_workflow_keys_the_cache_on_the_runner_image(self):
+        """Positive: the committed key names the image step's output."""
+        self.assertEqual(libva_cache_key_reasons(WORKFLOW.read_text(encoding="utf-8")), [])
+
+    def test_a_literal_runner_image_in_the_key_is_refused(self):
+        """Negative: the key that restored a 24.04 build on 26.04 fails."""
+        text = WORKFLOW.read_text(encoding="utf-8").replace(IMAGE_OUTPUT, "ubuntu-24.04")
+        self.assertEqual(
+            libva_cache_key_reasons(text),
+            [
+                "the libva cache key names a literal runner image",
+                "the libva cache key does not name the runner image step's output",
+            ],
+        )
+
+    def test_an_image_step_after_the_cache_or_a_second_key_is_refused(self):
+        """Boundary: the output read before its step runs, or two keys, fails."""
+        text = WORKFLOW.read_text(encoding="utf-8")
+        moved = text.replace(IMAGE_STEP, "name: Something else", 1) + f"\n# {IMAGE_STEP}\n"
+        self.assertEqual(
+            libva_cache_key_reasons(moved),
+            ["the runner image step does not run before the libva cache"],
+        )
+        key = CACHE_KEY.search(text).group(0)
+        self.assertEqual(
+            libva_cache_key_reasons(text + "\n" + key + "\n"),
+            ["expected one libva cache key, found 2"],
         )
 
 
