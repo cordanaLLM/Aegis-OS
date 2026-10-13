@@ -153,7 +153,7 @@ client does not end the container.
 | `a11y/hiss-lint` | every JavaScript and Svelte file of the package lints clean with zero warnings | M16 D100 positive |
 | `a11y/hiss-lint-<family>-refused` | each of seven planted violations fails with exactly its findings | M16 D100 negative |
 | `a11y/hiss-lint-at-the-limits` | a 60-line, complexity-10 and 50-statement function each lint clean | M16 D100 boundary |
-| `a11y/lockfile-mismatch-refused` | a `package.json` loosened to `^5.57.1` is refused with `ERR_PNPM_OUTDATED_LOCKFILE` | E04-1 negative |
+| `a11y/lockfile-mismatch-refused` | a `package.json` loosened to `^5.57.2` is refused with `ERR_PNPM_OUTDATED_LOCKFILE` | E04-1 negative |
 | `a11y/image-node-refused` | the image's Node 24.20.0 is refused with `ERR_PNPM_UNSUPPORTED_ENGINE` | 4, 6 |
 | `a11y/toolchain-readback` | every version read back inside the container; Chromium 156.0.8078.4 launches | 1, 5 |
 | `a11y/browser-revision-absent-refused` | without revision 1248 the launch fails, offline, and nothing is downloaded | 5 |
@@ -443,6 +443,20 @@ from that readback. Run `r20261014T001558-da59` of `make verify-a11y` exited 0
 with every a11y case PASS and no SKIP: `a11y/toolchain-readback` printed
 `@playwright/test 1.64.0` and revision 1248, and `a11y/suite` passed 11 of 11
 on Chromium 156.0.8078.4 with 0 axe-core violations.
+
+The non-major group followed on 2026-10-14: axe-core 4.14.0 (2026-10-05),
+svelte 5.57.2 (2026-10-06), vite 8.3.4 (2026-10-08), the Cargo lockfile and
+Rust 1.99.0 with clippy 0.1.99 and rustfmt 1.10.0. Run
+`r20261014T003738-4f24` of `make verify-a11y` exited 0 with every a11y case
+PASS and no SKIP: `a11y/toolchain-readback` printed `axe-core 4.14.0`,
+`svelte 5.57.2` and `vite 8.3.4`, and `a11y/suite` passed 11 of 11.
+
+One limit the run measured: the suite printed `axe-core 4.13.0`, not 4.14.0.
+`@axe-core/playwright` 4.13.0 depends on axe-core 4.13.0 and injects that copy
+into the page (`pnpm-lock.yaml` lists both), so the top-level `axe-core`
+4.14.0 is installed and read back but is not the engine that executed. The
+gate does not compare the two; an `@axe-core/playwright` release that
+depends on 4.14.0 would close this.
 
 ## The HISS lint (M16, D100)
 

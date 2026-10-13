@@ -70,9 +70,9 @@ ADMITTED_PACKAGES = {
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.64.0",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
-    "axe-core": "4.13.0",
-    "svelte": "5.57.1",
-    "vite": "8.3.1",
+    "axe-core": "4.14.0",
+    "svelte": "5.57.2",
+    "vite": "8.3.4",
 }
 # D100 (M16): the lint's three packages, exact; with the six above they are
 # every devDependency the package declares.
@@ -276,7 +276,7 @@ class PinTests(unittest.TestCase):
             "packageManager": ("packageManager", "pnpm@12.5.0"),
             "not pnpm": ("packageManager", "npm@11.0.0"),
             "engines.node": ("engines", {"node": "24.20.0", "pnpm": "12.11.2"}),
-            "range": ("devDependencies", dict(manifest["devDependencies"], svelte="^5.57.1")),
+            "range": ("devDependencies", dict(manifest["devDependencies"], svelte="^5.57.2")),
             "playwright": (
                 "devDependencies",
                 dict(manifest["devDependencies"], **{"@playwright/test": "1.62.0"}),
@@ -801,10 +801,10 @@ class ReportTests(unittest.TestCase):
             "node": "v26.11.1",
             "playwrightTest": "1.64.0",
             "playwrightCore": "1.64.0",
-            "axeCore": "4.13.0",
+            "axeCore": "4.14.0",
             "axePlaywright": "4.13.0",
-            "svelte": "5.57.1",
-            "vite": "8.3.1",
+            "svelte": "5.57.2",
+            "vite": "8.3.4",
             "eslint": "10.12.0",
             "eslintPluginSvelte": "3.23.1",
             "svelteEslintParser": "1.9.0",
