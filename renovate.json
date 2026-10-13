@@ -4,7 +4,8 @@
     "config:recommended",
     ":dependencyDashboard",
     ":semanticCommits",
-    ":maintainLockFilesWeekly"
+    ":maintainLockFilesWeekly",
+    ":gitSignOff"
   ],
   "labels": ["dependencies"],
   "assignees": [],
