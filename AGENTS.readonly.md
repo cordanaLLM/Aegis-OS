@@ -3,6 +3,8 @@
 
 Run read-only: file edits, state mutations, commits prohibited. Mutating steps dropped; prohibitions kept.
 
+<!-- praetor:head -->
+
 ## Core Directives & Invariants
 
 | Invariant | Rule | Enforcement | On fail |
@@ -39,6 +41,8 @@ Run read-only: file edits, state mutations, commits prohibited. Mutating steps d
 
 6. **Anti-loop interception.** Same AST diff + error category repeats $\ge 3$ times -> halt immediately. Re-evaluate design; no micro-textual retries.
 
+<!-- praetor:config -->
+
 ## Text Register
 
 <!-- praetor:register:start -->
@@ -54,6 +58,8 @@ Register follows the audience, then the task label of your brief (`register:` in
 - Evidence above 58 lines or 1500 tokens leaves the message as a file under `.workingdir/evidence/`; return `evidence: <path> sha256:<12 hex> lines:<n>` and fetch it only when a decision needs it.
 - An internal return carries verdict, changed paths, commands run, evidence pointers and open questions, nothing else.
 <!-- praetor:register:end -->
+
+<!-- praetor:tail -->
 
 ## Primary Verification Commands
 
