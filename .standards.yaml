@@ -1,59 +1,80 @@
+---
 version: 1
 repository:
-    owner: cordanaLLM
-    name: Aegis-OS
-    visibility: public
-    description: "Aegis OS: sovereign, image-based Linux; components are activated one at a time against recorded evidence; Praetor-governed. No product image, hardware boot or release yet."
-    homepage: "https://cordanallm.github.io/Aegis-OS/"
-    topics:
-      - linux
-      - operating-system
-      - mkosi
-      - unified-kernel-image
-      - rust
-      - ebpf
-      - eu-ai-act
-      - accessibility
-      - hiss-16
+  owner: cordanaLLM
+  name: Aegis-OS
+  visibility: public
+  description: "Aegis OS: sovereign, image-based Linux; components are activated one at a time against recorded evidence; Praetor-governed. No product image, hardware boot or release yet."
+  homepage: "https://cordanallm.github.io/Aegis-OS/"
+  topics:
+    - linux
+    - operating-system
+    - mkosi
+    - unified-kernel-image
+    - rust
+    - ebpf
+    - eu-ai-act
+    - accessibility
+    - hiss-16
 # Ed25519 Exit-0 receipt trust anchor (praetorctl gate keygen; private key outside the repository).
 receipt:
-    public_key: "0137c5a537e190ba5a34fd1f9c4ebc1d590ce3990e72b433ab2bb0b507b382bc"
+  public_key: "0137c5a537e190ba5a34fd1f9c4ebc1d590ce3990e72b433ab2bb0b507b382bc"
 profiles:
-    - os-image
+  - os-image
 facets:
-    - agent:sandboxed
-    - docs:seo-portal
+  - agent:sandboxed
+  - docs:seo-portal
 # Declined adoption steps. dev-container: the engine's DevContainer bootstrap is a base64 bundle of
 # its own source tree (bootstrap kind "source-bundle"). This repository does not commit that bundle:
 # /.devcontainer/ stays a local, regenerable folder (.gitignore). Declined until the engine ships a
 # digest-pinned release-artifact bootstrap; then this entry is removed and the facet adopted.
 adoption:
-    decline:
-        - dev-container
+  decline:
+    - dev-container
 # Standard overrides only increase strictness, except review_mode: single_maintainer, which lets the
 # only maintainer merge while no second reviewer or review bot exists. Restore independent review then;
 # the profile's required count stays declared so restoration keeps its minimum. Owner-approved 2026-09-27.
 overrides:
-    branch_protection:
-        review_mode: single_maintainer
+  branch_protection:
+    review_mode: single_maintainer
 exceptions:
-    - rule: "HISS-11"
-      path: ".github/workflows/release.yml"
-      reason: "nothing is released: no artefact is built or published and the release gate stays blocked"
-      expires: "2027-01-09"
+  - rule: HISS-11
+    path: .github/workflows/release.yml
+    reason: 'nothing is released: no artefact is built or published and the release gate stays blocked'
+    expires: "2027-01-09"
+  - rule: declared-linters
+    tool: codespell
+    reason: adoption scaffolds no CI job for codespell declared by profile "os-image"; run it in a workflow, or remove this entry
+    expires: "2027-01-11"
+  - rule: declared-linters
+    tool: gitleaks
+    reason: adoption scaffolds no CI job for gitleaks declared by profile "os-image"; run it in a workflow, or remove this entry
+    expires: "2027-01-11"
+  - rule: declared-linters
+    tool: semgrep
+    reason: adoption scaffolds no CI job for semgrep declared by facet "agent:sandboxed"; run it in a workflow, or remove this entry
+    expires: "2027-01-11"
+  - rule: declared-linters
+    tool: shfmt
+    reason: adoption scaffolds no CI job for shfmt declared by profile "os-image"; run it in a workflow, or remove this entry
+    expires: "2027-01-11"
+  - rule: declared-linters
+    tool: trivy
+    reason: adoption scaffolds no CI job for trivy declared by profile "os-image"; run it in a workflow, or remove this entry
+    expires: "2027-01-11"
 register:
-    sources:
-        expected: 13
-        sha256:
-            sha256:4a3763841806a9c247ae88d5fd472199a3b279e7ef4c2d2c01b004b108e449cb
-        inputs:
-            - path: .paperclip/harness.json
-              surface: prompts
-              kind: message
-              format: json
-              selector: operating_contract.*
-            - path: .paperclip/harness.json
-              surface: prompts
-              kind: message
-              format: json
-              selector: invariants.*
+  sources:
+    expected: 13
+    sha256:
+      sha256:4a3763841806a9c247ae88d5fd472199a3b279e7ef4c2d2c01b004b108e449cb
+    inputs:
+      - path: .paperclip/harness.json
+        surface: prompts
+        kind: message
+        format: json
+        selector: operating_contract.*
+      - path: .paperclip/harness.json
+        surface: prompts
+        kind: message
+        format: json
+        selector: invariants.*
