@@ -22,7 +22,7 @@ verify-all:
 	$(MAKE) --no-print-directory verify-a11y
 	$(MAKE) --no-print-directory verify-contract
 	$(PRAETORCTL) compile-context --verify
-	$(PRAETORCTL) audit
+	python3 tools/audit_strict.py $(PRAETORCTL) audit
 	@if [ -f Cargo.toml ]; then \
 		printf '%s\n' 'Workspace manifest present: running the crate gate.'; \
 		$(MAKE) --no-print-directory verify-rust || exit 1; \
