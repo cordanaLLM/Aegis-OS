@@ -16,6 +16,7 @@ Python.
 import ast
 import datetime
 import io
+import shutil
 import signal
 import subprocess
 import sys
@@ -1036,6 +1037,82 @@ class UnitFileTests(unittest.TestCase):
         for name in shipped:
             self.assertIn(name, makefile)
         self.assertIn("install-praetor-bump:", makefile)
+
+
+# A scalar bound on one verify run (HISS-02); the measured run takes under a second.
+VERIFY_TIMEOUT = 60
+
+
+class UnitVerifyTests(unittest.TestCase):
+    """systemd's own parser accepts the units as `make install-praetor-bump` writes them.
+
+    The text checks above miss a misspelled key: systemd ignores it with a warning
+    and `systemd-analyze verify` still exits 0, so a timer that lost Persistent=
+    would install cleanly and skip every missed day. Here any line that names one
+    of the units fails the case. The verify runs in user mode against a temporary
+    runtime directory, so it needs no running user manager.
+
+    Positive: the shipped units produce no finding. Negative: a planted unknown key
+    is reported against the timer. Boundary: a planted ExecStart= that is not
+    executable is reported against the service.
+    """
+
+    def setUp(self):
+        self.analyze = shutil.which("systemd-analyze")
+        if self.analyze is None:
+            self.skipTest("systemd-analyze is not on PATH; the units are systemd's to parse")
+        scratch = tempfile.TemporaryDirectory(prefix="pb-")
+        self.addCleanup(scratch.cleanup)
+        self.dir = Path(scratch.name)
+
+    def render(self, edit=None):
+        """Write the units as the make target does; `edit` maps (name, text) to text."""
+        names = sorted(path.name for path in UNITS.glob("aegis-praetor-bump.*"))
+        for name in names:
+            text = (UNITS / name).read_text(encoding="utf-8")
+            text = text.replace("@AEGIS_REPO@", host.target(ROOT))
+            if edit is not None:
+                text = edit(name, text)
+            (self.dir / name).write_text(text, encoding="utf-8")
+        return names
+
+    def findings(self, names):
+        """Return the verify output lines that name one of `names`."""
+        runtime = self.dir / "rt"
+        runtime.mkdir(mode=0o700)
+        result = subprocess.run(
+            [self.analyze, "--user", "verify", "--man=no", *(f"./{name}" for name in names)],
+            cwd=self.dir,
+            env={"PATH": "/usr/bin:/bin", "HOME": str(runtime), "XDG_RUNTIME_DIR": str(runtime)},
+            capture_output=True,
+            text=True,
+            timeout=VERIFY_TIMEOUT,
+            check=False,
+        )
+        lines = (result.stdout + result.stderr).splitlines()
+        named = [line for line in lines if any(name in line for name in names)]
+        return result.returncode, named
+
+    def test_the_shipped_units_produce_no_finding(self):
+        code, named = self.findings(self.render())
+        self.assertEqual((code, named), (0, []))
+
+    def test_an_unknown_key_is_reported_though_verify_exits_zero(self):
+        def misspell(name, text):
+            return text.replace("Persistent=", "Persistant=") if name.endswith(".timer") else text
+
+        _, named = self.findings(self.render(misspell))
+        self.assertTrue(any("Persistant" in line and ".timer" in line for line in named), named)
+
+    def test_a_service_command_that_is_not_executable_is_reported(self):
+        def break_command(name, text):
+            if not name.endswith(".service"):
+                return text
+            return text.replace("ExecStart=/usr/bin/python3", "ExecStart=/nonexistent/python3")
+
+        code, named = self.findings(self.render(break_command))
+        self.assertNotEqual(code, 0)
+        self.assertTrue(any(".service" in line for line in named), named)
 
 
 class SourceSweeps(unittest.TestCase):
