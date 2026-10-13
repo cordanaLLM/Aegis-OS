@@ -60,9 +60,10 @@ jobs:
   verify:
     name: Verification gate
     runs-on: ubuntu-24.04
-    # 30 rather than 20 since M04: the accessibility gate's fetch pulls a
-    # 912 MiB compressed image (2.53 GB unpacked) before the gate runs.
-    timeout-minutes: 30
+    # The job took at most 397 s over its 40 latest successful runs on
+    # 2026-10-13, the accessibility gate's 912 MiB image fetch (about 70 s)
+    # included; tools/verify_preparation.py holds every job to 15 minutes.
+    timeout-minutes: 15
     steps:
       # HISS-18: a draft stops here, before any work, and fails, so a
       # required check never reports a skipped draft as a pass. Marking the
