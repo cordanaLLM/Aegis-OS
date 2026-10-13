@@ -804,7 +804,9 @@ added. D99, the one pnpm workspace under `ui/`, was withdrawn by D101, so the
 lint has no workspace root of its own. `tools/test_a11y.py` reads this table
 back against the manifest, and the gate reads each version back from inside
 the container before it lints. The last-but-one column is the D69
-comparison, the npm registry's `latest` on 2026-10-13 (the three were first admitted on 2026-09-29 as eslint 10.11.0, eslint-plugin-svelte 3.23.0 and svelte-eslint-parser 1.8.1, and moved together to these on 2026-10-13).
+comparison, the npm registry's `latest` on 2026-10-13. The three were first
+admitted on 2026-09-29 as eslint 10.11.0, eslint-plugin-svelte 3.23.0 and
+svelte-eslint-parser 1.8.1, and moved together to these on 2026-10-13.
 
 | Tool | Pinned version | How it is pinned | Latest upstream, read 2026-10-13 | Role |
 | :--- | :--- | :--- | :--- | :--- |
