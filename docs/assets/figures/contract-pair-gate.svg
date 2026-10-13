@@ -1,0 +1,157 @@
+<svg role="img" aria-labelledby="figure-title figure-desc" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1233.5" height="365" viewBox="0 0 1233.5 365" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<title id="figure-title">The contract pair gate</title>
+<desc id="figure-desc">One networked fetch fills a cache; the offline gate checks its identity, then feeds the payloads to imago and nucleus.</desc>
+<!-- interfig (c) 2025 Vectorize AI, Inc. MIT https://github.com/vectorize-io/hindsight/tree/ccfe85b4851957ac2adf88b4a9ddf9668b2882f1/hindsight-interfig -->
+<metadata id="figure-spec"><![CDATA[{"props":{"layout":{"direction":"row","children":[{"direction":"column","gap":40,"children":[{"id":"pin","label":"producers.pin.json","sub":"commits, bounds, digests","shape":"store"},{"id":"fetch","label":"make contract-fetch","sub":"the one networked step"},{"id":"cache","label":"Contract cache","sub":"checkouts, binary, identity","shape":"store"}]},{"id":"gate","label":"make verify-contract","sub":"offline"},{"id":"identity","label":"Identity cases pass?","shape":"decision"},{"direction":"column","children":[{"id":"imago","label":"imago binary","sub":"decodes, refuses"},{"id":"nucleus","label":"nucleus verifier","sub":"kernel requirement"}]},{"id":"runs","label":"Run record","sub":"argv, exit, output, reports","shape":"store"}]},"edges":[{"from":"pin","to":"fetch","label":"pinned commits"},{"from":"fetch","to":"cache","label":"clone, build"},{"from":"pin","to":"gate","label":"pin"},{"from":"cache","to":"gate","label":"cache"},{"from":"gate","to":"identity"},{"from":"identity","to":"imago","label":"payloads"},{"from":"identity","to":"nucleus","label":"requirement"},{"from":"imago","to":"runs"},{"from":"nucleus","to":"runs"}],"steps":[{"label":"Fetch","caption":"The only step that reaches the network.","flow":[{"edges":"pin->fetch","say":"The fetch reads both producers and their commits from the pin."},{"edges":"fetch->cache","say":"It clones imago and nucleus at those commits, builds imago, and writes the identity record last."}]},{"label":"Gate","caption":"Nothing a producer prints counts until its identity checks out.","flow":[{"edges":["pin->gate","cache->gate"],"say":"The gate reads the pin and the cache, never the network."},{"edges":"gate->identity","say":"Five identity cases run first: pin, identity record, both checkouts and the binary provenance."},{"edges":["identity->imago","identity->nucleus"],"say":"Then imago decodes or refuses each payload, and nucleus verifies the kernel requirement."},{"edges":["imago->runs","nucleus->runs"],"say":"Every invocation, payload and report is retained under the run id."}]},{"label":"Skip or fail","caption":"An exit 0 is evidence only with case lines above it.","flow":[{"edges":"cache->gate","say":"Without go, git or a cached piece, the gate prints SKIP with its reason and exits 0."},{"edges":"gate->identity","say":"A cache fetched for another pin, or a binary that is not the pinned build, fails and names make contract-fetch."}]}]}}]]></metadata>
+<style>
+svg { --accent:#0074d9; --fg:#1c1e21; --muted:#606770; --bg:#ffffff; --surface:#f5f7fa; --border:#d0d7de; --card-on:#eef5fd; }
+@media (prefers-color-scheme: dark) { svg { --accent:#3396e8; --fg:#e3e3e3; --muted:#9aa0a6; --bg:#1b1b1d; --surface:#242526; --border:#3a3b3c; --card-on:#1d2733; } }
+.label { fill: var(--fg); font-size: 14px; font-weight: 500; text-anchor: middle; }
+.sub { fill: var(--muted); font-size: 12px; text-anchor: middle; }
+.frame { fill: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+.edgelabel { fill: var(--muted); font-size: 11px; text-anchor: middle; font-family: ui-monospace, Menlo, monospace; }
+.row { fill: var(--fg); font-size: 11px; }
+.row.mono { font-size: 10.5px; font-family: ui-monospace, Menlo, monospace; }
+.muted { fill: var(--muted); }
+.tag { font-size: 9px; font-weight: 600; letter-spacing: .03em; text-anchor: middle; }
+.mark { fill: var(--accent); font-size: 11px; font-weight: 600; text-anchor: end; }
+.chip { fill: #fff; font-size: 11.5px; text-anchor: middle; }
+.steplabel { fill: var(--fg); font-size: 13px; font-weight: 600; text-anchor: middle; font-family: ui-monospace, Menlo, monospace; }
+.caption { fill: var(--muted); font-size: 13.5px; text-anchor: middle; }
+@keyframes a0 { 0%,8% { stroke: var(--accent) } 8%,28% { stroke: var(--accent) } 28%,36% { stroke: var(--accent) } 36%,44% { stroke: var(--accent) } 44%,52% { stroke: var(--accent) } 52%,72% { stroke: var(--accent) } 72%,80% { stroke: var(--border) } 80%,100% { stroke: var(--border) } }
+.a0 { animation: a0 9s infinite step-end; }
+@keyframes a1 { 0%,8% { stroke: var(--accent) } 8%,28% { stroke: var(--accent) } 28%,36% { stroke: var(--border) } 36%,44% { stroke: var(--border) } 44%,52% { stroke: var(--border) } 52%,72% { stroke: var(--border) } 72%,80% { stroke: var(--border) } 80%,100% { stroke: var(--border) } }
+.a1 { animation: a1 9s infinite step-end; }
+@keyframes a2 { 0%,8% { stroke: var(--border) } 8%,28% { stroke: var(--accent) } 28%,36% { stroke: var(--accent) } 36%,44% { stroke: var(--accent) } 44%,52% { stroke: var(--accent) } 52%,72% { stroke: var(--accent) } 72%,80% { stroke: var(--accent) } 80%,100% { stroke: var(--accent) } }
+.a2 { animation: a2 9s infinite step-end; }
+@keyframes a3 { 0%,8% { stroke: var(--border) } 8%,28% { stroke: var(--border) } 28%,36% { stroke: var(--accent) } 36%,44% { stroke: var(--accent) } 44%,52% { stroke: var(--accent) } 52%,72% { stroke: var(--accent) } 72%,80% { stroke: var(--accent) } 80%,100% { stroke: var(--accent) } }
+.a3 { animation: a3 9s infinite step-end; }
+@keyframes a4 { 0%,8% { stroke: var(--border) } 8%,28% { stroke: var(--border) } 28%,36% { stroke: var(--border) } 36%,44% { stroke: var(--accent) } 44%,52% { stroke: var(--accent) } 52%,72% { stroke: var(--accent) } 72%,80% { stroke: var(--border) } 80%,100% { stroke: var(--accent) } }
+.a4 { animation: a4 9s infinite step-end; }
+@keyframes a5 { 0%,8% { stroke: var(--border) } 8%,28% { stroke: var(--border) } 28%,36% { stroke: var(--border) } 36%,44% { stroke: var(--border) } 44%,52% { stroke: var(--accent) } 52%,72% { stroke: var(--accent) } 72%,80% { stroke: var(--border) } 80%,100% { stroke: var(--border) } }
+.a5 { animation: a5 9s infinite step-end; }
+@keyframes a6 { 0%,8% { stroke: var(--border) } 8%,28% { stroke: var(--border) } 28%,36% { stroke: var(--border) } 36%,44% { stroke: var(--border) } 44%,52% { stroke: var(--border) } 52%,72% { stroke: var(--accent) } 72%,80% { stroke: var(--border) } 80%,100% { stroke: var(--border) } }
+.a6 { animation: a6 9s infinite step-end; }
+@keyframes a7 { 0%,8% { stroke: var(--accent); stroke-width: 2 } 8%,28% { stroke: var(--accent); stroke-width: 2 } 28%,36% { stroke: var(--muted); stroke-width: 1.25 } 36%,44% { stroke: var(--muted); stroke-width: 1.25 } 44%,52% { stroke: var(--muted); stroke-width: 1.25 } 52%,72% { stroke: var(--muted); stroke-width: 1.25 } 72%,80% { stroke: var(--muted); stroke-width: 1.25 } 80%,100% { stroke: var(--muted); stroke-width: 1.25 } }
+.a7 { animation: a7 9s infinite step-end; }
+@keyframes a8 { 0%,8% { fill: var(--accent); stroke: var(--accent) } 8%,28% { fill: var(--accent); stroke: var(--accent) } 28%,36% { fill: var(--bg); stroke: var(--border) } 36%,44% { fill: var(--bg); stroke: var(--border) } 44%,52% { fill: var(--bg); stroke: var(--border) } 52%,72% { fill: var(--bg); stroke: var(--border) } 72%,80% { fill: var(--bg); stroke: var(--border) } 80%,100% { fill: var(--bg); stroke: var(--border) } }
+.a8 { animation: a8 9s infinite step-end; }
+@keyframes a9 { 0%,8% { fill: #fff } 8%,28% { fill: #fff } 28%,36% { fill: var(--muted) } 36%,44% { fill: var(--muted) } 44%,52% { fill: var(--muted) } 52%,72% { fill: var(--muted) } 72%,80% { fill: var(--muted) } 80%,100% { fill: var(--muted) } }
+.a9 { animation: a9 9s infinite step-end; }
+@keyframes a10 { 0%,8% { stroke: var(--muted); stroke-width: 1.25 } 8%,28% { stroke: var(--accent); stroke-width: 2 } 28%,36% { stroke: var(--muted); stroke-width: 1.25 } 36%,44% { stroke: var(--muted); stroke-width: 1.25 } 44%,52% { stroke: var(--muted); stroke-width: 1.25 } 52%,72% { stroke: var(--muted); stroke-width: 1.25 } 72%,80% { stroke: var(--muted); stroke-width: 1.25 } 80%,100% { stroke: var(--muted); stroke-width: 1.25 } }
+.a10 { animation: a10 9s infinite step-end; }
+@keyframes a11 { 0%,8% { fill: var(--bg); stroke: var(--border) } 8%,28% { fill: var(--accent); stroke: var(--accent) } 28%,36% { fill: var(--bg); stroke: var(--border) } 36%,44% { fill: var(--bg); stroke: var(--border) } 44%,52% { fill: var(--bg); stroke: var(--border) } 52%,72% { fill: var(--bg); stroke: var(--border) } 72%,80% { fill: var(--bg); stroke: var(--border) } 80%,100% { fill: var(--bg); stroke: var(--border) } }
+.a11 { animation: a11 9s infinite step-end; }
+@keyframes a12 { 0%,8% { fill: var(--muted) } 8%,28% { fill: #fff } 28%,36% { fill: var(--muted) } 36%,44% { fill: var(--muted) } 44%,52% { fill: var(--muted) } 52%,72% { fill: var(--muted) } 72%,80% { fill: var(--muted) } 80%,100% { fill: var(--muted) } }
+.a12 { animation: a12 9s infinite step-end; }
+@keyframes a13 { 0%,8% { stroke: var(--muted); stroke-width: 1.25 } 8%,28% { stroke: var(--muted); stroke-width: 1.25 } 28%,36% { stroke: var(--accent); stroke-width: 2 } 36%,44% { stroke: var(--accent); stroke-width: 2 } 44%,52% { stroke: var(--accent); stroke-width: 2 } 52%,72% { stroke: var(--accent); stroke-width: 2 } 72%,80% { stroke: var(--muted); stroke-width: 1.25 } 80%,100% { stroke: var(--muted); stroke-width: 1.25 } }
+.a13 { animation: a13 9s infinite step-end; }
+@keyframes a14 { 0%,8% { fill: var(--bg); stroke: var(--border) } 8%,28% { fill: var(--bg); stroke: var(--border) } 28%,36% { fill: var(--accent); stroke: var(--accent) } 36%,44% { fill: var(--accent); stroke: var(--accent) } 44%,52% { fill: var(--accent); stroke: var(--accent) } 52%,72% { fill: var(--accent); stroke: var(--accent) } 72%,80% { fill: var(--bg); stroke: var(--border) } 80%,100% { fill: var(--bg); stroke: var(--border) } }
+.a14 { animation: a14 9s infinite step-end; }
+@keyframes a15 { 0%,8% { fill: var(--muted) } 8%,28% { fill: var(--muted) } 28%,36% { fill: #fff } 36%,44% { fill: #fff } 44%,52% { fill: #fff } 52%,72% { fill: #fff } 72%,80% { fill: var(--muted) } 80%,100% { fill: var(--muted) } }
+.a15 { animation: a15 9s infinite step-end; }
+@keyframes a16 { 0%,8% { stroke: var(--muted); stroke-width: 1.25 } 8%,28% { stroke: var(--muted); stroke-width: 1.25 } 28%,36% { stroke: var(--accent); stroke-width: 2 } 36%,44% { stroke: var(--accent); stroke-width: 2 } 44%,52% { stroke: var(--accent); stroke-width: 2 } 52%,72% { stroke: var(--accent); stroke-width: 2 } 72%,80% { stroke: var(--accent); stroke-width: 2 } 80%,100% { stroke: var(--accent); stroke-width: 2 } }
+.a16 { animation: a16 9s infinite step-end; }
+@keyframes a17 { 0%,8% { fill: var(--bg); stroke: var(--border) } 8%,28% { fill: var(--bg); stroke: var(--border) } 28%,36% { fill: var(--accent); stroke: var(--accent) } 36%,44% { fill: var(--accent); stroke: var(--accent) } 44%,52% { fill: var(--accent); stroke: var(--accent) } 52%,72% { fill: var(--accent); stroke: var(--accent) } 72%,80% { fill: var(--accent); stroke: var(--accent) } 80%,100% { fill: var(--accent); stroke: var(--accent) } }
+.a17 { animation: a17 9s infinite step-end; }
+@keyframes a18 { 0%,8% { fill: var(--muted) } 8%,28% { fill: var(--muted) } 28%,36% { fill: #fff } 36%,44% { fill: #fff } 44%,52% { fill: #fff } 52%,72% { fill: #fff } 72%,80% { fill: #fff } 80%,100% { fill: #fff } }
+.a18 { animation: a18 9s infinite step-end; }
+@keyframes a19 { 0%,8% { stroke: var(--muted); stroke-width: 1.25 } 8%,28% { stroke: var(--muted); stroke-width: 1.25 } 28%,36% { stroke: var(--muted); stroke-width: 1.25 } 36%,44% { stroke: var(--accent); stroke-width: 2 } 44%,52% { stroke: var(--accent); stroke-width: 2 } 52%,72% { stroke: var(--accent); stroke-width: 2 } 72%,80% { stroke: var(--muted); stroke-width: 1.25 } 80%,100% { stroke: var(--accent); stroke-width: 2 } }
+.a19 { animation: a19 9s infinite step-end; }
+@keyframes a20 { 0%,8% { stroke: var(--muted); stroke-width: 1.25 } 8%,28% { stroke: var(--muted); stroke-width: 1.25 } 28%,36% { stroke: var(--muted); stroke-width: 1.25 } 36%,44% { stroke: var(--muted); stroke-width: 1.25 } 44%,52% { stroke: var(--accent); stroke-width: 2 } 52%,72% { stroke: var(--accent); stroke-width: 2 } 72%,80% { stroke: var(--muted); stroke-width: 1.25 } 80%,100% { stroke: var(--muted); stroke-width: 1.25 } }
+.a20 { animation: a20 9s infinite step-end; }
+@keyframes a21 { 0%,8% { fill: var(--bg); stroke: var(--border) } 8%,28% { fill: var(--bg); stroke: var(--border) } 28%,36% { fill: var(--bg); stroke: var(--border) } 36%,44% { fill: var(--bg); stroke: var(--border) } 44%,52% { fill: var(--accent); stroke: var(--accent) } 52%,72% { fill: var(--accent); stroke: var(--accent) } 72%,80% { fill: var(--bg); stroke: var(--border) } 80%,100% { fill: var(--bg); stroke: var(--border) } }
+.a21 { animation: a21 9s infinite step-end; }
+@keyframes a22 { 0%,8% { fill: var(--muted) } 8%,28% { fill: var(--muted) } 28%,36% { fill: var(--muted) } 36%,44% { fill: var(--muted) } 44%,52% { fill: #fff } 52%,72% { fill: #fff } 72%,80% { fill: var(--muted) } 80%,100% { fill: var(--muted) } }
+.a22 { animation: a22 9s infinite step-end; }
+@keyframes a23 { 0%,8% { stroke: var(--muted); stroke-width: 1.25 } 8%,28% { stroke: var(--muted); stroke-width: 1.25 } 28%,36% { stroke: var(--muted); stroke-width: 1.25 } 36%,44% { stroke: var(--muted); stroke-width: 1.25 } 44%,52% { stroke: var(--muted); stroke-width: 1.25 } 52%,72% { stroke: var(--accent); stroke-width: 2 } 72%,80% { stroke: var(--muted); stroke-width: 1.25 } 80%,100% { stroke: var(--muted); stroke-width: 1.25 } }
+.a23 { animation: a23 9s infinite step-end; }
+@keyframes p0 { 0%,0% { opacity: 0 } 0%,8% { opacity: 1 } 8%,100% { opacity: 0 } }
+.p0 { animation: p0 9s infinite step-end; }
+@keyframes p1 { 0%,8% { opacity: 0 } 8%,16% { opacity: 1 } 16%,100% { opacity: 0 } }
+.p1 { animation: p1 9s infinite step-end; }
+@keyframes p2 { 0%,28% { opacity: 0 } 28%,36% { opacity: 1 } 36%,100% { opacity: 0 } }
+.p2 { animation: p2 9s infinite step-end; }
+@keyframes p3 { 0%,28% { opacity: 0 } 28%,36% { opacity: 1 } 36%,100% { opacity: 0 } }
+.p3 { animation: p3 9s infinite step-end; }
+@keyframes p4 { 0%,36% { opacity: 0 } 36%,44% { opacity: 1 } 44%,100% { opacity: 0 } }
+.p4 { animation: p4 9s infinite step-end; }
+@keyframes p5 { 0%,44% { opacity: 0 } 44%,52% { opacity: 1 } 52%,100% { opacity: 0 } }
+.p5 { animation: p5 9s infinite step-end; }
+@keyframes p6 { 0%,44% { opacity: 0 } 44%,52% { opacity: 1 } 52%,100% { opacity: 0 } }
+.p6 { animation: p6 9s infinite step-end; }
+@keyframes p7 { 0%,52% { opacity: 0 } 52%,60% { opacity: 1 } 60%,100% { opacity: 0 } }
+.p7 { animation: p7 9s infinite step-end; }
+@keyframes p8 { 0%,52% { opacity: 0 } 52%,60% { opacity: 1 } 60%,100% { opacity: 0 } }
+.p8 { animation: p8 9s infinite step-end; }
+@keyframes p9 { 0%,72% { opacity: 0 } 72%,80% { opacity: 1 } 80%,100% { opacity: 0 } }
+.p9 { animation: p9 9s infinite step-end; }
+@keyframes p10 { 0%,80% { opacity: 0 } 80%,88% { opacity: 1 } 88%,100% { opacity: 0 } }
+.p10 { animation: p10 9s infinite step-end; }
+@keyframes a24 { 0%,8% { opacity: 1 } 8%,28% { opacity: 1 } 28%,36% { opacity: 0 } 36%,44% { opacity: 0 } 44%,52% { opacity: 0 } 52%,72% { opacity: 0 } 72%,80% { opacity: 0 } 80%,100% { opacity: 0 } }
+.a24 { animation: a24 9s infinite step-end; }
+@keyframes a25 { 0%,8% { opacity: 0 } 8%,28% { opacity: 0 } 28%,36% { opacity: 1 } 36%,44% { opacity: 1 } 44%,52% { opacity: 1 } 52%,72% { opacity: 1 } 72%,80% { opacity: 0 } 80%,100% { opacity: 0 } }
+.a25 { animation: a25 9s infinite step-end; }
+@keyframes a26 { 0%,8% { opacity: 0 } 8%,28% { opacity: 0 } 28%,36% { opacity: 0 } 36%,44% { opacity: 0 } 44%,52% { opacity: 0 } 52%,72% { opacity: 0 } 72%,80% { opacity: 1 } 80%,100% { opacity: 1 } }
+.a26 { animation: a26 9s infinite step-end; }
+@keyframes a27 { 0%,8% { opacity: 1 } 8%,28% { opacity: 0 } 28%,36% { opacity: 0 } 36%,44% { opacity: 0 } 44%,52% { opacity: 0 } 52%,72% { opacity: 0 } 72%,80% { opacity: 0 } 80%,100% { opacity: 0 } }
+.a27 { animation: a27 9s infinite step-end; }
+@keyframes a28 { 0%,8% { opacity: 0 } 8%,28% { opacity: 1 } 28%,36% { opacity: 0 } 36%,44% { opacity: 0 } 44%,52% { opacity: 0 } 52%,72% { opacity: 0 } 72%,80% { opacity: 0 } 80%,100% { opacity: 0 } }
+.a28 { animation: a28 9s infinite step-end; }
+@keyframes a29 { 0%,8% { opacity: 0 } 8%,28% { opacity: 0 } 28%,36% { opacity: 1 } 36%,44% { opacity: 0 } 44%,52% { opacity: 0 } 52%,72% { opacity: 0 } 72%,80% { opacity: 0 } 80%,100% { opacity: 0 } }
+.a29 { animation: a29 9s infinite step-end; }
+@keyframes a30 { 0%,8% { opacity: 0 } 8%,28% { opacity: 0 } 28%,36% { opacity: 0 } 36%,44% { opacity: 1 } 44%,52% { opacity: 0 } 52%,72% { opacity: 0 } 72%,80% { opacity: 0 } 80%,100% { opacity: 0 } }
+.a30 { animation: a30 9s infinite step-end; }
+@keyframes a31 { 0%,8% { opacity: 0 } 8%,28% { opacity: 0 } 28%,36% { opacity: 0 } 36%,44% { opacity: 0 } 44%,52% { opacity: 1 } 52%,72% { opacity: 0 } 72%,80% { opacity: 0 } 80%,100% { opacity: 0 } }
+.a31 { animation: a31 9s infinite step-end; }
+@keyframes a32 { 0%,8% { opacity: 0 } 8%,28% { opacity: 0 } 28%,36% { opacity: 0 } 36%,44% { opacity: 0 } 44%,52% { opacity: 0 } 52%,72% { opacity: 1 } 72%,80% { opacity: 0 } 80%,100% { opacity: 0 } }
+.a32 { animation: a32 9s infinite step-end; }
+@keyframes a33 { 0%,8% { opacity: 0 } 8%,28% { opacity: 0 } 28%,36% { opacity: 0 } 36%,44% { opacity: 0 } 44%,52% { opacity: 0 } 52%,72% { opacity: 0 } 72%,80% { opacity: 1 } 80%,100% { opacity: 0 } }
+.a33 { animation: a33 9s infinite step-end; }
+@keyframes a34 { 0%,8% { opacity: 0 } 8%,28% { opacity: 0 } 28%,36% { opacity: 0 } 36%,44% { opacity: 0 } 44%,52% { opacity: 0 } 52%,72% { opacity: 0 } 72%,80% { opacity: 0 } 80%,100% { opacity: 1 } }
+.a34 { animation: a34 9s infinite step-end; }
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="var(--muted)"/></marker></defs>
+<rect width="100%" height="100%" fill="var(--bg)"/>
+<g transform="translate(0 0)">
+<path d="M26.7 36 a 92.3 12 0 0 1 184.6 0 v 43 a 92.3 12 0 0 1 -184.6 0 z" fill="var(--bg)" stroke="var(--border)" class="a0"/><path d="M26.7 36 a 92.3 12 0 0 0 184.6 0" fill="none" stroke="var(--border)" class="a0"/><text x="119" y="61" class="label">producers.pin.json</text><text x="119" y="76" class="sub">commits, bounds, digests</text>
+<rect x="32.5" y="131" width="173" height="53" rx="10" fill="var(--bg)" stroke="var(--border)" class="a1"/><text x="119" y="155.5" class="label">make contract-fetch</text><text x="119" y="170.5" class="sub">the one networked step</text>
+<path d="M24 236 a 95 12 0 0 1 190 0 v 43 a 95 12 0 0 1 -190 0 z" fill="var(--bg)" stroke="var(--border)" class="a2"/><path d="M24 236 a 95 12 0 0 0 190 0" fill="none" stroke="var(--border)" class="a2"/><text x="119" y="261" class="label">Contract cache</text><text x="119" y="276" class="sub">checkouts, binary, identity</text>
+<rect x="270" y="131" width="180.4" height="53" rx="10" fill="var(--bg)" stroke="var(--border)" class="a3"/><text x="360.2" y="155.5" class="label">make verify-contract</text><text x="360.2" y="170.5" class="sub">offline</text>
+<polygon points="631.6,126.5 756.8,157.5 631.6,188.5 506.4,157.5" fill="var(--bg)" stroke="var(--border)" class="a4"/><text x="631.6" y="162.5" class="label">Identity cases pass?</text>
+<rect x="821.3" y="90.5" width="133.8" height="53" rx="10" fill="var(--bg)" stroke="var(--border)" class="a5"/><text x="888.2" y="115" class="label">imago binary</text><text x="888.2" y="130" class="sub">decodes, refuses</text>
+<rect x="812.8" y="171.5" width="150.7" height="53" rx="10" fill="var(--bg)" stroke="var(--border)" class="a5"/><text x="888.2" y="196" class="label">nucleus verifier</text><text x="888.2" y="211" class="sub">kernel requirement</text>
+<path d="M1019.5 136 a 95 12 0 0 1 190 0 v 43 a 95 12 0 0 1 -190 0 z" fill="var(--bg)" stroke="var(--border)" class="a6"/><path d="M1019.5 136 a 95 12 0 0 0 190 0" fill="none" stroke="var(--border)" class="a6"/><text x="1114.5" y="161" class="label">Run record</text><text x="1114.5" y="176" class="sub">argv, exit, output, reports</text>
+<path id="p-pin-&gt;fetch" d="M 119 91 C 119 111, 119 111, 119 131" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)" class="a7"/><rect x="71.2" y="102" width="95.6" height="18" rx="9" fill="var(--bg)" stroke="var(--border)" class="a8"/><text x="119" y="115" class="edgelabel a9">pinned commits</text>
+<path id="p-fetch-&gt;cache" d="M 119 184 C 119 204, 119 204, 119 224" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)" class="a10"/><rect x="77" y="195" width="84" height="18" rx="9" fill="var(--bg)" stroke="var(--border)" class="a11"/><text x="119" y="208" class="edgelabel a12">clone, build</text>
+<path id="p-pin-&gt;gate" d="M 211.32 57.5 C 240.66 57.5, 240.66 148.66666666666666, 270 148.66666666666666" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)" class="a13"/><rect x="224.9" y="94.1" width="31.5" height="18" rx="9" fill="var(--bg)" stroke="var(--border)" class="a14"/><text x="240.7" y="107.1" class="edgelabel a15">pin</text>
+<path id="p-cache-&gt;gate" d="M 214 257.5 C 242 257.5, 242 166.33333333333331, 270 166.33333333333331" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)" class="a16"/><rect x="220.4" y="202.9" width="43.2" height="18" rx="9" fill="var(--bg)" stroke="var(--border)" class="a17"/><text x="242" y="215.9" class="edgelabel a18">cache</text>
+<path id="p-gate-&gt;identity" d="M 450.4 157.5 C 478.4 157.5, 478.4 157.5, 506.4 157.5" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)" class="a19"/>
+<path id="p-identity-&gt;imago" d="M 756.8 157.5 C 789.04 157.5, 789.04 117, 821.28 117" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)" class="a20"/><rect x="758.7" y="128.3" width="60.6" height="18" rx="9" fill="var(--bg)" stroke="var(--border)" class="a21"/><text x="789" y="141.3" class="edgelabel a22">payloads</text>
+<path id="p-identity-&gt;nucleus" d="M 756.8 157.5 C 784.8 157.5, 784.8 198, 812.8 198" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)" class="a20"/><rect x="745.7" y="168.8" width="78.1" height="18" rx="9" fill="var(--bg)" stroke="var(--border)" class="a21"/><text x="784.8" y="181.8" class="edgelabel a22">requirement</text>
+<path id="p-imago-&gt;runs" d="M 955.04 117 C 987.28 117, 987.28 146.33333333333334, 1019.52 146.33333333333334" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)" class="a23"/>
+<path id="p-nucleus-&gt;runs" d="M 963.52 198 C 991.52 198, 991.52 168.66666666666666, 1019.52 168.66666666666666" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#arrow)" class="a23"/>
+<g class="p0" opacity="0"><circle r="10" fill="var(--accent)" opacity="0.2"/><circle r="4.5" fill="var(--accent)"/><animateMotion dur="9s" repeatCount="indefinite" keyTimes="0;0;0.1;1" keyPoints="0;0;1;1" calcMode="linear"><mpath href="#p-pin-&gt;fetch" xlink:href="#p-pin-&gt;fetch"/></animateMotion></g>
+<g class="p1" opacity="0"><circle r="10" fill="var(--accent)" opacity="0.2"/><circle r="4.5" fill="var(--accent)"/><animateMotion dur="9s" repeatCount="indefinite" keyTimes="0;0.1;0.2;1" keyPoints="0;0;1;1" calcMode="linear"><mpath href="#p-fetch-&gt;cache" xlink:href="#p-fetch-&gt;cache"/></animateMotion></g>
+<g class="p2" opacity="0"><circle r="10" fill="var(--accent)" opacity="0.2"/><circle r="4.5" fill="var(--accent)"/><animateMotion dur="9s" repeatCount="indefinite" keyTimes="0;0.3;0.4;1" keyPoints="0;0;1;1" calcMode="linear"><mpath href="#p-pin-&gt;gate" xlink:href="#p-pin-&gt;gate"/></animateMotion></g>
+<g class="p3" opacity="0"><circle r="10" fill="var(--accent)" opacity="0.2"/><circle r="4.5" fill="var(--accent)"/><animateMotion dur="9s" repeatCount="indefinite" keyTimes="0;0.3;0.4;1" keyPoints="0;0;1;1" calcMode="linear"><mpath href="#p-cache-&gt;gate" xlink:href="#p-cache-&gt;gate"/></animateMotion></g>
+<g class="p4" opacity="0"><circle r="10" fill="var(--accent)" opacity="0.2"/><circle r="4.5" fill="var(--accent)"/><animateMotion dur="9s" repeatCount="indefinite" keyTimes="0;0.4;0.4;1" keyPoints="0;0;1;1" calcMode="linear"><mpath href="#p-gate-&gt;identity" xlink:href="#p-gate-&gt;identity"/></animateMotion></g>
+<g class="p5" opacity="0"><circle r="10" fill="var(--accent)" opacity="0.2"/><circle r="4.5" fill="var(--accent)"/><animateMotion dur="9s" repeatCount="indefinite" keyTimes="0;0.4;0.5;1" keyPoints="0;0;1;1" calcMode="linear"><mpath href="#p-identity-&gt;imago" xlink:href="#p-identity-&gt;imago"/></animateMotion></g>
+<g class="p6" opacity="0"><circle r="10" fill="var(--accent)" opacity="0.2"/><circle r="4.5" fill="var(--accent)"/><animateMotion dur="9s" repeatCount="indefinite" keyTimes="0;0.4;0.5;1" keyPoints="0;0;1;1" calcMode="linear"><mpath href="#p-identity-&gt;nucleus" xlink:href="#p-identity-&gt;nucleus"/></animateMotion></g>
+<g class="p7" opacity="0"><circle r="10" fill="var(--accent)" opacity="0.2"/><circle r="4.5" fill="var(--accent)"/><animateMotion dur="9s" repeatCount="indefinite" keyTimes="0;0.5;0.6;1" keyPoints="0;0;1;1" calcMode="linear"><mpath href="#p-imago-&gt;runs" xlink:href="#p-imago-&gt;runs"/></animateMotion></g>
+<g class="p8" opacity="0"><circle r="10" fill="var(--accent)" opacity="0.2"/><circle r="4.5" fill="var(--accent)"/><animateMotion dur="9s" repeatCount="indefinite" keyTimes="0;0.5;0.6;1" keyPoints="0;0;1;1" calcMode="linear"><mpath href="#p-nucleus-&gt;runs" xlink:href="#p-nucleus-&gt;runs"/></animateMotion></g>
+<g class="p9" opacity="0"><circle r="10" fill="var(--accent)" opacity="0.2"/><circle r="4.5" fill="var(--accent)"/><animateMotion dur="9s" repeatCount="indefinite" keyTimes="0;0.7;0.8;1" keyPoints="0;0;1;1" calcMode="linear"><mpath href="#p-cache-&gt;gate" xlink:href="#p-cache-&gt;gate"/></animateMotion></g>
+<g class="p10" opacity="0"><circle r="10" fill="var(--accent)" opacity="0.2"/><circle r="4.5" fill="var(--accent)"/><animateMotion dur="9s" repeatCount="indefinite" keyTimes="0;0.8;0.9;1" keyPoints="0;0;1;1" calcMode="linear"><mpath href="#p-gate-&gt;identity" xlink:href="#p-gate-&gt;identity"/></animateMotion></g>
+</g>
+<text x="616.8" y="331" opacity="0" class="steplabel a24">Fetch</text>
+<text x="616.8" y="331" opacity="0" class="steplabel a25">Gate</text>
+<text x="616.8" y="331" opacity="0" class="steplabel a26">Skip or fail</text>
+<g opacity="0" class="a27"><text x="616.8" y="357" class="caption">The fetch reads both producers and their commits from the pin.</text></g>
+<g opacity="0" class="a28"><text x="616.8" y="357" class="caption">It clones imago and nucleus at those commits, builds imago, and writes the identity record last.</text></g>
+<g opacity="0" class="a29"><text x="616.8" y="357" class="caption">The gate reads the pin and the cache, never the network.</text></g>
+<g opacity="0" class="a30"><text x="616.8" y="357" class="caption">Five identity cases run first: pin, identity record, both checkouts and the binary provenance.</text></g>
+<g opacity="0" class="a31"><text x="616.8" y="357" class="caption">Then imago decodes or refuses each payload, and nucleus verifies the kernel requirement.</text></g>
+<g opacity="0" class="a32"><text x="616.8" y="357" class="caption">Every invocation, payload and report is retained under the run id.</text></g>
+<g opacity="0" class="a33"><text x="616.8" y="357" class="caption">Without go, git or a cached piece, the gate prints SKIP with its reason and exits 0.</text></g>
+<g opacity="0" class="a34"><text x="616.8" y="357" class="caption">A cache fetched for another pin, or a binary that is not the pinned build, fails and names make contract-fetch.</text></g>
+</svg>

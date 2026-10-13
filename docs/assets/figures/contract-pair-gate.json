@@ -1,0 +1,83 @@
+{
+  "slug": "contract-pair-gate",
+  "title": "The contract pair gate",
+  "alt": "One networked fetch fills a cache; the offline gate checks its identity, then feeds the payloads to imago and nucleus.",
+  "text": [
+    "Boxes: producers.pin.json (commits, bounds, digests), make contract-fetch (the one networked step), Contract cache (checkouts, binary, identity), make verify-contract (offline), Identity cases pass?, imago binary (decodes, refuses), nucleus verifier (kernel requirement), Run record (argv, exit, output, reports).",
+    "producers.pin.json → make contract-fetch (pinned commits) → Contract cache (clone, build).",
+    "producers.pin.json → make verify-contract (pin).",
+    "Contract cache → make verify-contract (cache) → Identity cases pass? → imago binary (payloads).",
+    "Identity cases pass? → nucleus verifier (requirement).",
+    "imago binary → Run record.",
+    "nucleus verifier → Run record.",
+    "Scenario 1, Fetch: The only step that reaches the network. The fetch reads both producers and their commits from the pin. It clones imago and nucleus at those commits, builds imago, and writes the identity record last.",
+    "Scenario 2, Gate: Nothing a producer prints counts until its identity checks out. The gate reads the pin and the cache, never the network. Five identity cases run first: pin, identity record, both checkouts and the binary provenance. Then imago decodes or refuses each payload, and nucleus verifies the kernel requirement. Every invocation, payload and report is retained under the run id.",
+    "Scenario 3, Skip or fail: An exit 0 is evidence only with case lines above it. Without go, git or a cached piece, the gate prints SKIP with its reason and exits 0. A cache fetched for another pin, or a binary that is not the pinned build, fails and names make contract-fetch."
+  ],
+  "evidence": [
+    "tools/verify_contract_pair.py:fetch_main",
+    "tools/verify_contract_pair.py:gate_main",
+    "tools/verify_contract_pair.py:skip_reasons",
+    "tools/verify_contract_pair.py:run_cases",
+    "tools/verify_contract_pair.py:product_accepted_case",
+    "tools/verify_contract_pair.py:nucleus_cases",
+    "tools/verify_contract_pair.py:retain",
+    "Makefile:verify_contract_pair"
+  ],
+  "spec_sha256": "9020ae3cc98cf034b88accca6b4e5730f2c4b76459b6503ba0502f16b06846e1",
+  "engine": {
+    "commit": "ccfe85b4851957ac2adf88b4a9ddf9668b2882f1",
+    "sha256": "6a70b89b2d53c73fa79cb881a89e709622b2cfd2e8568b8e9797a328993dd0fc"
+  },
+  "svg_sha256": "5417dbcd7020f14794ee2b918254e0e98a61744720a9e03a3b3747343dda2d4e",
+  "static_sha256": "3d938ada7356a79d2e61521fd39418a90ea1f2e4cba6531e416ba5046fd24dce",
+  "width": 1234,
+  "height": 365,
+  "static_width": 1234,
+  "static_height": 315,
+  "edges": [
+    {
+      "from": "producers.pin.json",
+      "to": "make contract-fetch",
+      "label": "pinned commits"
+    },
+    {
+      "from": "make contract-fetch",
+      "to": "Contract cache",
+      "label": "clone, build"
+    },
+    {
+      "from": "producers.pin.json",
+      "to": "make verify-contract",
+      "label": "pin"
+    },
+    {
+      "from": "Contract cache",
+      "to": "make verify-contract",
+      "label": "cache"
+    },
+    {
+      "from": "make verify-contract",
+      "to": "Identity cases pass?"
+    },
+    {
+      "from": "Identity cases pass?",
+      "to": "imago binary",
+      "label": "payloads"
+    },
+    {
+      "from": "Identity cases pass?",
+      "to": "nucleus verifier",
+      "label": "requirement"
+    },
+    {
+      "from": "imago binary",
+      "to": "Run record"
+    },
+    {
+      "from": "nucleus verifier",
+      "to": "Run record"
+    }
+  ],
+  "html": "<figure class=\"praetor-figure\" id=\"fig-contract-pair-gate\" data-figure=\"contract-pair-gate\" aria-describedby=\"fig-contract-pair-gate-text\">\n<picture>\n<source media=\"(prefers-reduced-motion: reduce)\" srcset=\"{{base}}/contract-pair-gate.static.svg\" width=\"1234\" height=\"315\">\n<img src=\"{{base}}/contract-pair-gate.svg\" alt=\"One networked fetch fills a cache; the offline gate checks its identity, then feeds the payloads to imago and nucleus.\" width=\"1234\" height=\"365\" loading=\"lazy\">\n</picture>\n<figcaption>The contract pair gate</figcaption>\n</figure>\n<p><a href=\"{{link}}\">Open the interactive figure</a></p>\n<details class=\"praetor-figure__text\" id=\"fig-contract-pair-gate-text\"><summary>Text description</summary>\n<ul>\n<li>Boxes: producers.pin.json (commits, bounds, digests), make contract-fetch (the one networked step), Contract cache (checkouts, binary, identity), make verify-contract (offline), Identity cases pass?, imago binary (decodes, refuses), nucleus verifier (kernel requirement), Run record (argv, exit, output, reports).</li>\n<li>producers.pin.json → make contract-fetch (pinned commits) → Contract cache (clone, build).</li>\n<li>producers.pin.json → make verify-contract (pin).</li>\n<li>Contract cache → make verify-contract (cache) → Identity cases pass? → imago binary (payloads).</li>\n<li>Identity cases pass? → nucleus verifier (requirement).</li>\n<li>imago binary → Run record.</li>\n<li>nucleus verifier → Run record.</li>\n<li>Scenario 1, Fetch: The only step that reaches the network. The fetch reads both producers and their commits from the pin. It clones imago and nucleus at those commits, builds imago, and writes the identity record last.</li>\n<li>Scenario 2, Gate: Nothing a producer prints counts until its identity checks out. The gate reads the pin and the cache, never the network. Five identity cases run first: pin, identity record, both checkouts and the binary provenance. Then imago decodes or refuses each payload, and nucleus verifies the kernel requirement. Every invocation, payload and report is retained under the run id.</li>\n<li>Scenario 3, Skip or fail: An exit 0 is evidence only with case lines above it. Without go, git or a cached piece, the gate prints SKIP with its reason and exits 0. A cache fetched for another pin, or a binary that is not the pinned build, fails and names make contract-fetch.</li>\n</ul>\n</details>"
+}
