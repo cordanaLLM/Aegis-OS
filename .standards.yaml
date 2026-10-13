@@ -44,23 +44,11 @@ exceptions:
     expires: "2027-01-09"
   - rule: declared-linters
     tool: codespell
-    reason: adoption scaffolds no CI job for codespell declared by profile "os-image"; run it in a workflow, or remove this entry
-    expires: "2027-01-11"
-  - rule: declared-linters
-    tool: gitleaks
-    reason: adoption scaffolds no CI job for gitleaks declared by profile "os-image"; run it in a workflow, or remove this entry
-    expires: "2027-01-11"
-  - rule: declared-linters
-    tool: semgrep
-    reason: adoption scaffolds no CI job for semgrep declared by facet "agent:sandboxed"; run it in a workflow, or remove this entry
+    reason: 'codespell 2.4.3 reported 158 words on 2026-10-13, Rust identifiers such as statics and ser among them; a reviewed ignore list comes first, then a CI step that fails on new words'
     expires: "2027-01-11"
   - rule: declared-linters
     tool: shfmt
-    reason: adoption scaffolds no CI job for shfmt declared by profile "os-image"; run it in a workflow, or remove this entry
-    expires: "2027-01-11"
-  - rule: declared-linters
-    tool: trivy
-    reason: adoption scaffolds no CI job for trivy declared by profile "os-image"; run it in a workflow, or remove this entry
+    reason: 'shfmt -d reported 9 hunks in 7 shell scripts on 2026-10-13; the reformatting lands as its own change first, then a CI step that fails on new drift'
     expires: "2027-01-11"
 register:
   sources:

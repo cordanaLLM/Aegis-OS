@@ -1,0 +1,5 @@
+# Paths semgrep skips (.github/workflows/ci.yml runs .config/semgrep/hiss.yml).
+# This file replaces semgrep's built-in ignore list, so tests and tools are scanned too.
+# The ESLint gate's planted defects: each must keep failing that gate, so they
+# carry the patterns the semgrep rules refuse on purpose.
+ui/concordia-tokens/hiss-lint/plants/

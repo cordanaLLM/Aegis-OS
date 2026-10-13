@@ -495,6 +495,13 @@ the offline store and recorded the new lockfile's sha256,
 cache holds that digest, the gate skips and names `make a11y-fetch`, as it
 does for any lockfile change.
 
+On 2026-10-13 the same binary ran `pnpm update source-map-js --lockfile-only`
+in a copy of the package, which moved `source-map-js`, a dependency of
+`postcss`, from 1.2.1 to 1.2.2 and changed nothing else: the Verification
+gate's trivy step refuses CVE-2026-93749 (HIGH, fixed in 1.2.2) in the
+development dependencies it scans. The lockfile's sha256 is now
+`6205f77247f487deb19ee8f3be70bfcda9b625abc7ea590ba7f884d0d7842db1`.
+
 ## Scope, and what a pass here does not mean
 
 - It is one component on one page. The P05 shell, its canvas rows REQ-P05-09 to

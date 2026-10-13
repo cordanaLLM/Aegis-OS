@@ -1,0 +1,2 @@
+eval("1");
+const built = new Function("return 1");
