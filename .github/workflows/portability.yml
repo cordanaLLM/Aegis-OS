@@ -85,4 +85,7 @@ jobs:
       # floor to a platform's measured figure once a green run reports one; never
       # lower it to turn a red run green.
       - name: Harness self-tests
+        # bash on every leg, so the engine audit can read this block: with no
+        # shell named, Windows runs pwsh and the audit cannot decide which shell it is.
+        shell: bash
         run: python -B tools/portability_selftest.py --min-executed ${{ matrix.floor }}

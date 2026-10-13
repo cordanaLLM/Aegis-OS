@@ -77,9 +77,9 @@ ADMITTED_PACKAGES = {
 # D100 (M16): the lint's three packages, exact; with the six above they are
 # every devDependency the package declares.
 ADMITTED_LINT = {
-    "eslint": "10.11.0",
-    "eslint-plugin-svelte": "3.23.0",
-    "svelte-eslint-parser": "1.8.1",
+    "eslint": "10.12.0",
+    "eslint-plugin-svelte": "3.23.1",
+    "svelte-eslint-parser": "1.9.0",
 }
 
 DECLARATION = re.compile(r"([a-z-]+)\s*:\s*([^;{}]+);")
@@ -224,7 +224,7 @@ class PinTests(unittest.TestCase):
         pin = gate.load_pin()
         self.assertEqual(pin["node"]["version"].split(".")[0], "26")
         self.assertEqual(pin["pnpm"]["version"].split(".")[0], "12")
-        self.assertEqual(pin["node"]["version"], "26.10.0")
+        self.assertEqual(pin["node"]["version"], "26.11.1")
         self.assertEqual(pin["pnpm"]["version"], "12.6.0")
 
     def test_a_full_digest_pins_and_a_truncated_one_is_refused(self):
@@ -798,16 +798,16 @@ class ReportTests(unittest.TestCase):
 
     def readback(self, **changes):
         found = {
-            "node": "v26.10.0",
+            "node": "v26.11.1",
             "playwrightTest": "1.63.0",
             "playwrightCore": "1.63.0",
             "axeCore": "4.13.0",
             "axePlaywright": "4.13.0",
             "svelte": "5.57.1",
             "vite": "8.3.1",
-            "eslint": "10.11.0",
-            "eslintPluginSvelte": "3.23.0",
-            "svelteEslintParser": "1.8.1",
+            "eslint": "10.12.0",
+            "eslintPluginSvelte": "3.23.1",
+            "svelteEslintParser": "1.9.0",
             "headlessShell": {"revision": "1243", "browserVersion": "153.0.8010.12"},
             "browsersPath": "/ms-playwright",
             "revisionPresent": True,

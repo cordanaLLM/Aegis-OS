@@ -33,7 +33,7 @@ Two rules follow from the clause and are applied below:
 | Rust (`rustc`, `cargo`) | 1.98.1 | `rust-toolchain.toml`, `channel = "1.98.1"`, materialised by rustup | distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.98 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.9.0-stable | `rust-toolchain.toml`, same `components` list | the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
-| praetorctl | source commit `3bbde07342bdece12c46f74b0ee2c1f51129478f` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `6622361940dc66399d027f3a203884bce2f616ac`; the pin follows Praetor's `main` (see below) | M00 |
+| praetorctl | source commit `c444d87e6e6e1c88bfdcb32b56f20123585447bb` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `3bbde07342bdece12c46f74b0ee2c1f51129478f`; the pin follows Praetor's `main` (see below) | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; a build input for praetorctl and, since M09, for the imago `make contract-fetch` builds, held to imago's own floor below | M00; M09 for the imago build |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
 | reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, run through `pipx run` | nothing | M00 |
@@ -144,8 +144,8 @@ published 2026-09-10), with no feature and no dependency of its own. Its
 `rust-version` is 1.87, above the 1.85 the workspace declared when it was
 admitted; the pinned toolchain is 1.98.1, so every gate compiles it, and
 Cargo's MSRV-aware resolver picks it only because `0.25.1` is the lowest
-version the requirement admits. Since M27 the workspace declares 1.87, the
-highest `rust-version` in the resolved graph (see below).
+version the requirement admits. Since D111 the workspace declares the pinned
+toolchain, 1.98.1 (see below).
 `crates/aegis-forum-shell/tests/manifest_hygiene.rs` asserts the
 declaration, the lock entry, and that the crate's own dependency closure
 (D78) holds no gpui, winit, wayland-client, zbus, atspi, accesskit_unix or
@@ -191,17 +191,19 @@ resolves no crate the lock did not already carry: its dependencies are libc
 0.2.189 on Unix and windows-sys 0.61.2 on Windows, both locked before M21. The
 lock gained exactly three packages, socket2 and the two new members, and no
 existing entry changed version. socket2 declares `rust-version` 1.70, below the
-workspace's 1.87. rustix's `system` feature enables linux-raw-sys's `system`
+pinned toolchain. rustix's `system` feature enables linux-raw-sys's `system`
 module and adds no package; Cargo does not lock features.
 
 The highest `rust-version` any resolved package declares is 1.87
-(accesskit 0.25.1), above smithay-client-toolkit's and wayland-protocols' 1.86,
-so the workspace's `rust-version` moved from 1.85 to 1.87 and no further;
-`crates/aegis-scaena/tests/manifest_hygiene.rs` reads the highest value back
-from `cargo metadata --locked` and holds the workspace to it.
-`rust-toolchain.toml` stays at 1.98.1. Raising the declared MSRV switched on
-clippy's `manual_is_multiple_of`, which checks nothing below 1.87, and its
-three findings were rewritten with `is_multiple_of` in the same change.
+(accesskit 0.25.1), above smithay-client-toolkit's and wayland-protocols' 1.86.
+M27 set the workspace's `rust-version` to that value, and raising it from 1.85
+switched on clippy's `manual_is_multiple_of`, whose three findings were
+rewritten with `is_multiple_of`. The value was false: the workspace uses
+let-chains, stable since 1.88, and `cargo +1.87 check --workspace` failed with
+ten E0658 errors on 2026-10-13. D111 replaced the rule: the workspace declares
+the `rust-toolchain.toml` pin, 1.98.1, the only toolchain any gate builds on,
+and `crates/aegis-scaena/tests/manifest_hygiene.rs` holds the declaration to
+the pin and every resolved package's `rust-version` at or below it.
 
 ## The systemd floor, and why it is a floor rather than a pin
 
@@ -579,7 +581,7 @@ listing.
 
 | Tool | Pinned version | How it is pinned | Latest upstream, read 2026-09-28 | Role |
 | :--- | :--- | :--- | :--- | :--- |
-| Node.js | 26.10.0; tarball sha256 `ca70e9e349de048b9522abb3adc05b3bd6f43c5ffd3ec57916c7da292f59f022` | `toolchain.pin.json` and `engines.node`, exact, with `engineStrict`; the sha256 is the one in `SHASUMS256.txt`, signed by `5BE8A3F6C8A5C01D106C0AD820B1A390B168D356` | 26.10.0 of 2026-09-21, the Current line, which enters Active LTS on 2026-10-28; the newest LTS is 24.21.0 | runs vite and Playwright inside the container |
+| Node.js | 26.11.1; tarball sha256 `3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651` | `toolchain.pin.json` and `engines.node`, exact, with `engineStrict`; the sha256 is the one in `SHASUMS256.txt`, signed by `5BE8A3F6C8A5C01D106C0AD820B1A390B168D356` | 26.11.1 of 2026-10-07, read 2026-10-13, the Current line, which enters Active LTS on 2026-10-28; the newest LTS is 24.21.0 of 2026-09-07 | runs vite and Playwright inside the container |
 | pnpm | 12.6.0; `@pnpm/exe.linux-x64` integrity `sha512-qFWBneHJAJ73W4whtbaFOL1M/7DBC6ILHXuxc7ZPtEhfPuT1zeZiGrmKHoMAfJA+mcm6xhOFljqVTUS+00Jabw==` | `packageManager` and `engines.pnpm`; the integrity is pnpm-lock.yaml's | 12.6.0 of 2026-09-22 (`latest`); `next-12` is 12.8.1 | installs from the lockfile, offline |
 | `@playwright/test` | 1.63.0 | `package.json`, exact; pnpm-lock.yaml | 1.63.0 of 2026-09-04 | the test runner; the image tag must carry the same version |
 | `chromium-headless-shell` | revision 1243, Chromium 153.0.8010.12 | `toolchain.pin.json`, read back from `playwright-core/browsers.json` and from the launched browser | the revision `@playwright/test` 1.63.0 bundles | the browser the suite drives, baked into the image |
@@ -602,7 +604,8 @@ and a download that does not hash to its pin is discarded, so curl's version
 changes no byte the gate runs. `tools/test_a11y.py` requires a row here for
 every program the gate may start on the host. The reference profile's own Node
 (v26.10.0) and pnpm (10.29.3) are not what the gate runs; the M01 drift
-register's "Node 20 vs 22" row is closed with the exact 26.10.0 pin above, and
+register's "Node 20 vs 22" row is closed with the exact Node pin above
+(26.10.0 when closed, 26.11.1 since 2026-10-13), and
 pnpm 12.6.0 replaces the reference profile's 10.29.3 for this gate.
 
 What these rows do **not** claim: that the host's Playwright browser cache is
@@ -802,13 +805,15 @@ added. D99, the one pnpm workspace under `ui/`, was withdrawn by D101, so the
 lint has no workspace root of its own. `tools/test_a11y.py` reads this table
 back against the manifest, and the gate reads each version back from inside
 the container before it lints. The last-but-one column is the D69
-comparison, the npm registry's `latest` on 2026-09-29.
+comparison, the npm registry's `latest` on 2026-10-13. The three were first
+admitted on 2026-09-29 as eslint 10.11.0, eslint-plugin-svelte 3.23.0 and
+svelte-eslint-parser 1.8.1, and moved together to these on 2026-10-13.
 
-| Tool | Pinned version | How it is pinned | Latest upstream, read 2026-09-29 | Role |
+| Tool | Pinned version | How it is pinned | Latest upstream, read 2026-10-13 | Role |
 | :--- | :--- | :--- | :--- | :--- |
-| `eslint` | 10.11.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 10.11.0 of 2026-09-18 (`latest`); `maintenance` is 9.39.5 | runs the rules below over every `.js`, `.mjs`, `.cjs` and `.svelte` file of the package |
-| `eslint-plugin-svelte` | 3.23.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 3.23.0 of 2026-08-13 | its `base` configuration hands `.svelte` files to the parser and turns on only its two bookkeeping rules, `svelte/comment-directive` and `svelte/system` |
-| `svelte-eslint-parser` | 1.8.1 (MIT) | `package.json`, exact; pnpm-lock.yaml | 1.8.1 of 2026-08-15 | parses a Svelte component's script for the rules; its manifest declares `engines.pnpm` 10.34.5, which pnpm 12.6.0 does not enforce for a dependency, so `engineStrict` does not refuse it |
+| `eslint` | 10.12.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 10.12.0 of 2026-10-02 (`latest`); `maintenance` is 9.39.5 | runs the rules below over every `.js`, `.mjs`, `.cjs` and `.svelte` file of the package |
+| `eslint-plugin-svelte` | 3.23.1 (MIT) | `package.json`, exact; pnpm-lock.yaml | 3.23.1 of 2026-10-09 | its `base` configuration hands `.svelte` files to the parser and turns on only its two bookkeeping rules, `svelte/comment-directive` and `svelte/system` |
+| `svelte-eslint-parser` | 1.9.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 1.9.0 of 2026-10-09 | parses a Svelte component's script for the rules; its manifest declares `engines.pnpm` 10.34.6, which pnpm 12.6.0 does not enforce for a dependency, so `engineStrict` does not refuse it |
 
 The parser loads the `svelte` compiler M04 already admitted, 5.57.1, so no
 second Svelte enters the lockfile. Each rule family has a planted violation
@@ -987,7 +992,7 @@ rather than admissions:
 - `node`, which `make docs-lint` (part of `make verify-all`) runs directly, is
   the runner's or the workstation's; `.github/workflows/praetor-docs.yml` asks
   `actions/setup-node` for major version 24. Praetor supplies both files. The
-  accessibility gate's Node is a different one, admitted above: 26.10.0 by
+  accessibility gate's Node is a different one, admitted above: 26.11.1 by
   sha256, inside the container.
 - The praetor pin auto-bump (`tools/praetor_bump.py`) runs `yamllint`,
   `flake8`, `black` and `reuse` as the workstation installs them, not through

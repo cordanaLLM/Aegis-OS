@@ -448,6 +448,7 @@ class PreparationTests(unittest.TestCase):
         self.write_roadmap_document(rows)
         self.write_register()
         self.write_profile()
+        self.write_workflow(self.job())
         out = io.StringIO()
         argv = ["verify_preparation.py", "--readiness"]
         with patch.object(sys, "argv", argv), patch.object(check, "LICENSE_TEXTS", {}):
@@ -547,6 +548,62 @@ class PreparationTests(unittest.TestCase):
         (self.root / "crates" / "aegis-probe").mkdir(parents=True)
         with self.assertRaises(ValueError):
             check.verify_library_aborts()
+
+    def write_workflow(self, body, name="ci.yml"):
+        """A workflow file under the fixture's .github/workflows."""
+        workflows = self.root / ".github/workflows"
+        workflows.mkdir(parents=True, exist_ok=True)
+        (workflows / name).write_text(body)
+
+    def job(self, timeout="  timeout-minutes: 15\n", indent="    "):
+        """One job in workflow shape, its timeout line given verbatim."""
+        return (
+            "jobs:\n"
+            f"{indent}verify:\n"
+            f"{indent}  runs-on: ubuntu-24.04\n"
+            + "".join(f"{indent}{line}\n" for line in timeout.splitlines())
+            + f"{indent}  steps:\n"
+            f"{indent}    - run: make\n"
+        )
+
+    def test_jobs_within_the_ceiling_pass(self):
+        self.write_workflow(self.job())
+        self.write_workflow(self.job("  timeout-minutes: 5  # short\n"), "pages.yml")
+        check.verify_job_timeouts()
+
+    def test_a_timeout_above_the_ceiling_fails(self):
+        self.write_workflow(self.job("  timeout-minutes: 30\n"))
+        with self.assertRaisesRegex(ValueError, "'30'"):
+            check.verify_job_timeouts()
+
+    def test_a_job_without_a_timeout_fails(self):
+        self.write_workflow(self.job(""))
+        with self.assertRaisesRegex(ValueError, "1 job"):
+            check.verify_job_timeouts()
+
+    def test_a_step_timeout_is_not_a_job_timeout(self):
+        step = "        - run: make check\n          timeout-minutes: 5\n"
+        self.write_workflow(self.job("") + step)
+        with self.assertRaisesRegex(ValueError, "0 job-level"):
+            check.verify_job_timeouts()
+
+    def test_a_timeout_that_is_no_whole_number_fails(self):
+        for value in ("0", "${{ inputs.minutes }}", "7.5", "-1"):
+            self.write_workflow(self.job(f"  timeout-minutes: {value}\n"))
+            with self.assertRaises(ValueError, msg=value):
+                check.verify_job_timeouts()
+
+    def test_no_workflow_fails(self):
+        with self.assertRaisesRegex(ValueError, "no workflow"):
+            check.verify_job_timeouts()
+
+    def test_the_ceiling_itself_passes_and_one_minute_more_fails(self):
+        ceiling = check.JOB_TIMEOUT_CEILING
+        self.write_workflow(self.job(f"  timeout-minutes: {ceiling}\n"))
+        check.verify_job_timeouts()
+        self.write_workflow(self.job(f"  timeout-minutes: {ceiling + 1}\n"))
+        with self.assertRaises(ValueError):
+            check.verify_job_timeouts()
 
     def cited_file(self, body="contract"):
         """A tracked file a citation can name, and the prefix it should carry."""

@@ -208,3 +208,9 @@ impl DeadlineStream for Scripted {
         Ok(())
     }
 }
+
+/// Whether two floats agree to within 1e-9: the comparison for values the
+/// test derived by hand, where an exact `==` on `f64` is a lint finding.
+pub fn close(actual: f64, expected: f64) -> bool {
+    (actual - expected).abs() < 1e-9
+}

@@ -84,7 +84,7 @@ hashes to its pin is a failure.
 | :--- | :--- | :--- |
 | Playwright image | `mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27`; linux/amd64 manifest `sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7` | `toolchain.pin.json` |
 | Browser | `chromium-headless-shell` revision 1243, Chromium 153.0.8010.12, as bundled by `@playwright/test` 1.63.0 and baked into the image | `toolchain.pin.json`, read back from `playwright-core/browsers.json` |
-| Node.js | 26.10.0, `node-v26.10.0-linux-x64.tar.xz` sha256 `ca70e9e349de048b9522abb3adc05b3bd6f43c5ffd3ec57916c7da292f59f022` | `toolchain.pin.json`, `engines.node` |
+| Node.js | 26.11.1, `node-v26.11.1-linux-x64.tar.xz` sha256 `3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651` | `toolchain.pin.json`, `engines.node` |
 | pnpm | 12.6.0; `@pnpm/exe.linux-x64` integrity `sha512-qFWBneHJAJ73W4whtbaFOL1M/7DBC6ILHXuxc7ZPtEhfPuT1zeZiGrmKHoMAfJA+mcm6xhOFljqVTUS+00Jabw==` | `packageManager`, `engines.pnpm`, `pnpm-lock.yaml` |
 | npm packages | exact versions, each with its integrity | `package.json`, `pnpm-lock.yaml` |
 
@@ -103,9 +103,11 @@ image, refuses it cut to 63 digits and to 12, and refuses the source's own
 digest.
 
 The Node tarball's sha256 is the value in the release's `SHASUMS256.txt`,
-whose signature verified on 2026-09-28 against the Node.js release key
+whose signature verified on 2026-09-28 (26.10.0) and again on 2026-10-13
+(26.11.1, both the detached `SHASUMS256.txt.sig` and the clearsigned
+`SHASUMS256.txt.asc`) against the Node.js release key
 `5BE8A3F6C8A5C01D106C0AD820B1A390B168D356` from `nodejs/release-keys`. The
-image ships its own Node, 24.20.0; the gate does not use it. Node 26.10.0 is
+image ships its own Node, 24.20.0; the gate does not use it. Node 26.11.1 is
 mounted read-only at `/opt/node` and put first on `PATH`, and the exact
 `engines` pin with `engineStrict` turns any other Node into a refusal
 (`a11y/image-node-refused`). pnpm 12 is a native binary, so it needs no Node to
@@ -415,6 +417,15 @@ applies. It cannot refresh the Node tarball's sha256, so such a pull request
 fails `make a11y-fetch` until someone records the new digest from the signed
 `SHASUMS256.txt`: Renovate proposes, the gate proves (D69).
 
+That happened on 2026-10-13 for Node 26.11.1 (released 2026-10-07): the
+sha256 `3883bfc7…` of `node-v26.11.1-linux-x64.tar.xz` was read from the
+signed `SHASUMS256.txt` and recorded in `toolchain.pin.json`. `make
+a11y-fetch` then downloaded the tarball and kept it only because it hashed to
+that pin, and run `r20261013T234909-5e6b` of `make verify-a11y` on podman 6.1.4
+exited 0 with 23 PASS lines and no SKIP: `a11y/pin` printed `node 26.11.1`,
+`a11y/toolchain-readback` printed `node v26.11.1`, and `a11y/suite` passed 11
+of 11 tests. The readback block above is the first run, kept as recorded.
+
 ## The HISS lint (M16, D100)
 
 `praetorctl audit` scans no JavaScript or Svelte (cordanaLLM/praetor#589), so
@@ -470,6 +481,16 @@ PASS a11y/toolchain-readback
      lint: eslint 10.11.0, eslint-plugin-svelte 3.23.0,
        svelte-eslint-parser 1.8.1
 ```
+
+The lint's three packages moved together on 2026-10-13 (eslint 10.12.0,
+eslint-plugin-svelte 3.23.1, svelte-eslint-parser 1.9.0), after
+`make a11y-fetch` refilled the offline store for the new lockfile. Run
+`r20261013T230135-93af` of `make verify-a11y` on podman 6.1.4 exited 0 with 23
+PASS lines and no SKIP: `a11y/hiss-lint` linted the same 10 files with 0
+findings and 0 suppressed, every plant failed with exactly its findings,
+`a11y/suite` passed 11 of 11 tests, and `a11y/toolchain-readback` printed
+`lint: eslint 10.12.0, eslint-plugin-svelte 3.23.1, svelte-eslint-parser
+1.9.0`. The block above is the first run, kept as recorded.
 
 The first lint over M04's own suite found a real defect: `tests/probe.js` was
 one immediately invoked function of 170 lines. It is now a strict-mode block,
