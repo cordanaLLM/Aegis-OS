@@ -16,6 +16,8 @@ on:
 
 permissions:
   contents: read
+  # The engine audit inside `make verify-all` reads main's workflow runs.
+  actions: read
 
 concurrency:
   group: preparation-${{ github.ref }}
@@ -240,6 +242,9 @@ jobs:
       - name: Verification gate
         env:
           AEGIS_DEFINITIONS_CONTAINER: "1"
+          # The engine audit reads the forge with this token; without one it
+          # skips the workflow-run and live branch protection checks.
+          GITHUB_TOKEN: ${{ github.token }}
           AEGIS_REQUIRED_GATES: systemd,mkosi
         run: make verify-all
 
