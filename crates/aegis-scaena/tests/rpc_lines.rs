@@ -13,7 +13,9 @@
 mod common;
 
 use aegis_scaena::line::{body, decode_request, decode_response, encode_response};
-use aegis_scaena::{LineBuffer, LineError, MAX_LINE_BYTES, Refusal, Response};
+use aegis_scaena::{
+    DescriptorError, JsonCategory, LineBuffer, LineError, MAX_LINE_BYTES, Refusal, Response,
+};
 
 use common::Fallible;
 
@@ -210,4 +212,67 @@ fn a_line_at_the_byte_bound_is_accepted_and_one_byte_longer_refused() -> Fallibl
         })
     );
     Ok(())
+}
+
+// --- Refusal mapping --------------------------------------------------------
+
+/// A JSON decoder failure of `category` at column 1.
+const fn json(category: JsonCategory) -> LineError {
+    LineError::Json {
+        category,
+        column: 1,
+    }
+}
+
+/// Positive: each line error is answered with the refusal its JSON-RPC 2.0
+/// code names: syntax and early end are parse errors, another method is
+/// method-not-found, a refused descriptor or missing params is invalid
+/// params.
+#[test]
+fn each_line_error_is_answered_with_its_own_refusal() {
+    for (error, refusal) in [
+        (json(JsonCategory::Syntax), Refusal::Parse),
+        (json(JsonCategory::Eof), Refusal::Parse),
+        (LineError::Method, Refusal::MethodNotFound),
+        (LineError::Params, Refusal::InvalidParams),
+        (
+            LineError::Descriptor(DescriptorError::Schema),
+            Refusal::InvalidParams,
+        ),
+    ] {
+        assert_eq!(Refusal::for_line(error), refusal, "{error:?}");
+    }
+}
+
+/// Negative: a well-formed line the envelope does not admit is an invalid
+/// request, never a parse error: wrong shape, framing, version, id, a named
+/// descriptor number, a response without result or error, a full buffer.
+#[test]
+fn an_inadmissible_envelope_is_an_invalid_request() {
+    for error in [
+        json(JsonCategory::Data),
+        json(JsonCategory::Io),
+        LineError::Framing,
+        LineError::Version,
+        LineError::Id,
+        LineError::FdNumber,
+        LineError::Response,
+    ] {
+        assert_eq!(
+            Refusal::for_line(error),
+            Refusal::InvalidRequest,
+            "{error:?}"
+        );
+    }
+}
+
+/// Boundary: a line over the byte bound is answered as too long whatever its
+/// length, from one byte over to the largest length a socket reports.
+#[test]
+fn every_over_long_line_is_answered_as_too_long() {
+    for length in [MAX_LINE_BYTES.saturating_add(1), usize::MAX] {
+        let refusal = Refusal::for_line(LineError::TooLong { length });
+        assert_eq!(refusal, Refusal::LineTooLong);
+        assert_eq!(refusal.code(), -32_000);
+    }
 }
