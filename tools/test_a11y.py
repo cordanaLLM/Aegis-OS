@@ -77,9 +77,9 @@ ADMITTED_PACKAGES = {
 # D100 (M16): the lint's three packages, exact; with the six above they are
 # every devDependency the package declares.
 ADMITTED_LINT = {
-    "eslint": "10.11.0",
-    "eslint-plugin-svelte": "3.23.0",
-    "svelte-eslint-parser": "1.8.1",
+    "eslint": "10.12.0",
+    "eslint-plugin-svelte": "3.23.1",
+    "svelte-eslint-parser": "1.9.0",
 }
 
 DECLARATION = re.compile(r"([a-z-]+)\s*:\s*([^;{}]+);")
@@ -805,9 +805,9 @@ class ReportTests(unittest.TestCase):
             "axePlaywright": "4.13.0",
             "svelte": "5.57.1",
             "vite": "8.3.1",
-            "eslint": "10.11.0",
-            "eslintPluginSvelte": "3.23.0",
-            "svelteEslintParser": "1.8.1",
+            "eslint": "10.12.0",
+            "eslintPluginSvelte": "3.23.1",
+            "svelteEslintParser": "1.9.0",
             "headlessShell": {"revision": "1243", "browserVersion": "153.0.8010.12"},
             "browsersPath": "/ms-playwright",
             "revisionPresent": True,
