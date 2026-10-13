@@ -5703,6 +5703,28 @@ against the decoder of `061bbde`.
   cheapest exit are reworded, and no rank, state, blocker, epic or requirement
   binding changes.
 
+### Decision from the gap audit (2026-10-13)
+
+- **D111** What does the workspace `rust-version` declare? M27 criterion 2
+  set it to the highest `rust-version` the resolved graph declares, which
+  gave 1.87 (accesskit 0.25.1). The gap audit of 2026-10-12 (row C13-1) found
+  that declaration false: `cargo +1.87 check --workspace` fails with ten E0658
+  errors, because let-chains, stable since 1.88, are used in aegis-justitia,
+  aegis-janus-lifecycle and aegis-fabrica-defs. No gate builds on any toolchain
+  but the `rust-toolchain.toml` pin, so nothing caught it. Options: lower the
+  code to 1.87 and add a gate that builds on it; declare 1.88 and add that
+  gate; or declare the pin. Recommended: declare the pin. Why: every gate
+  builds on the pin, so it is the only `rust-version` the repository proves,
+  and a floor no gate builds goes stale the way 1.87 did. **Decision
+  (2026-10-13, controller id aegis-os-gaps-1-msrv, paraphrased):** the
+  workspace `rust-version` equals the `rust-toolchain.toml` pin, 1.98.1, and
+  no resolved package may declare more than the pin.
+  `crates/aegis-scaena/tests/manifest_hygiene.rs` holds both and refuses a
+  `rust-version` below the pin and a resolved package above it; the three
+  literal assertions in aegis-hephaestus, aegis-ludus and aegis-minerva read
+  the pin. This supersedes the `rust-version` rule of M27 criterion 2 and
+  E27-3's boundary; their accepted text and evidence stay as recorded.
+
 ## Evidence
 
 Bundle sha256: 8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6.
