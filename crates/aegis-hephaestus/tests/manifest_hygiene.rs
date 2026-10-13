@@ -63,10 +63,12 @@ fn declared_dependencies(manifest: &str) -> Vec<String> {
         let line = line.trim();
         if line.starts_with('[') {
             inside = line == "[dependencies]";
-        } else if inside && !line.is_empty() && !line.starts_with('#') {
-            if let Some((name, _)) = line.split_once(['=', '.']) {
-                names.push(name.trim().to_owned());
-            }
+        } else if inside
+            && !line.is_empty()
+            && !line.starts_with('#')
+            && let Some((name, _)) = line.split_once(['=', '.'])
+        {
+            names.push(name.trim().to_owned());
         }
     }
     names.sort_unstable();
