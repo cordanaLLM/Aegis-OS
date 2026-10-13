@@ -444,19 +444,22 @@ with every a11y case PASS and no SKIP: `a11y/toolchain-readback` printed
 `@playwright/test 1.64.0` and revision 1248, and `a11y/suite` passed 11 of 11
 on Chromium 156.0.8078.4 with 0 axe-core violations.
 
-The non-major group followed on 2026-10-14: axe-core 4.14.0 (2026-10-05),
-svelte 5.57.2 (2026-10-06), vite 8.3.4 (2026-10-08), the Cargo lockfile and
-Rust 1.99.0 with clippy 0.1.99 and rustfmt 1.10.0. Run
-`r20261014T003738-4f24` of `make verify-a11y` exited 0 with every a11y case
-PASS and no SKIP: `a11y/toolchain-readback` printed `axe-core 4.14.0`,
-`svelte 5.57.2` and `vite 8.3.4`, and `a11y/suite` passed 11 of 11.
+The non-major group followed on 2026-10-14: svelte 5.57.2 (2026-10-06),
+vite 8.3.4 (2026-10-08), the Cargo lockfile and Rust 1.99.0 with clippy
+0.1.99 and rustfmt 1.10.0. axe-core stays at 4.13.0. A first run with
+axe-core 4.14.0 showed that the suite printed `axe-core 4.13.0`:
+`@axe-core/playwright` 4.13.0 depends on axe-core 4.13.0 and injects that
+copy into the page, so a top-level 4.14.0 is installed but never executes.
+axe-core 4.14.0 (2026-10-05) is admitted once an `@axe-core/playwright`
+release that depends on it arrives through the update bot.
 
-One limit the run measured: the suite printed `axe-core 4.13.0`, not 4.14.0.
-`@axe-core/playwright` 4.13.0 depends on axe-core 4.13.0 and injects that copy
-into the page (`pnpm-lock.yaml` lists both), so the top-level `axe-core`
-4.14.0 is installed and read back but is not the engine that executed. The
-gate does not compare the two; an `@axe-core/playwright` release that
-depends on 4.14.0 would close this.
+`a11y/suite` now compares the axe-core that executed with the `axe-core` pin
+in `package.json` and fails when they differ (`engine_problems` in
+`tools/verify_a11y.py`, covered in `tools/test_a11y.py`). Run
+`r20261014T010826-02cb` of `make verify-a11y` exited 0 with every a11y case
+PASS and no SKIP: `a11y/toolchain-readback` printed `axe-core 4.13.0`,
+`@axe-core/playwright 4.13.0`, `svelte 5.57.2` and `vite 8.3.4`, and
+`a11y/suite` passed 11 of 11 with axe-core 4.13.0 on Chromium 156.0.8078.4.
 
 ## The HISS lint (M16, D100)
 

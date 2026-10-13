@@ -585,7 +585,7 @@ listing.
 | pnpm | 12.11.2; `@pnpm/exe.linux-x64` integrity `sha512-FK7QKe24AYgppJwO3mpooYptduuvIGqKJPi5ac7MdnWkjUy46JBfYhCW0grnkWKC8YOf0x+vGviuQqJEj3SpQQ==` | `packageManager` and `engines.pnpm`; the integrity is pnpm-lock.yaml's | 12.11.2 of 2026-10-09 (`latest`); `next-12` is 12.13.0 | installs from the lockfile, offline |
 | `@playwright/test` | 1.64.0 | `package.json`, exact; pnpm-lock.yaml | 1.64.0 of 2026-10-07 | the test runner; the image tag must carry the same version |
 | `chromium-headless-shell` | revision 1248, Chromium 156.0.8078.4 | `toolchain.pin.json`, read back from `playwright-core/browsers.json` and from the launched browser | the revision `@playwright/test` 1.64.0 bundles | the browser the suite drives, baked into the image |
-| `axe-core` | 4.14.0 | `package.json`, exact; pnpm-lock.yaml | 4.14.0 of 2026-10-05 | read back as a top-level package; the suite runs the axe-core that `@axe-core/playwright` 4.13.0 depends on, 4.13.0 (run `r20261014T003738-4f24`) |
+| `axe-core` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0, the version `@axe-core/playwright` 4.13.0 depends on; 4.14.0 of 2026-10-05 waits for an `@axe-core/playwright` release that injects it | the engine the suite executes; `a11y/suite` fails when the executed version differs from this pin (run `r20261014T010826-02cb`) |
 | `@axe-core/playwright` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0 of 2026-08-11 | injects axe-core into the page |
 | `svelte` | 5.57.2 | `package.json`, exact; pnpm-lock.yaml | 5.57.2 of 2026-10-06 | the one component |
 | `vite` | 8.3.4 | `package.json`, exact; pnpm-lock.yaml | 8.3.4 of 2026-10-08 | the static build and `vite preview` |
