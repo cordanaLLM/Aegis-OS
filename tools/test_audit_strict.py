@@ -87,7 +87,9 @@ class RunAudit(unittest.TestCase):
         self.assertEqual(echoed.getvalue(), text)
 
     def test_a_command_past_its_deadline_fails(self):
-        code, text = audit_strict.run_audit(python_command("import time; time.sleep(30)"), timeout=1)
+        code, text = audit_strict.run_audit(
+            python_command("import time; time.sleep(30)"), timeout=1
+        )
         self.assertEqual(code, 124)
         self.assertTrue(audit_strict.judge(code, text))
 
