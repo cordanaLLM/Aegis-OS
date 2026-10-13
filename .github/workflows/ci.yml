@@ -181,7 +181,8 @@ jobs:
         with:
           path: ~/.cache/aegis-libva/${{ env.LIBVA_VERSION }}
           key: "libva-${{ env.LIBVA_VERSION }}-${{ env.LIBVA_SHA256 }}\
-            -meson-${{ env.MESON_VERSION }}-ninja-${{ env.NINJA_VERSION }}-werror-${{ steps.runner-image.outputs.image }}"
+            -meson-${{ env.MESON_VERSION }}-ninja-${{ env.NINJA_VERSION }}-werror\
+            -${{ steps.runner-image.outputs.image }}"
 
       - name: Build the pinned libva from its release tarball
         if: steps.libva-cache.outputs.cache-hit != 'true'
