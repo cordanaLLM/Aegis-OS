@@ -175,8 +175,9 @@ pub fn read_format_table(fd: &OwnedFd, size: u32) -> Result<Vec<(u32, u64)>, &'s
     if read != length {
         return Err("a short format table read");
     }
-    Ok(bytes
-        .chunks_exact(16)
+    let (entries, _) = bytes.as_chunks::<16>();
+    Ok(entries
+        .iter()
         .filter_map(|entry| {
             let format: [u8; 4] = entry.get(..4)?.try_into().ok()?;
             let modifier: [u8; 8] = entry.get(8..16)?.try_into().ok()?;
@@ -212,8 +213,10 @@ impl Feedback {
             Event::MainDevice { device } => self.main_device = dev_from_wire(&device),
             Event::TrancheFormats { indices } => self.tranche.extend(
                 indices
-                    .chunks_exact(2)
-                    .filter_map(|pair| Some(u16::from_ne_bytes(pair.try_into().ok()?))),
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|pair| u16::from_ne_bytes(*pair)),
             ),
             Event::TrancheDone => self.close_tranche(),
             Event::Done => self.done = true,

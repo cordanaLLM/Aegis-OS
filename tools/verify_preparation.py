@@ -497,6 +497,47 @@ def verify_library_aborts():
                         )
 
 
+# The longest a workflow job may run (HISS-02). The slowest job, the
+# Verification gate, took at most 397 s over its 40 latest successful runs on
+# 2026-10-13, so a 30-minute limit let a sixfold slowdown pass green.
+JOB_TIMEOUT_CEILING = 15
+RUNS_ON = re.compile(r"^(?P<indent> *)runs-on:")
+TIMEOUT = re.compile(r"^(?P<indent> *)timeout-minutes: *(?P<value>[^ #]*) *(#.*)?$")
+
+
+def job_timeouts(text):
+    """Return the (indent, value) of each `runs-on` and `timeout-minutes` line."""
+    runs = [match["indent"] for match in map(RUNS_ON.match, text.splitlines()) if match]
+    limits = [
+        (match["indent"], match["value"])
+        for match in map(TIMEOUT.match, text.splitlines())
+        if match
+    ]
+    return runs, limits
+
+
+def verify_job_timeouts():
+    """Every workflow job sets its own timeout, at most JOB_TIMEOUT_CEILING minutes."""
+    workflows = sorted((ROOT / ".github/workflows").glob("*.yml"))
+    if not workflows:
+        raise ValueError("no workflow under .github/workflows to check for job timeouts")
+    for path in workflows:
+        name = path.relative_to(ROOT)
+        runs, limits = job_timeouts(path.read_text(encoding="utf-8"))
+        job_limits = [value for indent, value in limits if indent in runs]
+        if len(job_limits) != len(runs):
+            raise ValueError(
+                f"{name}: {len(runs)} job(s) but {len(job_limits)} job-level "
+                "timeout-minutes; every job sets its own (HISS-02)"
+            )
+        for value in job_limits:
+            if not value.isdigit() or not 0 < int(value) <= JOB_TIMEOUT_CEILING:
+                raise ValueError(
+                    f"{name}: timeout-minutes {value!r} is not a whole number from 1 "
+                    f"to {JOB_TIMEOUT_CEILING}"
+                )
+
+
 def citation_files():
     """Every file this sweep reads: each workspace member's library sources, then the
     roadmap documents that repeat the register's citations in prose."""
@@ -711,6 +752,7 @@ def main():
     milestones = verify_roadmap()
     verify_roadmap_document(milestones)
     verify_library_aborts()
+    verify_job_timeouts()
     verify_crate_citations()
     profile = verify_hardware_profile(milestones)
     verify_ranking(milestones)
@@ -743,7 +785,8 @@ def main():
             )
     print(
         "PASS: the tracked register under planning/ - inventory, privacy, licence "
-        "digests, source citations, hardware profile, roadmap states and ranking - "
+        "digests, source citations, job timeouts, hardware profile, roadmap states "
+        "and ranking - "
         "and the roadmap document against it. No build, image, boot, hardware, "
         "accessibility or release evidence is checked here."
     )
