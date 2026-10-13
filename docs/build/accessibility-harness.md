@@ -82,16 +82,16 @@ hashes to its pin is a failure.
 
 | Input | Pin | Where |
 | :--- | :--- | :--- |
-| Playwright image | `mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27`; linux/amd64 manifest `sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7` | `toolchain.pin.json` |
-| Browser | `chromium-headless-shell` revision 1243, Chromium 153.0.8010.12, as bundled by `@playwright/test` 1.63.0 and baked into the image | `toolchain.pin.json`, read back from `playwright-core/browsers.json` |
+| Playwright image | `mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f`; linux/amd64 manifest `sha256:bc72a8df40831ded821e3cbc79c318c21b44d6e51dff9fd89ace7a8249c5b462` | `toolchain.pin.json` |
+| Browser | `chromium-headless-shell` revision 1248, Chromium 156.0.8078.4, as bundled by `@playwright/test` 1.64.0 and baked into the image | `toolchain.pin.json`, read back from `playwright-core/browsers.json` |
 | Node.js | 26.11.1, `node-v26.11.1-linux-x64.tar.xz` sha256 `3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651` | `toolchain.pin.json`, `engines.node` |
 | pnpm | 12.11.2; `@pnpm/exe.linux-x64` integrity `sha512-FK7QKe24AYgppJwO3mpooYptduuvIGqKJPi5ac7MdnWkjUy46JBfYhCW0grnkWKC8YOf0x+vGviuQqJEj3SpQQ==` | `packageManager`, `engines.pnpm`, `pnpm-lock.yaml` |
 | npm packages | exact versions, each with its integrity | `package.json`, `pnpm-lock.yaml` |
 
-The image digest was resolved on 2026-09-28 with
-`skopeo inspect docker://mcr.microsoft.com/playwright:v1.63.0-noble`, and the
+The image digest was resolved on 2026-10-14 with
+`skopeo inspect docker://mcr.microsoft.com/playwright:v1.64.0-noble`, and the
 engine is asked for the image by that digest, never by tag: `make a11y-fetch`
-pulls `mcr.microsoft.com/playwright@sha256:eff16c30…`, and the gate does not
+pulls `mcr.microsoft.com/playwright@sha256:06a9939e…`, and the gate does not
 run unless the engine lists that exact digest among the image's repo digests.
 REQ-P12-04's source (export-020, section 7.3 of its P12 report) names its
 validation container as
@@ -155,8 +155,8 @@ client does not end the container.
 | `a11y/hiss-lint-at-the-limits` | a 60-line, complexity-10 and 50-statement function each lint clean | M16 D100 boundary |
 | `a11y/lockfile-mismatch-refused` | a `package.json` loosened to `^5.57.1` is refused with `ERR_PNPM_OUTDATED_LOCKFILE` | E04-1 negative |
 | `a11y/image-node-refused` | the image's Node 24.20.0 is refused with `ERR_PNPM_UNSUPPORTED_ENGINE` | 4, 6 |
-| `a11y/toolchain-readback` | every version read back inside the container; Chromium 153.0.8010.12 launches | 1, 5 |
-| `a11y/browser-revision-absent-refused` | without revision 1243 the launch fails, offline, and nothing is downloaded | 5 |
+| `a11y/toolchain-readback` | every version read back inside the container; Chromium 156.0.8078.4 launches | 1, 5 |
+| `a11y/browser-revision-absent-refused` | without revision 1248 the launch fails, offline, and nothing is downloaded | 5 |
 | `a11y/build` | the static page builds | cheapest exit |
 | `a11y/suite` | eleven tests, the D81 report, the measured checks | 2, 7, 8, E04-2 |
 | `a11y/planted-violation-fails` | one planted `image-alt` violation fails the run | E04-1 boundary, 2 |
@@ -432,6 +432,17 @@ pnpm 12.11.2 (released 2026-10-09) followed on 2026-10-14. Its
 only because it hashed to that integrity. Run `r20261014T000123-9843` of `make
 verify-a11y` exited 0 with 23 PASS lines and no SKIP: `a11y/toolchain-readback`
 printed `pnpm 12.11.2`, and `a11y/suite` passed.
+
+Playwright 1.64.0 (released 2026-10-07) with its image followed on
+2026-10-14. The linux/amd64 manifest `sha256:bc72a8df…` was read with `skopeo
+inspect --raw` from the image index `sha256:06a9939e…`, and the gate's first
+run on the new pin failed `a11y/toolchain-readback`, as it must: it read back
+revision 1248, Chromium 156.0.8078.4, against the old pin's 1243 and
+153.0.8010.12. Those two figures were then written to `toolchain.pin.json`
+from that readback. Run `r20261014T001558-da59` of `make verify-a11y` exited 0
+with every a11y case PASS and no SKIP: `a11y/toolchain-readback` printed
+`@playwright/test 1.64.0` and revision 1248, and `a11y/suite` passed 11 of 11
+on Chromium 156.0.8078.4 with 0 axe-core violations.
 
 ## The HISS lint (M16, D100)
 
