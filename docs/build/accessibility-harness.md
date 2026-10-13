@@ -85,7 +85,7 @@ hashes to its pin is a failure.
 | Playwright image | `mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27`; linux/amd64 manifest `sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7` | `toolchain.pin.json` |
 | Browser | `chromium-headless-shell` revision 1243, Chromium 153.0.8010.12, as bundled by `@playwright/test` 1.63.0 and baked into the image | `toolchain.pin.json`, read back from `playwright-core/browsers.json` |
 | Node.js | 26.11.1, `node-v26.11.1-linux-x64.tar.xz` sha256 `3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651` | `toolchain.pin.json`, `engines.node` |
-| pnpm | 12.6.0; `@pnpm/exe.linux-x64` integrity `sha512-qFWBneHJAJ73W4whtbaFOL1M/7DBC6ILHXuxc7ZPtEhfPuT1zeZiGrmKHoMAfJA+mcm6xhOFljqVTUS+00Jabw==` | `packageManager`, `engines.pnpm`, `pnpm-lock.yaml` |
+| pnpm | 12.11.2; `@pnpm/exe.linux-x64` integrity `sha512-FK7QKe24AYgppJwO3mpooYptduuvIGqKJPi5ac7MdnWkjUy46JBfYhCW0grnkWKC8YOf0x+vGviuQqJEj3SpQQ==` | `packageManager`, `engines.pnpm`, `pnpm-lock.yaml` |
 | npm packages | exact versions, each with its integrity | `package.json`, `pnpm-lock.yaml` |
 
 The image digest was resolved on 2026-09-28 with
@@ -425,6 +425,13 @@ that pin, and run `r20261013T234909-5e6b` of `make verify-a11y` on podman 6.1.4
 exited 0 with 23 PASS lines and no SKIP: `a11y/pin` printed `node 26.11.1`,
 `a11y/toolchain-readback` printed `node v26.11.1`, and `a11y/suite` passed 11
 of 11 tests. The readback block above is the first run, kept as recorded.
+
+pnpm 12.11.2 (released 2026-10-09) followed on 2026-10-14. Its
+`@pnpm/exe.linux-x64` integrity `sha512-FK7QKe24…` is the one
+`pnpm-lock.yaml` records; `make a11y-fetch` downloaded the binary and kept it
+only because it hashed to that integrity. Run `r20261014T000123-9843` of `make
+verify-a11y` exited 0 with 23 PASS lines and no SKIP: `a11y/toolchain-readback`
+printed `pnpm 12.11.2`, and `a11y/suite` passed.
 
 ## The HISS lint (M16, D100)
 

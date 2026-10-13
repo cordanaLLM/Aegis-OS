@@ -582,7 +582,7 @@ listing.
 | Tool | Pinned version | How it is pinned | Latest upstream, read 2026-09-28 | Role |
 | :--- | :--- | :--- | :--- | :--- |
 | Node.js | 26.11.1; tarball sha256 `3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651` | `toolchain.pin.json` and `engines.node`, exact, with `engineStrict`; the sha256 is the one in `SHASUMS256.txt`, signed by `5BE8A3F6C8A5C01D106C0AD820B1A390B168D356` | 26.11.1 of 2026-10-07, read 2026-10-13, the Current line, which enters Active LTS on 2026-10-28; the newest LTS is 24.21.0 of 2026-09-07 | runs vite and Playwright inside the container |
-| pnpm | 12.6.0; `@pnpm/exe.linux-x64` integrity `sha512-qFWBneHJAJ73W4whtbaFOL1M/7DBC6ILHXuxc7ZPtEhfPuT1zeZiGrmKHoMAfJA+mcm6xhOFljqVTUS+00Jabw==` | `packageManager` and `engines.pnpm`; the integrity is pnpm-lock.yaml's | 12.6.0 of 2026-09-22 (`latest`); `next-12` is 12.8.1 | installs from the lockfile, offline |
+| pnpm | 12.11.2; `@pnpm/exe.linux-x64` integrity `sha512-FK7QKe24AYgppJwO3mpooYptduuvIGqKJPi5ac7MdnWkjUy46JBfYhCW0grnkWKC8YOf0x+vGviuQqJEj3SpQQ==` | `packageManager` and `engines.pnpm`; the integrity is pnpm-lock.yaml's | 12.11.2 of 2026-10-09 (`latest`); `next-12` is 12.13.0 | installs from the lockfile, offline |
 | `@playwright/test` | 1.63.0 | `package.json`, exact; pnpm-lock.yaml | 1.63.0 of 2026-09-04 | the test runner; the image tag must carry the same version |
 | `chromium-headless-shell` | revision 1243, Chromium 153.0.8010.12 | `toolchain.pin.json`, read back from `playwright-core/browsers.json` and from the launched browser | the revision `@playwright/test` 1.63.0 bundles | the browser the suite drives, baked into the image |
 | `axe-core` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0 of 2026-08-05 | the rule engine; D81 runs its WCAG 2.2 AA tag set |
@@ -606,7 +606,8 @@ every program the gate may start on the host. The reference profile's own Node
 (v26.10.0) and pnpm (10.29.3) are not what the gate runs; the M01 drift
 register's "Node 20 vs 22" row is closed with the exact Node pin above
 (26.10.0 when closed, 26.11.1 since 2026-10-13), and
-pnpm 12.6.0 replaces the reference profile's 10.29.3 for this gate.
+pnpm 12.11.2 (12.6.0 until 2026-10-14) replaces the reference profile's
+10.29.3 for this gate.
 
 What these rows do **not** claim: that the host's Playwright browser cache is
 pinned. `~/.cache/ms-playwright` held chromium-1228 on 2026-09-13 and
