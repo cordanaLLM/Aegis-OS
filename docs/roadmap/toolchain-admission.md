@@ -804,13 +804,15 @@ added. D99, the one pnpm workspace under `ui/`, was withdrawn by D101, so the
 lint has no workspace root of its own. `tools/test_a11y.py` reads this table
 back against the manifest, and the gate reads each version back from inside
 the container before it lints. The last-but-one column is the D69
-comparison, the npm registry's `latest` on 2026-09-29.
+comparison, the npm registry's `latest` on 2026-10-13. The three were first
+admitted on 2026-09-29 as eslint 10.11.0, eslint-plugin-svelte 3.23.0 and
+svelte-eslint-parser 1.8.1, and moved together to these on 2026-10-13.
 
-| Tool | Pinned version | How it is pinned | Latest upstream, read 2026-09-29 | Role |
+| Tool | Pinned version | How it is pinned | Latest upstream, read 2026-10-13 | Role |
 | :--- | :--- | :--- | :--- | :--- |
-| `eslint` | 10.11.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 10.11.0 of 2026-09-18 (`latest`); `maintenance` is 9.39.5 | runs the rules below over every `.js`, `.mjs`, `.cjs` and `.svelte` file of the package |
-| `eslint-plugin-svelte` | 3.23.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 3.23.0 of 2026-08-13 | its `base` configuration hands `.svelte` files to the parser and turns on only its two bookkeeping rules, `svelte/comment-directive` and `svelte/system` |
-| `svelte-eslint-parser` | 1.8.1 (MIT) | `package.json`, exact; pnpm-lock.yaml | 1.8.1 of 2026-08-15 | parses a Svelte component's script for the rules; its manifest declares `engines.pnpm` 10.34.5, which pnpm 12.6.0 does not enforce for a dependency, so `engineStrict` does not refuse it |
+| `eslint` | 10.12.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 10.12.0 of 2026-10-02 (`latest`); `maintenance` is 9.39.5 | runs the rules below over every `.js`, `.mjs`, `.cjs` and `.svelte` file of the package |
+| `eslint-plugin-svelte` | 3.23.1 (MIT) | `package.json`, exact; pnpm-lock.yaml | 3.23.1 of 2026-10-09 | its `base` configuration hands `.svelte` files to the parser and turns on only its two bookkeeping rules, `svelte/comment-directive` and `svelte/system` |
+| `svelte-eslint-parser` | 1.9.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 1.9.0 of 2026-10-09 | parses a Svelte component's script for the rules; its manifest declares `engines.pnpm` 10.34.6, which pnpm 12.6.0 does not enforce for a dependency, so `engineStrict` does not refuse it |
 
 The parser loads the `svelte` compiler M04 already admitted, 5.57.1, so no
 second Svelte enters the lockfile. Each rule family has a planted violation
