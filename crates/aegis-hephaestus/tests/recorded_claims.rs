@@ -25,8 +25,8 @@ fn the_four_claims_are_recorded() {
     assert_eq!(P14_RECORDED_CLAIMS.len(), 4);
     for claim in P14_RECORDED_CLAIMS {
         assert!(claim.requirement.starts_with("REQ-P14-"));
-        assert!(!claim.summary.is_empty());
-        assert!(!claim.settled_by.is_empty());
+        assert_ne!(claim.summary, "");
+        assert_ne!(claim.settled_by, "");
         let source: ClaimSource = claim.source;
         assert!(source.export.starts_with("export-"));
         assert_eq!(source.sha256_prefix.len(), 12);
@@ -43,7 +43,7 @@ fn every_solver_has_an_unpinned_row() -> Fallible {
             return Err(format!("{} must have an unpinned row", target.tag()).into());
         };
         assert!(!row.is_pinned());
-        assert!(!row.role.is_empty());
+        assert_ne!(row.role, "");
         assert!(row.why_unpinned.contains("no version"));
     }
     Ok(())
@@ -103,7 +103,7 @@ fn nothing_in_the_register_is_pinned() {
     assert_eq!(UNPINNED_DEPENDENCIES.len(), 5);
     for row in UNPINNED_DEPENDENCIES {
         assert!(!row.is_pinned());
-        assert!(!row.name.is_empty());
+        assert_ne!(row.name, "");
     }
     let pinned = UNPINNED_DEPENDENCIES
         .iter()

@@ -94,7 +94,10 @@ fn the_reviewed_manifest_validates_the_shipped_definition_files() -> Fallible {
     let repart = reviewed_repart_set()?;
     let transfers = reviewed_transfer_set()?;
     assert_eq!(repart.len(), 5);
-    assert!(!transfers.is_empty());
+    assert_ne!(
+        transfers,
+        [] as [(std::string::String, std::string::String); 0]
+    );
     manifest.validate_definitions(&repart, &transfers)?;
     Ok(())
 }

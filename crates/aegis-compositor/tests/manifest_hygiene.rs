@@ -301,7 +301,10 @@ fn wayland_backend_in_the_lock_but_outside_this_closure_passes() -> Result<(), S
     assert!(lock.contains("name = \"wayland-backend\""));
     let names = dependency_closure::own_closure(PACKAGE)?;
     assert!(!names.contains("wayland-backend"), "{names:?}");
-    assert!(dependency_closure::hits(&names, &FORBIDDEN).is_empty());
+    assert_eq!(
+        dependency_closure::hits(&names, &FORBIDDEN),
+        [] as [&str; 0]
+    );
     Ok(())
 }
 
@@ -315,6 +318,9 @@ fn a_name_that_only_shares_a_prefix_is_not_a_hit() -> Result<(), String> {
     );
     let names = dependency_closure::closure(&metadata, PACKAGE)?;
     assert_eq!(names.len(), 4, "{names:?}");
-    assert!(dependency_closure::hits(&names, &FORBIDDEN).is_empty());
+    assert_eq!(
+        dependency_closure::hits(&names, &FORBIDDEN),
+        [] as [&str; 0]
+    );
     Ok(())
 }

@@ -132,7 +132,7 @@ fn the_instance_count_is_exact_at_the_ab_boundary() -> Fallible {
         vec![Finding::SingleSlotTransfer { instances_max: 1 }]
     );
     let pair = TransferDefinition::parse("10-root.transfer", REVIEWED)?;
-    assert!(pair.findings().is_empty());
+    assert_eq!(pair.findings(), [] as [aegis_fabrica_defs::Finding; 0]);
     let unstated = TransferDefinition::parse("10-root.transfer", &with("InstancesMax=2\n", ""))?;
     assert_eq!(
         unstated.findings(),
@@ -142,7 +142,7 @@ fn the_instance_count_is_exact_at_the_ab_boundary() -> Fallible {
         "10-root.transfer",
         &with("InstancesMax=2", "InstancesMax=3"),
     )?;
-    assert!(more.findings().is_empty());
+    assert_eq!(more.findings(), [] as [aegis_fabrica_defs::Finding; 0]);
     Ok(())
 }
 

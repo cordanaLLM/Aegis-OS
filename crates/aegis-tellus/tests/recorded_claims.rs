@@ -125,14 +125,14 @@ fn the_register_has_no_duplicate_requirement() {
         ClaimStatus::Measured,
         ClaimStatus::Held,
     ] {
-        assert!(!status.name().is_empty());
+        assert_ne!(status.name(), "");
     }
     for source in [
         ClaimSource::Export,
         ClaimSource::Decision,
         ClaimSource::ReferenceProfile,
     ] {
-        assert!(!source.name().is_empty());
+        assert_ne!(source.name(), "");
     }
 }
 

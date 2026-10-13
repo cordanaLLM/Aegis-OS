@@ -30,7 +30,7 @@ fn d03s_direction_is_closed_and_the_proposal_carries_the_settled_direction() {
     assert_eq!(D03_ACTION_GATE_DIRECTION.id(), "D03");
     assert_eq!(D03_ACTION_GATE_DIRECTION.state(), DecisionState::Closed);
     assert!(D03_ACTION_GATE_DIRECTION.is_settled());
-    assert!(!D03_ACTION_GATE_DIRECTION.question().is_empty());
+    assert_ne!(D03_ACTION_GATE_DIRECTION.question(), "");
     assert_eq!(
         ActionProposal::DIRECTION,
         GateDirection::MinervaProposesJustitiaIntercepts
@@ -108,7 +108,7 @@ fn d04_is_recorded_as_unresolved_with_both_paths_kept() {
     assert_eq!(D04_SANDBOX_GATE.id(), "D04");
     assert_eq!(D04_SANDBOX_GATE.state(), DecisionState::Unresolved);
     assert!(!D04_SANDBOX_GATE.is_settled());
-    assert!(!D04_SANDBOX_GATE.question().is_empty());
+    assert_ne!(D04_SANDBOX_GATE.question(), "");
     assert_eq!(
         SandboxAdmissionPath::BOTH,
         [
@@ -191,7 +191,7 @@ fn neither_sandbox_path_is_treated_as_settled() {
 fn every_admission_path_stays_inside_the_hop_bound() {
     let mut seen = 0usize;
     for path in SandboxAdmissionPath::BOTH {
-        assert!(!path.hops().is_empty());
+        assert_ne!(path.hops(), []);
         assert!(path.hops().len() <= MAX_ADMISSION_HOPS);
         seen = seen.saturating_add(1);
     }
@@ -261,7 +261,7 @@ fn every_edge_name_is_distinct_and_cited() {
     names.dedup();
     assert_eq!(names.len(), distinct, "edge names must be distinct");
     for edge in EdgeId::ALL {
-        assert!(!edge.name().is_empty());
+        assert_ne!(edge.name(), "");
         assert!(edge.evidence().starts_with("export-"));
     }
     assert_eq!(

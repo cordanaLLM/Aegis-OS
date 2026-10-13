@@ -92,7 +92,7 @@ fn the_fixture_is_sixty_baseline_frames() -> Fallible {
         assert_eq!(sampling, [(2, 2), (1, 1), (1, 1)]);
         assert_eq!(frame.scan_count, 3);
         assert_eq!(frame.mcu_count(), 16 * 4);
-        assert!(!frame.scan_data.is_empty());
+        assert_ne!(frame.scan_data, [0_u8; 0]);
         rest = rest.get(used..).ok_or("past the end")?;
     }
     assert!(

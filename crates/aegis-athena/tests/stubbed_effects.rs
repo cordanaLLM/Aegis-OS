@@ -338,5 +338,8 @@ fn a_comment_naming_an_identifier_is_not_a_finding() {
     let comment = "//! nothing here opens checkpoint_ledger.jsonl or runs sysupdate";
     assert!(comment.trim().starts_with("//"));
     assert!(WATCHED_PATHS.iter().any(|needle| comment.contains(needle)));
-    assert!(common::scan_text("doc.rs", comment, &WATCHED_PATHS).is_empty());
+    assert_eq!(
+        common::scan_text("doc.rs", comment, &WATCHED_PATHS),
+        [] as [std::string::String; 0]
+    );
 }
