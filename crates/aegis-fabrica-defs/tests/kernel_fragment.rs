@@ -68,10 +68,10 @@ fn observed_states(fragment: &str) -> BTreeMap<String, ConfigState> {
             .and_then(|rest| rest.strip_suffix(" is not set"))
         {
             states.insert(symbol.to_owned(), ConfigState::NotSet);
-        } else if let Some((symbol, value)) = line.split_once('=') {
-            if let Some(state) = ConfigState::parse(value) {
-                states.insert(symbol.to_owned(), state);
-            }
+        } else if let Some((symbol, value)) = line.split_once('=')
+            && let Some(state) = ConfigState::parse(value)
+        {
+            states.insert(symbol.to_owned(), state);
         }
     }
     states
