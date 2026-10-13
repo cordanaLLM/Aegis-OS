@@ -47,6 +47,9 @@
             "context": "Verification gate"
           },
           {
+            "context": "Build documentation"
+          },
+          {
             "context": "Platform Neutrality (Linux)"
           },
           {
