@@ -10,6 +10,10 @@ So this driver asserts two things, not one: the suite exited zero, *and* at
 least ``--min-executed`` cases actually ran. A platform that loses coverage then
 shows up as a number that moved rather than as an unchanged green check.
 
+A skipped case did not run. ``unittest`` counts it in ``testsRun`` all the
+same, so the executed figure here is ``testsRun`` minus the skips; counting
+them would let a platform that skips every case clear the floor.
+
 The floor is a collapse detector, not a coverage assertion. Raise it to a
 platform's measured figure once a green run reports one; never lower it to turn
 a red run green.
@@ -24,7 +28,7 @@ import unittest
 
 # Scalar bound on the reported skip list (HISS-02).
 MAX_REPORTED_SKIPS = 64
-DEFAULT_MIN_EXECUTED = 250
+DEFAULT_MIN_EXECUTED = 1012
 
 
 def parse_arguments(argv):
@@ -55,6 +59,29 @@ def report_skips(result):
     return len(result.skipped)
 
 
+def executed_count(result):
+    """Return how many cases actually ran: everything started, less the skips."""
+    return result.testsRun - len(result.skipped)
+
+
+def verdict(result, min_executed):
+    """Print the floor verdict for `result` and return the driver's exit code."""
+    executed = executed_count(result)
+    print(f"executed: {executed} case(s) on {sys.platform}; floor is {min_executed}.")
+    if not result.wasSuccessful():
+        print("FAIL: the suite did not pass on this platform.")
+        return 1
+    if executed < min_executed:
+        print(
+            f"FAIL: only {executed} case(s) ran, below the floor of {min_executed}. "
+            "A platform that silently stops executing cases is the state HISS-21 forbids; "
+            "investigate the collapse rather than lowering the floor."
+        )
+        return 1
+    print(f"PASS: {executed} case(s) ran and passed on {sys.platform}.")
+    return 0
+
+
 def main(argv):
     """Run the suite, report what ran and what was skipped, and enforce the floor."""
     options = parse_arguments(argv)
@@ -62,22 +89,8 @@ def main(argv):
         start_dir=options.start_directory, pattern="test_*.py"
     )
     result = unittest.TextTestRunner(verbosity=1, stream=sys.stdout).run(suite)
-    executed = result.testsRun
     report_skips(result)
-    print(f"executed: {executed} case(s) on {sys.platform}; floor is {options.min_executed}.")
-
-    if not result.wasSuccessful():
-        print("FAIL: the suite did not pass on this platform.")
-        return 1
-    if executed < options.min_executed:
-        print(
-            f"FAIL: only {executed} case(s) ran, below the floor of {options.min_executed}. "
-            "A platform that silently stops executing cases is the state HISS-21 forbids; "
-            "investigate the collapse rather than lowering the floor."
-        )
-        return 1
-    print(f"PASS: {executed} case(s) ran and passed on {sys.platform}.")
-    return 0
+    return verdict(result, options.min_executed)
 
 
 if __name__ == "__main__":

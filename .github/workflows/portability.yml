@@ -42,12 +42,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # floor: the cases measured executing (run, not skipped) on main in
+          # run 38367830574. Windows skips 9 cases that need a POSIX host.
           - name: Linux
             runner: ubuntu-24.04
+            floor: 1021
           - name: macOS
             runner: macos-15
+            floor: 1021
           - name: Windows
             runner: windows-2025
+            floor: 1012
     steps:
       # HISS-18: a draft stops here, before any work, and fails, so a
       # required check never reports a skipped draft as a pass. Marking the
@@ -80,4 +85,4 @@ jobs:
       # floor to a platform's measured figure once a green run reports one; never
       # lower it to turn a red run green.
       - name: Harness self-tests
-        run: python -B tools/portability_selftest.py --min-executed 250
+        run: python -B tools/portability_selftest.py --min-executed ${{ matrix.floor }}
