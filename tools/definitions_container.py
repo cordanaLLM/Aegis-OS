@@ -28,6 +28,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import gate_policy
@@ -49,6 +50,11 @@ BUILD_TIMEOUT = 1800
 INSPECT_TIMEOUT = 60
 GATE_TIMEOUT = 1800
 MAX_PACKAGES = 32
+# A stalled archive mirror or registry fails one attempt, not the run: the pull
+# and the build are retried, with RETRY_DELAY seconds times the attempt number
+# between attempts. FETCH_ATTEMPTS bounds the loop (HISS-02).
+FETCH_ATTEMPTS = 3
+RETRY_DELAY = 30
 
 
 class FetchError(Exception):
@@ -231,6 +237,28 @@ def build(engine, pin, tag):
         raise FetchError(f"{engine} build exited {code} {stderr}".strip())
 
 
+def build_with_retries(engine, pin, tag, sleep=time.sleep):
+    """Run build() up to FETCH_ATTEMPTS times; return the attempt that succeeded.
+
+    Only the networked steps retry. A version mismatch is a property of the
+    snapshot, not of the network, so check_versions() runs once.
+    """
+    failures = []
+    for attempt in range(1, FETCH_ATTEMPTS + 1):
+        try:
+            build(engine, pin, tag)
+            return attempt
+        except FetchError as error:
+            failures.append(f"attempt {attempt}: {error}")
+        if attempt < FETCH_ATTEMPTS:
+            print(f"RETRY: {failures[-1]}; next attempt in {RETRY_DELAY * attempt} s.")
+            sleep(RETRY_DELAY * attempt)
+    raise FetchError(
+        f"{FETCH_ATTEMPTS} attempts failed to pull {pin['image']['reference']} or install "
+        f"from {pin['archive']['server']}: " + "; ".join(failures)
+    )
+
+
 def check_versions(engine, pin, tag):
     """Raise FetchError, and remove `tag`, unless every package has its pinned version."""
     argv = [engine, "run", "--rm", "--pull=never", "--network=none", tag, "pacman", "-Q"]
@@ -241,22 +269,22 @@ def check_versions(engine, pin, tag):
         raise FetchError("the built image differs from its pin: " + "; ".join(problems))
 
 
-def fetch():
+def fetch(path=PIN):
     """Produce the pinned image; return 0, or 1 after saying why it was refused."""
     engine, problem = pick_engine()
     if problem is not None:
         print(f"FAIL: {problem}; nothing was fetched.")
         return 1
-    pin, raw = load_pin()
+    pin, raw = load_pin(path)
     tag = image_tag(raw)
     try:
-        build(engine, pin, tag)
+        attempt = build_with_retries(engine, pin, tag)
         check_versions(engine, pin, tag)
     except FetchError as error:
         print(f"FAIL: {error}")
         return 1
     pinned = ", ".join(f"{name} {pin['packages'][name]}" for name in sorted(pin["packages"]))
-    print(f"PASS: {tag} built with {engine} and holds exactly {pinned}.")
+    print(f"PASS: {tag} built with {engine} on attempt {attempt} and holds exactly {pinned}.")
     return 0
 
 

@@ -306,7 +306,13 @@ input `build/definitions/toolchain.pin.json` pins exactly:
 
 `make definitions-fetch` is the one networked step. It pulls the base image,
 installs the packages from the snapshot, and removes the image again unless
-`pacman -Q` reports every package at exactly the version above. A run that sets
+`pacman -Q` reports every package at exactly the version above. The pull and
+the build are tried up to three times, 30 and then 60 seconds apart, so one
+stalled archive mirror or registry does not fail the run; when all three fail,
+the message names the image, the mirror and each attempt. A version mismatch is
+not retried. `FetchRetryTests` in `tools/test_definitions_container.py` covers
+both paths. A run against an unreachable mirror (`127.0.0.1:9`) on 2026-10-14
+retried twice and then failed in 99 seconds with that message. A run that sets
 `AEGIS_DEFINITIONS_CONTAINER=1` then runs each gate inside that image with
 `--pull=never`, `--network=none`, a read-only root file system and the
 repository mounted read-only, and prints the image and snapshot it used. A run
