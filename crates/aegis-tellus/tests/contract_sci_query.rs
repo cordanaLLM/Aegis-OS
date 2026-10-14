@@ -72,8 +72,8 @@ fn a_correlation_renders_with_and_without_an_identifier() -> Fallible {
     // M05's three schemas and the carbon telemetry update M16 added.
     assert_eq!(SchemaId::ALL.len(), 4);
     for schema in SchemaId::ALL {
-        assert!(!schema.tag().is_empty());
-        assert!(!schema.edge().name().is_empty());
+        assert_ne!(schema.tag(), "");
+        assert_ne!(schema.edge().name(), "");
     }
     Ok(())
 }

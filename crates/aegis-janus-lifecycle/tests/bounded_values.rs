@@ -75,7 +75,7 @@ fn a_root_hash_round_trips_through_hexadecimal() -> Fallible {
 fn the_state_vocabulary_is_complete_and_stably_named() {
     assert_eq!(State::ALL.len(), 10);
     for state in State::ALL {
-        assert!(!state.name().is_empty());
+        assert_ne!(state.name(), "");
         assert_eq!(state.to_string(), state.name());
     }
 }
@@ -85,7 +85,7 @@ fn the_state_vocabulary_is_complete_and_stably_named() {
 fn the_event_vocabulary_is_complete_and_stably_named() {
     assert_eq!(EventKind::ALL.len(), 10);
     for kind in EventKind::ALL {
-        assert!(!kind.name().is_empty());
+        assert_ne!(kind.name(), "");
         assert_eq!(kind.to_string(), kind.name());
     }
     assert_eq!(Event::Tick.kind(), EventKind::Tick);

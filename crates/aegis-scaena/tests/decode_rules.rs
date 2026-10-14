@@ -234,7 +234,7 @@ fn another_driver_reports_its_pins_instead_of_holding_them() {
 #[test]
 fn format_table_sizes_are_held_to_whole_entries() -> Fallible {
     let table = memfd("scaena-format-table-bounds", 32)?;
-    assert!(read_format_table(&table, 0)?.is_empty());
+    assert_eq!(read_format_table(&table, 0)?, [] as [(u32, u64); 0]);
     assert!(read_format_table(&table, 31).is_err());
     assert!(
         read_format_table(&table, 48).is_err(),

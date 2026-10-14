@@ -83,7 +83,7 @@ fn the_event_vocabulary_covers_every_offer() -> Fallible {
         EventKind::Invalidate
     );
     for kind in EventKind::ALL {
-        assert!(!kind.name().is_empty());
+        assert_ne!(kind.name(), "");
     }
     assert_eq!(format!("{}", EventKind::Check), "check");
     Ok(())
@@ -262,7 +262,7 @@ fn the_lifecycle_boundaries_are_representable() -> Fallible {
         .collect();
     assert_eq!(tags, vec![1, 2, 3]);
     for reason in InvalidationReason::ALL {
-        assert!(!reason.name().is_empty());
+        assert_ne!(reason.name(), "");
     }
     assert_eq!(
         format!("{}", InvalidationReason::ParetoBreach),

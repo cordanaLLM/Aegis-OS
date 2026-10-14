@@ -162,5 +162,8 @@ fn a_comment_naming_a_spelling_is_not_a_finding() {
     let comment = "//! no steamworks:: crate, no bindgen build.rs, no libsteam_api";
     assert!(comment.trim().starts_with("//"));
     assert!(WATCHED.iter().any(|needle| comment.contains(needle)));
-    assert!(common::scan_text("lib.rs", comment, &WATCHED).is_empty());
+    assert_eq!(
+        common::scan_text("lib.rs", comment, &WATCHED),
+        [] as [std::string::String; 0]
+    );
 }
