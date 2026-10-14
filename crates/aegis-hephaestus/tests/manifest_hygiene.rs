@@ -293,5 +293,5 @@ fn the_collector_reports_a_renamed_dependency() {
         declared_dependencies(planted),
         vec!["aegis-justitia", "kernel"]
     );
-    assert!(declared_dependencies("").is_empty());
+    assert_eq!(declared_dependencies(""), [] as [std::string::String; 0]);
 }

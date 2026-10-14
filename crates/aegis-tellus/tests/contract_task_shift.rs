@@ -52,9 +52,9 @@ fn a_directive_built_from_an_engine_carries_its_verdict() -> Fallible {
 fn the_graph_vocabulary_describes_every_edge() {
     assert_eq!(EdgeId::ALL.len(), 3);
     for edge in EdgeId::ALL {
-        assert!(!edge.name().is_empty());
-        assert!(!edge.peer().is_empty());
-        assert!(!edge.recorded_transport().is_empty());
+        assert_ne!(edge.name(), "");
+        assert_ne!(edge.peer(), "");
+        assert_ne!(edge.recorded_transport(), "");
     }
     assert_eq!(EdgeId::SpatiotemporalTaskShift.peer(), "P07");
     assert_eq!(EdgeId::EvaluateCandidateCarbonSci.peer(), "P16");

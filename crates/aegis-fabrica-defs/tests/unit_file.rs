@@ -70,7 +70,7 @@ fn a_rendered_drop_in_round_trips() -> Fallible {
 #[test]
 fn comments_and_blank_lines_declare_nothing() -> Fallible {
     let unit = UnitFile::parse("x.conf", "# one\n; two\n\n[Partition]\n")?;
-    assert!(unit.entries().is_empty());
+    assert_eq!(unit.entries(), []);
     assert_eq!(unit.sections(), ["Partition"]);
     assert_eq!(CONTRACT_VERSION, 1);
     Ok(())

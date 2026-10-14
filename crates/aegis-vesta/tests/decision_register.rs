@@ -95,7 +95,7 @@ fn the_monitor_probes_record_their_commands() {
     for probe in VMM_PROBES {
         let row: VmmProbe = probe;
         assert!(row.command.contains("--version"));
-        assert!(!row.observed.is_empty());
+        assert_ne!(row.observed, "");
         assert!(row.package.contains(row.vmm.pinned_version()));
         assert_eq!(row.probed_on, "2026-09-13");
         assert!(
@@ -152,7 +152,7 @@ fn the_language_boundary_rule_bars_exactly_one_option() {
 fn no_recorded_claim_is_discharged() {
     for claim in P10_RECORDED_CLAIMS {
         let row: RecordedClaim = claim;
-        assert!(!row.settled_by.is_empty());
+        assert_ne!(row.settled_by, "");
         assert!(row.requirement.starts_with("REQ-"));
         assert!(matches!(
             row.status,
@@ -163,7 +163,7 @@ fn no_recorded_claim_is_discharged() {
         let source: ClaimSource = row.source;
         assert_eq!(source.sha256_prefix.len(), 12);
         assert!(source.export.starts_with("export-"));
-        assert!(!row.summary.is_empty());
+        assert_ne!(row.summary, "");
     }
 }
 

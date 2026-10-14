@@ -188,7 +188,7 @@ fn every_export_refusal_has_a_stable_reason() {
     ];
     assert_eq!(reasons.len(), 4);
     for reason in reasons {
-        assert!(!reason.is_empty());
+        assert_ne!(reason, "");
         assert!(!reason.contains('\n'));
     }
     assert_eq!(ModesetState::Enabled.name(), "enabled");

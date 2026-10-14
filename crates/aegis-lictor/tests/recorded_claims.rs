@@ -24,8 +24,8 @@ fn every_recorded_claim_is_complete() {
     for claim in P07_RECORDED_CLAIMS {
         let row: RecordedClaim = claim;
         assert!(row.requirement.starts_with("REQ-"));
-        assert!(!row.summary.is_empty());
-        assert!(!row.settled_by.is_empty());
+        assert_ne!(row.summary, "");
+        assert_ne!(row.settled_by, "");
         let source: ClaimSource = row.source;
         assert!(source.export.starts_with("export-"));
         assert_eq!(source.sha256_prefix.len(), 12);
@@ -39,8 +39,8 @@ fn every_recorded_claim_is_complete() {
 fn every_proposal_pin_is_complete() {
     for pin in P07_PROPOSAL_PINS {
         let row: ProposalPin = pin;
-        assert!(!row.crate_name.is_empty());
-        assert!(!row.proposed_version.is_empty());
+        assert_ne!(row.crate_name, "");
+        assert_ne!(row.proposed_version, "");
         assert!(row.selected_at.contains("M19"));
         assert!(row.selected_at.contains("current upstream"));
         assert_eq!(row.source.export, "export-006");

@@ -150,7 +150,7 @@ fn the_empty_command_line_is_handled_explicitly() -> Fallible {
         let line = LaunchCommandLine::parse(raw)?;
         assert_eq!(line.len(), 0);
         assert!(line.is_empty());
-        assert!(line.arguments().is_empty());
+        assert_eq!(line.arguments(), []);
         assert_eq!(line.authenticate(), AuthenticationOutcome::EmptyCommandLine);
         assert!(!line.authenticate().is_authenticated());
         assert_eq!(line.authenticate().tag(), "empty-command-line");

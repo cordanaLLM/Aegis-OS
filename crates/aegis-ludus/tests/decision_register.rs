@@ -83,8 +83,8 @@ fn the_three_probes_are_recorded() -> Fallible {
     assert_eq!(REFERENCE_PROFILE_PROBES.len(), 3);
     for probe in REFERENCE_PROFILE_PROBES {
         assert_eq!(probe.probed_on, "2026-09-13");
-        assert!(!probe.command.is_empty());
-        assert!(!probe.observed.is_empty());
+        assert_ne!(probe.command, "");
+        assert_ne!(probe.observed, "");
     }
     let Some(device) = recorded_probe(TPM2_DEVICE) else {
         return Err("the TPM2 device probe must be recorded".into());
@@ -197,8 +197,8 @@ fn no_recorded_claim_is_discharged() {
 #[test]
 fn every_recorded_claim_carries_its_source() {
     for claim in P11_RECORDED_CLAIMS {
-        assert!(!claim.summary.is_empty());
-        assert!(!claim.settled_by.is_empty());
+        assert_ne!(claim.summary, "");
+        assert_ne!(claim.settled_by, "");
         let source: ClaimSource = claim.source;
         assert_eq!(source.sha256_prefix.len(), 12);
         assert!(source.export.starts_with("export-"));

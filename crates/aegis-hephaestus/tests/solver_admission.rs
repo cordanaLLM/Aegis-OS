@@ -23,7 +23,7 @@ fn every_recorded_solver_is_admitted() -> Fallible {
     for target in SolverTarget::ALL {
         assert_eq!(admission.admit(target.tag())?, target);
         assert_eq!(target.declared_slice(), SOLVER_SLICE);
-        assert!(!target.domain().is_empty());
+        assert_ne!(target.domain(), "");
     }
     assert_eq!(admission.admitted(), 3);
     assert_eq!(admission.refused(), 0);

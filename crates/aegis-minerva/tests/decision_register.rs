@@ -95,8 +95,8 @@ fn d27_is_not_settled() {
 fn no_recorded_claim_is_discharged() {
     for claim in P09_RECORDED_CLAIMS {
         let row: RecordedClaim = claim;
-        assert!(!row.settled_by.is_empty());
-        assert!(!row.summary.is_empty());
+        assert_ne!(row.settled_by, "");
+        assert_ne!(row.summary, "");
         assert!(row.requirement.starts_with("REQ-"));
         assert!(matches!(
             row.status,

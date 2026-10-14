@@ -73,13 +73,13 @@ fn every_recorded_claim_is_complete() {
     for claim in P08_RECORDED_CLAIMS {
         let row: RecordedClaim = claim;
         assert!(row.requirement.starts_with("REQ-P08-"));
-        assert!(!row.summary.is_empty());
-        assert!(!row.settled_by.is_empty());
+        assert_ne!(row.summary, "");
+        assert_ne!(row.settled_by, "");
         let source: ClaimSource = row.source;
         assert!(source.export.starts_with("export-"));
         assert_eq!(source.sha256_prefix.len(), 12);
         assert!(source.sha256_prefix.chars().all(|c| c.is_ascii_hexdigit()));
-        assert!(!row.status.name().is_empty());
+        assert_ne!(row.status.name(), "");
     }
 }
 

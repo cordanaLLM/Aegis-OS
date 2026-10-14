@@ -163,12 +163,12 @@ fn both_upstream_checks_are_dated_and_commanded() {
     assert_eq!(M07_UPSTREAM_CHECKS.len(), 2);
     for check in M07_UPSTREAM_CHECKS {
         let row: UpstreamCheck = check;
-        assert!(!row.crate_name.is_empty());
+        assert_ne!(row.crate_name, "");
         assert_eq!(row.checked_on, "2026-09-13");
         assert_ne!(row.version_command, row.dependency_command);
-        assert!(!row.upstream_max_stable.is_empty());
-        assert!(!row.upstream_released_on.is_empty());
-        assert!(!row.reason.is_empty());
+        assert_ne!(row.upstream_max_stable, "");
+        assert_ne!(row.upstream_released_on, "");
+        assert_ne!(row.reason, "");
     }
 }
 
@@ -225,8 +225,8 @@ fn every_recorded_claim_is_complete() {
     for claim in P04_RECORDED_CLAIMS {
         let row: RecordedClaim = claim;
         assert!(row.requirement.starts_with("REQ-P04-") || row.requirement.starts_with("DSP-"));
-        assert!(!row.summary.is_empty());
-        assert!(!row.settled_by.is_empty());
+        assert_ne!(row.summary, "");
+        assert_ne!(row.settled_by, "");
         let source: ClaimSource = row.source;
         assert!(source.export.starts_with("export-"));
         assert_eq!(source.sha256_prefix.len(), 12);
@@ -280,7 +280,7 @@ fn neither_dependency_is_inherited_or_admitted() {
             "{} is not admitted at milestone M07",
             check.crate_name
         );
-        assert!(!check.admitted_at.is_empty());
+        assert_ne!(check.admitted_at, "");
         assert_ne!(check.admitted_at, "M07");
     }
 }

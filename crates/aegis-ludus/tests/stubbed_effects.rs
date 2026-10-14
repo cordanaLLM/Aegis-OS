@@ -129,7 +129,10 @@ fn a_comment_naming_an_identifier_is_not_a_finding() {
     let comment = "//! no UnixStream socket, no pipewire stream, no /dev/tpm handle";
     assert!(comment.trim().starts_with("//"));
     assert!(WATCHED.iter().any(|needle| comment.contains(needle)));
-    assert!(common::scan_text("lib.rs", comment, &WATCHED).is_empty());
+    assert_eq!(
+        common::scan_text("lib.rs", comment, &WATCHED),
+        [] as [std::string::String; 0]
+    );
 }
 
 /// Boundary: the two recorded probe commands are deliberately outside the

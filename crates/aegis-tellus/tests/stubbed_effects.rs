@@ -322,7 +322,10 @@ fn a_comment_naming_an_identifier_is_not_a_finding() {
     let comment = "//! nothing here opens /sys/class/powercap or calls std::fs";
     assert!(comment.trim().starts_with("//"));
     assert!(WATCHED_CODE.iter().any(|needle| comment.contains(needle)));
-    assert!(common::scan_text("doc.rs", comment, &WATCHED_CODE).is_empty());
+    assert_eq!(
+        common::scan_text("doc.rs", comment, &WATCHED_CODE),
+        [] as [std::string::String; 0]
+    );
 }
 
 /// Boundary: the literal-stripping rule keeps code on either side of a

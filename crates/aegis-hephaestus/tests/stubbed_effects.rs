@@ -139,7 +139,10 @@ fn a_comment_naming_an_identifier_is_not_a_finding() {
     let comment = "//! no truck kernel, no gmsh mesher, no z3:: solver, no Command:: dispatch";
     assert!(comment.trim().starts_with("//"));
     assert!(WATCHED.iter().any(|needle| comment.contains(needle)));
-    assert!(common::scan_text("lib.rs", comment, &WATCHED).is_empty());
+    assert_eq!(
+        common::scan_text("lib.rs", comment, &WATCHED),
+        [] as [std::string::String; 0]
+    );
 }
 
 /// Boundary: the solver tags and the slice name are deliberately outside the

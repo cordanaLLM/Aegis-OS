@@ -86,7 +86,7 @@ fn encoding_writes_into_the_callers_buffer() -> Fallible {
     let request = verification(ScreenOutcome::NotRejected)?;
     let mut buffer = PayloadBuffer::new();
     let text = request.encode_into(&mut buffer)?;
-    assert!(!text.is_empty());
+    assert_ne!(text, "");
     assert!(text.len() <= MAX_CONTRACT_PAYLOAD_BYTES);
     assert_eq!(size_of_val(&buffer), size_of::<PayloadBuffer>());
     Ok(())
