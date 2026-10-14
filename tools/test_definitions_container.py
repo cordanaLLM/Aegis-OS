@@ -239,6 +239,62 @@ class DispatchTests(unittest.TestCase):
         run.assert_not_called()
 
 
+class FetchRetryTests(unittest.TestCase):
+    def setUp(self):
+        self.pin, _ = container.load_pin()
+        self.slept = []
+
+    def _retry(self, outcomes):
+        """Run build_with_retries with build() raising or passing per `outcomes`."""
+        effects = [container.FetchError(o) if o else None for o in outcomes]
+        with patch.object(container, "build", side_effect=effects) as build:
+            result, printed = capture(
+                container.build_with_retries, "podman", self.pin, "tag", self.slept.append
+            )
+        return result, printed, build
+
+    def test_a_stalled_mirror_is_retried_until_the_build_passes(self):
+        """Positive: one stall, then a clean build; the run passes on attempt 2."""
+        attempt, printed, build = self._retry(["podman build exited 1", None])
+        self.assertEqual(attempt, 2)
+        self.assertEqual(build.call_count, 2)
+        self.assertEqual(self.slept, [container.RETRY_DELAY])
+        self.assertIn("RETRY: attempt 1: podman build exited 1", printed)
+
+    def test_a_mirror_that_never_answers_fails_with_every_attempt_named(self):
+        """Negative: every attempt fails; the error names the mirror and each attempt."""
+        failures = ["podman build exited 1"] * container.FETCH_ATTEMPTS
+        with self.assertRaises(container.FetchError) as raised:
+            self._retry(failures)
+        message = str(raised.exception)
+        self.assertIn(f"{container.FETCH_ATTEMPTS} attempts failed", message)
+        self.assertIn(self.pin["archive"]["server"], message)
+        for attempt in range(1, container.FETCH_ATTEMPTS + 1):
+            self.assertIn(f"attempt {attempt}: podman build exited 1", message)
+        delays = [container.RETRY_DELAY * n for n in range(1, container.FETCH_ATTEMPTS)]
+        self.assertEqual(self.slept, delays)
+
+    def test_retry_boundaries(self):
+        """Boundary: a first-try build never waits; the last attempt still counts."""
+        attempt, printed, build = self._retry([None])
+        self.assertEqual((attempt, build.call_count, self.slept, printed), (1, 1, [], ""))
+        last = ["stall"] * (container.FETCH_ATTEMPTS - 1) + [None]
+        attempt, _, build = self._retry(last)
+        self.assertEqual(
+            (attempt, build.call_count), (container.FETCH_ATTEMPTS, container.FETCH_ATTEMPTS)
+        )
+
+    def test_a_version_mismatch_is_not_retried(self):
+        """Negative: a built image off its pin fails once; the snapshot will not change."""
+        mismatch = container.FetchError("the built image differs from its pin: systemd 1 != 2")
+        with patch.object(container, "pick_engine", return_value=("podman", None)), patch.object(
+            container, "build"
+        ) as build, patch.object(container, "check_versions", side_effect=mismatch):
+            code, printed = capture(container.fetch)
+        self.assertEqual((code, build.call_count), (1, 1))
+        self.assertIn("FAIL: the built image differs from its pin", printed)
+
+
 class GateRoutingTests(unittest.TestCase):
     def test_each_gate_hands_a_selected_run_to_the_container(self):
         """Positive: main returns the container's exit code and never runs the guard."""
