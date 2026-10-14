@@ -2,8 +2,8 @@
 """Run the systemd and mkosi definition gates inside a pinned Arch Linux image.
 
 Both gates run the host's own tools and skip below their floors: systemd 261
-for systemd-repart and systemd-sysupdate, mkosi 27. The ubuntu-24.04 runner
-ships systemd 255 and no mkosi, so on the runner both gates could only skip.
+for systemd-repart and systemd-sysupdate, mkosi 27. The ubuntu-26.04 runner
+ships systemd 259 and no mkosi, so on the runner both gates could only skip.
 This module gives them a pinned userland instead, recorded in
 build/definitions/toolchain.pin.json:
 

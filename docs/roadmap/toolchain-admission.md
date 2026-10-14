@@ -287,8 +287,8 @@ the repository and constructs no image. The image gate stays blocked.
 ## The definition gates' container (M03, M18)
 
 The systemd and mkosi rows above are floors, because both tools are
-distribution packages the host provides. The ubuntu-24.04 runner provides
-systemd 255 and no mkosi, below both floors, so CI cannot run either gate on
+distribution packages the host provides. The ubuntu-26.04 runner provides
+systemd 259 and no mkosi, below both floors, so CI cannot run either gate on
 the runner's own tools. CI runs them instead inside a local image whose every
 input `build/definitions/toolchain.pin.json` pins exactly:
 
@@ -635,7 +635,7 @@ and for the producers from `git ls-remote --heads`.
 | `git` | reference profile 2.55.0 (`git 2.55.0-1.1`) | recorded, not pinned; no source this gate relies on declares a minimum beyond the 2.32 that `GIT_CONFIG_GLOBAL` needs | 2.56.0, tag `v2.56.0`; the distribution ships 2.55.0 | `make contract-fetch`: `ls-remote --heads`, the depth-1 fetch and checkout; the gate: `rev-parse`, `status --untracked-files=all --ignored`, `ls-files -v` and `log` of the imago checkout, `rev-parse` and `status` of this repository, and the stand-in's commit. Every git command, and go's own git calls, run with `GIT_CONFIG_NOSYSTEM=1`, an empty `GIT_CONFIG_GLOBAL` and no inherited `GIT_*` variable |
 | `cordanaLLM/imago` | commit `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311` (was `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` until D107) | `imago.commit` in the pin; fetched by commit into a fresh directory, checked by `git rev-parse HEAD`, by the binary's `vcs.revision`, `vcs.time` and module version, and by the binary sha256 the fetch recorded | `main` at `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311`, read 2026-09-29 | consumes both M18 payloads (`pkg/aegis`, `pkg/kernel`) |
 | `cordanaLLM/nucleus` | commit `852be742eb173700d5ef93b0c6f867b855f9c640` (was `82aa6b7a3c68a42a6330370c81ec642482014c9f` from the re-pin of 2026-09-29 until D107, `0a4eac93f29fef432bfa9d892ad236568ce2f482` from D106 until that re-pin, and `8672247ff1bd22ed6b6b89d498116f20ff00c2ab` until D106) | `nucleus.commit` in the pin; fetched by commit into a fresh directory and checked by `git rev-parse HEAD`, a clean status and index, the presence of `scripts/verify_kernel_requirement.py` and the `versions.json` row that binds `aegis-os` to this repository's payload on `realtime` | `main` at `852be742eb173700d5ef93b0c6f867b855f9c640`, read 2026-09-29 | verifies `build/kernel-requirement.json` against the kconfig fragments of its bound stream at evidence level `declared` (nucleus#35, D106); its `--resolved-config` level (nucleus#36) needs a networked kernel-source resolve and is not run |
-| `python3` | reference profile 3.14.7 (`python3 --version`); CI runs the Python of the `ubuntu-24.04` image | recorded, not pinned: the gate starts nucleus's verifier with the interpreter running the gate (`sys.executable`, which `make` starts as `python3`), `-I`, which ignores every `PYTHON*` variable and the user site, and `-B`, which keeps the sibling import from writing `scripts/__pycache__` into the checkout; the script and the sibling module it imports, `scripts/versions_query.py`, are standard-library only, and nucleus lints them for Python 3.11 (`target-version = "py311"`) and runs the script on CPython 3.12 in its CI | 3.14.7 of 2026-08-05, `python.org` | the gate: `scripts/verify_kernel_requirement.py --report-json`, six runs per gate run, from the nucleus checkout |
+| `python3` | reference profile 3.14.7 (`python3 --version`); CI runs the Python of the `ubuntu-26.04` image (3.14.4) | recorded, not pinned: the gate starts nucleus's verifier with the interpreter running the gate (`sys.executable`, which `make` starts as `python3`), `-I`, which ignores every `PYTHON*` variable and the user site, and `-B`, which keeps the sibling import from writing `scripts/__pycache__` into the checkout; the script and the sibling module it imports, `scripts/versions_query.py`, are standard-library only, and nucleus lints them for Python 3.11 (`target-version = "py311"`) and runs the script on CPython 3.12 in its CI | 3.14.7 of 2026-08-05, `python.org` | the gate: `scripts/verify_kernel_requirement.py --report-json`, six runs per gate run, from the nucleus checkout |
 
 A producer's `main` moving past its pin is recorded by the fetch, not followed:
 the gate runs the pinned commit until the pin is edited, and a pin edit leaves a
@@ -703,14 +703,16 @@ version floor: the build rows above are read back through
 
 ### libva on the Verification gate's runner
 
-The runner is ubuntu-24.04, whose archive carries libva 2.20.0 (and
-ubuntu-26.04 carries 2.23.0), both below the floor. As the maintainer decided on
+The runner is ubuntu-26.04, whose archive carries libva 2.23.0 (and
+ubuntu-24.04 carried 2.20.0), both below the floor. As the maintainer decided on
 2026-09-29 (D80), the job builds the pinned release tarball rather than
 lowering the floor or changing the runner image, in
 `.github/workflows/ci.yml` before `make verify-all`, and caches the installed
-prefix under `~/.cache/aegis-libva/2.24.1`, keyed on every pin below and on
+prefix under `~/.cache/aegis-libva/2.24.1`, keyed on every pin below, on
 the word `werror`, so that a build made before warnings became errors is not
-restored.
+restored, and on the runner image the job runs on (`ImageOS`), so that a prefix
+built on one image is not restored on another;
+`tools/test_display_toolchain.py` refuses a literal image in that key.
 `tools/test_display_toolchain.py` holds the workflow's `env:` values to this
 table.
 
