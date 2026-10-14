@@ -52,7 +52,7 @@ fn the_esp_drop_in_is_read_field_by_field() -> Fallible {
     assert_eq!(esp.verity_match_key(), None);
     assert!(!esp.is_tpm2_encrypted());
     assert_eq!(esp.unit().value(PARTITION_SECTION, "Format"), Some("vfat"));
-    assert!(esp.findings().is_empty());
+    assert_eq!(esp.findings(), [] as [aegis_fabrica_defs::Finding; 0]);
     Ok(())
 }
 
@@ -170,7 +170,7 @@ fn the_size_pair_is_accepted_at_equality_and_refused_when_inverted() -> Fallible
     let equal = "[Partition]\nType=esp\nSizeMinBytes=512M\nSizeMaxBytes=512M\n";
     let parsed = RepartDefinition::parse("00-esp.conf", equal)?;
     assert_eq!(parsed.size_min(), parsed.size_max());
-    assert!(parsed.findings().is_empty());
+    assert_eq!(parsed.findings(), [] as [aegis_fabrica_defs::Finding; 0]);
 
     let inverted = "[Partition]\nType=esp\nSizeMinBytes=1G\nSizeMaxBytes=512M\n";
     assert_eq!(
@@ -194,7 +194,7 @@ fn the_esp_size_bound_is_exact_at_511m_512m_and_1g() -> Fallible {
         vec![Finding::EspBelowMinimum { bytes: 535_822_336 }]
     );
     let at = RepartDefinition::parse("00-esp.conf", "[Partition]\nType=esp\nSizeMinBytes=512M\n")?;
-    assert!(at.findings().is_empty());
+    assert_eq!(at.findings(), [] as [aegis_fabrica_defs::Finding; 0]);
     let above = RepartDefinition::parse("00-esp.conf", "[Partition]\nType=esp\nSizeMaxBytes=2G\n")?;
     assert_eq!(
         above.findings(),

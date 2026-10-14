@@ -137,7 +137,7 @@ fn no_source_performs_a_read() {
 fn the_sweep_detects_a_planted_read() {
     let planted = "let text = std::fs::read_to_string(path)?;";
     assert_eq!(hits(planted), vec!["std::fs", "read_to_string"]);
-    assert!(hits("// std::fs is named in a comment").is_empty());
+    assert_eq!(hits("// std::fs is named in a comment"), [] as [&str; 0]);
 }
 
 // --- Boundary -------------------------------------------------------------

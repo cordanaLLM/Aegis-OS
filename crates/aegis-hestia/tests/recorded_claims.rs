@@ -35,8 +35,8 @@ fn the_register_names_the_recorded_requirements() {
 fn every_claim_names_what_would_settle_it() {
     for claim in P15_RECORDED_CLAIMS {
         let row: RecordedClaim = claim;
-        assert!(!row.summary.is_empty());
-        assert!(!row.settled_by.is_empty());
+        assert_ne!(row.summary, "");
+        assert_ne!(row.settled_by, "");
         let citation: ClaimSource = row.source;
         assert!(citation.export.starts_with("export-"));
         assert_eq!(citation.sha256_prefix.len(), 12);

@@ -165,7 +165,10 @@ fn a_comment_naming_an_identifier_is_not_a_finding() {
     let comment = "//! no smithay::, no wlroots::, no zenoh:: session and no Duration:: sleep";
     assert!(comment.trim().starts_with("//"));
     assert!(WATCHED.iter().any(|needle| comment.contains(needle)));
-    assert!(common::scan_text("lib.rs", comment, &WATCHED).is_empty());
+    assert_eq!(
+        common::scan_text("lib.rs", comment, &WATCHED),
+        [] as [std::string::String; 0]
+    );
 }
 
 /// Boundary: the recorded prose spellings are deliberately outside the list,

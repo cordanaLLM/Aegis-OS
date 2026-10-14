@@ -162,7 +162,10 @@ fn a_missing_watcher_fails_the_mount_before_anything_is_published() -> Fallible 
         result.err(),
         Some(MountError::Watcher(PlatformError::Unavailable("watcher")))
     );
-    assert!(mocks.into_inner().published.is_empty());
+    assert_eq!(
+        mocks.into_inner().published,
+        [] as [accesskit::TreeUpdate; 0]
+    );
     Ok(())
 }
 

@@ -70,7 +70,7 @@ fn every_citation_names_a_requirement_and_a_source() {
             "{} is not an export citation",
             citation.source
         );
-        assert!(!citation.reading.name().is_empty());
+        assert_ne!(citation.reading.name(), "");
     }
 }
 
@@ -158,7 +158,7 @@ fn the_register_has_no_duplicate_requirement() {
         ClaimStatus::Held,
         ClaimStatus::Deferred,
     ] {
-        assert!(!status.name().is_empty());
+        assert_ne!(status.name(), "");
     }
 }
 

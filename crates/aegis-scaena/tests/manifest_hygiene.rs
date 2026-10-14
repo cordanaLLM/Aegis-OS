@@ -623,7 +623,10 @@ fn names_match_exactly() -> Result<(), String> {
         PACKAGE,
         &["wayland-client", "tokio-macros", "blake3-sys", "md5-asm"],
     );
-    assert!(hits(&closure(&admitted, PACKAGE)?, &FORBIDDEN).is_empty());
+    assert_eq!(
+        hits(&closure(&admitted, PACKAGE)?, &FORBIDDEN),
+        [] as [&str; 0]
+    );
     let refused = synthetic(PACKAGE, &["wayland-server", "md-5", "md5"]);
     assert_eq!(
         hits(&closure(&refused, PACKAGE)?, &FORBIDDEN),
