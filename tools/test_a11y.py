@@ -71,8 +71,8 @@ ADMITTED_PACKAGES = {
     "@playwright/test": "1.64.0",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "axe-core": "4.13.0",
-    "svelte": "5.57.1",
-    "vite": "8.3.1",
+    "svelte": "5.57.2",
+    "vite": "8.3.4",
 }
 # D100 (M16): the lint's three packages, exact; with the six above they are
 # every devDependency the package declares.
@@ -276,7 +276,7 @@ class PinTests(unittest.TestCase):
             "packageManager": ("packageManager", "pnpm@12.5.0"),
             "not pnpm": ("packageManager", "npm@11.0.0"),
             "engines.node": ("engines", {"node": "24.20.0", "pnpm": "12.11.2"}),
-            "range": ("devDependencies", dict(manifest["devDependencies"], svelte="^5.57.1")),
+            "range": ("devDependencies", dict(manifest["devDependencies"], svelte="^5.57.2")),
             "playwright": (
                 "devDependencies",
                 dict(manifest["devDependencies"], **{"@playwright/test": "1.62.0"}),
@@ -803,8 +803,8 @@ class ReportTests(unittest.TestCase):
             "playwrightCore": "1.64.0",
             "axeCore": "4.13.0",
             "axePlaywright": "4.13.0",
-            "svelte": "5.57.1",
-            "vite": "8.3.1",
+            "svelte": "5.57.2",
+            "vite": "8.3.4",
             "eslint": "10.12.0",
             "eslintPluginSvelte": "3.23.1",
             "svelteEslintParser": "1.9.0",
@@ -1096,6 +1096,33 @@ class SuiteCaseTests(unittest.TestCase):
                 self.assertEqual(len(problems), len(expected))
                 for fragment, problem in zip(expected, problems):
                     self.assertIn(fragment, problem)
+
+    def test_the_executed_axe_core_must_be_the_admitted_pin(self):
+        """Positive: the axe-core the suite ran is the package.json pin."""
+        admitted = gate.load_json(gate.MANIFEST)["devDependencies"]["axe-core"]
+        found = passing_found()
+        self.assertEqual(found["default-state"]["axe"], admitted)
+        problems, _printed = self.run_suite(0, eleven_passing(), found)
+        self.assertEqual(problems, [])
+
+    def test_an_axe_core_other_than_the_pin_fails_the_suite(self):
+        """Negative: a pin bump the injected engine does not follow fails."""
+        found = passing_found()
+        found["default-state"]["axe"] = "4.12.9"
+        problems, printed = self.run_suite(0, eleven_passing(), found)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("axe-core '4.12.9' executed; package.json admits", problems[0])
+        self.assertIn("FAIL a11y/suite", printed)
+
+    def test_engine_problems_boundaries(self):
+        """Boundary: no report leaves it to the default-state check; a missing version fails."""
+        manifest = {"devDependencies": {"axe-core": "4.13.0"}}
+        self.assertEqual(gate.engine_problems(None, manifest), [])
+        self.assertEqual(gate.engine_problems({"axe": "4.13.0"}, manifest), [])
+        self.assertEqual(
+            gate.engine_problems({}, manifest),
+            ["axe-core None executed; package.json admits '4.13.0'"],
+        )
 
 
 def curl_writing(payload, code=0):

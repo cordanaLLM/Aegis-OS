@@ -219,7 +219,7 @@ fn dependency_names(entry: &str) -> Vec<&str> {
 fn the_toolchain_pin_is_the_one_milestone_m02_admitted() {
     let pin = read("rust-toolchain.toml");
     assert!(!pin.is_empty(), "the toolchain pin must be committed");
-    assert!(pin.contains("channel = \"1.98.1\""));
+    assert!(pin.contains("channel = \"1.99.0\""));
     let admission = read("docs/roadmap/toolchain-admission.md");
     assert!(
         admission.contains("sha2"),

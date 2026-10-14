@@ -261,12 +261,12 @@ fn the_crate_inherits_the_workspace_lints_and_toolchain() {
     let root = read("Cargo.toml");
     assert!(root.contains("unsafe_code = \"forbid\""));
     assert!(
-        root.contains("rust-version = \"1.98.1\""),
+        root.contains("rust-version = \"1.99.0\""),
         "D111: the workspace rust-version is the rust-toolchain.toml pin"
     );
     let pinned = read("rust-toolchain.toml");
     assert!(
-        pinned.contains("channel = \"1.98.1\""),
+        pinned.contains("channel = \"1.99.0\""),
         "M08 admits no new toolchain: the pin stays the one M02 admitted"
     );
 }
