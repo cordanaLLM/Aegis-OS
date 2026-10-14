@@ -1097,7 +1097,6 @@ class SuiteCaseTests(unittest.TestCase):
                 for fragment, problem in zip(expected, problems):
                     self.assertIn(fragment, problem)
 
-
     def test_the_executed_axe_core_must_be_the_admitted_pin(self):
         """Positive: the axe-core the suite ran is the package.json pin."""
         admitted = gate.load_json(gate.MANIFEST)["devDependencies"]["axe-core"]
@@ -1124,6 +1123,7 @@ class SuiteCaseTests(unittest.TestCase):
             gate.engine_problems({}, manifest),
             ["axe-core None executed; package.json admits '4.13.0'"],
         )
+
 
 def curl_writing(payload, code=0):
     """Return a gate.run stand-in that writes `payload` where curl was told to write."""
