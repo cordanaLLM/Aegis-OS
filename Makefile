@@ -88,7 +88,7 @@ verify-mkosi:
 # the file system tools the repart definitions format with, all installed from
 # one Arch Linux Archive snapshot. build/definitions/toolchain.pin.json records
 # the digest, the snapshot and every package version. CI sets the variable,
-# because the ubuntu-24.04 runner ships systemd 255 and no mkosi, and names both
+# because the ubuntu-26.04 runner ships systemd 259 and no mkosi, and names both
 # gates in AEGIS_REQUIRED_GATES. A run that selects the container and finds no
 # image fails; it never falls back to the host's tools.
 #
@@ -110,7 +110,7 @@ definitions-fetch:
 # releases, not the image's own Node.
 #
 # It IS part of verify-all, unlike verify-boot, because it runs where CI runs:
-# the ubuntu-24.04 runner has a container engine, and CI runs `make a11y-fetch`
+# the ubuntu-26.04 runner has a container engine, and CI runs `make a11y-fetch`
 # before `make verify-all`. It guards itself the way verify-systemd and
 # verify-mkosi do: with no podman or docker, without the pinned image, Node
 # archive, pnpm binary or offline store in its cache, or with a store filled for

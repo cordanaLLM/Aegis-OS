@@ -59,7 +59,7 @@ env:
 jobs:
   verify:
     name: Verification gate
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # The job took at most 397 s over its 40 latest successful runs on
     # 2026-10-13, the accessibility gate's 912 MiB image fetch (about 70 s)
     # included; tools/verify_preparation.py holds every job to 15 minutes.
@@ -167,13 +167,22 @@ jobs:
           pkg-config --modversion libdrm
           pkg-config --atleast-version=2.4.75 libdrm
 
+      # The cache key names the runner image (ImageOS, e.g. ubuntu26), so a
+      # prefix built on one image is never restored on another.
+      - name: Name the runner image for the libva cache key
+        id: runner-image
+        run: |
+          test -n "${ImageOS:-}" || { echo "::error::ImageOS is not set"; exit 1; }
+          echo "image=$ImageOS" >> "$GITHUB_OUTPUT"
+
       - name: Restore the pinned libva build
         id: libva-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/aegis-libva/${{ env.LIBVA_VERSION }}
           key: "libva-${{ env.LIBVA_VERSION }}-${{ env.LIBVA_SHA256 }}\
-            -meson-${{ env.MESON_VERSION }}-ninja-${{ env.NINJA_VERSION }}-werror-ubuntu-24.04"
+            -meson-${{ env.MESON_VERSION }}-ninja-${{ env.NINJA_VERSION }}-werror\
+            -${{ steps.runner-image.outputs.image }}"
 
       - name: Build the pinned libva from its release tarball
         if: steps.libva-cache.outputs.cache-hit != 'true'
