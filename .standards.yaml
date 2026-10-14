@@ -51,16 +51,6 @@ exceptions:
     tool: shfmt
     reason: 'shfmt -d reported 9 hunks in 7 shell scripts on 2026-10-13; the reformatting lands as its own change first, then a CI step that fails on new drift'
     expires: "2027-01-11"
-workflow_runs:
-  expected:
-    # The engine's live run check counts ci.yml red on main while each push run
-    # reads the run before it as red, so no run can turn it green. This entry
-    # covers that one run; tools/audit_strict.py fails it past its expiry or
-    # once another run is the latest failure, and the pin bump to the engine
-    # fix removes it.
-    - workflow: ci.yml
-      state: failing
-      reason: 'category B, entry 2026-10-14, expiry 2026-10-17, run 38489691322, engine-audit-main-red-self-latch'
 register:
   sources:
     expected: 13
