@@ -1095,6 +1095,20 @@ def default_state_problems(state):
     return problems
 
 
+def engine_problems(state, manifest):
+    """Return a problem when the axe-core that ran is not the admitted axe-core pin.
+
+    `@axe-core/playwright` injects the axe-core it depends on, not the
+    top-level one, so a pin bump can install a version that never executes.
+    """
+    if state is None:
+        return []
+    admitted = manifest["devDependencies"]["axe-core"]
+    if state.get("axe") == admitted:
+        return []
+    return [f"axe-core {state.get('axe')!r} executed; package.json admits {admitted!r}"]
+
+
 def criterion_notes(state):
     """One line per criterion an executed rule is tagged with, with both EN 301 549 clauses."""
     notes = []
@@ -1211,6 +1225,7 @@ def suite_case(context):
         if not outcome["passed"]
     ]
     problems += default_state_problems(state) + measured_problems(found)
+    problems += engine_problems(state, load_json(MANIFEST))
     notes = [f"{passed}/{len(outcomes)} tests passed; exit {code}"]
     if state is not None:
         counts = state["counts"]

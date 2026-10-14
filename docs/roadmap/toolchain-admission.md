@@ -30,9 +30,9 @@ Two rules follow from the clause and are applied below:
 | Tool | Pinned version | How it is pinned | Replaces | Admitted by |
 | :--- | :--- | :--- | :--- | :--- |
 | rustup | 1.29.1 | distribution package `cachyos-extra-znver4/rustup 1.29.1-1.1` on the reference profile; CI uses the runner's rustup | nothing; rustup was absent before D61 | M02 (D61) |
-| Rust (`rustc`, `cargo`) | 1.98.1 | `rust-toolchain.toml`, `channel = "1.98.1"`, materialised by rustup | distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
-| clippy | 0.1.98 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
-| rustfmt | 1.9.0-stable | `rust-toolchain.toml`, same `components` list | the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
+| Rust (`rustc`, `cargo`) | 1.99.0 | `rust-toolchain.toml`, `channel = "1.99.0"`, materialised by rustup | 1.98.1 until 2026-10-14; before it the distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
+| clippy | 0.1.99 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | 0.1.98 until 2026-10-14; before it the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
+| rustfmt | 1.10.0-stable | `rust-toolchain.toml`, same `components` list | 1.9.0-stable until 2026-10-14; before it the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | praetorctl | source commit `82cd4ed60de9e1a6e9136f4b595bdfd7a3850634` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `c444d87e6e6e1c88bfdcb32b56f20123585447bb`; the pin follows Praetor's `main` (see below) | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; a build input for praetorctl and, since M09, for the imago `make contract-fetch` builds, held to imago's own floor below | M00; M09 for the imago build |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
@@ -142,10 +142,10 @@ crates.io API that day, published 2026-09-25. With its features off it
 resolves one crate more, uuid 1.26.1 (Apache-2.0 OR MIT, the newest release,
 published 2026-09-10), with no feature and no dependency of its own. Its
 `rust-version` is 1.87, above the 1.85 the workspace declared when it was
-admitted; the pinned toolchain is 1.98.1, so every gate compiles it, and
+admitted; the pinned toolchain is 1.99.0, so every gate compiles it, and
 Cargo's MSRV-aware resolver picks it only because `0.25.1` is the lowest
 version the requirement admits. Since D111 the workspace declares the pinned
-toolchain, 1.98.1 (see below).
+toolchain, 1.99.0 (see below).
 `crates/aegis-forum-shell/tests/manifest_hygiene.rs` asserts the
 declaration, the lock entry, and that the crate's own dependency closure
 (D78) holds no gpui, winit, wayland-client, zbus, atspi, accesskit_unix or
@@ -201,7 +201,7 @@ switched on clippy's `manual_is_multiple_of`, whose three findings were
 rewritten with `is_multiple_of`. The value was false: the workspace uses
 let-chains, stable since 1.88, and `cargo +1.87 check --workspace` failed with
 ten E0658 errors on 2026-10-13. D111 replaced the rule: the workspace declares
-the `rust-toolchain.toml` pin, 1.98.1, the only toolchain any gate builds on,
+the `rust-toolchain.toml` pin, 1.99.0, the only toolchain any gate builds on,
 and `crates/aegis-scaena/tests/manifest_hygiene.rs` holds the declaration to
 the pin and every resolved package's `rust-version` at or below it.
 
@@ -585,10 +585,10 @@ listing.
 | pnpm | 12.11.2; `@pnpm/exe.linux-x64` integrity `sha512-FK7QKe24AYgppJwO3mpooYptduuvIGqKJPi5ac7MdnWkjUy46JBfYhCW0grnkWKC8YOf0x+vGviuQqJEj3SpQQ==` | `packageManager` and `engines.pnpm`; the integrity is pnpm-lock.yaml's | 12.11.2 of 2026-10-09 (`latest`); `next-12` is 12.13.0 | installs from the lockfile, offline |
 | `@playwright/test` | 1.64.0 | `package.json`, exact; pnpm-lock.yaml | 1.64.0 of 2026-10-07 | the test runner; the image tag must carry the same version |
 | `chromium-headless-shell` | revision 1248, Chromium 156.0.8078.4 | `toolchain.pin.json`, read back from `playwright-core/browsers.json` and from the launched browser | the revision `@playwright/test` 1.64.0 bundles | the browser the suite drives, baked into the image |
-| `axe-core` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0 of 2026-08-05 | the rule engine; D81 runs its WCAG 2.2 AA tag set |
+| `axe-core` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0, the version `@axe-core/playwright` 4.13.0 depends on; 4.14.0 of 2026-10-05 waits for an `@axe-core/playwright` release that injects it | the engine the suite executes; `a11y/suite` fails when the executed version differs from this pin (run `r20261014T010826-02cb`) |
 | `@axe-core/playwright` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0 of 2026-08-11 | injects axe-core into the page |
-| `svelte` | 5.57.1 | `package.json`, exact; pnpm-lock.yaml | 5.57.1 of 2026-09-18 | the one component |
-| `vite` | 8.3.1 | `package.json`, exact; pnpm-lock.yaml | 8.3.1 of 2026-09-24 | the static build and `vite preview` |
+| `svelte` | 5.57.2 | `package.json`, exact; pnpm-lock.yaml | 5.57.2 of 2026-10-06 | the one component |
+| `vite` | 8.3.4 | `package.json`, exact; pnpm-lock.yaml | 8.3.4 of 2026-10-08 | the static build and `vite preview` |
 | `@sveltejs/vite-plugin-svelte` | 7.3.1 | `package.json`, exact; pnpm-lock.yaml | 7.3.1 of 2026-09-23 | compiles the component in the build |
 | Playwright image | `mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f`; linux/amd64 `sha256:bc72a8df40831ded821e3cbc79c318c21b44d6e51dff9fd89ace7a8249c5b462` | `toolchain.pin.json`; pulled and run by digest only | `v1.64.0-noble`, built 2026-10-08, 940 MiB compressed | Ubuntu 24.04 with the browsers and their libraries; its own Node 24.20.0 is not used |
 | `podman` | 6.1.2 on the reference profile (`podman 6.1.2-1.1`), rootless | the preferred engine when on `PATH`; `AEGIS_A11Y_ENGINE` overrides | 6.1.2 of 2026-09-16 | runs each step; the CI runner's is 4.9.3 |
@@ -818,7 +818,7 @@ svelte-eslint-parser 1.8.1, and moved together to these on 2026-10-13.
 | `eslint-plugin-svelte` | 3.23.1 (MIT) | `package.json`, exact; pnpm-lock.yaml | 3.23.1 of 2026-10-09 | its `base` configuration hands `.svelte` files to the parser and turns on only its two bookkeeping rules, `svelte/comment-directive` and `svelte/system` |
 | `svelte-eslint-parser` | 1.9.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 1.9.0 of 2026-10-09 | parses a Svelte component's script for the rules; its manifest declares `engines.pnpm` 10.34.6, which pnpm 12.6.0 does not enforce for a dependency, so `engineStrict` does not refuse it |
 
-The parser loads the `svelte` compiler M04 already admitted, 5.57.1, so no
+The parser loads the `svelte` compiler M04 already admitted, 5.57.2, so no
 second Svelte enters the lockfile. Each rule family has a planted violation
 under `ui/concordia-tokens/hiss-lint/plants/` that the gate lints on its own
 and requires to produce exactly its findings, and `at-the-limits.js` sits
