@@ -7,6 +7,7 @@ the Platform Neutrality matrix covers.
 """
 
 import contextlib
+import datetime
 import io
 import sys
 import unittest
@@ -69,6 +70,96 @@ class Judge(unittest.TestCase):
 
     def test_empty_output_fails(self):
         self.assertTrue(audit_strict.judge(0, ""))
+
+
+RUN_URL = "https://github.com/cordanaLLM/Aegis-OS/actions/runs/"
+TODAY = datetime.date(2026, 10, 14)
+
+
+def declared(reason, latest="38489691322", in_a_row="2"):
+    """Return the line the engine prints for ci.yml declared failing."""
+    return (
+        f"[INFO] Workflow ci.yml: failing as declared ({reason}): failing on main, "
+        f"failed runs in a row: {in_a_row} (latest: run #624, push, failure, "
+        f"2026-10-14T00:21:17Z, {RUN_URL}{latest})"
+    )
+
+
+REASON = (
+    "category B, entry 2026-10-14, expiry 2026-10-17, run 38489691322, "
+    "engine-audit-main-red-self-latch"
+)
+
+
+class Declaration(unittest.TestCase):
+    def judge(self, line, today=TODAY):
+        return audit_strict.judge(0, with_line(line), today=today)
+
+    def test_the_committed_declaration_passes(self):
+        self.assertEqual(self.judge(declared(REASON)), [])
+
+    def test_an_open_streak_passes(self):
+        self.assertEqual(self.judge(declared(REASON, in_a_row="at least 30")), [])
+
+    def test_the_last_day_passes(self):
+        self.assertEqual(self.judge(declared(REASON), today=datetime.date(2026, 10, 17)), [])
+
+    def test_the_day_after_expiry_fails(self):
+        problems = self.judge(declared(REASON), today=datetime.date(2026, 10, 18))
+        self.assertEqual(len(problems), 1)
+        self.assertIn("expired on 2026-10-17", problems[0])
+
+    def test_another_failed_run_fails(self):
+        problems = self.judge(declared(REASON, latest="38500000000"))
+        self.assertEqual(len(problems), 1)
+        self.assertIn("latest failure is run 38500000000", problems[0])
+
+    def test_an_undeclared_warning_fails(self):
+        line = declared(REASON).replace(
+            f"[INFO] Workflow ci.yml: failing as declared ({REASON})", "[WARN] Workflow ci.yml"
+        )
+        problems = self.judge(line)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("carries [WARN]", problems[0])
+
+    def test_a_free_text_reason_fails(self):
+        problems = self.judge(declared("main is red, see the engine"))
+        self.assertEqual(len(problems), 1)
+        self.assertIn("outside the one accepted shape", problems[0])
+
+    def test_a_reason_without_its_order_fails(self):
+        reason = "category B, entry 2026-10-14, expiry 2026-10-17, run 38489691322"
+        self.assertIn("outside the one accepted shape", self.judge(declared(reason))[0])
+
+    def test_category_a_fails(self):
+        self.assertTrue(self.judge(declared(REASON.replace("category B", "category A"))))
+
+    def test_an_expiry_past_the_category_interval_fails(self):
+        problems = self.judge(declared(REASON.replace("2026-10-17", "2026-10-30")))
+        self.assertIn("category B does not allow expiry 2026-10-30", problems[0])
+
+    def test_an_invalid_date_fails(self):
+        problems = self.judge(declared(REASON.replace("2026-10-14", "2026-13-14")))
+        self.assertIn("invalid date", problems[0])
+
+    def test_a_declared_unexercised_workflow_fails(self):
+        line = (
+            f"[INFO] Workflow pages.yml: unexercised as declared ({REASON}): "
+            "never run; started by push"
+        )
+        self.assertIn("outside the one accepted shape", self.judge(line)[0])
+
+    def test_a_declaration_that_no_longer_applies_is_information(self):
+        line = (
+            "[INFO] Workflow ci.yml: declared failing, but latest run on main succeeded "
+            f"(latest: run #630, push, success, 2026-10-14T05:00:00Z, {RUN_URL}38500000001); "
+            "the declaration no longer applies"
+        )
+        self.assertEqual(self.judge(line), [])
+
+    def test_the_default_day_is_today(self):
+        expired = REASON.replace("2026-10-14", "2020-01-01").replace("2026-10-17", "2020-01-04")
+        self.assertIn("expired", audit_strict.judge(0, with_line(declared(expired)))[0])
 
 
 def python_command(source):
