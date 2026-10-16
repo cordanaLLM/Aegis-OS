@@ -429,9 +429,9 @@ exited 0 with 23 PASS lines and no SKIP: `a11y/pin` printed `node 26.11.1`,
 of 11 tests. The readback block above is the first run, kept as recorded.
 
 Node 26.12.0 (released 2026-10-14) followed on 2026-10-16. Its release
-`SHASUMS256.txt` is signed by a different release key,
-`C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C` (Richard Lau), which
-`nodejs/release-keys` lists in `keys.list`; both the detached `SHASUMS256.txt.sig` and the clearsigned
+`SHASUMS256.txt` is signed by another releaser, Richard Lau, whose key
+`C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C` is listed in the `keys.list` of
+`nodejs/release-keys`; both the detached `SHASUMS256.txt.sig` and the clearsigned
 `SHASUMS256.txt.asc` verified against it in a fresh keyring, so
 `checksums-signed-by` in `toolchain.pin.json` moved with the sha256
 `fd47865e…` of `node-v26.12.0-linux-x64.tar.xz`. Run `r20261016T205235-c0f7` of
