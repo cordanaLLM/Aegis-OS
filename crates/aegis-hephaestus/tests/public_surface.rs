@@ -50,8 +50,10 @@ const LINE_BOUND: usize = 4096;
 /// the M15 verification found missing. The floor sits a little below the total
 /// so that removing one item on purpose does not fail the gate, while dropping
 /// the field arm -- which would cost far more than that -- does. Removing
-/// public surface on purpose means lowering the floor on purpose.
-const MINIMUM_SURFACE: usize = 120;
+/// public surface on purpose means lowering the floor on purpose: it was 120
+/// until 2026-10-16, when the bounds moved to `tornus-geometry` (cut unit
+/// CUT-1632-01) and the walk read 72.
+const MINIMUM_SURFACE: usize = 69;
 
 /// How many of the collected names only the M15 arm reads.
 ///
@@ -401,16 +403,14 @@ fn every_public_item_is_named_by_an_integration_test() {
 fn the_scanner_reads_public_surface_and_not_private_helpers() {
     let names = public_names();
     for expected in [
-        "BrepEvaluator",
-        "SolverAdmission",
-        "MeshElementCount",
-        "MAX_MESH_ELEMENTS",
-        "MAX_GEOMETRY_ITERATIONS",
-        "MeshElementsOutOfRange",
+        "GeometryViewport",
+        "GeometryViewportVersion",
+        "VerificationIntake",
+        "ContractError",
+        "PayloadBuffer",
+        "SchemaId",
         "UNPINNED_DEPENDENCIES",
         "P14_RECORDED_CLAIMS",
-        "GeometryViewport",
-        "declared_slice",
         "correlation_id",
         "sha256_prefix",
         "why_unpinned",
@@ -422,18 +422,12 @@ fn the_scanner_reads_public_surface_and_not_private_helpers() {
         );
     }
     for private in [
-        "permitted",
         "peek_schema",
         "peek_correlation",
         "classify",
         "decode_text",
-        "expecting",
-        "visit_str",
-        "visit_u64",
         "PeekSchema",
         "PeekCorrelation",
-        "Parsed",
-        "Bounded",
     ] {
         assert!(
             !names.iter().any(|name| name == private),

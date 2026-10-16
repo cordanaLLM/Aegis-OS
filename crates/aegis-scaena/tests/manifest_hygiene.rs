@@ -238,7 +238,7 @@ fn the_crate_is_a_written_out_member_with_a_lock_entry_and_workspace_lints() {
     assert!(manifest.contains("[lints]\nworkspace = true"));
     assert!(!manifest.contains("[lints.rust]") && !manifest.contains("[lints.clippy]"));
     assert!(manifest.contains("publish = false"));
-    assert!(read("rust-toolchain.toml").contains("channel = \"1.99.0\""));
+    assert!(read("rust-toolchain.toml").contains("channel = \"1.99.1\""));
 }
 
 /// Positive (criterion 1): the three D80 crates are declared once, in the

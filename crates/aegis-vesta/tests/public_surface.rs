@@ -50,18 +50,21 @@ const LINE_BOUND: usize = 4096;
 /// the M15 verification found missing. The floor sits a little below the total
 /// so that removing one item on purpose does not fail the gate, while dropping
 /// the field arm -- which would cost far more than that -- does. Removing
-/// public surface on purpose means lowering the floor on purpose.
-const MINIMUM_SURFACE: usize = 184;
+/// public surface on purpose means lowering the floor on purpose: 184 until
+/// 2026-10-16, when the controllers moved to `saeptum-capsule` (cut unit
+/// CUT-1632-03) and the walk read 95.
+const MINIMUM_SURFACE: usize = 92;
 
 /// How many of the collected names only the M15 arm reads.
 ///
-/// Measured on 2026-09-13 by running the same walk twice, once with the arm
+/// Measured on 2026-10-16 (37 before the controllers moved out) by running
+/// the same walk twice, once with the arm
 /// and once without. `the_field_arm_carries_the_floor` asserts the difference,
 /// so the figure cannot drift out of agreement with the code the way a number
 /// stated only in prose can. Every one of them is a public struct field; this
 /// crate declares no `pub static` today, so that half of the arm is coverage
 /// for a shape this `src/` does not yet use.
-const FIELD_ARM_NAMES: usize = 37;
+const FIELD_ARM_NAMES: usize = 28;
 
 /// Which enclosing block makes an unmarked item public API.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -401,20 +404,16 @@ fn every_public_item_is_named_by_an_integration_test() {
 fn the_scanner_reads_public_surface_and_not_private_helpers() {
     let names = public_names();
     for expected in [
-        "MicroVmController",
-        "CapsuleRegistry",
-        "CapsuleSlot",
-        "MAX_MICROVMS",
-        "SCAFFOLD_BOOT_TIME_MS",
-        "MicroVmTableFull",
+        "ContractError",
+        "PayloadBuffer",
+        "SchemaId",
         "D06_WASM_RUNTIME",
         "P10_RECORDED_CLAIMS",
         "CapsuleRequest",
-        "declared_boot_time_ms",
+        "CandidateEvaluation",
         "correlation_id",
         "sha256_prefix",
         "rejected",
-        "probed_on",
     ] {
         assert!(
             names.iter().any(|name| name == expected),
@@ -428,14 +427,8 @@ fn the_scanner_reads_public_surface_and_not_private_helpers() {
         "classify",
         "decode_text",
         "encode_into_text",
-        "expecting",
-        "visit_str",
-        "visit_u64",
         "PeekSchema",
         "PeekCorrelation",
-        "Parsed",
-        "Bounded",
-        "CapabilityList",
     ] {
         assert!(
             !names.iter().any(|name| name == private),
