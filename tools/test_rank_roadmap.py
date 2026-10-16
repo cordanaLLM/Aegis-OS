@@ -108,6 +108,23 @@ class RankingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ranker.computed_order(loaded, absent)
 
+    def test_an_unknown_blocker_is_reported_rather_than_ordered(self):
+        """Negative: a blocker id that names no milestone is refused, not placed."""
+        rows = [
+            milestone("M00", 0, state="done", unblocks=["M01"]),
+            milestone("M01", 1, blocked_by=["M00", "M99"]),
+        ]
+        self.write(rows)
+        loaded, absent = ranker.load()
+        with self.assertRaises(ValueError):
+            ranker.computed_order(loaded, absent)
+
+    def test_a_lone_milestone_without_blockers_is_ordered(self):
+        """Boundary: one open milestone and no done rows orders to itself."""
+        self.write([milestone("M01", 0)])
+        loaded, absent = ranker.load()
+        self.assertEqual(ranker.computed_order(loaded, absent)[0], ["M01"])
+
     def test_absent_capability_demotes_a_milestone(self):
         (self.root / "planning/hardware-profile.json").write_text(
             json.dumps(
