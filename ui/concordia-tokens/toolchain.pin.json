@@ -14,7 +14,7 @@
   },
   "node": {
     "version": "26.12.0",
-    "sha256": "3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651",
-    "checksums-signed-by": "5BE8A3F6C8A5C01D106C0AD820B1A390B168D356"
+    "sha256": "fd47865ecd6391ebb431fc815e01b9135bf83ded5cf373247e9331e196b7aded",
+    "checksums-signed-by": "C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C"
   }
 }

@@ -598,7 +598,7 @@ listing.
 
 | Tool | Pinned version | How it is pinned | Latest upstream, read 2026-09-28 | Role |
 | :--- | :--- | :--- | :--- | :--- |
-| Node.js | 26.11.1; tarball sha256 `3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651` | `toolchain.pin.json` and `engines.node`, exact, with `engineStrict`; the sha256 is the one in `SHASUMS256.txt`, signed by `5BE8A3F6C8A5C01D106C0AD820B1A390B168D356` | 26.11.1 of 2026-10-07, read 2026-10-13, the Current line, which enters Active LTS on 2026-10-28; the newest LTS is 24.21.0 of 2026-09-07 | runs vite and Playwright inside the container |
+| Node.js | 26.12.0; tarball sha256 `fd47865ecd6391ebb431fc815e01b9135bf83ded5cf373247e9331e196b7aded` | `toolchain.pin.json` and `engines.node`, exact, with `engineStrict`; the sha256 is the one in `SHASUMS256.txt`, signed by `C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C` | 26.12.0 of 2026-10-14, read 2026-10-16, the Current line, which enters Active LTS on 2026-10-28; the newest LTS is 24.22.0 of 2026-10-14 | runs vite and Playwright inside the container |
 | pnpm | 12.11.2; `@pnpm/exe.linux-x64` integrity `sha512-FK7QKe24AYgppJwO3mpooYptduuvIGqKJPi5ac7MdnWkjUy46JBfYhCW0grnkWKC8YOf0x+vGviuQqJEj3SpQQ==` | `packageManager` and `engines.pnpm`; the integrity is pnpm-lock.yaml's | 12.11.2 of 2026-10-09 (`latest`); `next-12` is 12.13.0 | installs from the lockfile, offline |
 | `@playwright/test` | 1.64.0 | `package.json`, exact; pnpm-lock.yaml | 1.64.0 of 2026-10-07 | the test runner; the image tag must carry the same version |
 | `chromium-headless-shell` | revision 1248, Chromium 156.0.8078.4 | `toolchain.pin.json`, read back from `playwright-core/browsers.json` and from the launched browser | the revision `@playwright/test` 1.64.0 bundles | the browser the suite drives, baked into the image |
@@ -622,7 +622,7 @@ changes no byte the gate runs. `tools/test_a11y.py` requires a row here for
 every program the gate may start on the host. The reference profile's own Node
 (v26.10.0) and pnpm (10.29.3) are not what the gate runs; the M01 drift
 register's "Node 20 vs 22" row is closed with the exact Node pin above
-(26.10.0 when closed, 26.11.1 since 2026-10-13), and
+(26.10.0 when closed, 26.11.1 from 2026-10-13, 26.12.0 since 2026-10-16), and
 pnpm 12.11.2 (12.6.0 until 2026-10-14) replaces the reference profile's
 10.29.3 for this gate.
 
@@ -1012,7 +1012,7 @@ rather than admissions:
 - `node`, which `make docs-lint` (part of `make verify-all`) runs directly, is
   the runner's or the workstation's; `.github/workflows/praetor-docs.yml` asks
   `actions/setup-node` for major version 24. Praetor supplies both files. The
-  accessibility gate's Node is a different one, admitted above: 26.11.1 by
+  accessibility gate's Node is a different one, admitted above: 26.12.0 by
   sha256, inside the container.
 - The praetor pin auto-bump (`tools/praetor_bump.py`) runs `yamllint`,
   `flake8`, `black` and `reuse` as the workstation installs them, not through
