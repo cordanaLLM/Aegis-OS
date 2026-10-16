@@ -2,8 +2,10 @@
 """Recompute the roadmap order from unblocking value per cost and report drift."""
 
 import argparse
+import heapq
 import json
 import sys
+from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -59,25 +61,30 @@ def score(row, reach):
 def computed_order(rows, profile_absent):
     """Order milestones by tier then value per cost, respecting the blocker DAG."""
     reach = transitive_unblocks(rows)
-    done = [row for row in rows if row["state"] == "done"]
-    remaining = [row for row in rows if row["state"] != "done"]
-    order = sorted(done, key=lambda row: row["rank"])
+    order = sorted((row for row in rows if row["state"] == "done"), key=lambda row: row["rank"])
     placed = {row["id"] for row in order}
+    remaining = {row["id"]: row for row in rows if row["id"] not in placed}
+    blockers = {key: set(row.get("blocked_by", [])) - placed for key, row in remaining.items()}
+    unknown = sorted(key for key, value in blockers.items() if value - remaining.keys())
+    if unknown:
+        raise ValueError(f"Milestones blocked by an unknown milestone: {unknown}")
+    graph = TopologicalSorter(blockers)
+    try:
+        graph.prepare()
+    except CycleError as error:
+        raise ValueError(f"Milestones cycle in the blocker graph: {error.args[1]}") from error
+
+    def key(mid):
+        return (tier_of(remaining[mid], profile_absent), -score(remaining[mid], reach), mid)
+
+    ready = [key(mid) for mid in graph.get_ready()]
+    heapq.heapify(ready)
     for _ in range(len(remaining)):
-        ready = [
-            row
-            for row in remaining
-            if row["id"] not in placed and set(row.get("blocked_by", [])) <= placed
-        ]
-        if not ready:
-            break
-        ready.sort(key=lambda row: (tier_of(row, profile_absent), -score(row, reach), row["id"]))
-        chosen = ready[0]
-        order.append(chosen)
-        placed.add(chosen["id"])
-    if len(order) != len(rows):
-        missing = sorted({row["id"] for row in rows} - placed)
-        raise ValueError(f"Milestones unreachable in the blocker graph: {missing}")
+        chosen = heapq.heappop(ready)[2]
+        order.append(remaining[chosen])
+        graph.done(chosen)
+        for mid in graph.get_ready():
+            heapq.heappush(ready, key(mid))
     return [row["id"] for row in order], reach
 
 
