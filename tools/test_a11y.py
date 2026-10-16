@@ -67,10 +67,10 @@ CONTAINER_PROGRAMS = {"cp", "pnpm", "node"}
 # D17: design tokens and no monolithic CSS library. The package declares
 # exactly these, and a CSS framework added to it fails here.
 ADMITTED_PACKAGES = {
-    "@axe-core/playwright": "4.13.0",
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.1",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
-    "axe-core": "4.13.0",
+    "axe-core": "4.14.0",
     "svelte": "5.57.2",
     "vite": "8.3.4",
 }
@@ -801,8 +801,8 @@ class ReportTests(unittest.TestCase):
             "node": "v26.12.0",
             "playwrightTest": "1.64.1",
             "playwrightCore": "1.64.1",
-            "axeCore": "4.13.0",
-            "axePlaywright": "4.13.0",
+            "axeCore": "4.14.0",
+            "axePlaywright": "4.14.0",
             "svelte": "5.57.2",
             "vite": "8.3.4",
             "eslint": "10.12.0",
@@ -839,7 +839,7 @@ class ReportTests(unittest.TestCase):
 
     def test_the_criterion_lines_name_both_editions(self):
         state = {
-            "axe": "4.13.0",
+            "axe": "4.14.0",
             "criteria": {
                 "2.5.8": {
                     "title": "Target Size (Minimum)",
@@ -948,7 +948,7 @@ def passing_found():
     below = ["indicator 1px is below the D16 floor of 2px"]
     return {
         "default-state": {
-            "axe": "4.13.0",
+            "axe": "4.14.0",
             "browser": "156.0.8078.4",
             "runOnly": {"type": "tag", "values": list(gate.D81_TAGS)},
             "counts": {"violations": 0, "incomplete": 0, "passes": 22, "inapplicable": 41},

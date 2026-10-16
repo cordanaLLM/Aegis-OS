@@ -602,8 +602,8 @@ listing.
 | pnpm | 12.14.0; `@pnpm/exe.linux-x64` integrity `sha512-F6K8e/jWxiuEYJaQtRRUG9ynBSTEHa+t7Lf86MKuOO5UA7WVVMbi+oB8nY6iKW++ncWS2yG6T9faXZGxqNsfoQ==` | `packageManager` and `engines.pnpm`; the integrity is pnpm-lock.yaml's | 12.14.0 of 2026-10-15 (`latest` and `next-12`), read 2026-10-16 | installs from the lockfile, offline |
 | `@playwright/test` | 1.64.1 | `package.json`, exact; pnpm-lock.yaml | 1.64.1 of 2026-10-14, read 2026-10-16 | the test runner; the image tag must carry the same version |
 | `chromium-headless-shell` | revision 1248, Chromium 156.0.8078.4 | `toolchain.pin.json`, read back from `playwright-core/browsers.json` and from the launched browser | the revision `@playwright/test` 1.64.1 bundles, unchanged from 1.64.0 | the browser the suite drives, baked into the image |
-| `axe-core` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0, the version `@axe-core/playwright` 4.13.0 depends on; 4.14.0 of 2026-10-05 waits for an `@axe-core/playwright` release that injects it | the engine the suite executes; `a11y/suite` fails when the executed version differs from this pin (run `r20261014T010826-02cb`) |
-| `@axe-core/playwright` | 4.13.0 | `package.json`, exact; pnpm-lock.yaml | 4.13.0 of 2026-08-11 | injects axe-core into the page |
+| `axe-core` | 4.14.0 | `package.json`, exact; pnpm-lock.yaml | 4.14.0 of 2026-10-05, the version `@axe-core/playwright` 4.14.0 depends on (`~4.14.0`), read 2026-10-16 | the engine the suite executes; `a11y/suite` fails when the executed version differs from this pin (run `r20261014T010826-02cb`) |
+| `@axe-core/playwright` | 4.14.0 | `package.json`, exact; pnpm-lock.yaml | 4.14.0 of 2026-10-15, read 2026-10-16 | injects axe-core into the page |
 | `svelte` | 5.57.2 | `package.json`, exact; pnpm-lock.yaml | 5.57.2 of 2026-10-06 | the one component |
 | `vite` | 8.3.4 | `package.json`, exact; pnpm-lock.yaml | 8.3.4 of 2026-10-08 | the static build and `vite preview` |
 | `@sveltejs/vite-plugin-svelte` | 7.3.1 | `package.json`, exact; pnpm-lock.yaml | 7.3.1 of 2026-09-23 | compiles the component in the build |
