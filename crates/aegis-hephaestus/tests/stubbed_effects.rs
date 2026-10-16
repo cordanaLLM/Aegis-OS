@@ -69,16 +69,20 @@ const NOT_WATCHED: [&str; 3] = ["OpenFOAM", "CalculiX", "agent-solver.slice"];
 // --- Positive -------------------------------------------------------------
 
 /// Positive: the sweep reads the crate's sources, and reads several of them.
+///
+/// The floor was 10 until 2026-10-16, when `geometry.rs`, `id.rs` and
+/// `solver.rs` moved to `tornus-geometry` (cut unit CUT-1632-01), whose own
+/// `stubbed_effects.rs` sweeps them; the walk here then read 8.
 #[test]
 fn the_sweep_reads_the_whole_crate() -> Fallible {
     let sources = common::rust_sources(&common::source_root())?;
     assert!(
-        sources.len() >= 10,
+        sources.len() >= 8,
         "the sweep read only {} sources; it is reading nothing, not finding nothing",
         sources.len()
     );
     assert!(sources.iter().any(|(name, _)| name == "lib.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "geometry.rs"));
+    assert!(sources.iter().any(|(name, _)| name == "register.rs"));
     assert!(sources.iter().any(|(name, _)| name == "verification.rs"));
     Ok(())
 }

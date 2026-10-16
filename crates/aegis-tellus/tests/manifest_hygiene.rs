@@ -226,12 +226,12 @@ fn the_crate_inherits_the_workspace_lints() {
 fn the_toolchain_pin_is_the_one_milestone_m02_admitted() {
     let pin = read("rust-toolchain.toml");
     assert!(!pin.is_empty(), "the toolchain pin must be committed");
-    assert!(pin.contains("channel = \"1.99.0\""));
+    assert!(pin.contains("channel = \"1.99.1\""));
     assert!(pin.contains("rustfmt"));
     assert!(pin.contains("clippy"));
     let admission = read("docs/roadmap/toolchain-admission.md");
     assert!(
-        admission.contains("1.99.0"),
+        admission.contains("1.99.1"),
         "the admission record must name the pinned release"
     );
 }

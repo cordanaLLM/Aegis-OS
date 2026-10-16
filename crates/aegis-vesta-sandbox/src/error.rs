@@ -5,6 +5,7 @@
 
 use aegis_athena::AthenaError;
 use aegis_vesta::{ContractError, IdError, VestaError};
+use saeptum_microvm::MicroVmError;
 
 /// Reasons a sandbox step fails.
 #[derive(Debug, thiserror::Error)]
@@ -22,7 +23,11 @@ pub enum SandboxError {
     /// An identifier was refused.
     #[error(transparent)]
     Id(#[from] IdError),
-    /// An operating-system call failed.
+    /// The microVM, its configuration, its framing or its deadlines refused
+    /// (`saeptum-microvm`, cut unit CUT-1632-04).
+    #[error(transparent)]
+    MicroVm(#[from] MicroVmError),
+    /// An operating-system call this crate makes failed.
     #[error("{what}: {source}")]
     Io {
         /// What was being done.
@@ -30,14 +35,6 @@ pub enum SandboxError {
         /// The underlying error.
         #[source]
         source: std::io::Error,
-    },
-    /// A step did not finish within its deadline (HISS-02).
-    #[error("{what} missed its {millis} ms deadline")]
-    Deadline {
-        /// What was waited for.
-        what: &'static str,
-        /// The deadline, in milliseconds.
-        millis: u128,
     },
     /// A message on the wire broke the protocol.
     #[error("{0}")]

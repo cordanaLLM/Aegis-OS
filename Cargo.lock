@@ -73,6 +73,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.21",
+ "tornus-geometry",
 ]
 
 [[package]]
@@ -173,6 +174,7 @@ name = "aegis-vesta"
 version = "0.1.0"
 dependencies = [
  "aegis-justitia",
+ "saeptum-capsule",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -186,9 +188,9 @@ dependencies = [
  "aegis-justitia",
  "aegis-vesta",
  "rustix",
+ "saeptum-microvm",
  "serde",
  "serde_json",
- "socket2",
  "thiserror 2.0.21",
 ]
 
@@ -569,6 +571,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "saeptum-capsule"
+version = "0.1.0"
+source = "git+https://github.com/plurano/saeptum?rev=dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b#dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b"
+dependencies = [
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "saeptum-microvm"
+version = "0.1.0"
+source = "git+https://github.com/plurano/saeptum?rev=dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b#dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b"
+dependencies = [
+ "saeptum-capsule",
+ "serde_json",
+ "socket2",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "schemars"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -769,6 +791,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.9",
+]
+
+[[package]]
+name = "tornus-geometry"
+version = "0.1.0"
+source = "git+https://github.com/plurano/tornus?rev=ad996c1f1a1598e82b48705be9bc7b15828fee6f#ad996c1f1a1598e82b48705be9bc7b15828fee6f"
+dependencies = [
+ "serde",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

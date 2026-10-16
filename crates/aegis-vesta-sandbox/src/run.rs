@@ -30,7 +30,7 @@ use aegis_vesta::{
 
 use crate::error::SandboxError;
 use crate::request::{EvaluationRequest, RequestVersion, WireMetrics};
-use crate::vm::{Launch, RunningVm, Stopped, reference_memory};
+use crate::vm::{Launch, RunningVm, Stopped, evaluate_in, reference_memory};
 
 /// Metrics every Pareto objective clears: the positive candidate.
 pub const SUPERIOR: WireMetrics = WireMetrics {
@@ -190,7 +190,7 @@ fn admit_and_boot(
     let vm = fleet
         .last_mut()
         .ok_or_else(|| SandboxError::Refused("the fleet is empty after a start".to_owned()))?;
-    vm.evaluate(&request(vm_id, "superior", SUPERIOR)?)?;
+    evaluate_in(vm, &request(vm_id, "superior", SUPERIOR)?)?;
     Ok(vm_id)
 }
 
@@ -205,8 +205,8 @@ fn boot_and_round_trip(
     let vm = fleet
         .last_mut()
         .ok_or_else(|| SandboxError::Refused("the fleet is empty after a start".to_owned()))?;
-    let bound = vm.evaluate(&request(vm_id, "latency-bound", AT_LATENCY_BOUND)?)?;
-    let superior = vm.evaluate(&request(vm_id, "superior-again", SUPERIOR)?)?;
+    let bound = evaluate_in(vm, &request(vm_id, "latency-bound", AT_LATENCY_BOUND)?)?;
+    let superior = evaluate_in(vm, &request(vm_id, "superior-again", SUPERIOR)?)?;
     Ok(vec![
         format!(
             "sandbox {} (vsock context {}) booted under firecracker, {} MiB, and accepted on port {}",
@@ -313,7 +313,7 @@ fn teardown(
         match vm.stop() {
             Ok(done) => stopped.push(done),
             Err(error) => {
-                first_error.get_or_insert(error);
+                first_error.get_or_insert(SandboxError::from(error));
             }
         }
     }

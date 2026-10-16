@@ -23,6 +23,12 @@
 //!   the host end is `AF_UNIX`, the guest end `AF_VSOCK`, and Firecracker's
 //!   own device model carries the bytes between them (its `docs/vsock.md`).
 //!
+//! The process, its configuration, the framing and the guest listener moved
+//! to `saeptum-microvm` (cut unit CUT-1632-04), consumed by git revision from
+//! the workspace manifest and re-exported under the same paths; their tests
+//! moved with them. This crate keeps the evaluation payload, P16's judgement
+//! and the five host cases.
+//!
 //! # What this crate does not claim
 //!
 //! It measures no boot time and no memory footprint: those are M22's under
@@ -33,14 +39,14 @@
 //! development evidence on the reference profile and closes no hardware,
 //! isolation or release gate.
 
-pub mod config;
 pub mod error;
 pub mod evaluate;
 pub mod guest;
-pub mod line;
 pub mod request;
 pub mod run;
 pub mod vm;
+
+pub use saeptum_microvm::{config, line};
 
 /// The guest memory every microVM of the reference run is given, in MiB.
 ///
@@ -72,5 +78,7 @@ pub use crate::run::{
 };
 pub use crate::vm::{
     BOOT_BUDGET, EXCHANGE_BUDGET, HANDSHAKE_BUDGET, Launch, MAX_ANSWER_BYTES,
-    MAX_DIRECTORY_ENTRIES, MAX_POLLS, POLL, RunningVm, STOP_BUDGET, Stopped, reference_memory,
+    MAX_DIRECTORY_ENTRIES, MAX_POLLS, POLL, RunningVm, STOP_BUDGET, Stopped, evaluate_in,
+    reference_memory,
 };
+pub use saeptum_microvm::MicroVmError;

@@ -4,11 +4,13 @@
 //! The crate's membership, its admitted dependencies and its own closure
 //! (D78).
 //!
-//! `socket2` is the one crate M21 adds to the lock: its `SockAddr::vsock` is
+//! `socket2` is the one crate M21 added to the lock: its `SockAddr::vsock` is
 //! the safe constructor of an `AF_VSOCK` address, where `rustix` 1.1.5 offers
-//! none and the workspace forbids `unsafe`. It is declared once in
-//! `[workspace.dependencies]`. `aegis-vesta`'s own closure stays free of it and
-//! of `rustix`: the table and the payloads still start nothing.
+//! none and the workspace forbids `unsafe`. Since 2026-10-16 the code that
+//! uses it is `saeptum-microvm` (cut unit CUT-1632-04), declared once in
+//! `[workspace.dependencies]` at a git revision, and socket2 arrives through
+//! it. `aegis-vesta`'s own closure stays free of it and of `rustix`: the table
+//! and the payloads still start nothing.
 
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
@@ -52,16 +54,22 @@ fn the_crate_is_a_locked_member_with_two_binaries() {
     assert!(manifest.contains("[lints]\nworkspace = true"));
 }
 
-/// Positive: socket2 is declared once, at the pinned version, with `all`.
+/// Positive: the microVM half is `saeptum-microvm`, declared once at a git
+/// revision, and socket2 reaches this closure only through it, still locked at
+/// the admitted version.
 #[test]
-fn socket2_is_declared_once_and_locked() {
+fn saeptum_microvm_is_pinned_and_carries_socket2() {
     let root = read("Cargo.toml");
-    assert!(root.contains(
-        "socket2 = { version = \"0.6.5\", default-features = false, features = [\"all\"] }"
-    ));
-    assert!(read("crates/aegis-vesta-sandbox/Cargo.toml").contains("socket2.workspace = true"));
+    assert!(
+        root.contains("saeptum-microvm = { git = \"https://github.com/plurano/saeptum\", rev = \"")
+    );
+    assert!(!root.contains("socket2 ="));
+    let manifest = read("crates/aegis-vesta-sandbox/Cargo.toml");
+    assert!(manifest.contains("saeptum-microvm.workspace = true"));
+    assert!(!manifest.contains("socket2"));
     let lock = read("Cargo.lock");
     assert!(lock.contains("name = \"socket2\"\nversion = \"0.6.5\""));
+    assert!(lock.contains("name = \"saeptum-microvm\"\nversion = \"0.1.0\"\nsource = \"git+https://github.com/plurano/saeptum?rev="));
 }
 
 // --- Negative -------------------------------------------------------------
