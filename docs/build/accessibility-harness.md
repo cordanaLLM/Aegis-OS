@@ -85,7 +85,7 @@ hashes to its pin is a failure.
 | Playwright image | `mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f`; linux/amd64 manifest `sha256:bc72a8df40831ded821e3cbc79c318c21b44d6e51dff9fd89ace7a8249c5b462` | `toolchain.pin.json` |
 | Browser | `chromium-headless-shell` revision 1248, Chromium 156.0.8078.4, as bundled by `@playwright/test` 1.64.0 and baked into the image | `toolchain.pin.json`, read back from `playwright-core/browsers.json` |
 | Node.js | 26.12.0, `node-v26.12.0-linux-x64.tar.xz` sha256 `fd47865ecd6391ebb431fc815e01b9135bf83ded5cf373247e9331e196b7aded` | `toolchain.pin.json`, `engines.node` |
-| pnpm | 12.11.2; `@pnpm/exe.linux-x64` integrity `sha512-FK7QKe24AYgppJwO3mpooYptduuvIGqKJPi5ac7MdnWkjUy46JBfYhCW0grnkWKC8YOf0x+vGviuQqJEj3SpQQ==` | `packageManager`, `engines.pnpm`, `pnpm-lock.yaml` |
+| pnpm | 12.14.0; `@pnpm/exe.linux-x64` integrity `sha512-F6K8e/jWxiuEYJaQtRRUG9ynBSTEHa+t7Lf86MKuOO5UA7WVVMbi+oB8nY6iKW++ncWS2yG6T9faXZGxqNsfoQ==` | `packageManager`, `engines.pnpm`, `pnpm-lock.yaml` |
 | npm packages | exact versions, each with its integrity | `package.json`, `pnpm-lock.yaml` |
 
 The image digest was resolved on 2026-10-14 with
@@ -445,6 +445,14 @@ pnpm 12.11.2 (released 2026-10-09) followed on 2026-10-14. Its
 only because it hashed to that integrity. Run `r20261014T000123-9843` of `make
 verify-a11y` exited 0 with 23 PASS lines and no SKIP: `a11y/toolchain-readback`
 printed `pnpm 12.11.2`, and `a11y/suite` passed.
+
+pnpm 12.14.0 (released 2026-10-15) followed on 2026-10-16. Its
+`@pnpm/exe.linux-x64` integrity `sha512-F6K8e/jW…` in `pnpm-lock.yaml` equals
+the `dist.integrity` the npm registry serves for that version; `make
+a11y-fetch` downloaded the binary and kept it only because it hashed to that
+integrity. Run `r20261016T210839-ca98` of `make verify-a11y` exited 0 with 23 PASS
+lines and no SKIP: `a11y/toolchain-readback` printed `pnpm 12.14.0`, and
+`a11y/suite` passed 11 of 11 tests.
 
 Playwright 1.64.0 (released 2026-10-07) with its image followed on
 2026-10-14. The linux/amd64 manifest `sha256:bc72a8df…` was read with `skopeo
