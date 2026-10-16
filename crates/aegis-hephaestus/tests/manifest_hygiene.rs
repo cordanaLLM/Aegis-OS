@@ -184,12 +184,13 @@ fn the_crate_manifest_declares_no_deferred_dependency() {
 /// renamed dependency is none of them: `kernel = { package = "opencascade",
 /// path = "../vendor" }` declares `kernel`, and every name check in this file
 /// passes. What holds instead is the set itself -- two path dependencies on
-/// crates already in the tree, and three inherited from the workspace table --
-/// so a sixth declaration cannot arrive without this assertion being edited,
-/// and "the CAD and solver versions are unpinned" stays a fact about the set
-/// rather than about the spellings someone listed.
+/// crates already in the tree, and four inherited from the workspace table,
+/// one of them `tornus-geometry` at a git revision since 2026-10-16 (cut unit
+/// CUT-1632-01) -- so a seventh declaration cannot arrive without this
+/// assertion being edited, and "the CAD and solver versions are unpinned"
+/// stays a fact about the set rather than about the spellings someone listed.
 #[test]
-fn the_crate_declares_exactly_its_five_dependencies() {
+fn the_crate_declares_exactly_its_six_dependencies() {
     let manifest = read("crates/aegis-hephaestus/Cargo.toml");
     assert!(!manifest.is_empty(), "the crate manifest must exist");
     assert_eq!(
@@ -199,8 +200,13 @@ fn the_crate_declares_exactly_its_five_dependencies() {
             "aegis-minerva",
             "serde",
             "serde_json",
-            "thiserror"
+            "thiserror",
+            "tornus-geometry"
         ]
+    );
+    let root = read("Cargo.toml");
+    assert!(
+        root.contains("tornus-geometry = { git = \"https://github.com/plurano/tornus\", rev = \"")
     );
 }
 
@@ -261,12 +267,12 @@ fn the_crate_inherits_the_workspace_lints_and_toolchain() {
     let root = read("Cargo.toml");
     assert!(root.contains("unsafe_code = \"forbid\""));
     assert!(
-        root.contains("rust-version = \"1.99.0\""),
+        root.contains("rust-version = \"1.99.1\""),
         "D111: the workspace rust-version is the rust-toolchain.toml pin"
     );
     let pinned = read("rust-toolchain.toml");
     assert!(
-        pinned.contains("channel = \"1.99.0\""),
+        pinned.contains("channel = \"1.99.1\""),
         "M08 admits no new toolchain: the pin stays the one M02 admitted"
     );
 }
@@ -277,7 +283,7 @@ fn the_crate_inherits_the_workspace_lints_and_toolchain() {
 /// The planted line is the shape the excluded-name check cannot see: the
 /// package is one this milestone defers and the declaration name is not. The
 /// collector reports `kernel`, which is what makes the closed set above a gate
-/// rather than a restatement of the five names.
+/// rather than a restatement of the six names.
 #[test]
 fn the_collector_reports_a_renamed_dependency() {
     let planted = concat!(

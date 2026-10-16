@@ -17,6 +17,7 @@ path = "src/lib.rs"
 
 [dependencies]
 aegis-justitia = { path = "../aegis-justitia" }
+saeptum-capsule.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

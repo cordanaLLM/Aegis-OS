@@ -67,12 +67,12 @@ fn the_sweep_reads_the_whole_crate() -> Fallible {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let sources = common::rust_sources(&root)?;
     assert!(
-        sources.len() >= 14,
+        sources.len() >= 9,
         "the sweep read only {} sources; it is reading nothing, not finding nothing",
         sources.len()
     );
     assert!(sources.iter().any(|(name, _)| name == "lib.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "microvm.rs"));
+    assert!(sources.iter().any(|(name, _)| name == "decision.rs"));
     assert!(sources.iter().any(|(name, _)| name == "capsule_request.rs"));
     Ok(())
 }
@@ -134,22 +134,25 @@ fn a_comment_naming_an_identifier_is_not_a_finding() {
     );
 }
 
-/// Boundary: the two monitor tags are deliberately outside the list, and the
-/// library does carry them -- so watching them would fail the gate on the very
-/// field decision D58 requires.
+/// Boundary: the two monitor tags are deliberately outside the list, so
+/// watching them can never fail the gate on the field decision D58 requires.
+///
+/// Since 2026-10-16 the wire form of `VmmIdentity` lives in `saeptum-capsule`
+/// (cut unit CUT-1632-03), whose own sweep asserts the tags appear there; this
+/// crate re-exports the type and must not grow a second copy of the tags.
 #[test]
 fn the_monitor_tags_are_deliberately_not_watched() -> Fallible {
     for tag in NOT_WATCHED {
         assert!(
             !WATCHED.contains(&tag),
-            "{tag} is data this crate must carry, not an effect"
+            "{tag} is data the payloads carry, not an effect"
         );
     }
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let found = common::scan_sources(&root, &NOT_WATCHED)?;
     assert!(
-        !found.is_empty(),
-        "the monitor tags must appear in library code as the wire form of VmmIdentity"
+        found.is_empty(),
+        "monitor tags re-declared here instead of in saeptum-capsule: {found:?}"
     );
     Ok(())
 }
