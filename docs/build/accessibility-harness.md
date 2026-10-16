@@ -269,7 +269,7 @@ sha256 of the committed `pnpm-lock.yaml`.
 axe-core runs exactly the D81 tag set, `wcag2a`, `wcag2aa`, `wcag21a`,
 `wcag21aa` and `wcag22aa`, with no impact filter: one violation of any impact
 fails the default state, and so does one `incomplete` result. The tag set alone
-makes axe-core 4.13.0 run `target-size`, which it ships disabled; the suite
+makes axe-core 4.14.0 run `target-size`, which it ships disabled; the suite
 asserts from its own results that `target-size` evaluated the panel's three
 targets and passed.
 
@@ -307,14 +307,14 @@ into open and closed functionality, the open-functionality sub-clause is named.
 Not covered by this gate: V4.1.1 11.2.4.11 (WCAG 2.4.11, Focus Not Obscured
 (Minimum)) and 11.2.5.7 (WCAG 2.5.7, Dragging Movements), both "none in
 V3.2.1". The suite asks axe-core itself, `axe.getRules(['wcag2411'])` and
-`axe.getRules(['wcag257'])`, and both return no rule in 4.13.0.
+`axe.getRules(['wcag257'])`, and both return no rule in 4.14.0.
 
 The gate also covers REQ-P12-08, whose WCAG 2.2 AA pairing the tag set matches.
 D81 does not re-rule that row's V3.2.1 edition, and neither does this page.
 
 ## The measured checks axe-core cannot make
 
-axe-core 4.13.0 has no rule for the width or the contrast of a focus indicator,
+axe-core 4.14.0 has no rule for the width or the contrast of a focus indicator,
 so the suite measures them from computed style (`tests/probe.js`): the focused
 element's outline, or a box-shadow ring when there is no outline, its width,
 and its WCAG 2.2 contrast against the colour it is drawn on. They bear on WCAG
@@ -481,6 +481,18 @@ in `package.json` and fails when they differ (`engine_problems` in
 PASS and no SKIP: `a11y/toolchain-readback` printed `axe-core 4.13.0`,
 `@axe-core/playwright 4.13.0`, `svelte 5.57.2` and `vite 8.3.4`, and
 `a11y/suite` passed 11 of 11 with axe-core 4.13.0 on Chromium 156.0.8078.4.
+
+axe-core 4.14.0 followed on 2026-10-16 with `@axe-core/playwright` 4.14.0
+(released 2026-10-15), which depends on axe-core `~4.14.0` and so injects the
+admitted version. Compared with 4.13.0, `axe.getRules()` returns the same 105
+rules; `label-content-name-mismatch` (WCAG 2.5.3) lost its `experimental` tag,
+so the D81 tag set now runs it, and `target-size` gained the EN 301 549 V4
+tags and still ships disabled. Neither version has a rule tagged `wcag2411` or
+`wcag257`. Run `r20261016T225223-b066` of `make verify-a11y` exited 0 with 23 PASS
+lines and no SKIP: `a11y/toolchain-readback` printed `axe-core 4.14.0` and
+`@axe-core/playwright 4.14.0`, and `a11y/suite` passed 11 of 11 with axe-core
+4.14.0 on Chromium 156.0.8078.4 and 0 violations; 42 rules were
+inapplicable, one more than under 4.13.0.
 
 Playwright 1.64.1 (released 2026-10-14) with its image followed on
 2026-10-16. `skopeo inspect --raw` resolved the tag `v1.64.1-noble` to the
