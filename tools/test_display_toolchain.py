@@ -182,6 +182,11 @@ class LockTests(unittest.TestCase):
             self.assertEqual(len(tool.check_locked(registry)), 1)
             self.assertEqual(len(tool.check_locked(doubled)), 1)
 
+    def test_a_lock_that_is_not_toml_is_refused(self):
+        """Negative: a truncated lock fails to parse instead of reading as empty."""
+        with self.assertRaises(tool.ToolchainError):
+            tool.lock_entries('[[package]]\nname = "bindgen\n')
+
     def test_an_absent_or_oversized_lock_is_refused(self):
         """Boundary: a lock that is missing is refused, not read as empty."""
         with self.assertRaises(tool.ToolchainError):
