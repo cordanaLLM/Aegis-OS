@@ -82,16 +82,16 @@ hashes to its pin is a failure.
 
 | Input | Pin | Where |
 | :--- | :--- | :--- |
-| Playwright image | `mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f`; linux/amd64 manifest `sha256:bc72a8df40831ded821e3cbc79c318c21b44d6e51dff9fd89ace7a8249c5b462` | `toolchain.pin.json` |
-| Browser | `chromium-headless-shell` revision 1248, Chromium 156.0.8078.4, as bundled by `@playwright/test` 1.64.0 and baked into the image | `toolchain.pin.json`, read back from `playwright-core/browsers.json` |
+| Playwright image | `mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf`; linux/amd64 manifest `sha256:bdfda2a8fdf48707c5e50a49bd3e06d8d0c759153dc8ee057d8a81c3450bb3e9` | `toolchain.pin.json` |
+| Browser | `chromium-headless-shell` revision 1248, Chromium 156.0.8078.4, as bundled by `@playwright/test` 1.64.1 and baked into the image | `toolchain.pin.json`, read back from `playwright-core/browsers.json` |
 | Node.js | 26.12.0, `node-v26.12.0-linux-x64.tar.xz` sha256 `fd47865ecd6391ebb431fc815e01b9135bf83ded5cf373247e9331e196b7aded` | `toolchain.pin.json`, `engines.node` |
 | pnpm | 12.14.0; `@pnpm/exe.linux-x64` integrity `sha512-F6K8e/jWxiuEYJaQtRRUG9ynBSTEHa+t7Lf86MKuOO5UA7WVVMbi+oB8nY6iKW++ncWS2yG6T9faXZGxqNsfoQ==` | `packageManager`, `engines.pnpm`, `pnpm-lock.yaml` |
 | npm packages | exact versions, each with its integrity | `package.json`, `pnpm-lock.yaml` |
 
-The image digest was resolved on 2026-10-14 with
-`skopeo inspect docker://mcr.microsoft.com/playwright:v1.64.0-noble`, and the
+The image digest was resolved on 2026-10-16 with
+`skopeo inspect docker://mcr.microsoft.com/playwright:v1.64.1-noble`, and the
 engine is asked for the image by that digest, never by tag: `make a11y-fetch`
-pulls `mcr.microsoft.com/playwright@sha256:06a9939e…`, and the gate does not
+pulls `mcr.microsoft.com/playwright@sha256:7852dc5a…`, and the gate does not
 run unless the engine lists that exact digest among the image's repo digests.
 REQ-P12-04's source (export-020, section 7.3 of its P12 report) names its
 validation container as
@@ -481,6 +481,17 @@ in `package.json` and fails when they differ (`engine_problems` in
 PASS and no SKIP: `a11y/toolchain-readback` printed `axe-core 4.13.0`,
 `@axe-core/playwright 4.13.0`, `svelte 5.57.2` and `vite 8.3.4`, and
 `a11y/suite` passed 11 of 11 with axe-core 4.13.0 on Chromium 156.0.8078.4.
+
+Playwright 1.64.1 (released 2026-10-14) with its image followed on
+2026-10-16. `skopeo inspect --raw` resolved the tag `v1.64.1-noble` to the
+image index `sha256:7852dc5a…`, the digest the update bot proposed, and read
+its linux/amd64 manifest `sha256:bdfda2a8…` from that index. The browser did
+not move: `playwright-core` 1.64.1's `browsers.json` names
+`chromium-headless-shell` revision 1248, Chromium 156.0.8078.4, as 1.64.0's
+does. Run `r20261016T220720-71ec` of `make verify-a11y` exited 0 with 23 PASS
+lines and no SKIP: `a11y/toolchain-readback` printed `@playwright/test
+1.64.1` and revision 1248, and `a11y/suite` passed 11 of 11 on Chromium
+156.0.8078.4 with 0 axe-core violations.
 
 ## The HISS lint (M16, D100)
 
