@@ -30,6 +30,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -130,11 +131,13 @@ def read_version(row, runner=run, which=shutil.which):
 
 def lock_entries(text):
     """Return ``{name: [(version, source), ...]}`` for every package in a lock text."""
+    try:
+        packages = tomllib.loads(text).get("package", [])
+    except tomllib.TOMLDecodeError as error:
+        raise ToolchainError(f"Cargo.lock is not valid TOML: {error}") from error
     entries = {}
-    for block in text.split("[[package]]")[1:]:
-        fields = dict(re.findall(r'^(name|version|source) = "([^"]*)"$', block, re.MULTILINE))
-        if "name" in fields and "version" in fields:
-            entries.setdefault(fields["name"], []).append((fields["version"], fields.get("source")))
+    for package in packages:
+        entries.setdefault(package["name"], []).append((package["version"], package.get("source")))
     return entries
 
 
