@@ -4,3 +4,6 @@
 da693ef4e553b494d14c5e9ac6a8cd5bd06acb40:docs/build/boot-harness.md:generic-api-key:67
 # The systemd-sysupdate setting VerityMatchKey=root, not a credential.
 61f2fe16bab7889e007b2fd1474b025023906e91:crates/aegis-fabrica-defs/tests/transfer_definitions.rs:generic-api-key:70
+# The Node.js release-key fingerprint C82FA3AE… (public, in nodejs/release-keys),
+# quoted from the accessibility gate's admission of Node 26.12.0.
+ea27b44a08a31c7bff58fe3189c1e650fa97ed5f:docs/build/accessibility-harness.md:generic-api-key:432
