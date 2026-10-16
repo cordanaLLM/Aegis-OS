@@ -68,7 +68,7 @@ CONTAINER_PROGRAMS = {"cp", "pnpm", "node"}
 # exactly these, and a CSS framework added to it fails here.
 ADMITTED_PACKAGES = {
     "@axe-core/playwright": "4.13.0",
-    "@playwright/test": "1.64.0",
+    "@playwright/test": "1.64.1",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "axe-core": "4.13.0",
     "svelte": "5.57.2",
@@ -210,11 +210,11 @@ class PinTests(unittest.TestCase):
 
     def test_the_committed_pin_loads_with_its_derived_values(self):
         pin = gate.load_pin()
-        self.assertEqual(pin["image"]["playwright"], "1.64.0")
+        self.assertEqual(pin["image"]["playwright"], "1.64.1")
         self.assertEqual(
             pin["image"]["by-digest"],
             "mcr.microsoft.com/playwright@sha256:"
-            "06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f",
+            "7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf",
         )
         self.assertEqual(pin["image"]["browser"]["revision"], "1248")
         self.assertTrue(pin["pnpm"]["integrity"].startswith("sha512-F6K8e/jW"))
@@ -799,8 +799,8 @@ class ReportTests(unittest.TestCase):
     def readback(self, **changes):
         found = {
             "node": "v26.12.0",
-            "playwrightTest": "1.64.0",
-            "playwrightCore": "1.64.0",
+            "playwrightTest": "1.64.1",
+            "playwrightCore": "1.64.1",
             "axeCore": "4.13.0",
             "axePlaywright": "4.13.0",
             "svelte": "5.57.2",
