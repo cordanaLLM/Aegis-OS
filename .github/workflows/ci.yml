@@ -137,7 +137,7 @@ jobs:
           lefthook install
 
       # The runner image ships rustup and a Rust toolchain, but neither is the
-      # pin: the image's toolchain is not named 1.99.0 and carries no clippy, so
+      # pin: the image's toolchain is not named 1.99.1 and carries no clippy, so
       # a cargo gate run without this step would test whatever the image happens
       # to ship. `rustup toolchain install` with no toolchain argument installs
       # the active toolchain, which rust-toolchain.toml overrides to the pinned

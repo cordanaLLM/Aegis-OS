@@ -196,7 +196,7 @@ fn the_crate_inherits_the_workspace_lints() {
     let root = read("Cargo.toml");
     assert!(root.contains("unsafe_code = \"forbid\""));
     assert!(
-        root.contains("rust-version = \"1.99.0\""),
+        root.contains("rust-version = \"1.99.1\""),
         "D111: the workspace rust-version is the rust-toolchain.toml pin"
     );
 }

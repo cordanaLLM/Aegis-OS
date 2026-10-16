@@ -34,7 +34,16 @@
 //! `aegis-vesta-sandbox` boots microVMs to prove the path and measures neither
 //! figure (D71 leaves both to M22); the figures are recorded because the
 //! sources state them, and REQ-P10-05 itself records that they are unmeasured.
-//! `tests/unmeasured_literals.rs` is what keeps them that way.
+//! `saeptum-capsule`'s `tests/unmeasured_literals.rs` is what keeps them that
+//! way.
+//!
+//! # Where the controllers live
+//!
+//! The tables, bounds, identifiers and monitor probes moved to
+//! `saeptum-capsule` (cut unit CUT-1632-03), consumed by git revision from the
+//! workspace manifest. This crate re-exports them under the same paths and
+//! keeps what is Aegis's own: decision D06, the requirement register and the
+//! two payloads. Their tests moved with them.
 //!
 //! # Design invariants (see `AGENTS.md`)
 //!
@@ -100,16 +109,12 @@
 //! # }
 //! ```
 
-pub mod capsule;
 pub mod contracts;
 pub mod decision;
 pub mod error;
-pub mod id;
-pub mod microvm;
 pub mod register;
-pub mod ring;
-pub mod unmeasured;
-pub mod vmm;
+
+pub use saeptum_capsule::{capsule, id, microvm, ring, unmeasured, vmm};
 
 pub use crate::capsule::{
     Capability, CapabilitySet, CapsuleMemoryLimit, CapsuleRegistry, CapsuleSlot,

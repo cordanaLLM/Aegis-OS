@@ -30,7 +30,7 @@ Two rules follow from the clause and are applied below:
 | Tool | Pinned version | How it is pinned | Replaces | Admitted by |
 | :--- | :--- | :--- | :--- | :--- |
 | rustup | 1.29.1 | distribution package `cachyos-extra-znver4/rustup 1.29.1-1.1` on the reference profile; CI uses the runner's rustup | nothing; rustup was absent before D61 | M02 (D61) |
-| Rust (`rustc`, `cargo`) | 1.99.0 | `rust-toolchain.toml`, `channel = "1.99.0"`, materialised by rustup | 1.98.1 until 2026-10-14; before it the distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
+| Rust (`rustc`, `cargo`) | 1.99.1 | `rust-toolchain.toml`, `channel = "1.99.1"`, materialised by rustup | 1.99.0 until 2026-10-16; 1.98.1 until 2026-10-14; before it the distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.99 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | 0.1.98 until 2026-10-14; before it the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.10.0-stable | `rust-toolchain.toml`, same `components` list | 1.9.0-stable until 2026-10-14; before it the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | praetorctl | source commit `7a7b3159cc89dfd67626314f113e5f45c583cee3` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `4d9e30ce4d4eee35ffdb429f15d4e99b8fc07648`; the pin follows Praetor's `main` (see below) | M00 |
@@ -112,7 +112,10 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | cros-libva | git revision `59384456ac2ae78c0c3e5515f41ef1efd9b802cf` of chromeos/cros-libva (package 0.0.13, BSD-3-Clause), the merge of #37 on 2026-09-01 and the head of `main` on 2026-09-29 | `[workspace.dependencies]`, `git` with `rev =`; locked as `git+https://github.com/chromeos/cros-libva?rev=59384456...#59384456...`; used only by `crates/aegis-scaena` | VA-API decode and DMA-BUF export through `Surface::export_prime` (D80) | M27 (D80) |
 | smithay-client-toolkit | 0.21.1 (MIT), crate checksum `74dc9ee14b0fdcb535f9556141bacac070c994a977d2240ee455d7438a617f00` | `[workspace.dependencies]`, `default-features = false`; used only by `crates/aegis-scaena` | the layer surface and the `zwp_linux_dmabuf_v1` client over wayland-client's pure-Rust backend; libwayland is neither linked nor loaded | M27 (D75) |
 | rustix | 1.1.5 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT), crate checksum `891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d` | `[workspace.dependencies]`, `features = ["net", "fs", "event"]`; used by `crates/aegis-scaena` and, since M21, by `crates/aegis-vesta-sandbox`, which adds the `system` feature | `sendmsg` and `recvmsg` with `SCM_RIGHTS` and `MSG_CMSG_CLOEXEC`, `SO_RCVTIMEO` and `SO_SNDTIMEO`, `fstatfs`, `fstat`, `lseek`, `poll` on the Wayland connection fd under a deadline, and in tests `memfd_create` (M27); `reboot(RebootCommand::Restart)`, with which the M21 guest init ends its microVM (M21) | M27 (D77); the `system` feature M21 |
-| socket2 | 0.6.5 (MIT OR Apache-2.0), crate checksum `c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4` | `[workspace.dependencies]`, `default-features = false`, `features = ["all"]`; used only by `crates/aegis-vesta-sandbox` | the guest's `AF_VSOCK` listener: `SockAddr::vsock` is a safe constructor of a `sockaddr_vm`, which rustix 1.1.5 does not offer and the workspace's `unsafe_code = "forbid"` would otherwise require | M21 |
+| socket2 | 0.6.5 (MIT OR Apache-2.0), crate checksum `c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4` | transitive since 2026-10-16: no longer in `[workspace.dependencies]`; it arrives through `saeptum-microvm`, whose own manifest pins it with `default-features = false`, `features = ["all"]` | the guest's `AF_VSOCK` listener: `SockAddr::vsock` is a safe constructor of a `sockaddr_vm`, which rustix 1.1.5 does not offer and the workspace's `unsafe_code = "forbid"` would otherwise require | M21 |
+| saeptum-capsule | git revision `dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b` of plurano/saeptum (package 0.1.0, EUPL-1.2), the squash merge of saeptum#5 on 2026-10-16 | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta` | the capsule registry, ring, microVM and VMM controllers and the wire form of their bounded values, cut from `aegis-vesta` (cut unit CUT-1632-03) | CUT-1632-03, 2026-10-16 |
+| saeptum-microvm | git revision `dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b` of plurano/saeptum (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta-sandbox` | the Firecracker configuration, the hybrid-vsock line framing, the VM process and the guest listener, cut from `aegis-vesta-sandbox` (cut unit CUT-1632-04); carries socket2 | CUT-1632-04, 2026-10-16 |
+| tornus-geometry | git revision `ad996c1f1a1598e82b48705be9bc7b15828fee6f` of plurano/tornus (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-hephaestus` | the geometry and meshing bounds, the `STEP` source name, the solver admission and the wire form of the bounded values, cut from `aegis-hephaestus` (cut unit CUT-1632-01) | CUT-1632-01, 2026-10-16 |
 
 The resolved graph the first seven pull in is fixed by `Cargo.lock`: block-buffer
 0.12.1, cfg-if 1.0.4, cpufeatures 0.3.1, crypto-common 0.2.2, digest 0.11.3,
@@ -142,10 +145,10 @@ crates.io API that day, published 2026-09-25. With its features off it
 resolves one crate more, uuid 1.26.1 (Apache-2.0 OR MIT, the newest release,
 published 2026-09-10), with no feature and no dependency of its own. Its
 `rust-version` is 1.87, above the 1.85 the workspace declared when it was
-admitted; the pinned toolchain is 1.99.0, so every gate compiles it, and
+admitted; the pinned toolchain is 1.99.1, so every gate compiles it, and
 Cargo's MSRV-aware resolver picks it only because `0.25.1` is the lowest
 version the requirement admits. Since D111 the workspace declares the pinned
-toolchain, 1.99.0 (see below).
+toolchain, 1.99.1 (see below).
 `crates/aegis-forum-shell/tests/manifest_hygiene.rs` asserts the
 declaration, the lock entry, and that the crate's own dependency closure
 (D78) holds no gpui, winit, wayland-client, zbus, atspi, accesskit_unix or
@@ -194,6 +197,14 @@ existing entry changed version. socket2 declares `rust-version` 1.70, below the
 pinned toolchain. rustix's `system` feature enables linux-raw-sys's `system`
 module and adds no package; Cargo does not lock features.
 
+On 2026-10-16 the code that used socket2 moved to `saeptum-microvm`, and
+the workspace table stopped declaring it; the lock still carries socket2
+0.6.5 with the same checksum. The three cut crates are public repositories
+of the plurano organisation, pinned by `rev =` so the lock records the exact
+commit. Their manifests declare serde, serde_json and thiserror at the
+versions this workspace already locks, and the lock gained exactly the three
+packages `saeptum-capsule`, `saeptum-microvm` and `tornus-geometry`.
+
 The highest `rust-version` any resolved package declares is 1.87
 (accesskit 0.25.1), above smithay-client-toolkit's and wayland-protocols' 1.86.
 M27 set the workspace's `rust-version` to that value, and raising it from 1.85
@@ -201,7 +212,7 @@ switched on clippy's `manual_is_multiple_of`, whose three findings were
 rewritten with `is_multiple_of`. The value was false: the workspace uses
 let-chains, stable since 1.88, and `cargo +1.87 check --workspace` failed with
 ten E0658 errors on 2026-10-13. D111 replaced the rule: the workspace declares
-the `rust-toolchain.toml` pin, 1.99.0, the only toolchain any gate builds on,
+the `rust-toolchain.toml` pin, 1.99.1, the only toolchain any gate builds on,
 and `crates/aegis-scaena/tests/manifest_hygiene.rs` holds the declaration to
 the pin and every resolved package's `rust-version` at or below it.
 
@@ -1065,8 +1076,9 @@ taken, no milestone may cite them as admitted toolchain.
   copy, the one sudo command and the programs the gate may start.
   `make verify-workstation` hashes the fetched binary, licence, kernel and
   configuration against the pin and reads `firecracker --version` back before
-  anything boots; the socket2 row is held by
-  `crates/aegis-vesta-sandbox/tests/manifest_hygiene.rs`.
+  anything boots; the socket2 and saeptum-microvm rows are held by
+  `crates/aegis-vesta-sandbox/tests/manifest_hygiene.rs`, and the
+  tornus-geometry row by `crates/aegis-hephaestus/tests/manifest_hygiene.rs`.
 - The M24 rows are checked by `tools/test_boot_harness.py` the same way, with
   the three OVMF images compared by digest. That test also holds the programs
   the boot harness may start, which contain nothing that writes a firmware

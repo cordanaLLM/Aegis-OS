@@ -34,10 +34,10 @@ REQ-P10-02) is deferred to M12 and not claimed.
 | :--- | :--- |
 | `crates/aegis-tellus/src/rapl.rs` | the counter reading, the rollover delta and `MeasuredWattage`, the second implementation of M05's `WattageSource` seam; reads nothing |
 | `crates/aegis-tellus-rapl` | the readings document and the RAPL cases; `aegis-tellus-rapl run <document>` is the binary the gate starts |
-| `crates/aegis-vesta-sandbox/src/vm.rs` | one Firecracker process: started from a controller row, reached over the hybrid vsock, killed, reaped and its sockets removed |
+| `crates/aegis-vesta-sandbox/src/vm.rs` | the evaluation exchange over a running microVM; the Firecracker process itself (started from a controller row, reached over the hybrid vsock, killed, reaped and its sockets removed) is `saeptum-microvm`'s `vm` module since 2026-10-16 |
 | `crates/aegis-vesta-sandbox/src/run.rs` | the host run and its five cases; `aegis-vesta-sandbox` starts it |
-| `crates/aegis-vesta-sandbox/src/guest.rs` | the evaluation service `aegis-vesta-guest` runs as the microVM's init |
-| `crates/aegis-vesta-sandbox/src/config.rs` | the per-microVM Firecracker configuration file |
+| `crates/aegis-vesta-sandbox/src/guest.rs` | the evaluation answer `aegis-vesta-guest` gives as the microVM's init, served through `saeptum-microvm`'s listener |
+| `saeptum-microvm` (plurano/saeptum, pinned in `Cargo.toml`) | the per-microVM Firecracker configuration file, the line framing and the guest listener, re-exported by `aegis-vesta-sandbox` |
 | `build/sandbox/firecracker.pin.json` | the pinned Firecracker release and guest kernel |
 | `tools/verify_workstation.py` | the gate, run as `make verify-workstation` and `make workstation-fetch` |
 | `tools/test_workstation_slices.py` | the gate's half that runs inside `make verify-all` |
