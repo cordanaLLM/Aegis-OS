@@ -70,6 +70,16 @@
 //! be needed to do any of it and fails if one appears outside a comment -- a
 //! regression gate over an enumeration, not a proof over every such identifier.
 //!
+//! # Where the bounds live
+//!
+//! Since 2026-10-16 the bounds, the identifiers, the solver admission and the
+//! wire form of the bounded values are `tornus-geometry` (cut unit
+//! CUT-1632-01), pinned at a git revision in `[workspace.dependencies]`.
+//! [`geometry`], [`id`] and [`solver`] re-export its modules and
+//! [`HephaestusError`] is its `GeometryError`, so every path a consumer used
+//! still resolves. What stays here is the P14 payload, the P09 edge, the
+//! verification intake and the recorded register.
+//!
 //! A pass of this crate's tests is evidence about the bounds, the admissions
 //! and the payload. It closes no kernel, solver or isolation gate.
 //!
@@ -100,11 +110,10 @@
 
 pub mod contracts;
 pub mod error;
-pub mod geometry;
-pub mod id;
 pub mod register;
-pub mod solver;
 pub mod verification;
+
+pub use tornus_geometry::{geometry, id, solver};
 
 pub use crate::contracts::graph::EdgeId;
 pub use crate::contracts::viewport::{GeometryViewport, GeometryViewportVersion};
@@ -112,15 +121,15 @@ pub use crate::contracts::{
     ContractError, Correlation, MAX_CONTRACT_PAYLOAD_BYTES, PayloadBuffer, SchemaId,
 };
 pub use crate::error::HephaestusError;
-pub use crate::geometry::{
-    BrepEvaluator, CadEngine, EvaluationOutcome, MAX_GEOMETRY_ITERATIONS, MAX_MESH_ELEMENTS,
-    MAX_TOLERANCE_MICROMETRES, MIN_TOLERANCE_MICROMETRES, MeshConfig, MeshElementCount, MeshPlan,
-    StepSchema, Tolerance,
-};
-pub use crate::id::{IdError, MAX_STEP_PATH_LEN, StepPath};
 pub use crate::register::{
     ClaimSource, ClaimStatus, P14_RECORDED_CLAIMS, RecordedClaim, UNPINNED_DEPENDENCIES,
     UnpinnedDependency,
 };
-pub use crate::solver::{SOLVER_SLICE, SolverAdmission, SolverTarget};
 pub use crate::verification::{AdmittedVerification, VerificationIntake, VerificationOutcome};
+pub use tornus_geometry::geometry::{
+    BrepEvaluator, CadEngine, EvaluationOutcome, MAX_GEOMETRY_ITERATIONS, MAX_MESH_ELEMENTS,
+    MAX_TOLERANCE_MICROMETRES, MIN_TOLERANCE_MICROMETRES, MeshConfig, MeshElementCount, MeshPlan,
+    StepSchema, Tolerance,
+};
+pub use tornus_geometry::id::{IdError, MAX_STEP_PATH_LEN, StepPath};
+pub use tornus_geometry::solver::{SOLVER_SLICE, SolverAdmission, SolverTarget};
