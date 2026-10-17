@@ -39,6 +39,15 @@
           "reason": "The UKI is built by Imago, not by this crate: aegis-fabrica-defs parses the repart and sysupdate definitions and the product input manifest, and produces no image. aegis-janus-lifecycle models the A/B slot transfer with a stubbed transfer and reads no image either. M11 brings the first image/UKI back from Imago and exercises the A/B transfer on it (E11-4)."
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-fabrica-defs",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P01] Project Fabrica - OS Build System & UKI Synthesis.md"
       ],
@@ -131,6 +140,15 @@
           "reason": "Neither side holds attestation code: aegis-janus-lifecycle records the edge only in a comment (src/clock.rs), and aegis-justitia names a Tpm2RsaPss algorithm label but signs nothing. M20 brings TPM2 audit-record signing on swtpm."
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-janus-lifecycle",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P02] Project Janus & Vallum - Partition Geometry & Storage Security.md"
       ],
@@ -200,6 +218,15 @@
           "reason": "aegis-vulcan encodes MediaIngestDescriptor (src/contracts/media_ingest.rs), but aegis-hestia has no ingest decoder. M12 brings the DMA-BUF paths in the booted image (E12-1, REQ-P15-02 and REQ-P15-03)."
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-vulcan",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P03] Project Vulcan - User-Space PCIe Drivers & Direct DMA.md",
         "scaffold/crates/aegis-vulcan/src/main.rs"
@@ -277,6 +304,15 @@
           "relation": "DISPATCH_MCP_SIDECARS"
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-compositor",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P04] Project Mercurius - Wayland Compositor Infrastructure & Agent Mesh.md",
         "scaffold/build/mkosi.extra/usr/lib/systemd/system/aegis-compositor.service",
@@ -345,6 +381,15 @@
           "relation": "MOUNT_SHELL_CANVAS"
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-forum-shell",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P05] Project Forum - Non-Blocking Desktop Shell & Process Isolation.md"
       ],
@@ -411,6 +456,19 @@
           "relation": "AUDIT_RECONSTRUCTIVE_CANDIDATE"
         }
       ],
+      "cut": {
+        "class": "core-and-adapter",
+        "parts": [
+          {
+            "path": "crates/aegis-justitia",
+            "ties": "os-free"
+          },
+          {
+            "path": "bpf/action_gate.bpf.c",
+            "ties": "os-bound"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P06] Project Justitia - Regulatory Compliance, Action Interception & Governance.md",
         "proposals/justitia_interceptor_test.rs.txt",
@@ -491,6 +549,23 @@
           "relation": "DYNAMIC_VRAM_SWAP"
         }
       ],
+      "cut": {
+        "class": "core-and-adapter",
+        "parts": [
+          {
+            "path": "crates/aegis-lictor",
+            "ties": "os-free"
+          },
+          {
+            "path": "bpf/scx_cake.bpf.c",
+            "ties": "os-bound"
+          },
+          {
+            "path": "bpf/scx_cake_stub.bpf.c",
+            "ties": "os-bound"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P07] Project Lictor - Resource Broker Daemon, Performance Kernel Tuning & GPU Scheduling.md",
         "scaffold/crates/aegis-lictor/src/main.rs"
@@ -554,6 +629,15 @@
           "relation": "STREAM_DECODED_FRAME"
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-calliope",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P08] Project Calliope - Real-Time Multimedia Pipeline, PipeWire RTL & Sandboxed Plugins.md",
         "scaffold/crates/aegis-calliope/src/main.rs"
@@ -622,6 +706,15 @@
           "relation": "VERIFY_CODE_CAD"
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-minerva",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "scaffold/crates/aegis-minerva/src/main.rs"
       ],
@@ -679,6 +772,19 @@
           "relation": "SANDBOX_CANDIDATE_EVALUATION"
         }
       ],
+      "cut": {
+        "class": "core-and-adapter",
+        "parts": [
+          {
+            "path": "crates/aegis-vesta",
+            "ties": "os-free"
+          },
+          {
+            "path": "crates/aegis-vesta-sandbox",
+            "ties": "os-bound"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P10] Project Vesta - MicroVM Isolation, Wasm Component Sandboxing & Thread-Per-Core Runtimes.md",
         "scaffold/crates/aegis-vesta/src/main.rs"
@@ -738,6 +844,15 @@
           "relation": "DISPATCH_RICH_PRESENCE"
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-ludus",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P11] Project Ludus - Native Gaming Integration, Steamworks SDK & Discord Rich Presence.md",
         "scaffold/crates/aegis-ludus/src/main.rs"
@@ -816,6 +931,19 @@
           "reason": "aegis-scaena has no accessibility code. M28 runs the live AT-SPI suite (REQ-P17-06) against the P05 shell's tree, not against aegis-scaena; no milestone's exit criteria bring it."
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-concordia",
+            "ties": "os-free"
+          },
+          {
+            "path": "ui/concordia-tokens",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P12] Project Concordia - Accessible Sovereign Design System & EN 301 549 Conformance.md",
         "scaffold/ui/concordia-tokens/concordia-tokens.css"
@@ -878,6 +1006,23 @@
           "relation": "SPATIOTEMPORAL_TASK_SHIFT"
         }
       ],
+      "cut": {
+        "class": "core-and-adapter",
+        "parts": [
+          {
+            "path": "crates/aegis-tellus",
+            "ties": "os-free"
+          },
+          {
+            "path": "crates/aegis-tellus-rapl",
+            "ties": "os-free"
+          },
+          {
+            "path": "bpf/kepler_power.bpf.c",
+            "ties": "os-bound"
+          }
+        ]
+      },
       "candidate_sources": [
         "scaffold/crates/aegis-tellus/src/main.rs"
       ],
@@ -929,6 +1074,15 @@
           "relation": "RENDER_GEOMETRY_MICROFRONTEND"
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-hephaestus",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P14] Project Hephaestus - Open B-Rep CAD Kernels & Multi-Physics Solvers.md",
         "scaffold/crates/aegis-hephaestus/src/main.rs"
@@ -1023,6 +1177,15 @@
           "reason": "aegis-hestia encodes OverlayRegistration (src/contracts/overlay_registration.rs); aegis-compositor decodes only aegis-calliope's DMA-BUF stream. No milestone plans a P04 that serves zwlr_layer_shell_v1 (D79)."
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-hestia",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "blueprints/[Report P15] Project Hestia - Sovereign Productivity & Native App Engine.md",
         "scaffold/crates/aegis-hestia/src/main.rs",
@@ -1083,6 +1246,15 @@
           "relation": "EVALUATE_CANDIDATE_CARBON_SCI"
         }
       ],
+      "cut": {
+        "class": "standalone",
+        "parts": [
+          {
+            "path": "crates/aegis-athena",
+            "ties": "os-free"
+          }
+        ]
+      },
       "candidate_sources": [
         "scaffold/crates/aegis-athena/src/main.rs"
       ],
@@ -1174,6 +1346,15 @@
           "reason": "aegis-scaena's layer surface targets the host session's compositor (D79, client half only); aegis-compositor serves no zwlr_layer_shell_v1, and no milestone plans one that does."
         }
       ],
+      "cut": {
+        "class": "os-only",
+        "parts": [
+          {
+            "path": "crates/aegis-scaena",
+            "ties": "os-bound"
+          }
+        ]
+      },
       "candidate_sources": [],
       "concept_source": {
         "id": "desktop-spec",
