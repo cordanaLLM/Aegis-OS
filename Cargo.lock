@@ -260,7 +260,7 @@ name = "aegis-vesta"
 version = "0.1.0"
 dependencies = [
  "aegis-justitia",
- "saeptum-capsule",
+ "saeptum-capsule 0.1.0 (git+https://github.com/plurano/saeptum?rev=d5e6b94ee8ffe3c61d0568cd56870e46482e09e1)",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -3923,6 +3923,15 @@ checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 [[package]]
 name = "saeptum-capsule"
 version = "0.1.0"
+source = "git+https://github.com/plurano/saeptum?rev=997a1b34f0a2912de8bf67231846b3af512ff041#997a1b34f0a2912de8bf67231846b3af512ff041"
+dependencies = [
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "saeptum-capsule"
+version = "0.1.0"
 source = "git+https://github.com/plurano/saeptum?rev=d5e6b94ee8ffe3c61d0568cd56870e46482e09e1#d5e6b94ee8ffe3c61d0568cd56870e46482e09e1"
 dependencies = [
  "serde",
@@ -3932,10 +3941,10 @@ dependencies = [
 [[package]]
 name = "saeptum-microvm"
 version = "0.1.0"
-source = "git+https://github.com/plurano/saeptum?rev=d5e6b94ee8ffe3c61d0568cd56870e46482e09e1#d5e6b94ee8ffe3c61d0568cd56870e46482e09e1"
+source = "git+https://github.com/plurano/saeptum?rev=997a1b34f0a2912de8bf67231846b3af512ff041#997a1b34f0a2912de8bf67231846b3af512ff041"
 dependencies = [
  "libc",
- "saeptum-capsule",
+ "saeptum-capsule 0.1.0 (git+https://github.com/plurano/saeptum?rev=997a1b34f0a2912de8bf67231846b3af512ff041)",
  "serde_json",
  "socket2",
  "thiserror 2.0.21",
