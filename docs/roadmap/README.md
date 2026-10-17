@@ -224,7 +224,7 @@ score.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 0 | M00 | Governance gate, split licence and remote declaration | done | trivial | no | no | not-hardware | - | M01 |
 | 1 | M01 | Component inventory reconciliation and decision register | done | small | no | no | not-hardware | M00 | M02 |
-| 2 | M02 | First component promoted end-to-end: P06 aegis-justitia decision engine | done | small | no | no | not-hardware | M01 | M14, M03, M17, M07, M04 |
+| 2 | M02 | First component promoted end-to-end: P06 aegis-justitia decision engine | done | small | no | no | not-hardware | M01 | M14, M03, M17, M07, M04, M33 |
 | 3 | M14 | P06 consumer interface contracts and hardened unit contract | done | small | no | no | not-hardware | M02 | M05, M06, M16, M20 |
 | 4 | M03 | P01/P02 definitions validated offline with host systemd | done | small | no | no | not-hardware | M02 | M18, M15 |
 | 5 | M18 | Aegis-side product input manifest and kernel requirement schemas (local) | done | small | no | no | not-hardware | M03 | M09, M26 |
@@ -241,17 +241,21 @@ score.
 | 16 | M04 | UI accessibility harness: P12 Concordia tokens | done | medium | no | no | not-hardware | M02 | M16, M11 |
 | 17 | M09 | Cross-repository contract pin: one local request/result pair | done | small | no | yes | partial | M18 | M11, M10 |
 | 18 | M16 | P05 Forum shell state and lifecycle with stubbed IPC | done | small | no | no | not-hardware | M04, M14 | M28 |
-| 19 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | done | medium | yes | no | full | M07 | M28, M29 |
+| 19 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | done | medium | yes | no | full | M07 | M28, M29, M32 |
 | 20 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | done | small | yes | no | full (privileged read) | M05 | - |
 | 21 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | done | medium | yes | yes | partial | M09, M19, M23 | M12 |
 | 22 | M25 | GPU host slices on the reference profile: DMA-BUF and VFIO | ready | medium | yes | no | full | M08, M17 | M12 |
-| 23 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
-| 24 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | ready | large | yes | no | full | M16, M27 | M29 |
+| 23 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | ready | large | yes | no | full | M16, M27 | M29, M30, M31 |
+| 24 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
 | 25 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | blocked | medium | yes | no | full | M28, M27 | - |
-| 26 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
-| 27 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
-| 28 | M12 | GPU component paths in the booted image: DMA-BUF, VFIO, P2PDMA | blocked | large | yes | yes | partial | M25, M10, M11 | - |
-| 29 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
+| 26 | M30 | P05 canvas accessibility: semantics, pointer alternatives, text scale | blocked | medium | yes | no | full | M28 | - |
+| 27 | M31 | P12 D76 heads-up theme: reduced motion, security states, flash limit | blocked | medium | yes | no | full | M28 | - |
+| 28 | M32 | P17 Scaena subtitle timing on a fixture clip with audio and subtitles | ready | medium | yes | no | full | M27 | - |
+| 29 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
+| 30 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
+| 31 | M33 | Consume amussis-decision in place of the in-tree decision engine | blocked | medium | no | yes | not-hardware | M02 | - |
+| 32 | M12 | GPU component paths in the booted image: DMA-BUF, VFIO, P2PDMA | blocked | large | yes | yes | partial | M25, M10, M11 | - |
+| 33 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
 
 The reference profile column records what the machine in
 `planning/hardware-profile.json` can evidence for that milestone. A pass there
@@ -403,7 +407,7 @@ Evidence:
 
 Rank 2. State: done. Cost: small. Owner repository: cordanaLLM/Aegis-OS. Needs
 hardware: no. Needs external contract: no. Reference profile: not-hardware.
-Blocked by: M01. Unblocks: M14, M03, M17, M07, M04.
+Blocked by: M01. Unblocks: M14, M03, M17, M07, M04, M33.
 
 Exit criteria:
 
@@ -1970,7 +1974,7 @@ Epics:
 
 ### M22 - P10 microVM sandbox measurements on KVM
 
-Rank 23. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 24. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M06. Unblocks: nothing.
 
@@ -2686,7 +2690,7 @@ Evidence:
 
 Rank 19. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
-Blocked by: M07. Unblocks: M28, M29.
+Blocked by: M07. Unblocks: M28, M29, M32.
 
 The first milestone of P17 aegis-scaena, added by D75 and ADR-0003. It is the
 cheapest slice that yields runtime evidence for the D75 and D77 paths: each
@@ -2991,9 +2995,9 @@ Epics:
 
 ### M28 - P05 native shell on gpui: layer surface, AT-SPI tree, frame time
 
-Rank 24. State: ready. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 23. State: ready. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
-Blocked by: M16, M27. Unblocks: M29.
+Blocked by: M16, M27. Unblocks: M29, M30, M31.
 
 The P05 shell on the toolkit D102 chose, planned on 2026-09-29 under D101 and
 ADR-0004. It puts M16's canvas model on gpui as a layer surface behind the P17
@@ -3225,6 +3229,168 @@ Epics:
   image whose sha256 differs from the pin is refused before it boots. Boundary:
   a service that does not appear within its deadline fails the case and names
   the service.
+
+### M30 - P05 canvas accessibility: semantics, pointer alternatives, text scale
+
+Rank 26. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: full.
+Blocked by: M28. Unblocks: nothing.
+
+The rendered-canvas accessibility milestone for P05, planned on 2026-10-17 from
+issues #212, #213 and #214. REQ-P05-12, REQ-P05-14 and REQ-P05-15 each depend on
+a rendered canvas, which M28 is the first to map; they follow M28 here rather
+than growing its first slice.
+
+Exit criteria:
+
+- REQ-P05-12 on the running shell: every instrument and surrogate the M28 shell
+  paints exposes a role, an accessible name, its states and its value, with
+  minimum and maximum for rotatable or slidable handles, read back over AT-SPI
+  with the atspi crate as M28's tree case reads it, and a keyboard change of a
+  value arrives as a change notification under a deadline (HISS-02).
+- REQ-P05-14 on the running shell: every drag, pinch or path operation has a
+  single-pointer alternative without dragging and a keyboard alternative,
+  single-pointer activation completes on the up-event and can be aborted, and
+  pointer targets measured on the painted surface stay at least 24 by 24 CSS px
+  at every camera scale or report inert while an equivalent control remains.
+- REQ-P05-15 on the running shell: canvas text at 200% of the platform text
+  scale loses no content or function, a linear list mode presents every node and
+  instrument without two-dimensional scrolling, and no node moves without a user
+  request.
+- The cases join M28's `make verify-shell` and keep its SKIP convention; every
+  case that needs no display runs inside make verify-all. docs/build/native-
+  shell.md records the run that is evidence, and the three requirement rows name
+  this milestone.
+- Labelling (D79): a run against the host session's compositor is development
+  evidence for the client half only, and a pass closes no hardware,
+  accessibility or release gate.
+
+Cheapest exit: On the M28 shell, read one slidable handle's role, value, minimum
+and maximum back over AT-SPI, complete one drag function through click-only
+controls, and render the canvas at 200% text scale in list mode at 320 CSS px.
+
+Epics:
+
+- **E30-1 Instrument and surrogate semantics over AT-SPI (REQ-P05-12)**.
+  Requirements: REQ-P05-12. Acceptance: Positive: a slidable handle exposes role
+  slider, a name, a value, a minimum and a maximum, and a keyboard increment
+  updates the value with a change notification. Negative: a handle painted
+  without a role fails. Boundary: the value at its minimum and at its maximum.
+- **E30-2 Pointer alternatives and target size on rendered pixels
+  (REQ-P05-14)**. Requirements: REQ-P05-14. Acceptance: Positive: with dragging
+  intercepted, every drag function completes through click-only controls with
+  the same resulting state. Negative: a rotate handle that works only by drag
+  fails. Boundary: at the minimum camera scale the target-size rule passes or
+  the node reports inert with an equivalent control; press, move off target and
+  release aborts without side effect.
+- **E30-3 200% text scale and the linear list mode (REQ-P05-15)**. Requirements:
+  REQ-P05-15. Acceptance: Positive: at 200% platform text scale no panel clips,
+  and list mode at 320 CSS px shows every node with no horizontal scrollbar.
+  Negative: a panel that clips at 200% fails. Boundary: exactly 200%; a
+  telemetry update moves no node.
+
+### M31 - P12 D76 heads-up theme: reduced motion, security states, flash limit
+
+Rank 27. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: full.
+Blocked by: M28. Unblocks: nothing.
+
+The D76 heads-up theme, planned on 2026-10-17 from issues #215, #216 and #217.
+The theme had no milestone, so REQ-P12-11, REQ-P12-12 and REQ-P12-13 had none
+either; one milestone after M28 holds the theme and the three requirements.
+
+Exit criteria:
+
+- The D76 heads-up theme is built over the Concordia base tokens that M28
+  generates as Rust constants, opt-in, with the base theme the default; its
+  shader layers attach only when the theme is chosen.
+- REQ-P12-11: with the reduced-motion preference REQ-P12-02 reads set, every
+  shader, animation and camera transition jumps to its end state, and every
+  automatic moving, blinking or scrolling effect longer than five seconds has a
+  keyboard-reachable pause, stop or hide control. Until M29 reads the portal
+  live, the preference comes from the D-Bus mock M16 uses, and the record says
+  so.
+- REQ-P12-12: the four security states (unverified, gate active, verified,
+  fault) differ by frame shape and visible text label, are exposed as distinct
+  states over AT-SPI, meet 3:1 frame-edge and 4.5:1 label contrast measured on
+  the painted surface, and announce a change as a status message without moving
+  focus.
+- REQ-P12-13: no heads-up element flashes more than three times in any one-
+  second window, counted on frames stepped at 60 Hz, a token with a flash period
+  under 333 ms is refused where the theme's tokens are generated, and under
+  reduced motion the fault indicator is steady.
+- The cases join M28's `make verify-shell` and keep its SKIP convention; the
+  token checks run inside make verify-all. The three requirement rows name this
+  milestone. Labelling (D79): a run against the host session's compositor is
+  development evidence for the client half only, and a pass closes no hardware,
+  accessibility or release gate.
+
+Cheapest exit: Opt into the heads-up theme on the M28 shell, run one zoom with
+reduced motion set, capture the four security states in grayscale, and count the
+fault animation's flashes over one second at 60 Hz.
+
+Epics:
+
+- **E31-1 Reduced motion and pause controls in the heads-up theme
+  (REQ-P12-11)**. Requirements: REQ-P12-11. Acceptance: Positive: with reduced
+  motion set, a zoom from 1 to 4 reaches its target with no intermediate frame,
+  and pause stops the shader frame counter. Negative: an interpolated trajectory
+  with two or more intermediate scales fails; a scanline loop still advancing
+  after pause fails. Boundary: flipping the preference mid-pan snaps to the
+  target within one frame without reload; an auto-starting effect of exactly 5 s
+  without a control passes and 5.1 s fails.
+- **E31-2 Security states without colour (REQ-P12-12)**. Requirements:
+  REQ-P12-12. Acceptance: Positive: grayscale captures of the four states differ
+  pairwise in the frame region, and each state exposes a distinct state string.
+  Negative: two states that differ only by hue fail; a 50%-opacity label below
+  4.5:1 fails. Boundary: a frame edge at exactly 3:1 passes and 2.99:1 fails;
+  ten transitions within one second announce the final state.
+- **E31-3 Three-flash limit (REQ-P12-13)**. Requirements: REQ-P12-13.
+  Acceptance: Positive: the fault animation stepped at 60 Hz for one second
+  counts at most three flashes in every one-second window. Negative: a planted 4
+  Hz blink fails. Boundary: exactly three flashes per second passes and four
+  fails; a token with a flash period under 333 ms is refused.
+
+### M32 - P17 Scaena subtitle timing on a fixture clip with audio and subtitles
+
+Rank 28. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: yes. Needs external contract: no. Reference profile: full.
+Blocked by: M27. Unblocks: nothing.
+
+The next P17 slice after M27, planned on 2026-10-17 from issue #218. The M27
+fixtures carry no audio and no subtitle track, so REQ-P17-08 had no milestone;
+this one adds a fixture that carries both.
+
+Exit criteria:
+
+- A fixture clip generated for Aegis carries video, synchronized audio and a
+  timed subtitle track: video and audio from ffmpeg's testsrc and sine sources,
+  the subtitle file written for Aegis, the ffmpeg command recorded as
+  provenance, and the fixture under the project licence with `reuse lint`
+  passing. An openly licensed third-party clip is used only if a generated one
+  cannot carry the case, with its REUSE notice and credit.
+- REQ-P17-08: on the reference profile each subtitle is presented within 100 ms
+  of its timecode, measured against the wp_presentation timestamp of the frame
+  it accompanies, and every wait has a deadline (HISS-02).
+- The case joins M27's `make verify-display` and keeps its SKIP convention; the
+  timing arithmetic and the fixture's provenance check run inside make verify-
+  all. docs/build/display.md records the run that is evidence, and the
+  requirement row names this milestone.
+- Labelling (D79): a pass is client-half development evidence on the reference
+  profile and closes no hardware, accessibility or release gate.
+
+Cheapest exit: Generate one short clip with ffmpeg's testsrc and sine sources
+and a subtitle file, present it on the M27 layer surface, and compare each
+subtitle's presentation time with its timecode.
+
+Epics:
+
+- **E32-1 Subtitle synchronization against wp_presentation (REQ-P17-08)**.
+  Requirements: REQ-P17-08. Acceptance: Positive: a fixture clip with a timed
+  subtitle track presents each subtitle within 100 ms of its timecode, measured
+  against the wp_presentation timestamp of the frame it accompanies. Negative: a
+  subtitle presented 150 ms late fails. Boundary: 100 ms passes and 101 ms
+  fails.
 
 ### M09 - Cross-repository contract pin: one local request/result pair
 
@@ -3546,7 +3712,7 @@ Epics:
 
 ### M11 - Minimal image build with artifact, signature and boot evidence
 
-Rank 26. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 29. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M24, M04. Unblocks: M13, M20, M12.
 
@@ -4047,7 +4213,7 @@ Epics:
 
 ### M20 - TPM2 attestation slice on swtpm: audit-record signing and /var unseal
 
-Rank 27. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 30. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: full.
 Blocked by: M11, M14. Unblocks: nothing.
 
@@ -4129,7 +4295,7 @@ Epics:
 
 ### M12 - GPU component paths in the booted image: DMA-BUF, VFIO, P2PDMA
 
-Rank 28. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 32. State: blocked. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M25, M10, M11. Unblocks: nothing.
 
@@ -4186,9 +4352,43 @@ Epics:
   rejected. Boundary: an ABI mapping with zero functions is not accepted as a
   boundary.
 
+### M33 - Consume amussis-decision in place of the in-tree decision engine
+
+Rank 31. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Needs hardware: no. Needs external contract: yes. Reference profile: not-hardware.
+Blocked by: M02. Unblocks: nothing.
+Waits outside: amussis v0.1.0.
+
+The move from the in-tree decision engine to the shared amussis-decision crate,
+planned on 2026-10-17 from issue #225. It waits on the amussis v0.1.0 release,
+which external_blockers records and make readiness prints;
+docs/integration/stack.md is not changed until that release pins the contract.
+
+Exit criteria:
+
+- A recorded decision adopts amussis-decision at the released v0.1.0 tag, read
+  back from the amussis repository, and docs/integration/stack.md names amussis
+  as a producer in the same change.
+- An adapter crate maps P06's decision interface onto amussis-decision, the M14
+  consumer contracts keep passing unchanged, and the in-tree engine is removed
+  only after they pass against the adapter.
+- Positive, negative and boundary cases for the adapter run inside make verify-
+  all (HISS-15).
+
+Cheapest exit: Pin amussis v0.1.0, route one M14 consumer contract test through
+an adapter onto amussis-decision, and keep it green.
+
+Epics:
+
+- **E33-1 amussis-decision adapter and removal of the in-tree engine**.
+  Requirements: none. Acceptance: Positive: the M14 consumer contract tests pass
+  through the adapter. Negative: an amussis version other than the pinned tag is
+  refused. Boundary: the in-tree engine's removal leaves every contract test
+  passing.
+
 ### M13 - Release signing and remote delivery (stack.md step 5)
 
-Rank 29. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 33. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: yes. Reference profile: partial.
 Blocked by: M11. Unblocks: nothing.
 

@@ -203,7 +203,8 @@
         "M03",
         "M17",
         "M07",
-        "M04"
+        "M04",
+        "M33"
       ],
       "cost": "small",
       "needs_hardware": false,
@@ -1727,7 +1728,7 @@
     {
       "id": "M22",
       "title": "P10 microVM sandbox measurements on KVM",
-      "rank": 23,
+      "rank": 24,
       "state": "ready",
       "blocked_by": [
         "M06"
@@ -1798,7 +1799,8 @@
       ],
       "unblocks": [
         "M28",
-        "M29"
+        "M29",
+        "M32"
       ],
       "cost": "medium",
       "needs_hardware": true,
@@ -1879,14 +1881,16 @@
     {
       "id": "M28",
       "title": "P05 native shell on gpui: layer surface, AT-SPI tree, frame time",
-      "rank": 24,
+      "rank": 23,
       "state": "ready",
       "blocked_by": [
         "M16",
         "M27"
       ],
       "unblocks": [
-        "M29"
+        "M29",
+        "M30",
+        "M31"
       ],
       "cost": "large",
       "needs_hardware": true,
@@ -2136,7 +2140,7 @@
     {
       "id": "M11",
       "title": "Minimal image build with artifact, signature and boot evidence",
-      "rank": 26,
+      "rank": 29,
       "state": "ready",
       "blocked_by": [
         "M09",
@@ -2359,7 +2363,7 @@
     {
       "id": "M20",
       "title": "TPM2 attestation slice on swtpm: audit-record signing and /var unseal",
-      "rank": 27,
+      "rank": 30,
       "state": "blocked",
       "blocked_by": [
         "M11",
@@ -2434,7 +2438,7 @@
     {
       "id": "M12",
       "title": "GPU component paths in the booted image: DMA-BUF, VFIO, P2PDMA",
-      "rank": 28,
+      "rank": 32,
       "state": "blocked",
       "blocked_by": [
         "M25",
@@ -2509,7 +2513,7 @@
     {
       "id": "M13",
       "title": "Release signing and remote delivery (stack.md step 5)",
-      "rank": 29,
+      "rank": 33,
       "state": "blocked",
       "blocked_by": [
         "M11"
@@ -2562,6 +2566,207 @@
         "requires": [],
         "rationale": "Down six places, 19 -> 25, to last. It is the sole category-5 milestone and the stated order puts release behind everything. This is also the strictest reading of the rule the maintainer set: a local pass on one developer machine is never release evidence, so the reference profile cannot move this milestone at all — it can only make the milestones ahead of it finish sooner. Its cheapest_exit (recording the hosted ruleset and label readback for the existing origin before any artifact exists) is the only part that can start now, and it draws on the remote, not on this machine."
       }
+    },
+    {
+      "id": "M30",
+      "title": "P05 canvas accessibility: semantics, pointer alternatives, text scale",
+      "rank": 26,
+      "state": "blocked",
+      "blocked_by": [
+        "M28"
+      ],
+      "unblocks": [],
+      "cost": "medium",
+      "needs_hardware": true,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P05",
+        "P12"
+      ],
+      "reference_profile": {
+        "support": "full",
+        "requires": [
+          "wayland_layer_shell"
+        ],
+        "rationale": "Planned on 2026-10-17 from issues #212, #213 and #214: REQ-P05-12, REQ-P05-14 and REQ-P05-15 had no milestone, and each depends on a rendered canvas, which M28 is the first to map. It runs on the same host session as M28, so it needs the same layer-shell capability; it follows M28 instead of growing it, so M28's first slice stays as planned."
+      },
+      "exit_criteria": [
+        "REQ-P05-12 on the running shell: every instrument and surrogate the M28 shell paints exposes a role, an accessible name, its states and its value, with minimum and maximum for rotatable or slidable handles, read back over AT-SPI with the atspi crate as M28's tree case reads it, and a keyboard change of a value arrives as a change notification under a deadline (HISS-02).",
+        "REQ-P05-14 on the running shell: every drag, pinch or path operation has a single-pointer alternative without dragging and a keyboard alternative, single-pointer activation completes on the up-event and can be aborted, and pointer targets measured on the painted surface stay at least 24 by 24 CSS px at every camera scale or report inert while an equivalent control remains.",
+        "REQ-P05-15 on the running shell: canvas text at 200% of the platform text scale loses no content or function, a linear list mode presents every node and instrument without two-dimensional scrolling, and no node moves without a user request.",
+        "The cases join M28's `make verify-shell` and keep its SKIP convention; every case that needs no display runs inside make verify-all. docs/build/native-shell.md records the run that is evidence, and the three requirement rows name this milestone.",
+        "Labelling (D79): a run against the host session's compositor is development evidence for the client half only, and a pass closes no hardware, accessibility or release gate."
+      ],
+      "cheapest_exit": "On the M28 shell, read one slidable handle's role, value, minimum and maximum back over AT-SPI, complete one drag function through click-only controls, and render the canvas at 200% text scale in list mode at 320 CSS px.",
+      "epics": [
+        {
+          "id": "E30-1",
+          "title": "Instrument and surrogate semantics over AT-SPI (REQ-P05-12)",
+          "requirement_ids": [
+            "REQ-P05-12"
+          ],
+          "acceptance": "Positive: a slidable handle exposes role slider, a name, a value, a minimum and a maximum, and a keyboard increment updates the value with a change notification. Negative: a handle painted without a role fails. Boundary: the value at its minimum and at its maximum."
+        },
+        {
+          "id": "E30-2",
+          "title": "Pointer alternatives and target size on rendered pixels (REQ-P05-14)",
+          "requirement_ids": [
+            "REQ-P05-14"
+          ],
+          "acceptance": "Positive: with dragging intercepted, every drag function completes through click-only controls with the same resulting state. Negative: a rotate handle that works only by drag fails. Boundary: at the minimum camera scale the target-size rule passes or the node reports inert with an equivalent control; press, move off target and release aborts without side effect."
+        },
+        {
+          "id": "E30-3",
+          "title": "200% text scale and the linear list mode (REQ-P05-15)",
+          "requirement_ids": [
+            "REQ-P05-15"
+          ],
+          "acceptance": "Positive: at 200% platform text scale no panel clips, and list mode at 320 CSS px shows every node with no horizontal scrollbar. Negative: a panel that clips at 200% fails. Boundary: exactly 200%; a telemetry update moves no node."
+        }
+      ]
+    },
+    {
+      "id": "M31",
+      "title": "P12 D76 heads-up theme: reduced motion, security states, flash limit",
+      "rank": 27,
+      "state": "blocked",
+      "blocked_by": [
+        "M28"
+      ],
+      "unblocks": [],
+      "cost": "medium",
+      "needs_hardware": true,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P12",
+        "P05"
+      ],
+      "reference_profile": {
+        "support": "full",
+        "requires": [
+          "wayland_layer_shell"
+        ],
+        "rationale": "Planned on 2026-10-17 from issues #215, #216 and #217: the D76 heads-up theme had no milestone, so REQ-P12-11, REQ-P12-12 and REQ-P12-13 had none either. The theme paints over the M28 shell, so it runs on M28's host session and needs the same layer-shell capability; one milestone holds the theme and its three requirements."
+      },
+      "exit_criteria": [
+        "The D76 heads-up theme is built over the Concordia base tokens that M28 generates as Rust constants, opt-in, with the base theme the default; its shader layers attach only when the theme is chosen.",
+        "REQ-P12-11: with the reduced-motion preference REQ-P12-02 reads set, every shader, animation and camera transition jumps to its end state, and every automatic moving, blinking or scrolling effect longer than five seconds has a keyboard-reachable pause, stop or hide control. Until M29 reads the portal live, the preference comes from the D-Bus mock M16 uses, and the record says so.",
+        "REQ-P12-12: the four security states (unverified, gate active, verified, fault) differ by frame shape and visible text label, are exposed as distinct states over AT-SPI, meet 3:1 frame-edge and 4.5:1 label contrast measured on the painted surface, and announce a change as a status message without moving focus.",
+        "REQ-P12-13: no heads-up element flashes more than three times in any one-second window, counted on frames stepped at 60 Hz, a token with a flash period under 333 ms is refused where the theme's tokens are generated, and under reduced motion the fault indicator is steady.",
+        "The cases join M28's `make verify-shell` and keep its SKIP convention; the token checks run inside make verify-all. The three requirement rows name this milestone. Labelling (D79): a run against the host session's compositor is development evidence for the client half only, and a pass closes no hardware, accessibility or release gate."
+      ],
+      "cheapest_exit": "Opt into the heads-up theme on the M28 shell, run one zoom with reduced motion set, capture the four security states in grayscale, and count the fault animation's flashes over one second at 60 Hz.",
+      "epics": [
+        {
+          "id": "E31-1",
+          "title": "Reduced motion and pause controls in the heads-up theme (REQ-P12-11)",
+          "requirement_ids": [
+            "REQ-P12-11"
+          ],
+          "acceptance": "Positive: with reduced motion set, a zoom from 1 to 4 reaches its target with no intermediate frame, and pause stops the shader frame counter. Negative: an interpolated trajectory with two or more intermediate scales fails; a scanline loop still advancing after pause fails. Boundary: flipping the preference mid-pan snaps to the target within one frame without reload; an auto-starting effect of exactly 5 s without a control passes and 5.1 s fails."
+        },
+        {
+          "id": "E31-2",
+          "title": "Security states without colour (REQ-P12-12)",
+          "requirement_ids": [
+            "REQ-P12-12"
+          ],
+          "acceptance": "Positive: grayscale captures of the four states differ pairwise in the frame region, and each state exposes a distinct state string. Negative: two states that differ only by hue fail; a 50%-opacity label below 4.5:1 fails. Boundary: a frame edge at exactly 3:1 passes and 2.99:1 fails; ten transitions within one second announce the final state."
+        },
+        {
+          "id": "E31-3",
+          "title": "Three-flash limit (REQ-P12-13)",
+          "requirement_ids": [
+            "REQ-P12-13"
+          ],
+          "acceptance": "Positive: the fault animation stepped at 60 Hz for one second counts at most three flashes in every one-second window. Negative: a planted 4 Hz blink fails. Boundary: exactly three flashes per second passes and four fails; a token with a flash period under 333 ms is refused."
+        }
+      ]
+    },
+    {
+      "id": "M32",
+      "title": "P17 Scaena subtitle timing on a fixture clip with audio and subtitles",
+      "rank": 28,
+      "state": "ready",
+      "blocked_by": [
+        "M27"
+      ],
+      "unblocks": [],
+      "cost": "medium",
+      "needs_hardware": true,
+      "needs_external_contract": false,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P17"
+      ],
+      "reference_profile": {
+        "support": "full",
+        "requires": [
+          "wayland_layer_shell"
+        ],
+        "rationale": "Planned on 2026-10-17 from issue #218: REQ-P17-08 had no milestone because the M27 fixtures carry no audio and no subtitle track. It presents on the layer surface M27 maps on the reference profile, so it needs the capabilities M27 measured there."
+      },
+      "exit_criteria": [
+        "A fixture clip generated for Aegis carries video, synchronized audio and a timed subtitle track: video and audio from ffmpeg's testsrc and sine sources, the subtitle file written for Aegis, the ffmpeg command recorded as provenance, and the fixture under the project licence with `reuse lint` passing. An openly licensed third-party clip is used only if a generated one cannot carry the case, with its REUSE notice and credit.",
+        "REQ-P17-08: on the reference profile each subtitle is presented within 100 ms of its timecode, measured against the wp_presentation timestamp of the frame it accompanies, and every wait has a deadline (HISS-02).",
+        "The case joins M27's `make verify-display` and keeps its SKIP convention; the timing arithmetic and the fixture's provenance check run inside make verify-all. docs/build/display.md records the run that is evidence, and the requirement row names this milestone.",
+        "Labelling (D79): a pass is client-half development evidence on the reference profile and closes no hardware, accessibility or release gate."
+      ],
+      "cheapest_exit": "Generate one short clip with ffmpeg's testsrc and sine sources and a subtitle file, present it on the M27 layer surface, and compare each subtitle's presentation time with its timecode.",
+      "epics": [
+        {
+          "id": "E32-1",
+          "title": "Subtitle synchronization against wp_presentation (REQ-P17-08)",
+          "requirement_ids": [
+            "REQ-P17-08"
+          ],
+          "acceptance": "Positive: a fixture clip with a timed subtitle track presents each subtitle within 100 ms of its timecode, measured against the wp_presentation timestamp of the frame it accompanies. Negative: a subtitle presented 150 ms late fails. Boundary: 100 ms passes and 101 ms fails."
+        }
+      ]
+    },
+    {
+      "id": "M33",
+      "title": "Consume amussis-decision in place of the in-tree decision engine",
+      "rank": 31,
+      "state": "blocked",
+      "blocked_by": [
+        "M02"
+      ],
+      "external_blockers": [
+        {
+          "release": "amussis v0.1.0",
+          "source": "cordanaLLM/Aegis-OS issue #225"
+        }
+      ],
+      "unblocks": [],
+      "cost": "medium",
+      "needs_hardware": false,
+      "needs_external_contract": true,
+      "owner_repo": "cordanaLLM/Aegis-OS",
+      "subsystems": [
+        "P06"
+      ],
+      "reference_profile": {
+        "support": "not-hardware",
+        "requires": [],
+        "rationale": "Planned on 2026-10-17 from issue #225: once amussis releases v0.1.0 with amussis-decision, Aegis uses it in place of the decision engine M02 built in crates/aegis-justitia. It waits on that release, which external_blockers records, and docs/integration/stack.md is not changed until the release pins the contract."
+      },
+      "exit_criteria": [
+        "A recorded decision adopts amussis-decision at the released v0.1.0 tag, read back from the amussis repository, and docs/integration/stack.md names amussis as a producer in the same change.",
+        "An adapter crate maps P06's decision interface onto amussis-decision, the M14 consumer contracts keep passing unchanged, and the in-tree engine is removed only after they pass against the adapter.",
+        "Positive, negative and boundary cases for the adapter run inside make verify-all (HISS-15)."
+      ],
+      "cheapest_exit": "Pin amussis v0.1.0, route one M14 consumer contract test through an adapter onto amussis-decision, and keep it green.",
+      "epics": [
+        {
+          "id": "E33-1",
+          "title": "amussis-decision adapter and removal of the in-tree engine",
+          "requirement_ids": [],
+          "acceptance": "Positive: the M14 consumer contract tests pass through the adapter. Negative: an amussis version other than the pinned tag is refused. Boundary: the in-tree engine's removal leaves every contract test passing."
+        }
+      ]
     }
   ],
   "ranking": {
