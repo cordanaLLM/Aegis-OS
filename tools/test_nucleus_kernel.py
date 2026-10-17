@@ -25,7 +25,7 @@ from unittest import mock
 import verify_bpf_objects as bpf
 import verify_latency_fixture as harness
 import verify_nucleus_kernel as gate
-from test_kernel_requirement_check import conforming_config
+from test_nucleus_kernel_check import NUCLEUS, NUCLEUS_MISSING, conforming_config
 from test_latency_fixture import call_sites, deadlined_call_sites
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -34,6 +34,11 @@ LOADER = ROOT / "bpf" / "loader" / "aegis_bpf_probe.c"
 ADMISSION = ROOT / "docs" / "roadmap" / "toolchain-admission.md"
 MAKEFILE = ROOT / "Makefile"
 PIN = gate.load_pin()
+# Cases the pinned nucleus verifier decides skip, naming the fetch, where M09's
+# contract cache is absent; CI fetches it before `make verify-all`.
+NEEDS_NUCLEUS = unittest.skipIf(
+    NUCLEUS is None, f"the pinned nucleus verifier is not here: {NUCLEUS_MISSING}"
+)
 MARK = gate.GUEST_MARK
 
 # Every program the gate may start from its own call sites. Nothing here
@@ -304,6 +309,7 @@ class ReleaseBoundaryTests(unittest.TestCase):
         self.assertEqual(gate.release_below("7.0"), "6.999")
         self.assertIsNone(gate.release_below("0"))
 
+    @NEEDS_NUCLEUS
     def test_the_boundary_case_passes_on_the_tracked_requirement(self):
         with tempfile.TemporaryDirectory() as base:
             context = context_in(base)
@@ -448,19 +454,20 @@ class RequirementCaseTests(unittest.TestCase):
             context = context_in(base)
             return quiet(function, context, readback_report("n", config))
 
+    @NEEDS_NUCLEUS
     def test_a_conforming_guest_satisfies_the_requirement(self):
         passed, out = self.run_case(gate.requirement_case, conforming_config())
         self.assertTrue(passed, out)
         self.assertIn("CONFIG_KVM: required module, config m -> satisfied", out)
 
+    @NEEDS_NUCLEUS
     def test_an_unsatisfied_guest_is_rejected_before_any_load(self):
         config = gate.planted(conforming_config(), "CONFIG_BPF_LSM", "CONFIG_BPF_LSM=n")
         passed, out = self.run_case(gate.requirement_case, config)
         self.assertFalse(passed)
-        self.assertIn(
-            "rejected: correlation-id aegis-m18-kernel-requirement-0001: CONFIG_BPF_LSM", out
-        )
+        self.assertIn("rejected: aegis-m18-kernel-requirement-0001: CONFIG_BPF_LSM", out)
 
+    @NEEDS_NUCLEUS
     def test_a_guest_without_the_trampoline_row_is_rejected_before_any_load(self):
         """Negative (D107): a configuration without DYNAMIC_FTRACE_WITH_DIRECT_CALLS, the
         shape of v7.2.8-realtime-lusoris1's, fails the requirement, so nothing loads."""
@@ -468,8 +475,9 @@ class RequirementCaseTests(unittest.TestCase):
         config = gate.planted(conforming_config(), symbol, None)
         passed, out = self.run_case(gate.requirement_case, config)
         self.assertFalse(passed)
-        self.assertIn(f"rejected: correlation-id aegis-m18-kernel-requirement-0001: {symbol}", out)
+        self.assertIn(f"rejected: aegis-m18-kernel-requirement-0001: {symbol}", out)
 
+    @NEEDS_NUCLEUS
     def test_the_negative_and_boundary_cases_pass_on_a_conforming_guest(self):
         self.assertTrue(self.run_case(gate.requirement_negative_case, conforming_config())[0])
         self.assertTrue(self.run_case(gate.requirement_boundary_case, conforming_config())[0])
@@ -613,10 +621,12 @@ class ReadbackPhaseTests(unittest.TestCase):
             context = context_in(base)
             return quiet(gate.readback_phase, context)
 
+    @NEEDS_NUCLEUS
     def test_a_conforming_guest_admits_the_load_boot(self):
         passed, out = self.run_phase(conforming_config())
         self.assertTrue(passed, out)
 
+    @NEEDS_NUCLEUS
     def test_a_requirement_rejection_withholds_the_load_boot(self):
         """Negative, D94: an unsatisfied row stops the run before any M19 object loads."""
         config = gate.planted(conforming_config(), "CONFIG_BPF_LSM", "CONFIG_BPF_LSM=n")
@@ -630,16 +640,19 @@ class ReadbackPhaseTests(unittest.TestCase):
         self.assertIn("FAIL nucleus/requirement-satisfied-before-any-load", out)
         self.assertTrue(self.run_phase(conforming_config(), patches=others)[0])
 
+    @NEEDS_NUCLEUS
     def test_a_guest_without_a_capability_or_its_identity_withholds_the_load_boot(self):
         self.assertFalse(self.run_phase(conforming_config(), probe_lines(sched_ext="n"))[0])
         self.assertFalse(self.run_phase(conforming_config(), identity=False)[0])
 
+    @NEEDS_NUCLEUS
     def test_a_failed_requirement_negative_or_boundary_withholds_the_load_boot(self):
         """Boundary: the D94 negative and boundary gate the loads as the positive does."""
         for name in ("requirement_negative_case", "requirement_boundary_case"):
             patch = mock.patch.object(gate, name, return_value=False)
             self.assertFalse(self.run_phase(conforming_config(), patches=(patch,))[0], name)
 
+    @NEEDS_NUCLEUS
     def test_a_rejecting_guest_loads_nothing_through_run_cases(self):
         config = gate.planted(conforming_config(), "CONFIG_KVM", "CONFIG_KVM=y")
         text = readback_report("n", config, probe=probe_lines())

@@ -16,7 +16,8 @@ say for each row (D106) -- and the surfaces the gate runs through: the
 Makefile, CI, the admission page and the evidence page. The recorded outputs
 below are what imago printed on the reference profile, at 16f964b on 2026-09-28
 and byte for byte again at 987b95a on 2026-09-29, and what nucleus 852be74's
-verifier wrote on 2026-09-29 (D107), kept as bytes; nucleus's reports are
+verifier wrote on 2026-09-29 (D107) and 677dd40's again on 2026-10-17,
+kept as bytes; nucleus's reports are
 abridged by dropping fields and rows, never by adding or changing one, and a
 variant nucleus did not write is built inside its test and named synthetic
 there. The sweeps at the end hold the gate to HISS-02, HISS-04 and HISS-08.
@@ -54,7 +55,7 @@ ALLOWED_PROGRAMS = {"git", "go", "python3", "<binary>"}
 # The only functions that may reach the network, and the commands that do.
 NETWORK_FUNCTIONS = {"fetch_identity", "fetch_checkout", "fetch_build"}
 PIN_COMMIT = "987b95a432e5c9aac1b4885b97fa2d3ff1b9d311"
-NUCLEUS_COMMIT = "852be742eb173700d5ef93b0c6f867b855f9c640"
+NUCLEUS_COMMIT = "677dd401b68363b9ac3a1f2e891e6c1a1e9a0d9a"
 # The pinned commit's committer time as go writes vcs.time, and as `git log
 # --format=%ct` prints it.
 COMMITTED = "2026-09-29T21:02:08Z"
@@ -103,7 +104,8 @@ EMPTY_STDERR = (
     "Error: kernel requirement aegis-m18-kernel-requirement-0001: features: "
     "feature list is empty\n" * 2
 )
-# nucleus's versions.json downstream.requirements at 82aa6b7 and, unchanged, at 852be74,
+# nucleus's versions.json downstream.requirements at 82aa6b7 and, unchanged, at 852be74
+# and 677dd40,
 # as the checkout holds it.
 VERSIONS = (
     b'{"downstream": {"repository": "cordanaLLM/imago", "requirements": ['
@@ -114,14 +116,16 @@ VERSIONS = (
     b"]}}"
 )
 # What `scripts/verify_kernel_requirement.py --report-json` wrote at 852be74 for
-# build/kernel-requirement.json, without its policy, abi, artifact or streams.
+# build/kernel-requirement.json, without its policy, abi, artifact or streams,
+# and at 677dd40 field for field again but for nucleus_revision (contract gate
+# run r20261017T043545-6b36).
 # Each report below is abridged by dropping fields, streams and rows only:
 # nothing is added or changed. Gate run r20260929T230816-7c75 kept the full
 # reports; a variant nucleus did not write is built inside its test and named
 # synthetic there.
 REPORT_HEAD = (
     b'{"schema": "nucleus.kernel-requirement-report.v1",'
-    b' "nucleus_revision": "852be742eb173700d5ef93b0c6f867b855f9c640",'
+    b' "nucleus_revision": "677dd401b68363b9ac3a1f2e891e6c1a1e9a0d9a",'
     b' "evidence_level": "declared", '
 )
 PASS_REPORT = REPORT_HEAD + (

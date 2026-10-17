@@ -426,7 +426,7 @@ verify-display:
 # M09's imago, which the CI runner does not have, so wiring it into verify-all
 # would put a step into CI that can only skip. A gate that always skips is not
 # a gate. What CI does re-run is the half that needs no guest:
-# tools/test_nucleus_kernel.py and tools/test_kernel_requirement_check.py hold
+# tools/test_nucleus_kernel.py and tools/test_nucleus_kernel_check.py hold
 # the pin, the pre-boot refusal, the stage order, the signature binding, the
 # release floor, the D94 rules, the report parser, the capability diff, the
 # load checks, the skip rules, cosign's admitted range and the set of programs

@@ -58,7 +58,7 @@ import time
 import zlib
 from pathlib import Path
 
-import kernel_requirement_check as requirement_check
+import nucleus_kernel_check as requirement_check
 import verify_bpf_objects as bpf
 import verify_contract_pair as contract
 import verify_latency_fixture as harness
@@ -98,6 +98,7 @@ HASH_CHUNK = 1 << 20
 MAX_HASH_CHUNKS = 1 << 12
 MAX_POWER_ROWS = 1024
 MAX_TAIL_LINES = 4
+MAX_CONFIG_LINES = 65536
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
@@ -224,6 +225,12 @@ FETCH_TOOLS = ("curl", "cosign")
 # passes. The gate reads the version back and refuses the 3 line rather than
 # trusting PATH.
 CEILINGS = {"cosign": "3"}
+# The leading dotted numbers of a release, from which the boundary case builds
+# the release just below the floor; nucleus decides every release it is given.
+RELEASE_NUMBERS = re.compile(r"[0-9]+(?:\.[0-9]+)*")
+# A configuration line as the probe prints it, read only to record a symbol.
+CONFIG_LINE = re.compile(r"^(CONFIG_[A-Za-z0-9_]+)=(.*)$")
+CONFIG_UNSET = re.compile(r"^# (CONFIG_[A-Za-z0-9_]+) is not set$")
 
 
 class GateError(Exception):
@@ -235,7 +242,7 @@ GATE_ERRORS = (
     harness.GateError,
     bpf.GateError,
     contract.GateError,
-    requirement_check.RequirementError,
+    requirement_check.CheckError,
 )
 
 
@@ -538,6 +545,7 @@ def contract_store():
         "binary": store / "bin" / f"imago{contract.EXE}",
         "identity": store / "identity.json",
         "versions": store / "imago" / "versions.json",
+        "verifier": store / "nucleus" / contract.load_pin()["nucleus"]["verifier"],
     }
 
 
@@ -695,11 +703,20 @@ def mismatch_case(context):
 
 def release_below(minimum):
     """Return the highest dotted release below `minimum`, e.g. 6.11.999 below 6.12."""
-    parts = requirement_check.numeric_components(minimum)
+    numbers = RELEASE_NUMBERS.match(minimum)
+    if numbers is None:
+        return None
+    parts = [int(part) for part in numbers.group(0).split(".")]
     for index in range(len(parts) - 1, -1, -1):
         if parts[index] > 0:
             return ".".join(str(part) for part in [*parts[:index], parts[index] - 1, 999])
     return None
+
+
+def release_admitted(context, release):
+    """Return whether nucleus admits `release` against the requirement's ABI floor."""
+    rejected = requirement_check.check(context.requirement, "CONFIG_X86_64=y\n", release)[1]
+    return not any("below abi.minimum-release" in line for line in rejected)
 
 
 def release_case(context):
@@ -717,16 +734,16 @@ def release_case(context):
     problems = []
     notes = [f"abi.minimum-release {minimum}; these are rule evaluations, the last is the kernel"]
     for value, wanted in evaluations:
-        found = requirement_check.release_at_least(value, minimum)
+        found = release_admitted(context, value)
         notes.append(f"{value}: {'admitted' if found else 'refused'}")
         if found != wanted:
             problems.append(f"{value} was {'admitted' if found else 'refused'}")
-    config = requirement_check.parse_config("CONFIG_X86_64=y\n")
-    planted = requirement_check.identity_rejections(context.requirement, config, below)
-    if not any("below abi.minimum-release" in line for line in planted):
+    rejected = requirement_check.check(context.requirement, "CONFIG_X86_64=y\n", below)[1]
+    planted = [line for line in rejected if "below abi.minimum-release" in line]
+    if not planted:
         problems.append(f"a kernel reporting {below} was not rejected by the requirement check")
     notes.append(
-        f"requirement check on a kernel reporting {below}: {planted[-1] if planted else 'none'}"
+        f"requirement check on a kernel reporting {below}: {planted[0] if planted else 'none'}"
     )
     return report(context, "nucleus/minimum-release-boundary", problems, notes)
 
@@ -800,6 +817,23 @@ def guest_section(text, name, label=""):
     return lines[first : lines.index(end, first)]
 
 
+def recorded_config(lines):
+    """Return ``{symbol: value}`` from probe lines, for the record only.
+
+    ``# CONFIG_X is not set`` reads as ``"not set"`` and a later line wins.
+    Nothing is decided from this: the requirement is nucleus's decision.
+    """
+    found = {}
+    for line in lines[:MAX_CONFIG_LINES]:
+        assignment = CONFIG_LINE.match(line)
+        unset = CONFIG_UNSET.match(line)
+        if assignment is not None:
+            found[assignment.group(1)] = assignment.group(2)
+        elif unset is not None:
+            found[unset.group(1)] = "not set"
+    return found
+
+
 def parse_probe(lines):
     """Return the probe's readings: config lines, the LSM list, BTF and sched_ext state."""
     readings = {"config": {}, "lsm": [], "btf": "unread", "sched_ext_state": "unread"}
@@ -810,7 +844,7 @@ def parse_probe(lines):
             readings["btf"] = line.split(" ", 1)[1].strip()
         elif line.startswith("SCHED-EXT-STATE "):
             readings["sched_ext_state"] = line.split(" ", 1)[1].strip()
-    readings["config"] = requirement_check.parse_config("\n".join(lines))
+    readings["config"] = recorded_config(lines)
     return readings
 
 

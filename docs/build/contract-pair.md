@@ -80,7 +80,15 @@ Nothing is written into the repository, and nothing is sent to either producer.
 | Producer | Repository | Commit | Role in M09 |
 | --- | --- | --- | --- |
 | imago | `https://github.com/cordanaLLM/imago.git` | `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311` | consumes both payloads: `imago aegis validate` (`pkg/aegis`, ADR-0020) and `imago kernel requirement validate` (`pkg/kernel`, ADR-0021) |
-| nucleus | `https://github.com/cordanaLLM/nucleus.git` | `852be742eb173700d5ef93b0c6f867b855f9c640` | verifies `build/kernel-requirement.json`: `scripts/verify_kernel_requirement.py` under the `versions.json` label `aegis-os`, bound to the `realtime` stream, report `nucleus.kernel-requirement-report.v1` at evidence level `declared` (D106); also publishes the `imago.nucleus.kernel-artifact.v1` manifest imago verifies |
+| nucleus | `https://github.com/cordanaLLM/nucleus.git` | `677dd401b68363b9ac3a1f2e891e6c1a1e9a0d9a` | verifies `build/kernel-requirement.json`: `scripts/verify_kernel_requirement.py` under the `versions.json` label `aegis-os`, bound to the `realtime` stream, report `nucleus.kernel-requirement-report.v1` at evidence level `declared` (D106); also publishes the `imago.nucleus.kernel-artifact.v1` manifest imago verifies |
+
+nucleus moved from `852be74` to `677dd40`, its `main` on 2026-10-17 after
+pull request 176, which gave the same verifier a single-kernel mode,
+`--kernel-config`; `tools/nucleus_kernel_check.py` runs it for M10 in place
+of the Python copy of the D94 rules this repository kept. The four reports
+the tests keep as bytes were written again by `677dd40` in contract gate run
+`r20261017T043545-6b36` and differ from the `852be74` ones only in
+`nucleus_revision`. The rest of this section records the D107 pins.
 
 Both commits are their producer's `main` on 2026-09-29 after the pull request
 that carried D107, read with `git ls-remote --heads`: imago's pull request 52,
