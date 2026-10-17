@@ -160,7 +160,9 @@ impl Refusal {
                 ..
             } => Self::Parse,
             LineError::Method => Self::MethodNotFound,
-            LineError::Descriptor(_) | LineError::Params => Self::InvalidParams,
+            LineError::Descriptor(_) | LineError::Mount(_) | LineError::Params => {
+                Self::InvalidParams
+            }
             _ => Self::InvalidRequest,
         }
     }
@@ -185,7 +187,8 @@ impl Refusal {
 pub struct Response {
     /// The request's `id`.
     pub id: Option<u64>,
-    /// `Ok` for an attached frame, the refusal otherwise.
+    /// `Ok` for an admitted request (an attached frame, a mounted canvas),
+    /// the refusal otherwise.
     pub outcome: Result<(), Refusal>,
 }
 
@@ -216,7 +219,7 @@ struct ResponseOut {
 }
 
 /// Writes `value` and a newline into `buffer`, bounded by its capacity.
-fn write_line<'b, T: Serialize>(
+pub(crate) fn write_line<'b, T: Serialize>(
     value: &T,
     buffer: &'b mut LineBuffer,
 ) -> Result<&'b [u8], LineError> {
@@ -263,10 +266,19 @@ pub fn encode_response<'b>(
     response: &Response,
     buffer: &'b mut LineBuffer,
 ) -> Result<&'b [u8], LineError> {
+    encode_response_as(response, ATTACHED, buffer)
+}
+
+/// Encodes `response` with `result` as the word an admitted request answers.
+pub(crate) fn encode_response_as<'b>(
+    response: &Response,
+    result: &'static str,
+    buffer: &'b mut LineBuffer,
+) -> Result<&'b [u8], LineError> {
     let out = ResponseOut {
         jsonrpc: JSONRPC_VERSION,
         id: response.id,
-        result: response.outcome.ok().map(|()| ATTACHED),
+        result: response.outcome.ok().map(|()| result),
         error: response.outcome.err().map(|refusal| ErrorOut {
             code: refusal.code(),
             message: refusal.message(),
@@ -279,21 +291,21 @@ pub fn encode_response<'b>(
 
 /// A string read into a fixed slot; one longer than `N` is marked, not cut.
 #[derive(Clone, Copy)]
-struct Token<const N: usize> {
+pub(crate) struct Token<const N: usize> {
     bytes: [u8; N],
     len: usize,
     overflow: bool,
 }
 
 impl<const N: usize> Token<N> {
-    fn as_bytes(&self) -> &[u8] {
+    pub(crate) fn as_bytes(&self) -> &[u8] {
         if self.overflow {
             return &[];
         }
         self.bytes.get(..self.len).unwrap_or_default()
     }
 
-    fn is(&self, text: &str) -> bool {
+    pub(crate) fn is(&self, text: &str) -> bool {
         !self.overflow && self.as_bytes() == text.as_bytes()
     }
 }
@@ -334,7 +346,7 @@ impl<'de, const N: usize> Deserialize<'de> for Token<N> {
 /// has no key to refuse there (the defect `crates/aegis-fabrica-defs` found on
 /// 2026-09-29). Every envelope member here is read through this wrapper, which
 /// asks the deserializer for a map and refuses every other JSON value.
-struct Object<T>(T);
+pub(crate) struct Object<T>(pub(crate) T);
 
 struct ObjectVisitor<T>(PhantomData<T>);
 
@@ -556,6 +568,11 @@ struct ResponseIn {
 /// [`LineError::Response`] for a line with both, neither or an unknown
 /// outcome.
 pub fn decode_response(message: &[u8]) -> Result<Response, LineError> {
+    decode_response_as(message, ATTACHED)
+}
+
+/// Decodes one Response line whose admitted outcome is the word `result`.
+pub(crate) fn decode_response_as(message: &[u8], result: &str) -> Result<Response, LineError> {
     let text = body(message)?;
     let Object(raw): Object<ResponseIn> =
         serde_json::from_slice(text).map_err(|error| LineError::from(&error))?;
@@ -563,7 +580,7 @@ pub fn decode_response(message: &[u8]) -> Result<Response, LineError> {
         return Err(LineError::Version);
     }
     let outcome = match (raw.result, raw.error) {
-        (Some(result), None) if result.is(ATTACHED) => Ok(()),
+        (Some(word), None) if word.is(result) => Ok(()),
         (None, Some(Object(error))) => {
             Err(Refusal::from_code(error.code).ok_or(LineError::Response)?)
         }

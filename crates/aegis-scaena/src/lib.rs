@@ -17,6 +17,8 @@
 //! | [`descriptor`] | `aegis.p08-p17.decoded-frame.v1`, owned here as the consumer | REQ-P17-07, M14 rule |
 //! | [`line`](mod@line) | the JSON-RPC 2.0 line codec under a byte bound | D77, HISS-02 |
 //! | [`transport`] | one line and exactly one fd per `SOCK_SEQPACKET` message, with send and receive deadlines | REQ-P17-04, D77 |
+//! | [`control`] | the no-descriptor control plane the shell's mount request travels on | D77, HISS-02 |
+//! | [`mount`] | `aegis.p05-p17.mount-shell-canvas.v1`: the layer surface the P05 shell asks for | M28 E28-2, D82 |
 //! | [`attach`] | the `DMA_BUF_MAGIC`, plane-layout and object-size checks, and the advertised format table | E27-1, E27-2 |
 //! | [`surface`] | the layer surface's configure and acknowledge state machine | E27-2 |
 //! | [`wayland`] | every Wayland wait under its own deadline, the registry roundtrip first | HISS-02 |
@@ -43,6 +45,7 @@
 
 pub mod attach;
 pub mod content;
+pub mod control;
 pub mod decode;
 pub mod descriptor;
 pub mod device;
@@ -50,6 +53,7 @@ pub mod error;
 pub mod fixture;
 pub mod jpeg;
 pub mod line;
+pub mod mount;
 pub mod present;
 pub mod reference;
 pub mod slice;
@@ -58,13 +62,19 @@ pub mod transport;
 pub mod wayland;
 
 pub use attach::{Checked, DMA_BUF_MAGIC, FileIdentity, FormatTable, check};
+pub use control::{ControlEndpoint, control_pair};
 pub use descriptor::{
     CorrelationId, DecodedFrame, FourCc, MAX_PLANES, Plane, Planes, SCHEMA_V1, Schema,
 };
 pub use error::{
-    AttachError, DescriptorError, JsonCategory, LineError, SurfaceError, TransportError, WaitError,
+    AttachError, DescriptorError, JsonCategory, LineError, MountError, SurfaceError,
+    TransportError, WaitError,
 };
 pub use line::{LineBuffer, MAX_LINE_BYTES, METHOD, Refusal, Request, Response};
+pub use mount::{
+    Anchor, Edge, KeyboardInteractivity, Layer, MOUNT_METHOD, MOUNT_SCHEMA_V1, MOUNTED, Margin,
+    MountCanvas, MountRequest, MountSchema, Namespace,
+};
 pub use surface::{ConfiguredSize, LayerSurfaceModel, SurfaceState};
 pub use transport::{Deadlines, FrameReceiver, FrameSender, Received, pair};
 pub use wayland::{Registry, Wait, WaitEvent, dispatch_until};
