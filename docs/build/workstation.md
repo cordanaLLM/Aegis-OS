@@ -35,7 +35,7 @@ REQ-P10-02) is deferred to M12 and not claimed.
 | `crates/aegis-tellus/src/rapl.rs` | the counter reading, the rollover delta and `MeasuredWattage`, the second implementation of M05's `WattageSource` seam; reads nothing |
 | `crates/aegis-tellus-rapl` | the readings document and the RAPL cases; `aegis-tellus-rapl run <document>` is the binary the gate starts |
 | `crates/aegis-vesta-sandbox/src/vm.rs` | the evaluation exchange over a running microVM; the Firecracker process itself (started from a controller row, reached over the hybrid vsock, killed, reaped and its sockets removed) is `saeptum-microvm`'s `vm` module since 2026-10-16 |
-| `crates/aegis-vesta-sandbox/src/run.rs` | the host run and its five cases; `aegis-vesta-sandbox` starts it |
+| `crates/aegis-vesta-sandbox/src/run.rs` | the host run and its six cases; `aegis-vesta-sandbox` starts it |
 | `crates/aegis-vesta-sandbox/src/guest.rs` | the evaluation answer `aegis-vesta-guest` gives as the microVM's init, served through `saeptum-microvm`'s listener |
 | `saeptum-microvm` (plurano/saeptum, pinned in `Cargo.toml`) | the per-microVM Firecracker configuration file, the line framing and the guest listener, re-exported by `aegis-vesta-sandbox` |
 | `build/sandbox/firecracker.pin.json` | the pinned Firecracker release and guest kernel |
@@ -143,7 +143,7 @@ statement.
    only. The gate refuses a guest whose ELF program headers name an
    interpreter, then writes a deterministic newc initramfs holding `/dev` and
    `/init`; nothing else is in the guest.
-3. `aegis-vesta-sandbox run` runs five cases, one microVM at a time, in its
+3. `aegis-vesta-sandbox run` runs six cases, one microVM at a time, in its
    own session, under a 600 s deadline.
 4. The gate looks for anything the run left behind: a Firecracker or
    `aegis-vesta-sandbox` process whose command line names the run directory,
@@ -176,6 +176,7 @@ connection(s); restarting`, and Firecracker exited 0.
 | :--- | :--- |
 | `sandbox/over-limit-memory-refused` | E21-2 negative: 1025 MiB, one above the 1024 MiB guest limit, is refused by `GuestMemoryMib` before any row or process exists |
 | `sandbox/boot-and-round-trip` | E21-2 positive: the first admitted microVM boots, a superior candidate comes back `passed` and one at the 1.5 ms latency bound comes back `failed`, each decoded and checked against the host's own Pareto verdict |
+| `sandbox/vsock-transport` | M22 / E22-2: the first microVM answers 12 more evaluations, each timed from the `AF_UNIX` connect to the close; the figure names Firecracker 1.17.0, the host's `/dev/vhost-vsock` and `vhost_vsock` build state are recorded, and a `vhost_vsock` reference count that rose between the first boot and the timed run fails the case, since Firecracker's transport bypasses vhost |
 | `sandbox/sixty-fourth-accepted` | E21-2 boundary: microVMs 2 to 64 are admitted, booted and each answers, and all 64 Firecracker processes are running at once |
 | `sandbox/sixty-fifth-refused` | E21-2 boundary: the 65th request is the controller's `MicroVmTableFull`, and no process is started for it |
 | `sandbox/teardown` | every row terminated, every process killed and reaped within 5 s, every socket file removed |
@@ -314,16 +315,46 @@ the RAPL half passed, the sandbox half printed four `SKIP` lines each naming
 kernel flipped (r20260929T202855-b942) the sandbox half failed, naming both
 digests, before anything booted, and the gate exited 1.
 
+## The recorded transport figure (M22, E22-2)
+
+Run r20261017T022908-f3ef of `make verify-workstation`, on 2026-10-17, on the
+reference profile with kernel 7.2.10-1-cachyos, passed every case, the
+gate-side `sandbox/nothing-left-behind` included; its `gate.log` is kept under
+`~/.cache/aegis-workstation/runs/r20261017T022908-f3ef`. The
+`sandbox/vsock-transport` case printed:
+
+- host: `/dev/vhost-vsock` present, `CONFIG_VHOST_VSOCK=m`; `vhost_vsock`
+  references 0 before the first boot and 0 while sandbox 100 ran, so the
+  transport did not use vhost, as Firecracker's `docs/vsock.md` at v1.17.0
+  describes;
+- Firecracker 1.17.0, 12 round trips on sandbox 100: min 188.7 us, median
+  197.6 us, max 494.6 us.
+
+A round trip is everything the host waits for: the `AF_UNIX` connect, the
+`CONNECT`/`OK` handshake, one request line, the guest's Pareto judgement, one
+answer line and the close. The figure is a wall-clock time on a shared
+workstation, not a price and not a Firecracker figure for any other host; a
+QEMU figure would be a separate record (D58). Twelve is the most the first
+microVM can answer: the boot case's three exchanges and these stay below the
+guest's 16-connection bound, and `tests/transport.rs` holds that sum.
+
+The run before it, r20261017T022819-f20b (same build, a minute earlier),
+measured a median of 266.5 us and a max of 949.3 us and
+failed only `sandbox/nothing-left-behind`: a Docker `veth` device belonging to
+another workload disappeared during the run. The microVMs configure no
+network device.
+
 ## What is not claimed
 
 - **Boot time and footprint.** No figure of either is recorded here; D71 makes
-  them M22's, each naming its monitor, and the scaffold's literals stay
-  `Unmeasured` in `crates/aegis-vesta`.
+  them M22's, each naming its monitor; they wait on a boot timer and a process
+  identifier that `saeptum-microvm` does not expose yet, and the scaffold's
+  literals stay `Unmeasured` in `crates/aegis-vesta`.
 - **A meter.** The energy counter is AMD's model; see the accuracy statement.
   Only the package zone is read: `core` is recorded in the enumeration but
   its counter is not read, because the decision admits one command.
 - **`AF_VSOCK` pricing.** REQ-P10-03 asks every `AF_VSOCK` message to be
-  priced; this run proves the transport path and prices nothing.
+  priced; this run proves the transport path, times it, and prices nothing.
 - **Isolation.** No jailer, no seccomp change, no cgroup and no namespace
   beyond what Firecracker applies by itself; every microVM runs as the
   invoking user. Nothing here is evidence about isolation strength.
