@@ -23,9 +23,9 @@ make verify-workstation
 
 **A pass is development evidence on the reference profile.** It qualifies no
 hardware, closes no hardware, isolation or release gate, and is not release
-evidence; re-measurement inside an Aegis image is a later acceptance. Boot
-time and memory footprint are not measured here: under decision D71 they are
-M22's, each naming the monitor that produced it. Venus GPU pricing (E21-3,
+evidence; re-measurement inside an Aegis image is a later acceptance. The memory
+footprint is M22's (E22-1) under decision D71 and names the monitor that
+produced it; boot time is not measured yet. Venus GPU pricing (E21-3,
 REQ-P10-02) is deferred to M12 and not claimed.
 
 ## What is tracked
@@ -178,6 +178,7 @@ connection(s); restarting`, and Firecracker exited 0.
 | `sandbox/boot-and-round-trip` | E21-2 positive: the first admitted microVM boots, a superior candidate comes back `passed` and one at the 1.5 ms latency bound comes back `failed`, each decoded and checked against the host's own Pareto verdict |
 | `sandbox/vsock-transport` | M22 / E22-2: the first microVM answers 12 more evaluations, each timed from the `AF_UNIX` connect to the close; the figure names Firecracker 1.17.0, the host's `/dev/vhost-vsock` and `vhost_vsock` build state are recorded, and a `vhost_vsock` reference count that rose between the first boot and the timed run fails the case, since Firecracker's transport bypasses vhost |
 | `sandbox/sixty-fourth-accepted` | E21-2 boundary: microVMs 2 to 64 are admitted, booted and each answers, and all 64 Firecracker processes are running at once |
+| `sandbox/footprint` | M22 / E22-1: the resident set (`VmRSS` of `/proc/<pid>/status`) of each of the 64 Firecracker processes after its first answer, as minimum, median and maximum; every process's `/proc/<pid>/exe` must be the pinned binary, and a process naming no monitor or another one fails the case rather than entering the figure (D58) |
 | `sandbox/sixty-fifth-refused` | E21-2 boundary: the 65th request is the controller's `MicroVmTableFull`, and no process is started for it |
 | `sandbox/teardown` | every row terminated, every process killed and reaped within 5 s, every socket file removed |
 
@@ -344,11 +345,37 @@ failed only `sandbox/nothing-left-behind`: a Docker `veth` device belonging to
 another workload disappeared during the run. The microVMs configure no
 network device.
 
+## The recorded footprint (M22, E22-1)
+
+Run r20261017T032010-9ff3 of `make verify-workstation`, on 2026-10-17, on the
+same reference profile and kernel, with saeptum at `24eef8c`, passed every
+case, the gate-side `sandbox/nothing-left-behind` included; its `gate.log` is
+kept under `~/.cache/aegis-workstation/runs/r20261017T032010-9ff3`. The
+`sandbox/footprint` case printed:
+
+- Firecracker 1.17.0, 64 processes, each one's `/proc/<pid>/exe` the pinned
+  binary;
+- resident set (`VmRSS`) after each microVM's first answer: min 56556 KiB,
+  median 59120 KiB, max 66244 KiB.
+
+The figure is the monitor process's resident set: Firecracker's own memory
+plus the part of the 64 MiB guest it has touched, read while all 64
+processes ran. It is not the guest's view of its memory, it is compared with
+no target, and a QEMU figure would be a separate record (D58). The run before
+it, r20261017T031922-b721 (same build), printed min 56128 KiB, median
+58896 KiB, max 66244 KiB and failed only `sandbox/nothing-left-behind`,
+again because a Docker `veth` device of another workload disappeared.
+
 ## What is not claimed
 
-- **Boot time and footprint.** No figure of either is recorded here; D71 makes
-  them M22's, each naming its monitor; they wait on a boot timer and a process
-  identifier that `saeptum-microvm` does not expose yet, and the scaffold's
+- **Boot time.** No figure is recorded. `saeptum-microvm` turns
+  Firecracker's boot timer on, and `aegis_vesta_sandbox::parse_boot_time`
+  reads its line, but the guest must write the magic byte to the timer's
+  device address through a mapped page, and `unsafe_code = "forbid"` rules
+  that store out; that exception is an open decision.
+- **A footprint target.** `sandbox/footprint` records the monitor process's
+  resident set, which includes the guest memory it has touched; it is not the
+  guest's view of its memory and is compared with no target. The scaffold's
   literals stay `Unmeasured` in `crates/aegis-vesta`.
 - **A meter.** The energy counter is AMD's model; see the accuracy statement.
   Only the package zone is read: `core` is recorded in the enumeration but

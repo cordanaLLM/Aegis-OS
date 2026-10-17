@@ -573,7 +573,7 @@ dependencies = [
 [[package]]
 name = "saeptum-capsule"
 version = "0.1.0"
-source = "git+https://github.com/plurano/saeptum?rev=92b57ed6ee6f39cb9e3d91851b63f3c65984c37e#92b57ed6ee6f39cb9e3d91851b63f3c65984c37e"
+source = "git+https://github.com/plurano/saeptum?rev=24eef8cc4e2b3c10d28c5529175895d2df9f27be#24eef8cc4e2b3c10d28c5529175895d2df9f27be"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
@@ -582,7 +582,7 @@ dependencies = [
 [[package]]
 name = "saeptum-microvm"
 version = "0.1.0"
-source = "git+https://github.com/plurano/saeptum?rev=92b57ed6ee6f39cb9e3d91851b63f3c65984c37e#92b57ed6ee6f39cb9e3d91851b63f3c65984c37e"
+source = "git+https://github.com/plurano/saeptum?rev=24eef8cc4e2b3c10d28c5529175895d2df9f27be#24eef8cc4e2b3c10d28c5529175895d2df9f27be"
 dependencies = [
  "saeptum-capsule",
  "serde_json",

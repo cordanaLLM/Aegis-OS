@@ -50,8 +50,8 @@ runs as the invoking user with no drive and no network interface, so no tap
 device exists; every process, socket and directory it creates is removed or
 kept only as a log under the run directory. A pass is development evidence on
 the reference profile: it qualifies no hardware and closes no hardware,
-isolation or release gate, and M22, not this gate, measures boot time and
-footprint (D71).
+isolation or release gate. ``sandbox/footprint`` records each monitor
+process's resident set for M22 (E22-1, D71); boot time is not measured.
 """
 
 import argparse
@@ -149,6 +149,7 @@ SANDBOX_CASES = (
     "sandbox/boot-and-round-trip",
     "sandbox/vsock-transport",
     "sandbox/sixty-fourth-accepted",
+    "sandbox/footprint",
     "sandbox/sixty-fifth-refused",
     "sandbox/teardown",
 )
@@ -1063,7 +1064,7 @@ def run_recorded(cache, run_dir, identifier, observe_wrap):
     print(
         f"PASS: {', '.join(ran) or 'nothing'} ran and passed on the reference profile (M21). "
         "Development evidence only: no hardware qualified, no hardware, isolation or release "
-        "gate closed; boot time and footprint are M22's (D71)."
+        "gate closed; the footprint is the monitor's resident set, boot time is not measured."
     )
     return 0
 

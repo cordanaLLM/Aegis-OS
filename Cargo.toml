@@ -37,8 +37,8 @@ accesskit = { version = "0.25.1", default-features = false }
 base16ct = { version = "1.0.0", default-features = false }
 cros-libva = { git = "https://github.com/chromeos/cros-libva", rev = "59384456ac2ae78c0c3e5515f41ef1efd9b802cf" }
 rustix = { version = "1.1.5", features = ["net", "fs", "event"] }
-saeptum-capsule = { git = "https://github.com/plurano/saeptum", rev = "92b57ed6ee6f39cb9e3d91851b63f3c65984c37e" }
-saeptum-microvm = { git = "https://github.com/plurano/saeptum", rev = "92b57ed6ee6f39cb9e3d91851b63f3c65984c37e" }
+saeptum-capsule = { git = "https://github.com/plurano/saeptum", rev = "24eef8cc4e2b3c10d28c5529175895d2df9f27be" }
+saeptum-microvm = { git = "https://github.com/plurano/saeptum", rev = "24eef8cc4e2b3c10d28c5529175895d2df9f27be" }
 schemars = { version = "1.2.2", default-features = false, features = ["derive"] }
 serde = { version = "1.0.229", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.151", default-features = false, features = ["std"] }
