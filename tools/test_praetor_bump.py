@@ -498,6 +498,75 @@ class AdoptRestoreTests(unittest.TestCase):
         self.assertIsNone(checksum)
 
 
+class AdoptModeTests(unittest.TestCase):
+    """`--plain-adopt` runs adopt without `--force` through the same reverts (#265)."""
+
+    def adopt_argv(self, plain):
+        """Return the adopt command `adopt()` runs in one mode."""
+        seen = []
+
+        def fake(argv, deadline, cwd=None, env=None):
+            if "rev-parse" in argv:
+                return bump.Result(tuple(argv), 0, f"{Path(cwd or '.') / argv[-1]}\n", "")
+            seen.append(list(argv))
+            return bump.Result(tuple(argv), 0, "", "")
+
+        with tempfile.TemporaryDirectory() as base:
+            session = bump.Session(args(cache=base, plain_adopt=plain), stream=io.StringIO())
+            session.binary = Path("praetorctl")
+            with mock.patch.object(bump, "run", side_effect=fake):
+                bump.adopt(session, Path(base), Path(base) / "praetor")
+        self.assertEqual(len(seen), 1, seen)
+        return seen[0]
+
+    def test_the_timer_forces_and_an_engine_refresh_does_not(self):
+        forced, plain = self.adopt_argv(False), self.adopt_argv(True)
+        self.assertEqual(forced[:3], [Path("praetorctl"), "adopt", "--force"])
+        self.assertEqual(plain[:2], [Path("praetorctl"), "adopt"])
+        self.assertNotIn("--force", plain)
+        self.assertEqual(forced[3:-1], plain[2:-1])
+
+    def test_the_flag_is_off_unless_given(self):
+        """Boundary: the timer's unit passes no flag, so it keeps forcing."""
+        self.assertFalse(bump.parse_args([]).plain_adopt)
+        self.assertTrue(bump.parse_args(["--plain-adopt"]).plain_adopt)
+
+    def test_the_message_and_body_name_the_adopt_that_ran(self):
+        report = bump.Report(["x"], [], (1, ["abc1234 one"]), [], "")
+        for plain, command in ((False, "praetorctl adopt --force"), (True, "praetorctl adopt")):
+            with self.subTest(plain=plain):
+                kept = f"Kept from {command} (a Praetor gate"
+                self.assertIn(kept, bump.commit_message(PLAN, (0, []), [], [], plain))
+                self.assertIn(kept, bump.pr_body(PLAN, report, plain))
+
+    def test_both_modes_share_the_hand_maintained_restore_and_minimise(self):
+        """Negative: a plain run restores and reverts exactly as the forced one does."""
+        outcomes = []
+        for plain in (False, True):
+            session = bump.Session(args(plain_adopt=plain), stream=io.StringIO())
+            with mock.patch.object(
+                bump, "status", return_value={"lefthook.yml": " M"}
+            ), mock.patch.object(
+                bump, "restore_fixed", return_value=[]
+            ) as restore, mock.patch.object(
+                bump, "praetor_gates", return_value=(True, "")
+            ), mock.patch.object(
+                bump, "minimise", return_value=[]
+            ) as minimise:
+                outcomes.append(bump.reconcile(session, Path("tree")))
+            restore.assert_called_once()
+            minimise.assert_called_once()
+        self.assertEqual(outcomes[0], outcomes[1])
+
+    def test_a_forced_failure_does_not_hold_back_a_plain_run(self):
+        """Boundary: the failure marker carries the mode, so each mode fails on its own."""
+        forced = bump.failure_marker(Path("cache"), PLAN)
+        plain = bump.failure_marker(Path("cache"), PLAN, True)
+        self.assertNotEqual(forced, plain)
+        self.assertEqual(forced.name, f"{NEW}-{BASE}")
+        self.assertEqual(plain.name, f"{NEW}-{BASE}-plain")
+
+
 class LockAndRootTests(unittest.TestCase):
     """Two runs never overlap, and the bump never runs as root."""
 
