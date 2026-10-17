@@ -167,6 +167,18 @@ jobs:
           pkg-config --modversion libdrm
           pkg-config --atleast-version=2.4.75 libdrm
 
+      # The P05 shell's toolkit (gpui, D102) links libxkbcommon through the
+      # xkbcommon crate, and FreeType and Fontconfig through its font stack
+      # (freetype-sys and yeslogic-fontconfig-sys find them with pkg-config).
+      # The image ships none of their headers, so they come from the runner's
+      # signed Ubuntu archive, unpinned, and each version is printed; their
+      # floors are M28's admission (docs/roadmap/toolchain-admission.md).
+      - name: Install the C libraries gpui links
+        run: |
+          sudo apt-get install -y --no-install-recommends \
+            libxkbcommon-dev libfontconfig-dev libfreetype-dev
+          pkg-config --modversion xkbcommon fontconfig freetype2
+
       # The cache key names the runner image (ImageOS, e.g. ubuntu26), so a
       # prefix built on one image is never restored on another.
       - name: Name the runner image for the libva cache key

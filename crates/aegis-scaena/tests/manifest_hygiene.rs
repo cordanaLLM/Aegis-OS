@@ -373,31 +373,81 @@ fn the_closure_is_read_with_the_invocation_d78_records() -> Result<(), String> {
     Ok(())
 }
 
+/// The member gpui enters through (M28, D102). gpui renders through wgpu on
+/// Wayland (`gpui_linux`'s `wayland` feature requires `gpui_wgpu`), so wgpu is
+/// in `Cargo.lock`, and only this member's closure may reach it.
+const GPUI_MEMBER: &str = "aegis-forum-shell-gpui";
+
+/// wgpu's crates, refused in every workspace member's closure but
+/// `GPUI_MEMBER`'s.
+const RENDERER: [&str; 2] = ["wgpu", "wgpu-hal"];
+
+/// Every workspace member other than `GPUI_MEMBER` whose closure resolves a
+/// `RENDERER` crate, with the crates it resolves.
+fn renderer_reach(metadata: &Value) -> Result<Vec<String>, String> {
+    let members: BTreeSet<&str> = metadata
+        .get("workspace_members")
+        .and_then(Value::as_array)
+        .ok_or("no workspace_members")?
+        .iter()
+        .filter_map(Value::as_str)
+        .collect();
+    let packages = metadata
+        .get("packages")
+        .and_then(Value::as_array)
+        .ok_or("no packages")?;
+    let mut reach = Vec::new();
+    for package in packages {
+        let id = package.get("id").and_then(Value::as_str).unwrap_or("");
+        let name = package.get("name").and_then(Value::as_str).unwrap_or("");
+        if !members.contains(id) || name == GPUI_MEMBER {
+            continue;
+        }
+        let found = hits(&closure(metadata, name)?, &RENDERER);
+        if !found.is_empty() {
+            reach.push(format!("{name}: {found:?}"));
+        }
+    }
+    Ok(reach)
+}
+
 /// Positive (criterion 9): no engine or high-rate transport ADR-0003 keeps
-/// out of the first slice -- Servo, webrender, `SpiderMonkey`, wgpu, iceoryx2 --
-/// has any entry in `Cargo.lock`, names matched exactly.
+/// out of the first slice -- Servo, webrender, `SpiderMonkey`, iceoryx2 -- has
+/// any entry in `Cargo.lock`, names matched exactly; wgpu, which gpui renders
+/// through, is reached by no member's closure but `GPUI_MEMBER`'s.
 #[test]
-fn no_engine_or_transport_crate_is_locked_anywhere() {
+fn no_engine_or_transport_crate_is_locked_anywhere() -> Result<(), String> {
     let lock = read("Cargo.lock");
     let locked: BTreeSet<&str> = lock
         .lines()
         .filter_map(|line| line.strip_prefix("name = \"")?.strip_suffix('"'))
         .collect();
     assert!(locked.contains(PACKAGE) && locked.contains("cros-libva"));
-    let engines = [
-        "servo",
-        "webrender",
-        "mozjs",
-        "mozjs_sys",
-        "wgpu",
-        "wgpu-hal",
-        "iceoryx2",
-    ];
+    let engines = ["servo", "webrender", "mozjs", "mozjs_sys", "iceoryx2"];
     let found: Vec<&str> = engines
         .into_iter()
         .filter(|name| locked.contains(name))
         .collect();
     assert!(found.is_empty(), "Cargo.lock resolves {found:?}");
+    let reach = renderer_reach(&metadata()?)?;
+    assert!(reach.is_empty(), "{reach:?}");
+    Ok(())
+}
+
+/// Negative (criterion 9): wgpu planted in this crate's closure is named,
+/// while the same plant in `GPUI_MEMBER`'s closure is not.
+#[test]
+fn wgpu_outside_the_gpui_member_is_named() -> Result<(), String> {
+    let mut planted = synthetic(PACKAGE, &["cros-libva"]);
+    plant(&mut planted, PACKAGE, "wgpu", Some("build"))?;
+    assert_eq!(
+        renderer_reach(&planted)?,
+        vec![format!("{PACKAGE}: [\"wgpu\"]")]
+    );
+    let mut allowed = synthetic(GPUI_MEMBER, &["gpui_wgpu"]);
+    plant(&mut allowed, GPUI_MEMBER, "wgpu-hal", None)?;
+    assert_eq!(renderer_reach(&allowed)?, [] as [String; 0]);
+    Ok(())
 }
 
 /// Positive (criterion 2, D111): the workspace `rust-version` equals the
