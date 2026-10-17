@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "aegis-vulcan-gpu"
+description = "Aegis OS P03 GPU host slice (M25): host-side render node, DRM scheduler, Resizable BAR, DMA-BUF heap and VFIO candidate inspection behind pure sysfs and dev functions. Reads sysfs and stats /dev; opens, binds, unbinds and writes no device."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "aegis-vulcan-gpu"
+path = "src/bin/aegis-vulcan-gpu.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
