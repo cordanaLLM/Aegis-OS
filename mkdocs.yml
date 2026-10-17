@@ -127,6 +127,7 @@ nav:
       - ADR-0002 Exclude the Steamworks SDK: adr/0002-exclude-steamworks-from-image.md
       - ADR-0003 P17 display runtime: adr/0003-display-runtime-p17-scaena.md
       - ADR-0004 Native P05 shell on gpui: adr/0004-native-p05-shell-on-gpui.md
+      - ADR-0005 Dogfood sanitizer export: adr/0005-dogfood-sanitizer-export.md
       - ADR template: adr/0000-template.md
   - Project:
       - Domain glossary: context.md
