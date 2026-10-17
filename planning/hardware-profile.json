@@ -142,7 +142,7 @@
       "present": true,
       "evidence_command": "modinfo nvidia | grep -E '^(version|license)'; modinfo -n nvidia_peermem",
       "recorded_on": "2026-09-28",
-      "note": "NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.4.2 present (13.3.1 on 2026-09-13); the Intel and AMD cards provide DMA-BUF through their in-tree drivers; the Arc A380 is bound to i915 at probe time, and the same kernel ships xe with a PCI alias for 8086:56a5 (CONFIG_DRM_XE=m), so rebinding it to xe for drm_sched is supported here"
+      "note": "NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.4.2 present (13.3.1 on 2026-09-13); the Intel and AMD cards provide DMA-BUF through their in-tree drivers; the Arc A380 is bound to xe, the reference-profile binding (ledger aegis-os-m25-arc-xe): on 2026-10-17 /proc/cmdline carries i915.force_probe=!56a5 xe.force_probe=56a5, readlink /sys/bus/pci/devices/0000:03:00.0/driver resolves to xe and /sys/module/gpu_sched/holders lists amdgpu and xe; readings taken while it was bound to i915 (M27, M29) stay dated i915 and are measured again only when their gate is touched"
     },
     "vaapi_decode": {
       "present": true,
@@ -364,11 +364,6 @@
       "action": "Pin the toolchain versions that are already installed (Rust 1.98.1, clang, bpftool, QEMU, swtpm, Node, pnpm, cosign) through the template matrix; systemd is already admitted as floor 261 at M03 (docs/roadmap/toolchain-admission.md) and the host runs 262",
       "unblocks": "every activation milestone, which must name a pinned toolchain before its gate runs",
       "kind": "governance"
-    },
-    {
-      "action": "Rebind the Arc A380 from i915 to xe when drm_sched is needed from the Intel card",
-      "unblocks": "a second drm_sched provider for M25 beside amdgpu; the kernel ships xe with a PCI alias for this device",
-      "kind": "module or package"
     }
   ]
 }

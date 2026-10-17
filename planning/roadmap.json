@@ -1722,7 +1722,7 @@
           "resizable_bar",
           "gpu_dma_buf_and_peer_memory"
         ],
-        "rationale": "DMA-BUF across vendor drivers and VFIO binding of a single-occupant IOMMU group are both available; amdgpu is the drm_sched provider, i915 is not."
+        "rationale": "DMA-BUF across vendor drivers and VFIO binding of a single-occupant IOMMU group are both available; amdgpu and xe are drm_sched providers and nvidia is not; the Arc A380 is bound to xe, the reference-profile binding recorded under ledger id aegis-os-m25-arc-xe."
       }
     },
     {

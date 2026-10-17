@@ -27,6 +27,7 @@ LEAVES = {
     "aegis-hestia",
     "aegis-janus-lifecycle",
     "aegis-vulcan",
+    "aegis-vulcan-gpu",
 }
 
 
@@ -83,7 +84,7 @@ class Positive(CounterpartTree):
         problems, leaves, entries = vc.check(self.root)
         self.assertEqual(problems, [])
         self.assertEqual(leaves, len(LEAVES))
-        self.assertEqual(entries, 14)
+        self.assertEqual(entries, 16)
 
     def test_the_leaf_set_is_the_five_recorded_crates(self):
         self.assertEqual(vc.leaf_crates(vc.workspace_graph(self.root)), LEAVES)
@@ -92,13 +93,18 @@ class Positive(CounterpartTree):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             self.assertEqual(vc.main(["verify_counterparts.py", str(self.root)]), 0)
-        self.assertIn("PASS: 5 leaf crates", out.getvalue())
+        self.assertIn("PASS: 6 leaf crates", out.getvalue())
 
 
 class Negative(CounterpartTree):
     def test_a_missing_edge_entry_fails(self):
         data = self.components()
-        self.row(data, "P03")[vc.FIELD].pop()
+        entries = self.row(data, "P03")[vc.FIELD]
+        self.row(data, "P03")[vc.FIELD] = [
+            e
+            for e in entries
+            if not (e["crate"] == "aegis-vulcan" and e["relation"] == "ZERO_COPY_MEDIA_INGEST")
+        ]
         self.write_components(data)
         self.assert_refused("aegis-vulcan: P03 edge ZERO_COPY_MEDIA_INGEST with P15 has no entry")
 
