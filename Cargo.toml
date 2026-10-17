@@ -37,15 +37,15 @@ accesskit = { version = "0.25.1", default-features = false }
 base16ct = { version = "1.0.0", default-features = false }
 cros-libva = { git = "https://github.com/chromeos/cros-libva", rev = "59384456ac2ae78c0c3e5515f41ef1efd9b802cf" }
 rustix = { version = "1.1.5", features = ["net", "fs", "event"] }
-saeptum-capsule = { git = "https://github.com/plurano/saeptum", rev = "dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b" }
-saeptum-microvm = { git = "https://github.com/plurano/saeptum", rev = "dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b" }
+saeptum-capsule = { git = "https://github.com/plurano/saeptum", rev = "92b57ed6ee6f39cb9e3d91851b63f3c65984c37e" }
+saeptum-microvm = { git = "https://github.com/plurano/saeptum", rev = "92b57ed6ee6f39cb9e3d91851b63f3c65984c37e" }
 schemars = { version = "1.2.2", default-features = false, features = ["derive"] }
 serde = { version = "1.0.229", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.151", default-features = false, features = ["std"] }
 sha2 = { version = "0.11.0", default-features = false }
 smithay-client-toolkit = { version = "0.21.1", default-features = false }
 thiserror = { version = "2.0.20", default-features = false, features = ["std"] }
-tornus-geometry = { git = "https://github.com/plurano/tornus", rev = "ad996c1f1a1598e82b48705be9bc7b15828fee6f" }
+tornus-geometry = { git = "https://github.com/plurano/tornus", rev = "b2710c8ef386275db352bab06bfa4b8eb6859411" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

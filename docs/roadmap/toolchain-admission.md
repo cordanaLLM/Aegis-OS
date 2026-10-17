@@ -113,9 +113,9 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | smithay-client-toolkit | 0.21.1 (MIT), crate checksum `74dc9ee14b0fdcb535f9556141bacac070c994a977d2240ee455d7438a617f00` | `[workspace.dependencies]`, `default-features = false`; used only by `crates/aegis-scaena` | the layer surface and the `zwp_linux_dmabuf_v1` client over wayland-client's pure-Rust backend; libwayland is neither linked nor loaded | M27 (D75) |
 | rustix | 1.1.5 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT), crate checksum `891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d` | `[workspace.dependencies]`, `features = ["net", "fs", "event"]`; used by `crates/aegis-scaena` and, since M21, by `crates/aegis-vesta-sandbox`, which adds the `system` feature | `sendmsg` and `recvmsg` with `SCM_RIGHTS` and `MSG_CMSG_CLOEXEC`, `SO_RCVTIMEO` and `SO_SNDTIMEO`, `fstatfs`, `fstat`, `lseek`, `poll` on the Wayland connection fd under a deadline, and in tests `memfd_create` (M27); `reboot(RebootCommand::Restart)`, with which the M21 guest init ends its microVM (M21) | M27 (D77); the `system` feature M21 |
 | socket2 | 0.6.5 (MIT OR Apache-2.0), crate checksum `c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4` | transitive since 2026-10-16: no longer in `[workspace.dependencies]`; it arrives through `saeptum-microvm`, whose own manifest pins it with `default-features = false`, `features = ["all"]` | the guest's `AF_VSOCK` listener: `SockAddr::vsock` is a safe constructor of a `sockaddr_vm`, which rustix 1.1.5 does not offer and the workspace's `unsafe_code = "forbid"` would otherwise require | M21 |
-| saeptum-capsule | git revision `dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b` of plurano/saeptum (package 0.1.0, EUPL-1.2), the squash merge of saeptum#5 on 2026-10-16 | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta` | the capsule registry, ring, microVM and VMM controllers and the wire form of their bounded values, cut from `aegis-vesta` (cut unit CUT-1632-03) | CUT-1632-03, 2026-10-16 |
-| saeptum-microvm | git revision `dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b` of plurano/saeptum (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta-sandbox` | the Firecracker configuration, the hybrid-vsock line framing, the VM process and the guest listener, cut from `aegis-vesta-sandbox` (cut unit CUT-1632-04); carries socket2 | CUT-1632-04, 2026-10-16 |
-| tornus-geometry | git revision `ad996c1f1a1598e82b48705be9bc7b15828fee6f` of plurano/tornus (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-hephaestus` | the geometry and meshing bounds, the `STEP` source name, the solver admission and the wire form of the bounded values, cut from `aegis-hephaestus` (cut unit CUT-1632-01) | CUT-1632-01, 2026-10-16 |
+| saeptum-capsule | git revision `92b57ed6ee6f39cb9e3d91851b63f3c65984c37e` of plurano/saeptum (package 0.1.0, EUPL-1.2), the squash merge of saeptum#12 on 2026-10-16 | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta` | the capsule registry, ring, microVM and VMM controllers and the wire form of their bounded values, cut from `aegis-vesta` (cut unit CUT-1632-03) | CUT-1632-03, 2026-10-16 |
+| saeptum-microvm | git revision `92b57ed6ee6f39cb9e3d91851b63f3c65984c37e` of plurano/saeptum (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta-sandbox` | the Firecracker configuration, the hybrid-vsock line framing, the VM process and the guest listener, cut from `aegis-vesta-sandbox` (cut unit CUT-1632-04); carries socket2 | CUT-1632-04, 2026-10-16 |
+| tornus-geometry | git revision `b2710c8ef386275db352bab06bfa4b8eb6859411` of plurano/tornus (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-hephaestus` | the geometry and meshing bounds, the `STEP` source name, the solver admission and the wire form of the bounded values, cut from `aegis-hephaestus` (cut unit CUT-1632-01) | CUT-1632-01, 2026-10-16 |
 
 The resolved graph the first seven pull in is fixed by `Cargo.lock`: block-buffer
 0.12.1, cfg-if 1.0.4, cpufeatures 0.3.1, crypto-common 0.2.2, digest 0.11.3,
@@ -204,6 +204,14 @@ of the plurano organisation, pinned by `rev =` so the lock records the exact
 commit. Their manifests declare serde, serde_json and thiserror at the
 versions this workspace already locks, and the lock gained exactly the three
 packages `saeptum-capsule`, `saeptum-microvm` and `tornus-geometry`.
+
+On 2026-10-17 both saeptum crates moved together from `dd67f6e` to
+`92b57ed` and tornus-geometry from `ad996c1` to `b2710c8`. Between those
+revisions the crates' public items are unchanged: saeptum split the guest
+accept loop into a crate-private function and added tests, CI, REUSE and
+cargo-deny configuration; tornus added tests and the same configuration.
+The lock changed only the three `source` revisions. Renovate groups the two
+saeptum crates, since one revision each would lock `saeptum-capsule` twice.
 
 The highest `rust-version` any resolved package declares is 1.87
 (accesskit 0.25.1), above smithay-client-toolkit's and wayland-protocols' 1.86.
