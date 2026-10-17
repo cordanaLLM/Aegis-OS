@@ -317,6 +317,39 @@ def verify_vendored(rows):
 
 
 MILESTONE_FIELDS = {"id", "title", "rank", "state", "blocked_by", "cost", "exit_criteria", "epics"}
+# external_unblocks (#222): plan nodes outside this repository that wait on a
+# milestone, each with the issue or decision record of the consuming repository
+# that names the dependency. A milestone of this roadmap belongs in unblocks.
+EXTERNAL_UNBLOCK_KEYS = {"node", "source"}
+PLAN_NODE = re.compile(r"[A-Z][A-Za-z0-9.-]{0,31}")
+MILESTONE_ID = re.compile(r"M[0-9]{2}")
+
+
+def external_entry_valid(entry):
+    """True when an entry holds exactly an outside plan node id and a non-empty source."""
+    if not isinstance(entry, dict) or set(entry) != EXTERNAL_UNBLOCK_KEYS:
+        return False
+    node, source = entry["node"], entry["source"]
+    if not isinstance(node, str) or not isinstance(source, str):
+        return False
+    return bool(PLAN_NODE.fullmatch(node) and not MILESTONE_ID.fullmatch(node) and source.strip())
+
+
+def verify_external_unblocks(row):
+    """external_unblocks is a list of valid entries naming each node once."""
+    entries = row.get("external_unblocks", [])
+    if not isinstance(entries, list):
+        raise ValueError(f"Milestone {row['id']} external_unblocks must be a list")
+    nodes = []
+    for entry in entries:
+        if not external_entry_valid(entry):
+            raise ValueError(
+                f"Milestone {row['id']} external_unblocks entry {entry!r} must carry exactly "
+                "a plan node id outside this roadmap and the source that names the dependency"
+            )
+        nodes.append(entry["node"])
+    if len(set(nodes)) != len(nodes):
+        raise ValueError(f"Milestone {row['id']} lists an external_unblocks node twice")
 
 
 def verify_milestone(row, by_id):
@@ -332,6 +365,7 @@ def verify_milestone(row, by_id):
         raise ValueError(f"Milestone {row['id']} blocks on unknown milestones {sorted(unknown)}")
     if row["state"] == "done" and not row.get("evidence"):
         raise ValueError(f"Milestone {row['id']} is done without recorded evidence")
+    verify_external_unblocks(row)
     blockers_done = all(by_id[b]["state"] == "done" for b in row["blocked_by"])
     expected = "ready" if blockers_done else "blocked"
     if row["state"] != "done" and row["state"] != expected:
@@ -740,6 +774,20 @@ def verify_sources():
     print(f"PASS: {len(rows)} original source hashes; no source execution")
 
 
+def milestone_line(row):
+    """One readiness line: state, rank, cost, blockers and the plan nodes outside that wait."""
+    marker = "READY" if row["state"] == "ready" else row["state"]
+    blockers = ", ".join(row["blocked_by"]) or "nothing"
+    line = (
+        f"{row['id']} [{marker}] rank {row['rank']} cost {row['cost']}: "
+        f"{row['title']}; blocked by {blockers}"
+    )
+    outside = [entry["node"] for entry in row.get("external_unblocks", [])]
+    if outside:
+        line += f"; unblocks outside: {', '.join(outside)}"
+    return line
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sources", action="store_true")
@@ -777,12 +825,7 @@ def main():
                 + "; ".join(row["activation_blockers"])
             )
         for row in milestones:
-            marker = "READY" if row["state"] == "ready" else row["state"]
-            blockers = ", ".join(row["blocked_by"]) or "nothing"
-            print(
-                f"{row['id']} [{marker}] rank {row['rank']} cost {row['cost']}: "
-                f"{row['title']}; blocked by {blockers}"
-            )
+            print(milestone_line(row))
     print(
         "PASS: the tracked register under planning/ - inventory, privacy, licence "
         "digests, source citations, job timeouts, hardware profile, roadmap states "
