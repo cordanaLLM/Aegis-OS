@@ -27,15 +27,15 @@
 //!   measurement to record which monitor produced it, and [`VMM_PROBES`]
 //!   records what the two probes returned on the reference profile.
 //!
-//! # The boot-time literal is not a measurement
+//! # Measured figures and the targets they miss
 //!
-//! [`SCAFFOLD_BOOT_TIME_MS`], [`BOOT_TIME_TARGET_MS`] and
-//! [`FOOTPRINT_TARGET_MIB`] are [`Unmeasured`] values. M21's
-//! `aegis-vesta-sandbox` boots microVMs to prove the path and measures neither
-//! figure (D71 leaves both to M22); the figures are recorded because the
-//! sources state them, and REQ-P10-05 itself records that they are unmeasured.
-//! `saeptum-capsule`'s `tests/unmeasured_literals.rs` is what keeps them that
-//! way.
+//! [`MEASURED_BOOT_TIME_MS`] and [`MEASURED_FOOTPRINT_KIB`] are [`Measured`]
+//! values: M22's run r20261017T124857-0027 of `make verify-workstation`
+//! measured them under Firecracker 1.17.0, and each names that monitor and
+//! run. They replace the scaffold's unmeasured 112 ms literal.
+//! [`BOOT_TIME_TARGET_MS`] and [`FOOTPRINT_TARGET_MIB`] stay [`Unmeasured`]
+//! targets, and both figures miss them. `saeptum-capsule`'s
+//! `tests/measured_figures.rs` holds the figures and targets apart.
 //!
 //! # Where the controllers live
 //!
@@ -114,7 +114,7 @@ pub mod decision;
 pub mod error;
 pub mod register;
 
-pub use saeptum_capsule::{capsule, id, microvm, ring, unmeasured, vmm};
+pub use saeptum_capsule::{capsule, id, measured, microvm, ring, unmeasured, vmm};
 
 pub use crate::capsule::{
     Capability, CapabilitySet, CapsuleMemoryLimit, CapsuleRegistry, CapsuleSlot,
@@ -134,10 +134,12 @@ pub use crate::decision::{
 };
 pub use crate::error::VestaError;
 pub use crate::id::{CorrelationId, IdError, Label, MAX_CORRELATION_LEN, MAX_LABEL_LEN};
+pub use crate::measured::Measured;
 pub use crate::microvm::{
     BOOT_TIME_TARGET_MS, FIRST_GUEST_CID, FIRST_VM_ID, FOOTPRINT_TARGET_MIB, GuestMemoryMib,
-    MAX_GUEST_MEMORY_MIB, MAX_MICROVMS, MIN_GUEST_MEMORY_MIB, MicroVmController, MicroVmInstance,
-    MicroVmRequest, SCAFFOLD_BOOT_TIME_MS, VmId, VmState, VsockCid,
+    MAX_GUEST_MEMORY_MIB, MAX_MICROVMS, MEASURED_BOOT_TIME_MS, MEASURED_FOOTPRINT_KIB,
+    MIN_GUEST_MEMORY_MIB, MicroVmController, MicroVmInstance, MicroVmRequest, VmId, VmState,
+    VsockCid,
 };
 pub use crate::register::{ClaimSource, ClaimStatus, P10_RECORDED_CLAIMS, RecordedClaim};
 pub use crate::ring::{IOURING_QUEUE_DEPTH, RingCore};
