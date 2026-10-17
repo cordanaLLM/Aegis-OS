@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use aegis_justitia::{
     CONTRACT_MARKER, INSTALL_DIRECTORIES, MAX_UNIT_BYTES, MAX_UNIT_LINES, REQUIRED_DIRECTIVES,
-    UnitContractError, is_installed_path, review,
+    START_LIMIT_DIRECTIVES, UnitContractError, is_installed_path, review,
 };
 
 /// The contract file's path inside the crate.
@@ -29,6 +29,41 @@ fn unit_path() -> PathBuf {
 /// Reads the tracked contract file.
 fn unit_text() -> String {
     std::fs::read_to_string(unit_path()).unwrap_or_default()
+}
+
+/// The start-limit lines the tracked unit declares (issue #232).
+const INTERVAL_LINE: &str = "StartLimitIntervalSec=10s";
+const BURST_LINE: &str = "StartLimitBurst=5";
+
+/// The smallest unit text the review accepts, with the two start-limit lines
+/// given in its `[Unit]` section.
+fn minimal_unit(interval: &str, burst: &str) -> String {
+    let mut lines: Vec<String> = vec![
+        format!("# {CONTRACT_MARKER}"),
+        "[Unit]".to_owned(),
+        interval.to_owned(),
+        burst.to_owned(),
+        "[Service]".to_owned(),
+    ];
+    for directive in REQUIRED_DIRECTIVES {
+        lines.push((*directive).to_owned());
+    }
+    lines.join("\n")
+}
+
+/// Replaces the one tracked line `from` with `to` and checks it was there.
+fn replace_line(text: &str, from: &str, to: &str) -> String {
+    assert_eq!(
+        text.matches(from).count(),
+        1,
+        "the fixture must hold {from} once"
+    );
+    text.replace(from, to)
+}
+
+/// The refusal for one start-limit setting, by kind.
+fn invalid(directive: &'static str) -> Result<(), UnitContractError> {
+    Err(UnitContractError::InvalidStartLimit { directive })
 }
 
 // --- Positive -------------------------------------------------------------
@@ -144,11 +179,7 @@ fn the_reviewer_reads_up_to_its_byte_bound_and_no_further() {
 /// reading of a bounded scan.
 #[test]
 fn the_reviewer_reads_up_to_its_line_bound_and_no_further() {
-    let mut lines: Vec<String> = vec![format!("# {CONTRACT_MARKER}")];
-    for directive in REQUIRED_DIRECTIVES {
-        lines.push((*directive).to_owned());
-    }
-    let inside = lines.join("\n");
+    let inside = minimal_unit("StartLimitIntervalSec=10s", "StartLimitBurst=5");
     assert!(inside.lines().count() < MAX_UNIT_LINES);
     assert_eq!(review(&inside), Ok(()));
 
@@ -195,4 +226,134 @@ fn the_execstart_binary_is_not_built_by_this_milestone() {
             .join("src/main.rs")
             .exists()
     );
+}
+
+// --- Start rate limit (issue #232) -----------------------------------------
+
+/// Positive: the tracked unit writes its start limit down in `[Unit]`, beside
+/// `Restart=always`, instead of inheriting the manager's default.
+#[test]
+fn the_tracked_unit_writes_its_start_limit_down() {
+    let text = unit_text();
+    assert_eq!(review(&text), Ok(()));
+    assert_eq!(
+        START_LIMIT_DIRECTIVES,
+        ["StartLimitIntervalSec", "StartLimitBurst"]
+    );
+    let unit_section = text.split("[Service]").next().unwrap_or_default();
+    assert!(unit_section.contains(&format!("\n{INTERVAL_LINE}\n")));
+    assert!(unit_section.contains(&format!("\n{BURST_LINE}\n")));
+    assert!(text.contains("\nRestart=always\n"));
+}
+
+/// Negative: each setting is required, and a commented-out one is absent.
+#[test]
+fn a_missing_start_limit_setting_fails_the_review() {
+    let text = unit_text();
+    for (line, directive) in [
+        (INTERVAL_LINE, "StartLimitIntervalSec"),
+        (BURST_LINE, "StartLimitBurst"),
+    ] {
+        let commented = replace_line(&text, &format!("\n{line}\n"), &format!("\n# {line}\n"));
+        assert_eq!(
+            review(&commented),
+            Err(UnitContractError::MissingStartLimit { directive })
+        );
+    }
+}
+
+/// Negative: switching the limit off, or naming no bound, fails the review.
+#[test]
+fn a_disabled_or_unbounded_start_limit_fails_the_review() {
+    let text = unit_text();
+    for value in ["0", "0s", "infinity"] {
+        let planted = replace_line(
+            &text,
+            INTERVAL_LINE,
+            &format!("StartLimitIntervalSec={value}"),
+        );
+        assert_eq!(
+            review(&planted),
+            invalid("StartLimitIntervalSec"),
+            "{value}"
+        );
+    }
+    let planted = replace_line(&text, BURST_LINE, "StartLimitBurst = 0");
+    assert_eq!(review(&planted), invalid("StartLimitBurst"));
+}
+
+/// Negative: a second declaration, the older `StartLimitInterval=` spelling
+/// included, could override the value reviewed, so it fails the review.
+#[test]
+fn a_repeated_start_limit_setting_fails_the_review() {
+    let text = unit_text();
+    let legacy = replace_line(
+        &text,
+        INTERVAL_LINE,
+        &format!("{INTERVAL_LINE}\nStartLimitInterval=0"),
+    );
+    assert_eq!(
+        review(&legacy),
+        Err(UnitContractError::RepeatedStartLimit {
+            directive: "StartLimitIntervalSec"
+        })
+    );
+    let twice = replace_line(&text, BURST_LINE, &format!("{BURST_LINE}\n{BURST_LINE}"));
+    assert_eq!(
+        review(&twice),
+        Err(UnitContractError::RepeatedStartLimit {
+            directive: "StartLimitBurst"
+        })
+    );
+}
+
+/// Negative: a start-limit setting outside `[Unit]` fails the review.
+#[test]
+fn a_start_limit_setting_outside_the_unit_section_fails_the_review() {
+    let text = unit_text();
+    let removed = replace_line(&text, &format!("\n{BURST_LINE}\n"), "\n");
+    let moved = replace_line(
+        &removed,
+        "\nRestart=always\n",
+        &format!("\nRestart=always\n{BURST_LINE}\n"),
+    );
+    assert_eq!(
+        review(&moved),
+        Err(UnitContractError::MisplacedStartLimit {
+            directive: "StartLimitBurst"
+        })
+    );
+}
+
+/// Boundary: the smallest positive values pass; zero, signs, other time units
+/// and empty values are refused.
+#[test]
+fn the_start_limit_values_stop_at_one() {
+    assert_eq!(
+        review(&minimal_unit(
+            "StartLimitIntervalSec=1",
+            "StartLimitBurst=1"
+        )),
+        Ok(())
+    );
+    assert_eq!(
+        review(&minimal_unit("StartLimitIntervalSec=1s", BURST_LINE)),
+        Ok(())
+    );
+    for value in ["00", "-1", "1min", "", "s", "1ss"] {
+        let interval = format!("StartLimitIntervalSec={value}");
+        assert_eq!(
+            review(&minimal_unit(&interval, BURST_LINE)),
+            invalid("StartLimitIntervalSec"),
+            "{value}"
+        );
+    }
+    for value in ["0", "1s", "+1", ""] {
+        let burst = format!("StartLimitBurst={value}");
+        assert_eq!(
+            review(&minimal_unit(INTERVAL_LINE, &burst)),
+            invalid("StartLimitBurst"),
+            "{value}"
+        );
+    }
 }

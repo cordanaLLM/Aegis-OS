@@ -435,6 +435,16 @@ down every gated action is refused. No required directive, exit criterion or
 epic changed. Nothing installs the unit, so the limit is a declared contract and
 no restart behaviour was measured.
 
+Dated 2026-10-17, appended after done (issue #232): the unit contract now
+writes its start rate limit down in `[Unit]`, `StartLimitIntervalSec=10s` and
+`StartLimitBurst=5`, the manager defaults systemd 262 reports and D108 relied
+on. `contracts::unit::review` refuses a unit that omits either setting, sets it
+twice (the older `StartLimitInterval=` spelling counts as the interval), sets
+it outside `[Unit]` or gives it anything but a positive whole number. No
+required directive, exit criterion or epic changed. Nothing installs the unit,
+so no restart and no start-limit stop was observed; that runtime case needs a
+booted image and stays open on M20.
+
 Not delivered, and not claimed: any transport. There is no D-Bus connection, no
 socket, no eBPF program and no TPM2 signing; a signature field is a field
 encoding, and nothing in the crate produces or verifies one. Nor is a transport
