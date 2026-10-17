@@ -147,6 +147,7 @@ WRAP_CASE = "rapl/observed-wrap"
 SANDBOX_CASES = (
     "sandbox/over-limit-memory-refused",
     "sandbox/boot-and-round-trip",
+    "sandbox/vsock-transport",
     "sandbox/sixty-fourth-accepted",
     "sandbox/sixty-fifth-refused",
     "sandbox/teardown",

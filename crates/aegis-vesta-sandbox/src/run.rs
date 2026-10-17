@@ -10,11 +10,15 @@
 //! 2. positive: the first admitted microVM boots and two candidate
 //!    evaluations round-trip over `AF_VSOCK`, one the Pareto gate passes and
 //!    one at the 1.5 ms latency bound it fails -- the verdicts are the guest's;
-//! 3. boundary: microVMs 2 to 64 are admitted, booted and each answers one
+//! 3. M22 / E22-2: the same microVM answers
+//!    [`ROUND_TRIPS`](crate::transport::ROUND_TRIPS) more evaluations,
+//!    timed into a [`RoundTripFigure`] that names Firecracker, with the host's
+//!    vhost state read before the first boot and while it runs;
+//! 4. boundary: microVMs 2 to 64 are admitted, booted and each answers one
 //!    evaluation, so the 64th is accepted with all 64 processes running;
-//! 4. boundary: the 65th request is refused by the controller and no process
+//! 5. boundary: the 65th request is refused by the controller and no process
 //!    is started for it;
-//! 5. every row is terminated, every process killed and reaped, and every
+//! 6. every row is terminated, every process killed and reaped, and every
 //!    socket file removed.
 //!
 //! Each step prints `PASS <case>` or `FAIL <case>` with detail lines. A step
@@ -30,6 +34,7 @@ use aegis_vesta::{
 
 use crate::error::SandboxError;
 use crate::request::{EvaluationRequest, RequestVersion, WireMetrics};
+use crate::transport::{HostVsock, RoundTripFigure, check_mechanism, micros, time_round_trips};
 use crate::vm::{Launch, RunningVm, Stopped, evaluate_in, reference_memory};
 
 /// Metrics every Pareto objective clears: the positive candidate.
@@ -50,9 +55,10 @@ pub const AT_LATENCY_BOUND: WireMetrics = WireMetrics {
 };
 
 /// The cases the host run prints, in order.
-pub const HOST_CASES: [&str; 5] = [
+pub const HOST_CASES: [&str; 6] = [
     "sandbox/over-limit-memory-refused",
     "sandbox/boot-and-round-trip",
+    "sandbox/vsock-transport",
     "sandbox/sixty-fourth-accepted",
     "sandbox/sixty-fifth-refused",
     "sandbox/teardown",
@@ -230,7 +236,59 @@ fn boot_and_round_trip(
     ])
 }
 
-/// Case 3: microVMs up to [`MAX_MICROVMS`] are admitted, booted and answer,
+/// Case 3: the first microVM's transport, timed and its mechanism held.
+fn vsock_transport(
+    fleet: &mut [RunningVm],
+    before: Result<HostVsock, SandboxError>,
+) -> Result<Vec<String>, SandboxError> {
+    let before = before?;
+    let vm = fleet
+        .first_mut()
+        .ok_or_else(|| SandboxError::Refused("no microVM is running".to_owned()))?;
+    let vm_id = vm.vm_id();
+    let samples = time_round_trips(vm, vm_id)?;
+    let during = HostVsock::read()?;
+    check_mechanism(VmmIdentity::Firecracker, before, during)?;
+    let figure = RoundTripFigure::from_samples(
+        VmmIdentity::Firecracker,
+        VmmIdentity::Firecracker,
+        &samples,
+    )?;
+    let count = |host: HostVsock| host.references.map_or("none".to_owned(), |n| n.to_string());
+    Ok(vec![
+        format!(
+            "host: {} {}, {}; vhost_vsock references {} before the first boot, {} while it ran",
+            crate::transport::VHOST_DEVICE,
+            if during.device { "present" } else { "absent" },
+            during.module.config_line(),
+            count(before),
+            count(during)
+        ),
+        "mechanism: Firecracker's own virtio-vsock device, AF_UNIX on the host, AF_VSOCK in \
+         the guest; vhost not in the path"
+            .to_owned(),
+        format!(
+            "vmm {} {}: {} round trips on sandbox {}, min {}, median {}, max {}",
+            figure.vmm.tag(),
+            figure.version,
+            figure.samples,
+            vm_id.get(),
+            micros(figure.min),
+            micros(figure.median),
+            micros(figure.max)
+        ),
+        format!(
+            "samples: {}",
+            samples
+                .iter()
+                .map(|d| micros(*d))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    ])
+}
+
+/// Case 4: microVMs up to [`MAX_MICROVMS`] are admitted, booted and answer,
 /// and all of them are running at once.
 fn fill_to_the_bound(
     controller: &mut MicroVmController,
@@ -265,7 +323,7 @@ fn fill_to_the_bound(
     ])
 }
 
-/// Case 4: the 65th request is refused and no process is started for it.
+/// Case 5: the 65th request is refused and no process is started for it.
 ///
 /// # Errors
 ///
@@ -295,7 +353,7 @@ pub fn sixty_fifth(
     ])
 }
 
-/// Case 5: every row terminated, every process reaped, every socket removed.
+/// Case 6: every row terminated, every process reaped, every socket removed.
 fn teardown(
     controller: &mut MicroVmController,
     fleet: &mut Vec<RunningVm>,
@@ -337,7 +395,7 @@ fn teardown(
     ])
 }
 
-/// Runs the five cases against the pinned binary, kernel and initramfs.
+/// Runs the six cases against the pinned binary, kernel and initramfs.
 ///
 /// # Errors
 ///
@@ -352,6 +410,7 @@ pub fn run_sandbox(launch: &Launch<'_>, out: &mut dyn Write) -> Result<Verdict, 
     )?;
     report.info("boot args", crate::BOOT_ARGS)?;
     report.info("controller bound", MAX_MICROVMS)?;
+    let host_before = HostVsock::read();
     let mut controller = MicroVmController::new();
     let mut fleet: Vec<RunningVm> = Vec::with_capacity(MAX_MICROVMS);
     report.case(
@@ -362,6 +421,14 @@ pub fn run_sandbox(launch: &Launch<'_>, out: &mut dyn Write) -> Result<Verdict, 
         "sandbox/boot-and-round-trip",
         boot_and_round_trip(&mut controller, launch, &mut fleet, memory),
     )?;
+    let timed = if booted {
+        vsock_transport(&mut fleet, host_before)
+    } else {
+        Err(SandboxError::Refused(
+            "not run: the first microVM did not round-trip".to_owned(),
+        ))
+    };
+    report.case("sandbox/vsock-transport", timed)?;
     let filled = booted
         && report.case(
             "sandbox/sixty-fourth-accepted",

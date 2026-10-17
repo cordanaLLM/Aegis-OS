@@ -22,17 +22,22 @@
 //! * [`mod@line`] frames both directions and Firecracker's hybrid-vsock handshake:
 //!   the host end is `AF_UNIX`, the guest end `AF_VSOCK`, and Firecracker's
 //!   own device model carries the bytes between them (its `docs/vsock.md`).
+//! * [`transport`] (M22, E22-2) times that round trip into a figure that names
+//!   its monitor, and reads the host's vhost state to hold that the transport
+//!   bypasses `vhost_vsock`, as that document says.
 //!
 //! The process, its configuration, the framing and the guest listener moved
 //! to `saeptum-microvm` (cut unit CUT-1632-04), consumed by git revision from
 //! the workspace manifest and re-exported under the same paths; their tests
 //! moved with them. This crate keeps the evaluation payload, P16's judgement
-//! and the five host cases.
+//! and the six host cases.
 //!
 //! # What this crate does not claim
 //!
-//! It measures no boot time and no memory footprint: those are M22's under
-//! decision D71, each naming the monitor that produced it. It prices no
+//! It measures no boot time and no memory footprint yet: those are M22's under
+//! decision D71, each naming the monitor that produced it, and wait on a boot
+//! timer and a process identifier `saeptum-microvm` does not expose. The
+//! round-trip figure is a wall-clock time, not a price: it prices no
 //! `AF_VSOCK` traffic (REQ-P10-03's pricing is not implemented) and passes no
 //! accelerator through (REQ-P10-02, Venus, is deferred to M12 by E21-3). It
 //! uses no jailer and runs every microVM as the invoking user. Every pass is
@@ -44,6 +49,7 @@ pub mod evaluate;
 pub mod guest;
 pub mod request;
 pub mod run;
+pub mod transport;
 pub mod vm;
 
 pub use saeptum_microvm::{config, line};
@@ -75,6 +81,10 @@ pub use crate::request::{
 pub use crate::run::{
     AT_LATENCY_BOUND, HOST_CASES, SUPERIOR, Verdict, admission, over_limit_memory, request,
     run_sandbox, sixty_fifth,
+};
+pub use crate::transport::{
+    BOOT_CASE_EXCHANGES, HostVsock, ModuleBuild, ROUND_TRIPS, RoundTripFigure, VHOST_DEVICE,
+    VHOST_MODULE, check_mechanism, micros, time_round_trips,
 };
 pub use crate::vm::{
     BOOT_BUDGET, EXCHANGE_BUDGET, HANDSHAKE_BUDGET, Launch, MAX_ANSWER_BYTES,
