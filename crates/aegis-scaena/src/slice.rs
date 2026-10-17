@@ -664,7 +664,7 @@ fn positive(
 }
 
 /// The banner header line for M27.
-pub const M27_HEADER: &str = "Display slice (M27, D79): development evidence, client half only; the compositor is the host session's, not P04.";
+pub const M27_HEADER: &str = "Display slice (M27, D79): development evidence, client half only; the compositor is not P04; the gate names whose it is.";
 
 /// Runs a body against a fresh presenter, closing it on every path and
 /// mapping a missing capability onto a skip.

@@ -380,8 +380,9 @@ verify-boot:
 # AEGIS_DISPLAY_DIR, default ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-display;
 # nothing is written into the repository but cargo's target directory.
 # A pass is development evidence on the reference profile for the client half
-# only (D79): the compositor is the host session's, not P04, and the pass closes
-# no hardware, accessibility or release gate. See docs/build/display.md.
+# only (D79): the compositor is not P04 (the label names whose it is), and the
+# pass closes no hardware, accessibility or release gate. See
+# docs/build/display.md.
 verify-display:
 	python3 tools/verify_display.py
 

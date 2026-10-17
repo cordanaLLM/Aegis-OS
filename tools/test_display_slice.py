@@ -475,6 +475,27 @@ class ProgramTests(unittest.TestCase):
         self.assertIn("unidentified", gate.compositor("unreported", runner))
         runner.assert_not_called()
 
+    def test_a_nested_compositor_is_not_labelled_the_host_sessions(self):
+        """Positive: a compositor started with a nested backend flag is named as nested."""
+        reader = mock.Mock(return_value=b"kwin_wayland\0--virtual\0--socket\0aegis-m32\0")
+        origin = gate.compositor_origin("4242", reader)
+        self.assertEqual(origin, "a nested instance (--virtual), not the host session's")
+        reader.assert_called_once_with("/proc/4242/cmdline")
+
+    def test_a_session_compositor_keeps_the_host_session_label(self):
+        """Negative: no nested backend flag leaves the host session's label."""
+        reader = mock.Mock(return_value=b"/usr/bin/kwin_wayland\0--xwayland\0")
+        self.assertEqual(gate.compositor_origin("3089", reader), "the host session's")
+
+    def test_an_unread_compositor_claims_no_origin(self):
+        """Boundary: no pid or an unreadable command line claims neither origin."""
+        unreadable = mock.Mock(side_effect=OSError(13, "Permission denied"))
+        self.assertEqual(gate.compositor_origin("3089", unreadable), "unidentified")
+        reader = mock.Mock()
+        self.assertEqual(gate.compositor_origin(None, reader), "unidentified")
+        self.assertEqual(gate.compositor_origin("unreported", reader), "unidentified")
+        reader.assert_not_called()
+
     def test_modifiers_are_named(self):
         """Positive: the chosen modifier prints with its DRM name; an unknown one says so."""
         self.assertEqual(
