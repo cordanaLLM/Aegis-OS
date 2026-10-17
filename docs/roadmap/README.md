@@ -5090,6 +5090,13 @@ beyond TPM2 (TDX, SEV-SNP, CCA).
   which M27's per-frame `created` and `presented` events require. It is
   recorded with M27's evidence as outside D83's scope, not waived; whether
   D83 names that binding too is the maintainer's to decide.
+  **Declared (2026-10-17, issue #223):** D83 is the HISS-03 entry for
+  `crates/aegis-scaena/src/decode.rs` in the exceptions list of
+  `.standards.yaml`, category A, expiring 90 days after entry. No engine gate
+  reads HISS-03, so `tools/verify_deviations.py` (in `make verify-all`) fails
+  once the entry expires, and whenever its reason does not name the cros-libva
+  revision `Cargo.lock` pins: a re-pin of the decoder fails the gate until the
+  deviation is reviewed and the entry renewed.
 
 ### Decisions from the M24 delivery (2026-09-28)
 
