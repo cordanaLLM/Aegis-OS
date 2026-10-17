@@ -30,12 +30,17 @@ const PRIVATE_MARKERS: [&str; 3] = ["/home/", ".workingdir", "notebook-prepared"
 #[test]
 fn the_shipped_repart_set_parses_and_meets_every_requirement() -> Fallible {
     let sources = reviewed_repart_set()?;
-    assert_eq!(sources.len(), 5);
+    assert_eq!(sources.len(), 4);
     let mut set: Vec<RepartDefinition> = Vec::new();
     for (name, text) in &sources {
         set.push(RepartDefinition::parse(name, text)?);
     }
     assert_eq!(check_repart_set(&set), Vec::new());
+
+    let (var_name, var_text) = common::reviewed_first_boot_var()?;
+    let var = RepartDefinition::parse(&var_name, &var_text)?;
+    assert!(var.is_tpm2_encrypted());
+    assert_eq!(var.findings(), Vec::new());
     Ok(())
 }
 
@@ -92,11 +97,14 @@ fn each_shipped_drop_in_still_declares_the_keys_its_requirement_needs() -> Falli
                 assert_eq!(definition.size_min(), Some(ESP_MIN_BYTES), "{name}");
                 assert_eq!(definition.size_max(), Some(ESP_MAX_BYTES), "{name}");
             }
-            VAR_TYPE => assert!(definition.is_tpm2_encrypted(), "{name}"),
             ROOT_TYPE => assert!(definition.label().is_some(), "{name}"),
             other => assert_eq!(other, "root-verity", "{name}"),
         }
     }
+    let (var_name, var_text) = common::reviewed_first_boot_var()?;
+    let var = RepartDefinition::parse(&var_name, &var_text)?;
+    assert!(var.is_tpm2_encrypted(), "{var_name}");
+    assert_eq!(var.partition_type(), VAR_TYPE, "{var_name}");
     Ok(())
 }
 
@@ -150,6 +158,7 @@ fn dropping_a_root_slot_from_the_shipped_set_is_reported() -> Fallible {
 fn every_reviewed_file_cites_an_export_id_and_a_digest() -> Fallible {
     let mut sources = reviewed_repart_set()?;
     sources.extend(reviewed_transfer_set()?);
+    sources.push(common::reviewed_first_boot_var()?);
     for (name, text) in &sources {
         let comments: String = text
             .lines()

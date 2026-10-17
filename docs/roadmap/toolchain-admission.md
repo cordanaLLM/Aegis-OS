@@ -456,8 +456,8 @@ input `build/definitions/toolchain.pin.json` pins exactly:
 | `python` | `3.14.7-1` | runs the two gate scripts |
 | `dosfstools` | `4.2-5` | `Format=vfat` in `build/repart.d/00-esp.conf` |
 | `erofs-utils` | `1.9.4-1` | `Format=erofs` in `build/repart.d/10-root-a.conf` |
-| `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/repart.d/20-var.conf` |
-| `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/repart.d/20-var.conf` |
+| `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
+| `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
 
 `make definitions-fetch` is the one networked step. It pulls the base image,
 installs the packages from the snapshot, and removes the image again unless
@@ -531,8 +531,8 @@ release itself, inside a second local image that
 | `python` | `3.14.7-1` | runs the gate script |
 | `dosfstools` | `4.2-5` | `Format=vfat` in `build/repart.d/00-esp.conf` |
 | `erofs-utils` | `1.9.4-1` | `Format=erofs` in `build/repart.d/10-root-a.conf` |
-| `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/repart.d/20-var.conf` |
-| `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/repart.d/20-var.conf` |
+| `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
+| `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
 
 `make definitions-fetch-floor` builds it the way `make definitions-fetch` builds
 the main image, with the same retries and the same exact-version check. A run

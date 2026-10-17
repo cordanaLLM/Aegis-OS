@@ -17,7 +17,9 @@ use aegis_fabrica_defs::manifest::{
     RetryPolicy,
 };
 use aegis_fabrica_defs::payload::MAX_PAYLOAD_BYTES;
-use aegis_fabrica_defs::{Finding, MAX_DEFINITIONS, ManifestError, ProductInputManifest};
+use aegis_fabrica_defs::{
+    Finding, MAX_DEFINITIONS, ManifestError, ProductInputManifest, RepartDefinition,
+};
 
 use common::{Fallible, reviewed_payload, reviewed_repart_set, reviewed_transfer_set};
 
@@ -93,12 +95,16 @@ fn the_reviewed_manifest_validates_the_shipped_definition_files() -> Fallible {
     let manifest = shipped()?;
     let repart = reviewed_repart_set()?;
     let transfers = reviewed_transfer_set()?;
-    assert_eq!(repart.len(), 5);
+    assert_eq!(repart.len(), 4);
     assert_ne!(
         transfers,
         [] as [(std::string::String, std::string::String); 0]
     );
     manifest.validate_definitions(&repart, &transfers)?;
+    let (var_name, var_text) = common::reviewed_first_boot_var()?;
+    let var = RepartDefinition::parse(&var_name, &var_text)?;
+    assert!(var.is_tpm2_encrypted());
+    assert_eq!(var.findings(), Vec::new());
     Ok(())
 }
 
@@ -281,9 +287,9 @@ fn a_manifest_is_refused_when_its_definition_set_does_not_parse() -> Fallible {
 fn a_manifest_is_refused_when_its_definition_set_is_not_ab() -> Fallible {
     let manifest = shipped()?;
     let mut repart = reviewed_repart_set()?;
-    assert_eq!(repart.len(), 5, "the reviewed repart set is five drop-ins");
+    assert_eq!(repart.len(), 4, "the reviewed repart set is four drop-ins");
     repart.retain(|(name, _)| name != "10-root-b.conf");
-    assert_eq!(repart.len(), 4, "dropping one of five leaves four");
+    assert_eq!(repart.len(), 3, "dropping one of four leaves three");
     let refused = manifest.validate_definitions(&repart, &reviewed_transfer_set()?);
     let Err(ManifestError::RequirementNotMet { path, finding }) = refused else {
         return Err(format!("expected a requirement refusal, got {refused:?}").into());
