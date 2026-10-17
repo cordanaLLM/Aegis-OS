@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
 // SPDX-License-Identifier: EUPL-1.2
 
-//! Memory footprint measured on the admitted monitor, and the boot timer
-//! line a boot time figure will be read from (milestone M22, epic E22-1).
+//! Memory footprint and boot time measured on the admitted monitor
+//! (milestone M22, epic E22-1).
 //!
 //! * [`parse_resident_kib`] reads a process's resident set from
 //!   `/proc/<pid>/status`: the Firecracker process with the guest memory it
@@ -19,11 +19,13 @@
 //!   writes [`BOOT_COMPLETE`] to [`BOOT_TIMER_MMIO`]
 //!   (`src/vmm/src/devices/pseudo/boot_timer.rs`). The interval starts when
 //!   Firecracker starts building the microVM (`src/vmm/src/builder.rs`,
-//!   `request_ts`).
+//!   `request_ts`). [`read_boot_time`] reads it from a running microVM and
+//!   [`BootTimeFigure`] is the figure, under the same D58 naming.
 //!
-//! The run does not time boots yet: the guest's write needs a mapped store to
-//! a device address, which `unsafe_code = "forbid"` rules out here, and that
-//! exception is an open decision. Until then no boot time is reported.
+//! The guest's write is [`saeptum_microvm::guest::signal_boot_complete`],
+//! the first act of `aegis-vesta-guest`. Its one mapped store to the device
+//! address lives in Saeptum under a dated exception, so this crate keeps
+//! `unsafe_code = "forbid"`.
 
 use std::io::Read;
 use std::path::Path;
@@ -48,6 +50,13 @@ pub const BOOT_TIME_MARKER: &str = "Guest-boot-time =";
 
 /// Scalar upper bound, in bytes, on the `/proc/<pid>/status` read.
 pub const MAX_STATUS_BYTES: u64 = 1 << 16;
+
+/// Scalar upper bound, in bytes, on the `console.log` read: the guest
+/// kernel's console and Firecracker's own log, a few KiB per boot.
+pub const MAX_CONSOLE_BYTES: u64 = 1 << 20;
+
+/// The file in a microVM's directory that holds Firecracker's stdout.
+pub const CONSOLE_LOG: &str = "console.log";
 
 /// One microVM's measured footprint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -161,6 +170,34 @@ pub fn measure(vm: &RunningVm, firecracker: &Path) -> Result<FootprintSample, Sa
     })
 }
 
+/// Reads the boot time of `vm`, which has answered at least once, from its
+/// `console.log`.
+///
+/// # Errors
+///
+/// Returns [`SandboxError::Io`] when the console cannot be read, and
+/// propagates [`parse_boot_time`].
+pub fn read_boot_time(vm: &RunningVm) -> Result<(Duration, Duration), SandboxError> {
+    let console = read_bounded(
+        &vm.dir().join(CONSOLE_LOG),
+        MAX_CONSOLE_BYTES,
+        "reading the microVM's console",
+    )?;
+    parse_boot_time(&console)
+}
+
+/// The count of `len` samples as a figure records it.
+fn sample_count(len: usize) -> Result<u32, SandboxError> {
+    Some(len)
+        .filter(|count| (1..=MAX_MICROVMS).contains(count))
+        .and_then(|count| u32::try_from(count).ok())
+        .ok_or_else(|| {
+            SandboxError::Refused(format!(
+                "{len} samples; a figure covers 1 to {MAX_MICROVMS}"
+            ))
+        })
+}
+
 /// The smallest, lower median and largest of `values`.
 fn spread<T: Ord + Copy + Default>(mut values: Vec<T>) -> (T, T, T) {
     values.sort_unstable();
@@ -195,15 +232,7 @@ impl FootprintFigure {
         recorded: VmmIdentity,
         samples: &[FootprintSample],
     ) -> Result<Self, SandboxError> {
-        let count = Some(samples.len())
-            .filter(|count| (1..=MAX_MICROVMS).contains(count))
-            .and_then(|count| u32::try_from(count).ok())
-            .ok_or_else(|| {
-                SandboxError::Refused(format!(
-                    "{} samples; a figure covers 1 to {MAX_MICROVMS}",
-                    samples.len()
-                ))
-            })?;
+        let count = sample_count(samples.len())?;
         for (ordinal, sample) in samples.iter().enumerate().take(MAX_MICROVMS) {
             check_identity(recorded, sample.vmm, ordinal)?;
         }
@@ -212,6 +241,42 @@ impl FootprintFigure {
             version: recorded.pinned_version(),
             samples: count,
             resident_kib: spread(samples.iter().map(|s| s.resident_kib).collect()),
+        })
+    }
+}
+
+/// A boot time figure and the monitor whose boot timer produced it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BootTimeFigure {
+    /// The monitor every boot ran on; only Firecracker has the boot timer.
+    pub vmm: VmmIdentity,
+    /// That monitor's version, the one D58 pins and the gate checked.
+    pub version: &'static str,
+    /// How many microVMs the figure covers.
+    pub samples: u32,
+    /// Smallest, lower median and largest wall-clock boot time.
+    pub wall: (Duration, Duration, Duration),
+    /// Smallest, lower median and largest CPU time of the boot.
+    pub cpu: (Duration, Duration, Duration),
+}
+
+impl BootTimeFigure {
+    /// Builds the Firecracker figure for `samples`, each one a boot's
+    /// wall-clock and CPU time as [`parse_boot_time`] reads them.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SandboxError::Refused`] when there is no sample, or when
+    /// there are more than [`MAX_MICROVMS`].
+    pub fn from_samples(samples: &[(Duration, Duration)]) -> Result<Self, SandboxError> {
+        let count = sample_count(samples.len())?;
+        let vmm = VmmIdentity::Firecracker;
+        Ok(Self {
+            vmm,
+            version: vmm.pinned_version(),
+            samples: count,
+            wall: spread(samples.iter().map(|(wall, _)| *wall).collect()),
+            cpu: spread(samples.iter().map(|(_, cpu)| *cpu).collect()),
         })
     }
 }

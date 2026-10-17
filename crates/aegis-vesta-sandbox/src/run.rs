@@ -19,9 +19,12 @@
 //! 5. M22 / E22-1: each of those processes' resident set after its first
 //!    answer becomes a [`FootprintFigure`] that names the monitor the process
 //!    was found to run;
-//! 6. boundary: the 65th request is refused by the controller and no process
+//! 6. M22 / E22-1: each of those microVMs' `Guest-boot-time` line, which
+//!    Firecracker's boot timer logs once the guest signals its boot, becomes
+//!    a [`BootTimeFigure`]; a microVM without the line fails the case;
+//! 7. boundary: the 65th request is refused by the controller and no process
 //!    is started for it;
-//! 7. every row is terminated, every process killed and reaped, and every
+//! 8. every row is terminated, every process killed and reaped, and every
 //!    socket file removed.
 //!
 //! Each step prints `PASS <case>` or `FAIL <case>` with detail lines. A step
@@ -29,17 +32,18 @@
 
 use core::fmt::Display;
 use std::io::Write;
+use std::time::Duration;
 
 use aegis_vesta::{
     CorrelationId, GuestMemoryMib, Label, MAX_GUEST_MEMORY_MIB, MAX_MICROVMS, MicroVmController,
     MicroVmRequest, VestaError, VmId, VmmIdentity,
 };
 
-use crate::boot::{FootprintFigure, FootprintSample, measure};
+use crate::boot::{BootTimeFigure, FootprintFigure, FootprintSample, measure, read_boot_time};
 use crate::error::SandboxError;
 use crate::request::{EvaluationRequest, RequestVersion, WireMetrics};
 use crate::transport::{HostVsock, RoundTripFigure, check_mechanism, micros, time_round_trips};
-use crate::vm::{Launch, RunningVm, Stopped, evaluate_in, reference_memory};
+use crate::vm::{Launch, LaunchOptions, RunningVm, Stopped, evaluate_in, reference_memory};
 
 /// Metrics every Pareto objective clears: the positive candidate.
 pub const SUPERIOR: WireMetrics = WireMetrics {
@@ -59,12 +63,13 @@ pub const AT_LATENCY_BOUND: WireMetrics = WireMetrics {
 };
 
 /// The cases the host run prints, in order.
-pub const HOST_CASES: [&str; 7] = [
+pub const HOST_CASES: [&str; 8] = [
     "sandbox/over-limit-memory-refused",
     "sandbox/boot-and-round-trip",
     "sandbox/vsock-transport",
     "sandbox/sixty-fourth-accepted",
     "sandbox/footprint",
+    "sandbox/boot-time",
     "sandbox/sixty-fifth-refused",
     "sandbox/teardown",
 ];
@@ -78,8 +83,14 @@ pub enum Verdict {
     Failed(u32),
 }
 
-/// One footprint measured per started microVM, or why it could not be.
-type Boots = Vec<Result<FootprintSample, String>>;
+/// What was measured per started microVM, or why it could not be.
+#[derive(Debug, Default)]
+struct Boots {
+    /// The monitor's footprint after the first answer.
+    footprints: Vec<Result<FootprintSample, String>>,
+    /// The boot timer's wall-clock and CPU time.
+    times: Vec<Result<(Duration, Duration), String>>,
+}
 
 /// The report the run writes.
 struct Report<'w> {
@@ -188,8 +199,8 @@ pub fn over_limit_memory(fleet: &[RunningVm]) -> Result<Vec<String>, SandboxErro
     ])
 }
 
-/// Admits the next microVM, starts it, has it answer once and measures its
-/// footprint into `boots`.
+/// Admits the next microVM, starts it with its boot timer on, has it answer
+/// once and measures its footprint and boot time into `boots`.
 fn admit_and_boot(
     controller: &mut MicroVmController,
     launch: &Launch<'_>,
@@ -202,12 +213,17 @@ fn admit_and_boot(
     let instance = controller.get(vm_id).ok_or_else(|| {
         SandboxError::Refused(format!("the controller holds no row for {}", vm_id.get()))
     })?;
-    fleet.push(RunningVm::start(launch, &instance)?);
+    let options = LaunchOptions::default().with_boot_timer(true);
+    fleet.push(RunningVm::start_with(launch, &instance, options)?);
     let vm = fleet
         .last_mut()
         .ok_or_else(|| SandboxError::Refused("the fleet is empty after a start".to_owned()))?;
     evaluate_in(vm, &request(vm_id, "superior", SUPERIOR)?)?;
-    boots.push(measure(vm, launch.firecracker).map_err(|error| error.to_string()));
+    let footprint = measure(vm, launch.firecracker).map_err(|error| error.to_string());
+    boots.footprints.push(footprint);
+    boots
+        .times
+        .push(read_boot_time(vm).map_err(|error| error.to_string()));
     Ok(vm_id)
 }
 
@@ -367,12 +383,54 @@ pub fn footprint(boots: &[Result<FootprintSample, String>]) -> Result<Vec<String
             "monitor resident set (VmRSS) after the first answer: min {min} KiB, median \
              {median} KiB, max {max} KiB"
         ),
-        "boot time: not measured; the guest's boot timer write waits on an open decision"
-            .to_owned(),
     ])
 }
 
-/// Case 6: the 65th request is refused and no process is started for it.
+/// Case 6: every microVM's boot timer line becomes one figure.
+///
+/// # Errors
+///
+/// Returns [`SandboxError::Refused`] for the first microVM whose boot time
+/// could not be read, and propagates [`BootTimeFigure::from_samples`].
+pub fn boot_time(
+    times: &[Result<(Duration, Duration), String>],
+) -> Result<Vec<String>, SandboxError> {
+    let mut samples = Vec::with_capacity(times.len());
+    for (ordinal, time) in times.iter().enumerate().take(MAX_MICROVMS) {
+        let sample = time.as_ref().map_err(|reason| {
+            SandboxError::Refused(format!(
+                "microVM {} has no boot time: {reason}",
+                ordinal.saturating_add(1)
+            ))
+        })?;
+        samples.push(*sample);
+    }
+    let figure = BootTimeFigure::from_samples(&samples)?;
+    let spread = |(min, median, max): (Duration, Duration, Duration)| {
+        format!(
+            "min {}, median {}, max {}",
+            micros(min),
+            micros(median),
+            micros(max)
+        )
+    };
+    Ok(vec![
+        format!(
+            "vmm {} {}: {} microVMs each logged one Guest-boot-time line after the guest's \
+             boot-complete write",
+            figure.vmm.tag(),
+            figure.version,
+            figure.samples
+        ),
+        format!(
+            "wall clock from the start of the microVM build: {}",
+            spread(figure.wall)
+        ),
+        format!("CPU time of the boot: {}", spread(figure.cpu)),
+    ])
+}
+
+/// Case 7: the 65th request is refused and no process is started for it.
 ///
 /// # Errors
 ///
@@ -402,7 +460,7 @@ pub fn sixty_fifth(
     ])
 }
 
-/// Case 7: every row terminated, every process reaped, every socket removed.
+/// Case 8: every row terminated, every process reaped, every socket removed.
 fn teardown(
     controller: &mut MicroVmController,
     fleet: &mut Vec<RunningVm>,
@@ -445,7 +503,7 @@ fn teardown(
 }
 
 /// Runs the cases that need the first microVM's round trip: the fill to the
-/// bound, its footprint and the 65th refusal.
+/// bound, its footprint and boot time, and the 65th refusal.
 fn bound_cases(
     report: &mut Report<'_>,
     controller: &mut MicroVmController,
@@ -462,11 +520,17 @@ fn bound_cases(
     };
     let filled = report.case("sandbox/sixty-fourth-accepted", filled)?;
     let measured = if filled {
-        footprint(boots)
+        footprint(&boots.footprints)
     } else {
         Err(not_run("the table was not filled to its bound"))
     };
     report.case("sandbox/footprint", measured)?;
+    let timed = if filled {
+        boot_time(&boots.times)
+    } else {
+        Err(not_run("the table was not filled to its bound"))
+    };
+    report.case("sandbox/boot-time", timed)?;
     let refusal = if filled {
         sixty_fifth(controller, fleet, memory)
     } else {
@@ -481,7 +545,7 @@ fn not_run(why: &str) -> SandboxError {
     SandboxError::Refused(format!("not run: {why}"))
 }
 
-/// Runs the seven cases against the pinned binary, kernel and initramfs.
+/// Runs the eight cases against the pinned binary, kernel and initramfs.
 ///
 /// # Errors
 ///
@@ -499,7 +563,10 @@ pub fn run_sandbox(launch: &Launch<'_>, out: &mut dyn Write) -> Result<Verdict, 
     let host_before = HostVsock::read();
     let mut controller = MicroVmController::new();
     let mut fleet: Vec<RunningVm> = Vec::with_capacity(MAX_MICROVMS);
-    let mut boots: Boots = Vec::with_capacity(MAX_MICROVMS);
+    let mut boots = Boots {
+        footprints: Vec::with_capacity(MAX_MICROVMS),
+        times: Vec::with_capacity(MAX_MICROVMS),
+    };
     report.case(
         "sandbox/over-limit-memory-refused",
         over_limit_memory(&fleet),

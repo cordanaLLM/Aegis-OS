@@ -13,8 +13,8 @@
 use aegis_vesta::{CandidateEvaluation, GuestMemoryMib, MAX_CONTRACT_PAYLOAD_BYTES};
 
 pub use saeptum_microvm::vm::{
-    BOOT_BUDGET, EXCHANGE_BUDGET, HANDSHAKE_BUDGET, Launch, MAX_DIRECTORY_ENTRIES, MAX_POLLS, POLL,
-    RunningVm, SOCKET_NAME, STOP_BUDGET, Stopped,
+    BOOT_BUDGET, EXCHANGE_BUDGET, HANDSHAKE_BUDGET, Launch, LaunchOptions, MAX_DIRECTORY_ENTRIES,
+    MAX_POLLS, POLL, RunningVm, SOCKET_NAME, STOP_BUDGET, Stopped,
 };
 
 use crate::error::SandboxError;

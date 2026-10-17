@@ -115,8 +115,8 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | smithay-client-toolkit | 0.21.1 (MIT), crate checksum `74dc9ee14b0fdcb535f9556141bacac070c994a977d2240ee455d7438a617f00` | `[workspace.dependencies]`, `default-features = false`; used only by `crates/aegis-scaena` | the layer surface and the `zwp_linux_dmabuf_v1` client over wayland-client's pure-Rust backend; libwayland is neither linked nor loaded | M27 (D75) |
 | rustix | 1.1.5 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT), crate checksum `891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d` | `[workspace.dependencies]`, `features = ["net", "fs", "event"]`; used by `crates/aegis-scaena` and, since M21, by `crates/aegis-vesta-sandbox`, which adds the `system` feature | `sendmsg` and `recvmsg` with `SCM_RIGHTS` and `MSG_CMSG_CLOEXEC`, `SO_RCVTIMEO` and `SO_SNDTIMEO`, `fstatfs`, `fstat`, `lseek`, `poll` on the Wayland connection fd under a deadline, and in tests `memfd_create` (M27); `reboot(RebootCommand::Restart)`, with which the M21 guest init ends its microVM (M21) | M27 (D77); the `system` feature M21 |
 | socket2 | 0.6.5 (MIT OR Apache-2.0), crate checksum `c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4` | transitive since 2026-10-16: no longer in `[workspace.dependencies]`; it arrives through `saeptum-microvm`, whose own manifest pins it with `default-features = false`, `features = ["all"]` | the guest's `AF_VSOCK` listener: `SockAddr::vsock` is a safe constructor of a `sockaddr_vm`, which rustix 1.1.5 does not offer and the workspace's `unsafe_code = "forbid"` would otherwise require | M21 |
-| saeptum-capsule | git revision `24eef8cc4e2b3c10d28c5529175895d2df9f27be` of plurano/saeptum (package 0.1.0, EUPL-1.2), the squash merge of saeptum#13 on 2026-10-17 | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta` | the capsule registry, ring, microVM and VMM controllers and the wire form of their bounded values, cut from `aegis-vesta` (cut unit CUT-1632-03) | CUT-1632-03, 2026-10-16 |
-| saeptum-microvm | git revision `24eef8cc4e2b3c10d28c5529175895d2df9f27be` of plurano/saeptum (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta-sandbox` | the Firecracker configuration, the hybrid-vsock line framing, the VM process and the guest listener, cut from `aegis-vesta-sandbox` (cut unit CUT-1632-04); carries socket2 | CUT-1632-04, 2026-10-16 |
+| saeptum-capsule | git revision `d5e6b94ee8ffe3c61d0568cd56870e46482e09e1` of plurano/saeptum (package 0.1.0, EUPL-1.2), the squash merge of saeptum#15 on 2026-10-17 | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta` | the capsule registry, ring, microVM and VMM controllers and the wire form of their bounded values, cut from `aegis-vesta` (cut unit CUT-1632-03) | CUT-1632-03, 2026-10-16 |
+| saeptum-microvm | git revision `d5e6b94ee8ffe3c61d0568cd56870e46482e09e1` of plurano/saeptum (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta-sandbox` | the Firecracker configuration, the hybrid-vsock line framing, the VM process, the guest listener and the guest's boot-complete signal, cut from `aegis-vesta-sandbox` (cut unit CUT-1632-04); carries socket2 and libc | CUT-1632-04, 2026-10-16 |
 | tornus-geometry | git revision `b2710c8ef386275db352bab06bfa4b8eb6859411` of plurano/tornus (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-hephaestus` | the geometry and meshing bounds, the `STEP` source name, the solver admission and the wire form of the bounded values, cut from `aegis-hephaestus` (cut unit CUT-1632-01) | CUT-1632-01, 2026-10-16 |
 
 The resolved graph the first seven pull in is fixed by `Cargo.lock`: block-buffer
@@ -271,6 +271,16 @@ for M22's footprint. That revision touches only `saeptum-microvm`: it adds
 tests; `RunningVm::start` is unchanged. The lock changed only the two
 `source` revisions.
 
+Later still on 2026-10-17 both saeptum crates moved from `24eef8c` to
+`d5e6b94` for M22's boot time. That revision again touches only
+`saeptum-microvm`: it adds `guest::signal_boot_complete` and its constants,
+the guest's write of the boot-complete byte through `/dev/mem`, under one
+dated `unsafe` exception (category D, expires 2027-02-14) that
+`tests/unsafe_exception.rs` enforces; the crate's lint tables are restated
+with `unsafe_code = "deny"`, and it now depends on libc. libc 0.2.190 was
+already in the lock; the lock changed the two `source` revisions and added
+libc to `saeptum-microvm`'s dependencies.
+
 The highest `rust-version` any resolved package declares is 1.87
 (accesskit 0.25.1), above smithay-client-toolkit's and wayland-protocols' 1.86.
 M27 set the workspace's `rust-version` to that value, and raising it from 1.85
@@ -311,8 +321,8 @@ reason is re-read when it moves.
 | Crate | Source | Commit | Reason | Review trigger |
 | :--- | :--- | :--- | :--- | :--- |
 | `cros-libva` | `https://github.com/chromeos/cros-libva` | `59384456ac2ae78c0c3e5515f41ef1efd9b802cf` | the newest crates.io release, 0.0.13 of 2024-12-06, fails to compile against libva 2.24.1; D80 names this revision | a crates.io release above 0.0.13 that builds against the libva floor, or a Renovate revision pull request |
-| `saeptum-capsule` | `https://github.com/plurano/saeptum` | `24eef8cc4e2b3c10d28c5529175895d2df9f27be` | cut from `aegis-vesta` into a plurano repository (CUT-1632-03) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-microvm` |
-| `saeptum-microvm` | `https://github.com/plurano/saeptum` | `24eef8cc4e2b3c10d28c5529175895d2df9f27be` | cut from `aegis-vesta-sandbox` into a plurano repository (CUT-1632-04) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-capsule` |
+| `saeptum-capsule` | `https://github.com/plurano/saeptum` | `d5e6b94ee8ffe3c61d0568cd56870e46482e09e1` | cut from `aegis-vesta` into a plurano repository (CUT-1632-03) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-microvm` |
+| `saeptum-microvm` | `https://github.com/plurano/saeptum` | `d5e6b94ee8ffe3c61d0568cd56870e46482e09e1` | cut from `aegis-vesta-sandbox` into a plurano repository (CUT-1632-04) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-capsule` |
 | `tornus-geometry` | `https://github.com/plurano/tornus` | `b2710c8ef386275db352bab06bfa4b8eb6859411` | cut from `aegis-hephaestus` into a plurano repository (CUT-1632-01) and not published on crates.io | a crates.io release, or a tornus revision Aegis needs |
 | `gpui` | `https://github.com/zed-industries/zed` | `322cd509dcccaee1f6bc44725d270598ae8171ad` | M28 toolkit; D102 takes it from one zed commit, and `gpui_linux`, which it runs on, has no crates.io release (index checked 2026-10-17) | a gpui crates.io release, or a zed revision M28 needs; moves together with `gpui_linux` |
 | `gpui_linux` | `https://github.com/zed-industries/zed` | `322cd509dcccaee1f6bc44725d270598ae8171ad` | the Linux platform of `gpui` (D102), built with the `wayland` feature alone; no crates.io release (index checked 2026-10-17) | moves together with `gpui` |

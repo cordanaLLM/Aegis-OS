@@ -51,7 +51,8 @@ device exists; every process, socket and directory it creates is removed or
 kept only as a log under the run directory. A pass is development evidence on
 the reference profile: it qualifies no hardware and closes no hardware,
 isolation or release gate. ``sandbox/footprint`` records each monitor
-process's resident set for M22 (E22-1, D71); boot time is not measured.
+process's resident set and ``sandbox/boot-time`` each guest's boot time from
+Firecracker's boot timer, for M22 (E22-1, D71).
 """
 
 import argparse
@@ -150,10 +151,15 @@ SANDBOX_CASES = (
     "sandbox/vsock-transport",
     "sandbox/sixty-fourth-accepted",
     "sandbox/footprint",
+    "sandbox/boot-time",
     "sandbox/sixty-fifth-refused",
     "sandbox/teardown",
 )
 SKIP, PASS, FAIL = "skip", "pass", "fail"
+# The initramfs members ahead of /init: /dev, and /dev/mem for the boot timer
+# (character device 1:1, readable and writable by its owner only).
+DEV_MEM = ("dev/mem", stat.S_IFCHR | 0o600, b"", (1, 1))
+INITRAMFS_DIRS = [("dev", 0o040755, b""), DEV_MEM]
 
 
 class GateError(Exception):
@@ -657,10 +663,14 @@ def elf_interpreter(data):
     return True, None
 
 
-def newc_entry(inode, name, mode, data):
-    """Return one newc cpio member: header, NUL-terminated name and data, 4-aligned."""
+def newc_entry(inode, name, mode, data, rdev=(0, 0)):
+    """Return one newc cpio member: header, NUL-terminated name and data, 4-aligned.
+
+    `rdev` is the (major, minor) pair of a device node, (0, 0) for anything else.
+    """
     encoded = name.encode("ascii") + b"\0"
-    fields = (inode, mode, 0, 0, 1, 0, len(data), 0, 0, 0, 0, len(encoded), 0)
+    major, minor = rdev
+    fields = (inode, mode, 0, 0, 1, 0, len(data), 0, 0, major, minor, len(encoded), 0)
     header = b"070701" + "".join(f"{value:08x}" for value in fields).encode("ascii")
     member = header + encoded
     member += b"\0" * (-len(member) % 4)
@@ -668,22 +678,32 @@ def newc_entry(inode, name, mode, data):
 
 
 def newc_archive(entries):
-    """Return a deterministic newc archive of (name, mode, data) entries and its trailer."""
+    """Return a deterministic newc archive and its trailer.
+
+    Each entry is (name, mode, data), or (name, mode, data, (major, minor)) for a
+    device node.
+    """
     archive = b""
-    for inode, (name, mode, data) in enumerate(entries, start=1):
+    for inode, entry in enumerate(entries, start=1):
+        name, mode, data = entry[:3]
+        rdev = entry[3] if len(entry) > 3 else (0, 0)
         if name.startswith("/") or ".." in name.split("/") or not name or len(name) > 255:
             raise GateError(f"refused an initramfs member name {name!r}")
-        archive += newc_entry(inode, name, mode, data)
+        archive += newc_entry(inode, name, mode, data, rdev)
     return archive + newc_entry(len(entries) + 1, "TRAILER!!!", 0, b"")
 
 
 def build_initramfs(guest, target):
-    """Pack the static guest init as /init, with /dev, and return the archive's sha256."""
+    """Pack the static guest init as /init, with /dev, and return the archive's sha256.
+
+    The kernel mounts no devtmpfs over an initramfs, so /dev/mem, the node the
+    guest maps Firecracker's boot timer through, is packed as character device 1:1.
+    """
     data = guest.read_bytes()
     static, reason = elf_interpreter(data)
     if not static:
         raise GateError(f"{guest.name} is not a static executable: {reason}")
-    archive = newc_archive([("dev", 0o040755, b""), ("init", 0o100755, data)])
+    archive = newc_archive(INITRAMFS_DIRS + [("init", 0o100755, data)])
     target.write_bytes(archive)
     return hashlib.sha256(archive).hexdigest()
 
@@ -1064,7 +1084,8 @@ def run_recorded(cache, run_dir, identifier, observe_wrap):
     print(
         f"PASS: {', '.join(ran) or 'nothing'} ran and passed on the reference profile (M21). "
         "Development evidence only: no hardware qualified, no hardware, isolation or release "
-        "gate closed; the footprint is the monitor's resident set, boot time is not measured."
+        "gate closed; the footprint is the monitor's resident set, the boot time is "
+        "Firecracker's boot timer."
     )
     return 0
 

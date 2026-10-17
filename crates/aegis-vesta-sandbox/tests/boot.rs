@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 //! M22 / E22-1: the footprint figure names its monitor and refuses a sample
-//! that names none or another one; the resident set and the boot timer line
-//! are read as their sources write them.
+//! that names none or another one; the boot time figure covers every
+//! microVM or none; the resident set and the boot timer line are read as
+//! their sources write them.
 //!
 //! No microVM starts here: [`identify`] is held against this test process,
-//! and the 64 measured Firecracker processes run in `make verify-workstation`.
+//! and the 64 measured and timed Firecracker processes run in
+//! `make verify-workstation`.
 
 mod common;
 
@@ -15,8 +17,8 @@ use std::time::Duration;
 
 use aegis_vesta::{MAX_MICROVMS, VmmIdentity};
 use aegis_vesta_sandbox::{
-    BOOT_COMPLETE, BOOT_TIMER_MMIO, FootprintFigure, FootprintSample, SandboxError, identify,
-    parse_boot_time, parse_resident_kib,
+    BOOT_COMPLETE, BOOT_TIMER_MMIO, BootTimeFigure, FootprintFigure, FootprintSample, SandboxError,
+    boot_time, identify, parse_boot_time, parse_resident_kib,
 };
 use common::Fallible;
 
@@ -37,6 +39,20 @@ fn firecracker(count: u64) -> Vec<FootprintSample> {
     (1..=count)
         .rev()
         .map(|n| sample(Some(VmmIdentity::Firecracker), n.saturating_mul(1000)))
+        .collect()
+}
+
+/// `count` boot times of 1, 2, ... ms wall clock and a tenth of that in CPU,
+/// in reverse order.
+fn boots(count: u64) -> Vec<(Duration, Duration)> {
+    (1..=count)
+        .rev()
+        .map(|n| {
+            (
+                Duration::from_millis(n),
+                Duration::from_micros(n.saturating_mul(100)),
+            )
+        })
         .collect()
 }
 
@@ -89,7 +105,45 @@ fn a_figure_names_its_monitor_and_spread() -> Fallible {
     Ok(())
 }
 
+/// Positive: a boot time figure names Firecracker and the spread of both
+/// clocks, and the case prints them.
+#[test]
+fn a_boot_time_figure_names_its_monitor_and_spread() -> Fallible {
+    let figure = BootTimeFigure::from_samples(&boots(3))?;
+    assert_eq!(figure.vmm, VmmIdentity::Firecracker);
+    assert_eq!(figure.version, VmmIdentity::Firecracker.pinned_version());
+    assert_eq!(figure.samples, 3);
+    let ms = Duration::from_millis;
+    assert_eq!(figure.wall, (ms(1), ms(2), ms(3)));
+    let us = Duration::from_micros;
+    assert_eq!(figure.cpu, (us(100), us(200), us(300)));
+    let lines = boot_time(&boots(3).into_iter().map(Ok).collect::<Vec<_>>())?;
+    let [count, wall, _cpu] = lines.as_slice() else {
+        return Err(format!("three lines expected, got {lines:?}").into());
+    };
+    assert!(count.contains("3 microVMs each logged one Guest-boot-time line"));
+    assert_eq!(
+        wall,
+        "wall clock from the start of the microVM build: min 1000.0 us, median 2000.0 us, \
+         max 3000.0 us"
+    );
+    Ok(())
+}
+
 // --- Negative -------------------------------------------------------------
+
+/// Negative: one microVM without a boot timer line fails the whole case,
+/// naming it, rather than leaving it out of the figure.
+#[test]
+fn a_microvm_without_a_boot_time_fails_the_case() {
+    let mut times: Vec<Result<(Duration, Duration), String>> =
+        boots(3).into_iter().map(Ok).collect();
+    times.insert(1, Err("the guest did not signal its boot".to_owned()));
+    refused(
+        &boot_time(&times),
+        "microVM 2 has no boot time: the guest did not signal its boot",
+    );
+}
 
 /// Negative: a console without the line is a guest that did not signal.
 #[test]
@@ -186,6 +240,24 @@ fn the_sample_count_is_bounded() -> Fallible {
             VmmIdentity::Firecracker,
             &firecracker(bound.saturating_add(1)),
         ),
+        "a figure covers 1 to",
+    );
+    Ok(())
+}
+
+/// Boundary: one boot and [`MAX_MICROVMS`] boots make a figure; none and one
+/// more do not.
+#[test]
+fn the_boot_time_count_is_bounded() -> Fallible {
+    let one = BootTimeFigure::from_samples(&boots(1))?;
+    assert_eq!(one.wall.0, one.wall.2);
+    let bound = u64::try_from(MAX_MICROVMS)?;
+    let full = BootTimeFigure::from_samples(&boots(bound))?;
+    assert_eq!(usize::try_from(full.samples)?, MAX_MICROVMS);
+    refused(&BootTimeFigure::from_samples(&[]), "a figure covers 1 to");
+    refused(&boot_time(&[]), "a figure covers 1 to");
+    refused(
+        &BootTimeFigure::from_samples(&boots(bound.saturating_add(1))),
         "a figure covers 1 to",
     );
     Ok(())

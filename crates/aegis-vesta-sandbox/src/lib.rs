@@ -69,8 +69,9 @@ pub use saeptum_microvm::{config, line};
 pub const REFERENCE_GUEST_MEMORY_MIB: u32 = 64;
 
 pub use crate::boot::{
-    BOOT_COMPLETE, BOOT_TIME_MARKER, BOOT_TIMER_MMIO, FootprintFigure, FootprintSample,
-    MAX_STATUS_BYTES, identify, measure, parse_boot_time, parse_resident_kib,
+    BOOT_COMPLETE, BOOT_TIME_MARKER, BOOT_TIMER_MMIO, BootTimeFigure, CONSOLE_LOG, FootprintFigure,
+    FootprintSample, MAX_CONSOLE_BYTES, MAX_STATUS_BYTES, identify, measure, parse_boot_time,
+    parse_resident_kib, read_boot_time,
 };
 pub use crate::config::{
     BOOT_ARGS, MAX_SOCKET_PATH_BYTES, VCPU_COUNT, VmConfig, check_socket_path, render,
@@ -89,8 +90,8 @@ pub use crate::request::{
     WireMetrics,
 };
 pub use crate::run::{
-    AT_LATENCY_BOUND, HOST_CASES, SUPERIOR, Verdict, admission, footprint, over_limit_memory,
-    request, run_sandbox, sixty_fifth,
+    AT_LATENCY_BOUND, HOST_CASES, SUPERIOR, Verdict, admission, boot_time, footprint,
+    over_limit_memory, request, run_sandbox, sixty_fifth,
 };
 pub use crate::transport::{
     BOOT_CASE_EXCHANGES, HostVsock, ModuleBuild, ROUND_TRIPS, RoundTripFigure, VHOST_DEVICE,
