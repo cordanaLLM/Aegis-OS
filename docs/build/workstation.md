@@ -348,8 +348,8 @@ network device.
 
 - **Boot time and footprint.** No figure of either is recorded here; D71 makes
   them M22's, each naming its monitor; they wait on a boot timer and a process
-  identifier that `saeptum-microvm` does not expose yet, and the scaffold's literals stay
-  `Unmeasured` in `crates/aegis-vesta`.
+  identifier that `saeptum-microvm` does not expose yet, and the scaffold's
+  literals stay `Unmeasured` in `crates/aegis-vesta`.
 - **A meter.** The energy counter is AMD's model; see the accuracy statement.
   Only the package zone is read: `core` is recorded in the enumeration but
   its counter is not read, because the decision admits one command.
