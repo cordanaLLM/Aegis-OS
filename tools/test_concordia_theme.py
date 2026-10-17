@@ -185,6 +185,21 @@ class Refused(unittest.TestCase):
         self.assertRefused(MINIMAL.replace("3px", "0.25rem"), "D16 floor")
 
 
+class LineEnds(unittest.TestCase):
+    """A CRLF checkout generates the same file as an LF one (HISS-21)."""
+
+    def test_a_crlf_source_generates_the_lf_result(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            path = Path(scratch) / "tokens.css"
+            path.write_bytes(MINIMAL.replace("\n", "\r\n").encode("utf-8"))
+            self.assertEqual(theme.render(theme.read_source(path)), theme.render(MINIMAL))
+
+    def test_the_check_names_the_target_with_forward_slashes(self):
+        code, stderr = run_check(MINIMAL, "")
+        self.assertEqual(code, 1)
+        self.assertNotIn("\\", stderr)
+
+
 class Boundary(unittest.TestCase):
     """The D16 floor and the size and count bounds sit exactly where they say."""
 

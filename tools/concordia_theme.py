@@ -24,6 +24,8 @@ import pathlib
 import re
 import sys
 
+import host
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "ui" / "concordia-tokens" / "concordia-tokens.css"
 TARGET = ROOT / "crates" / "aegis-concordia" / "src" / "tokens.rs"
@@ -255,11 +257,15 @@ def render(text):
 
 
 def read_source(path):
-    """Read the token file, bounded."""
+    """Read the token file, bounded, with LF line ends whatever the checkout wrote.
+
+    A Windows checkout may deliver the file with CRLF; the digest in the header
+    and the generated file must not depend on that (HISS-21).
+    """
     data = path.read_bytes()
     if len(data) > MAX_SOURCE_BYTES:
-        raise TokenError(f"{path} is larger than {MAX_SOURCE_BYTES} bytes")
-    return data.decode("utf-8")
+        raise TokenError(f"{host.target(path)} is larger than {MAX_SOURCE_BYTES} bytes")
+    return data.decode("utf-8").replace("\r\n", "\n")
 
 
 def main(argv=None):
@@ -273,18 +279,19 @@ def main(argv=None):
         print(f"FAIL: {error}", file=sys.stderr)
         return 1
     if not args.check:
-        TARGET.write_text(generated, encoding="utf-8")
-        print(f"wrote {TARGET.relative_to(ROOT)}")
+        TARGET.write_text(generated, encoding="utf-8", newline="\n")
+        print(f"wrote {host.target(TARGET.relative_to(ROOT))}")
         return 0
     committed = TARGET.read_text(encoding="utf-8") if TARGET.is_file() else ""
+    target = host.target(TARGET.relative_to(ROOT))
     if committed != generated:
         print(
-            f"FAIL: {TARGET.relative_to(ROOT)} differs from what {SOURCE_NAME} generates; "
+            f"FAIL: {target} differs from what {SOURCE_NAME} generates; "
             "run python3 tools/concordia_theme.py",
             file=sys.stderr,
         )
         return 1
-    print(f"PASS: {TARGET.relative_to(ROOT)} matches {SOURCE_NAME}")
+    print(f"PASS: {target} matches {SOURCE_NAME}")
     return 0
 
 
