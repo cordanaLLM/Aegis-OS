@@ -20,10 +20,12 @@ make verify-display
 ```
 
 **A pass is development evidence for the client half only (D79).** The
-compositor it runs against is the host session's KDE KWin, not P04, and
-nothing here is evidence that P04 serves `zwlr_layer_shell_v1` or
-`zwp_linux_dmabuf_v1`: P04 serves no Wayland protocol, and no milestone yet
-plans one that does. A pass closes no hardware, accessibility or release gate.
+compositor it runs against is not P04: on the reference profile it is the host
+session's KDE KWin, or a nested KWin as in the subtitle run below, and the
+label names which from the compositor's own command line. Nothing here is
+evidence that P04 serves `zwlr_layer_shell_v1` or `zwp_linux_dmabuf_v1`: P04
+serves no Wayland protocol, and no milestone yet plans one that does. A pass
+closes no hardware, accessibility or release gate.
 
 ## What is tracked
 
@@ -361,10 +363,12 @@ a largest per-frame slip of 1 ms, and passed:
 Each offset is the `wp_presentation` timestamp of the frame the cue's start
 timecode falls on, measured from the timestamp of frame 0. On the virtual
 backend that timestamp comes from KWin's own output clock, not from a scanout;
-the measurement is the client's, as REQ-P17-08 asks, and the case lines keep
-M27's fixed label, which names the host session's compositor although this
-run's compositor was the second KWin. The 100 ms boundary itself, 100 ms
-passing and 101 ms failing, is held by
+the measurement is the client's, as REQ-P17-08 asks. This run predates the
+label reading the compositor's command line, so its label still named the host
+session's compositor although the second KWin served it; the gate now reports
+a compositor started with `--virtual`, `--wayland-display` or `--x11-display`
+as a nested instance (`compositor_origin` in `tools/verify_display.py`). The
+100 ms boundary itself, 100 ms passing and 101 ms failing, is held by
 `crates/aegis-scaena/tests/subtitle_timing.rs`, not by the run.
 
 ## What is not claimed
