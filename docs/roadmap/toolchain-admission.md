@@ -450,7 +450,24 @@ stalled archive mirror or registry does not fail the run; when all three fail,
 the message names the image, the mirror and each attempt. A version mismatch is
 not retried. `FetchRetryTests` in `tools/test_definitions_container.py` covers
 both paths. A run against an unreachable mirror (`127.0.0.1:9`) on 2026-10-14
-retried twice and then failed in 99 seconds with that message. A run that sets
+retried twice and then failed in 99 seconds with that message.
+
+The archive server is a single host, and an outage of several minutes outlasts
+the retries (#290: three runs failed that way on 2026-10-17). A fetch therefore
+has a second source: when `AEGIS_DEFINITIONS_CACHE` names a directory, a fetch
+that built the image saves it there with the engine's `save`, one archive per
+pin, and a fetch whose attempts against the server all failed loads that
+archive instead. The loaded image must carry the pin's tag and passes the same
+`pacman -Q` check as a built one, so a saved image off its pin is refused; with
+neither source available the fetch fails and names both. CI keeps the directory
+in an Actions cache keyed by the pin file's hash, one entry for each image.
+`SecondSourceTests` in `tools/test_definitions_container.py` covers the planted
+outage, the refused image and both sources down. On 2026-10-17 the floor image
+went through that path with podman: saved (529 MB), removed, then loaded through
+a planted outage and checked at its pinned versions; without the archive the
+same run failed and named both sources.
+
+A run that sets
 `AEGIS_DEFINITIONS_CONTAINER=1` then runs each gate inside that image with
 `--pull=never`, `--network=none`, a read-only root file system and the
 repository mounted read-only, and prints the image and snapshot it used. A run

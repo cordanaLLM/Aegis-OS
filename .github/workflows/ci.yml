@@ -266,8 +266,28 @@ jobs:
       # from one Arch Linux Archive snapshot, and removes the image again unless
       # pacman reports every package at its pinned version. The gates then run
       # inside it without a network, with the repository mounted read-only.
+      # The archive server is one host (#290): the image the last green fetch
+      # built is kept in an Actions cache keyed by the pin's hash, and the fetch
+      # loads it, and checks it like a built one, only after every attempt
+      # against the server failed. A green fetch with no cached copy saves one.
+      - name: Restore the definition gates' saved image
+        id: definitions-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/definitions-cache/main
+          key: "definitions-${{ hashFiles('build/definitions/toolchain.pin.json') }}"
+
       - name: Fetch the definition gates' pinned image
+        env:
+          AEGIS_DEFINITIONS_CACHE: ${{ runner.temp }}/definitions-cache/main
         run: make definitions-fetch
+
+      - name: Save the definition gates' image for later runs
+        if: steps.definitions-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/definitions-cache/main
+          key: "definitions-${{ hashFiles('build/definitions/toolchain.pin.json') }}"
 
       # make verify-all runs the crate gate itself once a workspace manifest is
       # present, so the cargo evidence sits inside this one job. That is
@@ -291,9 +311,26 @@ jobs:
       # above holds a newer one. This reruns it on the floor release itself,
       # inside the image build/definitions/toolchain-floor.pin.json pins, so the
       # floor is a version a run covers (C13-2). Required, so it fails, never
-      # skips, when the image is missing or the tools fall below the floor.
+      # skips, when the image is missing or the tools fall below the floor. Its
+      # saved copy is kept the way the main image's is, under its own pin's hash.
+      - name: Restore the systemd floor image
+        id: definitions-floor-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/definitions-cache/floor
+          key: "definitions-floor-${{ hashFiles('build/definitions/toolchain-floor.pin.json') }}"
+
       - name: Fetch the systemd floor image
+        env:
+          AEGIS_DEFINITIONS_CACHE: ${{ runner.temp }}/definitions-cache/floor
         run: make definitions-fetch-floor
+
+      - name: Save the systemd floor image for later runs
+        if: steps.definitions-floor-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/definitions-cache/floor
+          key: "definitions-floor-${{ hashFiles('build/definitions/toolchain-floor.pin.json') }}"
 
       - name: Systemd definition gate at the floor
         env:
