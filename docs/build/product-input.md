@@ -235,13 +235,29 @@ it, and it guards itself twice before reporting anything: mkosi missing from
 `PATH`, or a host below the admitted floor, prints why it did not run and
 reports no pass.
 
-Three cases, all observed on mkosi 27:
+Four cases, all observed on mkosi 27:
 
 | Case | Command | Outcome |
 | :--- | :--- | :--- |
 | positive | `mkosi --no-pager --directory build summary` | exit 0; the main image's Output stanza parses |
 | negative | the same, on a scratch copy with `MinimumVersion=28` | exit 1, `mkosi 28 or newer is required by this configuration (found 27)` |
+| negative | the same, on a scratch copy with one unknown setting appended | exit 0 with `Unknown setting`; the gate must reject it |
 | boundary | the same, with `MinimumVersion=27`, the floor itself | exit 0 |
+
+mkosi exits 0 while it skips part of its input, so the exit code alone cannot
+pass a case (E11-3, REQ-CI-01). mkosi 27.1 warns and carries on for an unknown
+setting, a setting in the wrong section, a deprecated setting name and the
+deprecated `@` specifier (`mkosi/config.py`, `parse_config_one`); any of those
+warnings fails a case that exited 0. The planted negative case is judged by
+that same rejection and passes only when the rejection fires on mkosi's real
+output, so a detector that stopped rejecting anything turns the gate red.
+
+An unknown `[Section]` gets no warning at all: mkosi parses only the sections
+its settings name and drops the rest. Before it looks for mkosi, the gate reads
+the section headers of `build/mkosi.conf` and every `build/mkosi.conf.d/*.conf`
+and fails on any name outside the sections mkosi 27.1 parses. That list is
+pinned in the gate; `tools/test_mkosi_definitions.py` compares it with the
+installed mkosi's own `SETTINGS` when mkosi is importable.
 
 The floor cases run from a copy of `build/` in a temporary directory with
 exactly one line rewritten; a definition with no `MinimumVersion=` line, or with
