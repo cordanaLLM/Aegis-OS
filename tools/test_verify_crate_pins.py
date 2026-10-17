@@ -51,6 +51,28 @@ def lock(source=f"git+{SOURCE}?rev={REV_A}#{REV_A}", extra=""):
     )
 
 
+CARRIED_SOURCE = "https://github.com/example/parts"
+CARRIED_HEADER = (
+    "| Source | Commit | Carried by | Packages | Review trigger |\n"
+    "| :--- | :--- | :--- | :--- | :--- |\n"
+)
+CARRIED_LOCK = (
+    '\n[[package]]\nname = "gear"\nversion = "0.1.0"\n'
+    f'source = "git+{CARRIED_SOURCE}?rev={REV_B}#{REV_B}"\n'
+)
+
+
+def carried_row(
+    source=CARRIED_SOURCE, commit=REV_B, carrier="widget", packages="`gear`", trigger="moves"
+):
+    return f"| `{source}` | `{commit}` | `{carrier}` | {packages} | {trigger} |\n"
+
+
+def carried_register(rows):
+    section = f"{verify_crate_pins.CARRIED_HEADING}\n\nText.\n\n{CARRIED_HEADER}{rows}\n"
+    return register(row()).replace("## Next\n", section + "## Next\n")
+
+
 MEMBER = '[package]\nname = "one"\n\n[dependencies]\nwidget.workspace = true\n'
 
 
@@ -88,6 +110,11 @@ class PositiveTest(unittest.TestCase):
         problems, count = verify_crate_pins.check(verify_crate_pins.ROOT)
         self.assertEqual(problems, [])
         self.assertGreaterEqual(count, 1)
+
+    def test_a_carried_package_listed_with_its_source_passes(self):
+        reg = carried_register(carried_row())
+        code, _, err = Workspace(self, reg=reg, lck=lock(extra=CARRIED_LOCK)).run()
+        self.assertEqual((code, err), (0, ""))
 
     def test_the_makefile_runs_the_check(self):
         makefile = (verify_crate_pins.ROOT / "Makefile").read_text(encoding="utf-8")
@@ -178,6 +205,44 @@ class NegativeTest(unittest.TestCase):
             Workspace(self, lck=lock(extra=extra)), "hidden: Cargo.lock takes it from git"
         )
 
+    def assertCarriedFails(self, rows, needle, extra=CARRIED_LOCK):
+        reg = carried_register(rows)
+        self.assertFails(Workspace(self, reg=reg, lck=lock(extra=extra)), needle)
+
+    def test_a_carried_package_on_another_commit_fails(self):
+        self.assertCarriedFails(
+            carried_row(commit=REV_A), f"gear: Cargo.lock source git+{CARRIED_SOURCE}?rev={REV_B}"
+        )
+
+    def test_a_carried_package_the_lock_does_not_hold_fails(self):
+        self.assertCarriedFails(carried_row(), "gear: Cargo.lock source None", extra="")
+
+    def test_a_carrier_without_a_register_row_fails(self):
+        self.assertCarriedFails(
+            carried_row(carrier="gadget"), "gear: carried by gadget, which is not a git dependency"
+        )
+
+    def test_a_pinned_crate_listed_as_carried_fails(self):
+        self.assertCarriedFails(
+            carried_row(packages="`gear`, `widget`"),
+            "widget: pinned in Cargo.toml and also listed as carried",
+        )
+
+    def test_a_carried_package_listed_twice_fails(self):
+        self.assertCarriedFails(carried_row() + carried_row(), "package gear is listed twice")
+
+    def test_an_empty_carried_trigger_fails(self):
+        self.assertCarriedFails(carried_row(trigger=""), "gear: carried-source row has an empty")
+
+    def test_an_unreadable_carried_row_fails(self):
+        self.assertCarriedFails(carried_row(packages="gear"), "unreadable carried-source row")
+
+    def test_a_wrong_carried_header_fails(self):
+        reg = carried_register(carried_row()).replace("| Carried by |", "| Carrier |")
+        self.assertFails(
+            Workspace(self, reg=reg, lck=lock(extra=CARRIED_LOCK)), "carried-source table header"
+        )
+
     def test_an_empty_reason_fails(self):
         self.assertFails(
             Workspace(self, reg=register(row(reason=""))), "empty reason or review trigger"
@@ -231,6 +296,17 @@ class BoundaryTest(unittest.TestCase):
     def test_a_second_heading_fails(self):
         reg = register(row()) + f"\n{verify_crate_pins.HEADING}\n"
         code, _, err = Workspace(self, reg=reg).run()
+        self.assertEqual(code, 1)
+        self.assertIn("appears 2 times", err)
+
+    def test_an_absent_carried_section_reads_as_empty(self):
+        code, _, err = Workspace(self, lck=lock(extra=CARRIED_LOCK)).run()
+        self.assertEqual(code, 1)
+        self.assertIn("gear: Cargo.lock takes it from git but no row covers it", err)
+
+    def test_a_second_carried_heading_fails(self):
+        reg = carried_register(carried_row()) + f"\n{verify_crate_pins.CARRIED_HEADING}\n"
+        code, _, err = Workspace(self, reg=reg, lck=lock(extra=CARRIED_LOCK)).run()
         self.assertEqual(code, 1)
         self.assertIn("appears 2 times", err)
 

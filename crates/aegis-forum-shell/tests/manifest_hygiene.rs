@@ -126,6 +126,46 @@ fn cargo_metadata() -> Result<Value, String> {
 /// The package names in the closure of the one workspace member named
 /// `package`, the member included.
 fn closure(metadata: &Value, package: &str) -> Result<BTreeSet<String>, String> {
+    let ids = closure_ids(metadata, package)?;
+    Ok(packages_in(metadata, &ids)
+        .filter_map(|entry| entry.get("name")?.as_str())
+        .map(str::to_owned)
+        .collect())
+}
+
+/// The package entries of `metadata` whose ids are in `ids`.
+fn packages_in<'m>(metadata: &'m Value, ids: &BTreeSet<String>) -> impl Iterator<Item = &'m Value> {
+    metadata
+        .get("packages")
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .filter(|entry| {
+            entry
+                .get("id")
+                .and_then(Value::as_str)
+                .is_some_and(|id| ids.contains(id))
+        })
+}
+
+/// The versions of the package named `name` in the closure of `package`.
+fn closure_versions(
+    metadata: &Value,
+    package: &str,
+    name: &str,
+) -> Result<BTreeSet<String>, String> {
+    let ids = closure_ids(metadata, package)?;
+    Ok(packages_in(metadata, &ids)
+        .filter(|entry| entry.get("name").and_then(Value::as_str) == Some(name))
+        .filter_map(|entry| entry.get("version")?.as_str())
+        .map(str::to_owned)
+        .collect())
+}
+
+/// The package ids in the closure of the one workspace member named
+/// `package`, the member included.
+fn closure_ids(metadata: &Value, package: &str) -> Result<BTreeSet<String>, String> {
     let packages = metadata
         .get("packages")
         .and_then(Value::as_array)
@@ -177,11 +217,7 @@ fn closure(metadata: &Value, package: &str) -> Result<BTreeSet<String>, String> 
             }
         }
     }
-    Ok(visited
-        .iter()
-        .filter_map(|id| names.get(id))
-        .map(|name| (*name).to_owned())
-        .collect())
+    Ok(visited.iter().map(|id| (*id).to_owned()).collect())
 }
 
 /// The forbidden names found in `names`, matched exactly.
@@ -245,9 +281,11 @@ fn the_crate_is_a_written_out_member_with_a_lock_entry_and_workspace_lints() {
 }
 
 /// Positive: accesskit 0.25.1 is declared once, in the workspace table, used
-/// by reference here, and locked at that version.
+/// by reference here, locked at that version, and the one accesskit in this
+/// crate's closure. The lock also holds the accesskit gpui resolves (M28),
+/// which only `aegis-forum-shell-gpui`'s closure reaches.
 #[test]
-fn accesskit_is_declared_once_and_locked_at_the_admitted_version() {
+fn accesskit_is_declared_once_and_locked_at_the_admitted_version() -> Fallible {
     let root = read("Cargo.toml");
     assert_eq!(root.matches("accesskit").count(), 1);
     assert!(root.contains("accesskit = { version = \"0.25.1\", default-features = false }"));
@@ -255,7 +293,9 @@ fn accesskit_is_declared_once_and_locked_at_the_admitted_version() {
     assert!(manifest.contains("accesskit.workspace = true"));
     let lock = read("Cargo.lock");
     assert!(lock.contains("name = \"accesskit\"\nversion = \"0.25.1\""));
-    assert_eq!(lock.matches("name = \"accesskit\"").count(), 1);
+    let versions = closure_versions(&cargo_metadata()?, PACKAGE, "accesskit")?;
+    assert_eq!(versions, BTreeSet::from(["0.25.1".to_owned()]));
+    Ok(())
 }
 
 /// Positive: the real closure, read through `cargo metadata`, holds the
@@ -364,4 +404,48 @@ fn names_match_exactly_and_only_the_closure_counts() -> Fallible {
         Vec::<&str>::new()
     );
     Ok(())
+}
+
+/// Negative and boundary: a second accesskit reached through this crate's
+/// closure is a second version there, and one in the document but outside the
+/// closure is not.
+#[test]
+fn only_an_accesskit_inside_the_closure_counts_as_a_version() -> Fallible {
+    let mut doc = synthetic(&["accesskit", "consumer"]);
+    if let Some(packages) = doc.get_mut("packages").and_then(Value::as_array_mut) {
+        for entry in packages.iter_mut() {
+            if entry.get("name").and_then(Value::as_str) == Some("accesskit") {
+                set(entry, "version", Value::from("0.25.1"));
+            }
+        }
+        packages.push(serde_json::json!({ "id": "old", "name": "accesskit", "version": "0.24.1" }));
+    }
+    let nodes = doc
+        .pointer_mut("/resolve/nodes")
+        .and_then(Value::as_array_mut)
+        .ok_or("no nodes")?;
+    nodes.push(serde_json::json!({ "id": "old", "deps": [] }));
+    let outside = closure_versions(&doc, PACKAGE, "accesskit")?;
+    assert_eq!(outside, BTreeSet::from(["0.25.1".to_owned()]));
+    for node in nodes_mut(&mut doc) {
+        if node.get("id").and_then(Value::as_str) == Some("consumer") {
+            set(node, "deps", serde_json::json!([{ "pkg": "old" }]));
+        }
+    }
+    let inside = closure_versions(&doc, PACKAGE, "accesskit")?;
+    assert_eq!(
+        inside,
+        BTreeSet::from(["0.24.1".to_owned(), "0.25.1".to_owned()])
+    );
+    Ok(())
+}
+
+/// The resolve nodes of a metadata document, or none.
+fn nodes_mut(metadata: &mut Value) -> impl Iterator<Item = &mut Value> {
+    metadata
+        .pointer_mut("/resolve/nodes")
+        .and_then(Value::as_array_mut)
+        .map(Vec::as_mut_slice)
+        .unwrap_or_default()
+        .iter_mut()
 }
