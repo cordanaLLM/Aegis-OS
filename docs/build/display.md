@@ -114,6 +114,22 @@ gate reads the package database instead.
 | `display/presented-deadline` | boundary | a presentation feedback on a surface never committed fails at its 250 ms deadline, naming the event |
 | `display/driver-not-ihd-refused` | negative (a) | under `LIBVA_DRIVER_NAME=nvidia` the node's VA display is refused on its vendor string |
 
+The `subtitles` child presents the 90-frame Motion-JPEG subtitle fixture clip
+at 30 frames per second with software pacing and evaluates presentation
+feedback timestamps against the `SubRip` cues. The subtitle text is not
+rasterised: a subtitle's presentation time is the `wp_presentation` timestamp
+of the frame its start timecode falls on, measured from the timestamp of the
+clip's first frame:
+
+- `subtitle/cue-1-within-100ms`: the presentation timestamp offset of the
+  first frame of cue 1 falls within 100 ms of the cue's start timecode.
+- `subtitle/cue-2-within-100ms`: the presentation timestamp offset of the
+  first frame of cue 2 falls within 100 ms of the cue's start timecode.
+- `subtitle/cue-3-within-100ms`: the presentation timestamp offset of the
+  first frame of cue 3 falls within 100 ms of the cue's start timecode.
+- `subtitle/planted-150ms-late-refused`: a planted artificial 150 ms delay
+  exceeds the 100 ms tolerance window and is refused with late status.
+
 Every Wayland wait -- the registry roundtrip, the first configure, the
 surface feedback, each `created` or `failed` and each `presented` or
 `discarded` -- polls the connection fd under its own deadline, and a missed
@@ -296,6 +312,60 @@ surface while the lock screen is up; the display slice gate did not run.` and
 exited 0, and the binary run directly passed the first five cases and failed the
 first frame's presented wait at its 1 s deadline, naming the event: a locked
 session's compositor presents no client surface.
+
+## The recorded subtitle run
+
+Run r20261017T194814-f961 of `make verify-display`, on 2026-10-17, on the
+reference profile, is the evidence for M32; all three children's output is kept
+under `~/.cache/aegis-display/r20261017T194814-f961`.
+
+By then the host session's KWin had the NVIDIA card as its main device
+(renderD128), and the gate skipped on it, as run r20261017T194646-392c
+recorded: "the compositor's main device renderD128 is driven by nvidia, not
+i915 or xe". The run therefore went to a second KWin, 6.8.0-1.1, started for
+it under the user session on the virtual backend and bound to the Intel card,
+and the gate was pointed at that compositor's socket. The bind was set in the
+compositor's environment only; no host setting changed:
+
+```sh
+KWIN_RENDER_NODES=/dev/dri/renderD130 kwin_wayland --virtual --no-lockscreen \
+  --socket aegis-m32 --width 1280 --height 720 &
+WAYLAND_DISPLAY=aegis-m32 make verify-display
+```
+
+The gate printed:
+
+- rustc: rustc 1.99.1 (58cf8f9c3 2026-10-13)
+- libva: 2.24.1 (VA-API 1.24.0), read back with pkg-config
+- VA vendor string: Intel iHD driver for Intel(R) Gen Graphics - 26.3.5 ()
+- compositor: pid 3215997, executable unreadable (Permission denied)
+- compositor main device 226:130, decode node /dev/dri/renderD130 (226:130,
+  kernel driver xe)
+- modifier the driver chose: 0x0100000000000009 (I915_FORMAT_MOD_4_TILED)
+
+The `run` and `driver-probe` children passed every M27 case again, with all 60
+regression pins equal under the newer driver. The `subtitles` child presented
+the 90 frames of the subtitle fixture clip, paced to 30 frames per second with
+a largest per-frame slip of 1 ms, and passed:
+
+- `display/other-render-node-refused` and `display/driver-is-ihd`, as for M27.
+- `subtitle/cue-1-within-100ms`: timecode 500 ms, presented offset 483 ms
+  (difference -16 ms).
+- `subtitle/cue-2-within-100ms`: timecode 1200 ms, presented offset 1183 ms
+  (difference -16 ms).
+- `subtitle/cue-3-within-100ms`: timecode 2000 ms, presented offset 1983 ms
+  (difference -16 ms).
+- `subtitle/planted-150ms-late-refused`: cue 2's offset moved 150 ms later is
+  refused as late.
+
+Each offset is the `wp_presentation` timestamp of the frame the cue's start
+timecode falls on, measured from the timestamp of frame 0. On the virtual
+backend that timestamp comes from KWin's own output clock, not from a scanout;
+the measurement is the client's, as REQ-P17-08 asks, and the case lines keep
+M27's fixed label, which names the host session's compositor although this
+run's compositor was the second KWin. The 100 ms boundary itself, 100 ms
+passing and 101 ms failing, is held by
+`crates/aegis-scaena/tests/subtitle_timing.rs`, not by the run.
 
 ## What is not claimed
 

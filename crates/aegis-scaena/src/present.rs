@@ -55,7 +55,7 @@ use crate::surface::{ConfiguredSize, LayerSurfaceModel};
 use crate::wayland::{Registry, Wait, WaitEvent, dispatch_until};
 
 /// The most frames one presenter keeps buffers for.
-pub const MAX_FRAMES: usize = 64;
+pub const MAX_FRAMES: usize = 128;
 
 /// The largest format table read, in bytes.
 pub const MAX_FORMAT_TABLE_BYTES: usize = 1 << 20;
@@ -133,6 +133,7 @@ struct FrameEvents {
     created: Option<wl_buffer::WlBuffer>,
     failed: bool,
     presented: bool,
+    presented_at: Option<Duration>,
     discarded: bool,
 }
 
@@ -323,9 +324,17 @@ impl Dispatch<wp_presentation_feedback::WpPresentationFeedback, ()> for Presente
         _: &QueueHandle<Self>,
     ) {
         match event {
-            wp_presentation_feedback::Event::Presented { .. } => {
+            wp_presentation_feedback::Event::Presented {
+                tv_sec_hi,
+                tv_sec_lo,
+                tv_nsec,
+                ..
+            } => {
                 state.counts.presented = state.counts.presented.saturating_add(1);
                 state.frame.presented = true;
+                let tv_sec = (u64::from(tv_sec_hi) << 32) | u64::from(tv_sec_lo);
+                state.frame.presented_at = Duration::from_secs(tv_sec)
+                    .checked_add(Duration::from_nanos(u64::from(tv_nsec)));
             }
             wp_presentation_feedback::Event::Discarded => {
                 state.counts.discarded = state.counts.discarded.saturating_add(1);
@@ -614,6 +623,12 @@ impl Presenter {
     #[must_use]
     pub const fn counts(&self) -> Counts {
         self.state.counts
+    }
+
+    /// The presentation timestamp of the last presented frame, if any.
+    #[must_use]
+    pub const fn last_presented_at(&self) -> Option<Duration> {
+        self.state.frame.presented_at
     }
 
     /// Admits `checked` client-side and, only if every check passes, imports
