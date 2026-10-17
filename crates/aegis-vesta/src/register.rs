@@ -110,8 +110,9 @@ pub const P10_RECORDED_CLAIMS: [RecordedClaim; 5] = [
         status: ClaimStatus::DeferredHardwareRequirement,
         settled_by: "a priced vsock transport under a running monitor: M21 proved the \
                      transport path (one candidate evaluation over AF_VSOCK under \
-                     Firecracker 1.17.0), M22 measures it, and no milestone prices a \
-                     message yet; this crate validates a context identifier and opens no \
+                     Firecracker 1.17.0), M22's E22-2 times it under Firecracker 1.17.0 \
+                     (aegis-vesta-sandbox, case sandbox/vsock-transport), and no \
+                     milestone prices a message yet; this crate validates a context identifier and opens no \
                      socket",
         source: ClaimSource {
             export: "export-018",
