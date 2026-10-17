@@ -1,20 +1,17 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended",
+    "github>plurano/horistes",
     ":dependencyDashboard",
     ":semanticCommits",
-    ":maintainLockFilesWeekly",
-    ":gitSignOff"
+    ":maintainLockFilesWeekly"
   ],
   "labels": ["dependencies"],
-  "assignees": [],
   "packageRules": [
     {
-      "matchPackagePatterns": ["*"],
+      "matchPackageNames": ["*"],
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "all non-major dependencies",
-      "automerge": false
+      "groupName": "all non-major dependencies"
     },
     {
       "matchManagers": ["github-actions"],
