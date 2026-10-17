@@ -66,6 +66,13 @@ class PinTests(unittest.TestCase):
             with self.assertRaises(container.FetchError):
                 container.load_pin(path)
 
+    def test_each_base_image_is_dated_like_its_snapshot(self):
+        """Boundary: the install upgrades from the base image and never downgrades it."""
+        for path in (container.PIN, container.FLOOR_PIN):
+            pin, _ = container.load_pin(path)
+            date = pin["archive"]["snapshot"].replace("/", "")
+            self.assertIn(f":base-{date}.", pin["image"]["reference"], path.name)
+
     def test_the_tag_follows_the_pin_bytes(self):
         """Positive and boundary: same bytes, same tag; one byte changed, another tag."""
         tag = container.image_tag(b"{}")
@@ -75,8 +82,31 @@ class PinTests(unittest.TestCase):
         self.assertEqual(len(tag.split(":")[1]), container.TAG_LENGTH)
 
 
+class FloorPinTests(unittest.TestCase):
+    def _major(self):
+        pin, _ = container.load_pin(container.FLOOR_PIN)
+        return int(pin["packages"]["systemd"].split("-")[0].split(".")[0])
+
+    def test_the_floor_image_holds_the_floor_itself(self):
+        """Positive: its systemd major is SYSTEMD_FLOOR, not merely at or above it."""
+        self.assertEqual(self._major(), verify_systemd_definitions.SYSTEMD_FLOOR)
+
+    def test_the_floor_image_is_the_recorded_reference_release(self):
+        """Positive: the outcomes recorded on the reference profile are rerun on its release."""
+        pin, _ = container.load_pin(container.FLOOR_PIN)
+        reference = verify_systemd_definitions.REFERENCE_PROFILE_SYSTEMD
+        self.assertTrue(reference.endswith(f"({pin['packages']['systemd']}-arch)"), reference)
+
+    def test_the_floor_image_carries_no_mkosi(self):
+        """Boundary: it serves the systemd gate only; mkosi keeps the main image."""
+        pin, _ = container.load_pin(container.FLOOR_PIN)
+        self.assertNotIn("mkosi", pin["packages"])
+        self.assertEqual(container.SELECTIONS["floor"], container.FLOOR_PIN)
+
+
 class AdmissionPageTests(unittest.TestCase):
     HEADING = "## The definition gates' container (M03, M18)"
+    PIN_PATH = container.PIN
 
     def _rows(self):
         page = (container.ROOT / "docs" / "roadmap" / "toolchain-admission.md").read_text()
@@ -90,14 +120,14 @@ class AdmissionPageTests(unittest.TestCase):
 
     def test_every_pinned_package_is_admitted_at_its_version(self):
         """Positive: the page and the pin name the same packages and versions."""
-        pin, _ = container.load_pin()
+        pin, _ = container.load_pin(self.PIN_PATH)
         rows = self._rows()
         packages = {name: rows[name].strip("`") for name in rows if name in pin["packages"]}
         self.assertEqual(packages, pin["packages"])
 
     def test_the_page_names_no_package_the_pin_lacks(self):
         """Negative: a row for a package the image does not install is a stale row."""
-        pin, _ = container.load_pin()
+        pin, _ = container.load_pin(self.PIN_PATH)
         extra = (
             set(self._rows()) - set(pin["packages"]) - {"base image", "Arch Linux Archive snapshot"}
         )
@@ -105,12 +135,17 @@ class AdmissionPageTests(unittest.TestCase):
 
     def test_the_image_and_snapshot_match_the_pin(self):
         """Boundary: the digest and the snapshot date are the pin's, byte for byte."""
-        pin, _ = container.load_pin()
+        pin, _ = container.load_pin(self.PIN_PATH)
         rows = self._rows()
         self.assertIn(f"`{pin['image']['reference']}`", rows["base image"])
         for digest in pin["image"]["platform-digests"].values():
             self.assertIn(f"`{digest}`", rows["base image"])
         self.assertEqual(rows["Arch Linux Archive snapshot"], f"`{pin['archive']['snapshot']}`")
+
+
+class FloorAdmissionPageTests(AdmissionPageTests):
+    HEADING = "## The systemd floor image (C13-2)"
+    PIN_PATH = container.FLOOR_PIN
 
 
 class ContainerfileTests(unittest.TestCase):
@@ -153,7 +188,12 @@ class VersionTests(unittest.TestCase):
 class SelectionTests(unittest.TestCase):
     def test_one_selects_the_container(self):
         """Positive: the documented value."""
-        self.assertEqual(container.selected({container.VARIABLE: "1"}), (True, None))
+        self.assertEqual(container.selected({container.VARIABLE: "1"}), (container.PIN, None))
+
+    def test_floor_selects_the_floor_image(self):
+        """Positive: the second documented value names the floor pin."""
+        chosen = container.selected({container.VARIABLE: "floor"})
+        self.assertEqual(chosen, (container.FLOOR_PIN, None))
 
     def test_unset_and_empty_select_the_host(self):
         """Boundary: an empty value is the same as an unset one."""
@@ -162,7 +202,7 @@ class SelectionTests(unittest.TestCase):
 
     def test_any_other_value_is_refused(self):
         """Negative: neither yes nor 0 nor padded 1 is guessed at."""
-        for value in ("yes", "0", " 1"):
+        for value in ("yes", "0", " 1", "Floor", "floor "):
             chosen, problem = container.selected({container.VARIABLE: value})
             self.assertIsNone(chosen)
             self.assertIn(repr(value), problem)
@@ -230,6 +270,33 @@ class DispatchTests(unittest.TestCase):
         self.assertIn(container.image_tag(raw), printed)
         self.assertIn(pin["archive"]["snapshot"], printed)
         self.assertEqual(run.call_args.args[0][:2], ["podman", "run"])
+
+    def test_the_floor_image_without_its_fetch_names_its_own_target(self):
+        """Negative: a floor run never points at the main image's fetch."""
+        code, printed, run = self._dispatch({container.VARIABLE: "floor"}, False)
+        self.assertEqual(code, 1)
+        self.assertIn("make definitions-fetch-floor", printed)
+        run.assert_not_called()
+
+    def test_the_floor_image_runs_the_gate_and_names_its_snapshot(self):
+        """Positive: a floor run names the floor pin's tag and snapshot, not the main pin's."""
+        code, printed, _ = self._dispatch({container.VARIABLE: "floor"}, True)
+        pin, raw = container.load_pin(container.FLOOR_PIN)
+        _, main_raw = container.load_pin()
+        self.assertEqual(code, 0)
+        self.assertIn(container.image_tag(raw), printed)
+        self.assertNotIn(container.image_tag(main_raw), printed)
+        self.assertIn(pin["archive"]["snapshot"], printed)
+
+    def test_the_fetch_flag_picks_the_pin(self):
+        """Boundary: --fetch builds the main image, --fetch --floor the floor image."""
+        cases = ((["--fetch"], container.PIN), (["--fetch", "--floor"], container.FLOOR_PIN))
+        for argv, path in cases:
+            with patch("sys.argv", ["definitions_container.py", *argv]), patch.object(
+                container, "fetch", return_value=0
+            ) as fetch:
+                self.assertEqual(container.main(), 0)
+            fetch.assert_called_once_with(path)
 
     def test_a_malformed_selection_fails_before_any_engine_call(self):
         """Boundary: a refused value never reaches podman."""
