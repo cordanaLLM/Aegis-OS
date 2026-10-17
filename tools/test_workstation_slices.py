@@ -644,14 +644,42 @@ class LeftoverTests(unittest.TestCase):
         self.assertFalse(gate.started_by_run(b"cat\0" + name + b"\0/r/run-1", "/r/run-1"))
         self.assertFalse(gate.started_by_run(b"", "/r/run-1"))
 
-    def test_network_devices_are_listed(self):
-        """Boundary: an absent class is an empty list, a present one is sorted."""
+    def test_only_tap_devices_are_listed(self):
+        """Boundary: an absent class is empty; only a tap device is the run's."""
         with tempfile.TemporaryDirectory() as scratch:
             net = Path(scratch)
-            self.assertEqual(gate.net_devices(net / "absent"), [])
-            for name in ("lo", "eth0"):
+            self.assertEqual(gate.tap_devices(net / "absent"), [])
+            for name in ("lo", "eth0", "veth0b4d337", "br-e61809989ea4", "tap1", "tap0"):
                 (net / name).mkdir()
-            self.assertEqual(gate.net_devices(net), ["eth0", "lo"])
+            for name in ("tap1", "tap0"):
+                (net / name / "tun_flags").write_text("0x1002\n", "utf-8")
+            self.assertEqual(gate.tap_devices(net), ["tap0", "tap1"])
+
+    def test_a_foreign_device_change_is_not_the_runs(self):
+        """Positive: another workload's veth coming and going leaves the run clean."""
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            net, proc, run = root / "net", root / "proc", root / "run"
+            for path in (net / "veth61d56c8", proc, run):
+                path.mkdir(parents=True)
+            before = gate.tap_devices(net)
+            (net / "veth61d56c8").rmdir()
+            (net / "veth2e6b84c").mkdir()
+            self.assertEqual(gate.cleanup_problems(run, before, net, proc), [])
+
+    def test_a_tap_device_left_behind_is_found(self):
+        """Negative: a tap device that appeared during the run is reported."""
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            net, proc, run = root / "net", root / "proc", root / "run"
+            for path in (net, proc, run):
+                path.mkdir()
+            before = gate.tap_devices(net)
+            (net / "tap0").mkdir()
+            (net / "tap0" / "tun_flags").write_text("0x1002\n", "utf-8")
+            problems = gate.cleanup_problems(run, before, net, proc)
+            self.assertEqual(len(problems), 1)
+            self.assertIn("tap0", problems[0])
 
     @unittest.skipUnless(os.name == "posix", "socket files are a POSIX facility; Linux runs it")
     def test_a_socket_left_behind_is_found(self):

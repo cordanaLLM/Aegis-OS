@@ -152,10 +152,15 @@ statement.
    own session, under a 600 s deadline.
 5. The gate looks for anything the run left behind: a Firecracker or
    `aegis-vesta-sandbox` process whose command line names the run directory,
-   a socket file under it, or a change in `/sys/class/net`
-   (`sandbox/nothing-left-behind`, a gate-side case). A shell, `tail` or
-   pager that merely names the run directory is not the run's and is left
-   alone.
+   a socket file under it, or a tun or tap device in `/sys/class/net` that
+   was not there before (`sandbox/nothing-left-behind`, a gate-side case). A
+   shell, `tail` or pager that merely names the run directory is not the
+   run's and is left alone. A tap device is the only network device
+   Firecracker attaches, and only tun and tap devices carry a `tun_flags`
+   attribute; the `veth` and bridge devices other workloads' containers add
+   and remove are not the run's, which four runs on 2026-10-17 failed on
+   (r20261017T022819-f20b, r20261017T031922-b721, r20261017T154108-f92a,
+   r20261017T175934-056a).
 
 Every microVM is a row the `aegis-vesta` controller admitted first, and the
 guest context identifier Firecracker is given is the one the controller
