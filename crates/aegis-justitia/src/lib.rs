@@ -182,7 +182,7 @@ pub use crate::contracts::graph::{
 pub use crate::contracts::proposal::{ActionProposal, ActionProposalVersion};
 pub use crate::contracts::unit::{
     CONTRACT_MARKER, INSTALL_DIRECTORIES, MAX_UNIT_BYTES, MAX_UNIT_LINES, REQUIRED_DIRECTIVES,
-    UnitContractError, is_installed_path, review,
+    START_LIMIT_DIRECTIVES, UnitContractError, is_installed_path, review,
 };
 pub use crate::contracts::{
     ContractError, Correlation, MAX_CONTRACT_PAYLOAD_BYTES, PayloadBuffer, SchemaId,
