@@ -38,12 +38,13 @@ that cannot be pinned. Identification is not qualification: a consumer still
 owes the package/language boundary, the pinned version, the licence and the
 consumer contract tests named in the table above.
 
-While Imago and Nucleus are scaffolds, Aegis performs the parts it cannot defer:
-it validates image definitions locally (D56) and builds the kernel locally (D70,
-milestone M26). Neither produces a release artifact, and both hand back to the
-owning repository once it returns real artifacts against the contract pinned in
-M09. Ownership in the table above is unchanged; only who currently does the work
-is.
+While Imago is a scaffold, Aegis performs the part it cannot defer:
+it validates image definitions locally (D56). It also built the kernel locally
+(D70, milestone M26) until Nucleus returned real artifacts; D112 (2026-10-17)
+retired that build, and the gates now boot the kernel Nucleus publishes. Neither
+produced a release artifact, and image-definition validation hands back to Imago
+once it returns real artifacts against the contract pinned in M09. Ownership in
+the table above is unchanged; only who currently does the work is.
 
 The two producer edges are not at the same stage, and M09 did not treat them as
 one step (D92).
@@ -106,8 +107,9 @@ trampoline patches. Decision D107 (2026-09-29) adds
 enables the tracer on every stream, and M09 pins both at those commits.
 Nucleus's second release, `v7.2.8-realtime-lusoris2`, is built to it: M10
 pins it, and on 2026-10-11 every M10 case passed on it in a guest on the
-reference profile, the BPF LSM attach included. D70's locally built kernel,
-rebuilt with the row, stays the interim for M23's latency fixture.
+reference profile, the BPF LSM attach included. On 2026-10-17 M23's latency
+fixture moved onto the same release, and D112 retired D70's locally built
+kernel.
 
 Activation order: the ranked, blocking-state roadmap in `docs/roadmap/README.md`
 and `planning/roadmap.json` is authoritative (`make readiness` lists the ready

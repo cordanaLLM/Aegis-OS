@@ -6,7 +6,20 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 # The Aegis-built kernel, and what the guest said about it
 
 Status: recorded observations from milestone M26, reference profile,
-2026-09-13; rebuilt on 2026-09-29 for D107
+2026-09-13; rebuilt on 2026-09-29 for D107; retired on 2026-10-17 by D112
+
+**Retired by D112 (2026-10-17).** Nucleus now publishes the kernel this page
+built. Its release `v7.2.8-realtime-lusoris2`, pinned in
+`build/kernel/nucleus-artifact.pin.json`, passed every M10 case on 2026-10-11
+([the Nucleus kernel gate](nucleus-kernel.md)), and on 2026-10-17 the M23
+latency fixture booted it in place of this build ([the latency
+fixture](latency.md)). `build/kernel/source.pin.json`,
+`tools/verify_kernel_build.py`, `tools/test_kernel_build.py` and
+`tools/guest/aegis-readback-init.sh` were removed with that decision, and `make
+verify-kernel` no longer exists. The two fragments stay, bound to the schema by
+`crates/aegis-fabrica-defs/tests/kernel_fragment.rs`. The rest of this page is
+the record of what the retired gate did; the files it quotes are in the history
+up to commit `47e4544`.
 
 Decision D70 puts kernel construction in this repository while Nucleus is a
 scaffold, exactly as D56 keeps image-definition validation here while Imago is a
@@ -24,13 +37,14 @@ on one workstation, and it closes no boot, hardware or release gate.
 
 ## What is tracked, and what is not
 
+Since D112 the pin, the gate and the guest init this section listed are removed;
+the table names what stays.
+
 | Path | Role |
 | :--- | :--- |
-| `build/kernel/source.pin.json` | the pin: version, tarball digest, signature URLs and key fingerprints, base configuration, fragment order, expected release |
 | `build/kernel/10-base-support.config` | the Kconfig and guest-boot prerequisites; states no product requirement |
 | `build/kernel/50-aegis-requirement.config` | the product requirement, byte-identical to what `KernelRequirement::config_fragment` renders |
-| `tools/guest/aegis-readback-init.sh` | PID 1 of the read-back guest |
-| `tools/verify_kernel_build.py` | the gate, run as `make verify-kernel` |
+| `build/kernel/nucleus-artifact.pin.json` | the Nucleus kernel the gates boot since D112 |
 
 Not tracked, and deliberately so: the source tree, the object tree, the produced
 `.config`, `bzImage`, the modules, the initramfs and the guest console. They

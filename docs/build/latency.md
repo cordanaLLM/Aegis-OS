@@ -5,7 +5,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The latency fixture, and why the faster machine is the one that fails
 
-Status: recorded observations from milestone M23, reference profile, 2026-09-13
+Status: recorded observations from milestone M23, reference profile,
+2026-09-13; re-run on the Nucleus kernel on 2026-10-17 for D112
 
 Milestone M07 produced no timing figure on purpose. Every target in
 `aegis-lictor` and `aegis-calliope` is a `Declared<T>` whose `Display` says
@@ -58,10 +59,11 @@ workstation.
 
 Not tracked: the guest tree, the initramfs, the console log and the retained
 JSON. They live under `AEGIS_LATENCY_BUILD_DIR`, default
-`${XDG_CACHE_HOME:-$HOME/.cache}/aegis-latency`. The kernel image is M26's, from
-`AEGIS_KERNEL_BUILD_DIR`; nothing here builds a kernel.
+`${XDG_CACHE_HOME:-$HOME/.cache}/aegis-latency`. Since D112 the kernel image is
+the pinned Nucleus release, from `AEGIS_NUCLEUS_KERNEL_DIR`; nothing here
+builds a kernel.
 
-## Where the realtime kernel came from (D57 and D70)
+## Where the realtime kernel came from (D57, D70 and D112)
 
 D57 asked where the `PREEMPT_RT` kernel for P07 and P08 work comes from and
 recommended a distribution `linux-rt` package booted as a guest kernel, with no
@@ -109,9 +111,46 @@ site is one of the decidable ones that go through it) and `read_version()`
 (which runs one `TOOLCHAIN` row, and the table names those). The test asserts
 both by name and resolves the second from the table.
 
-D70 applies unchanged: the guest kernel is an interim source for this fixture.
-The kernel the product ships is built by Nucleus against the M18 schema once
-Nucleus is real.
+### The Nucleus kernel replaces it (D112)
+
+D70 made the kernel above an interim source for this fixture. Decision D112
+(2026-10-17) ended the interim: the guest boots the kernel Nucleus published as
+`v7.2.8-realtime-lusoris2`, pinned in `build/kernel/nucleus-artifact.pin.json`
+and fetched by `make nucleus-kernel-fetch` into `AEGIS_NUCLEUS_KERNEL_DIR`. The
+gate hashes the image against the pin's sha256 and size immediately before the
+boot, so an image replaced after the fetch is refused rather than measured; a
+missing image is a SKIP that names the fetch target. The guest's identity is
+`NUCLEUS_LUSORIS2_GUEST` in `crates/aegis-calliope/src/measured.rs`.
+
+The D57 checks read the same on that image. From the run on 2026-10-17, with the
+long lines wrapped at 80 columns:
+
+```text
+pacman -Qo: error: No package owns
+     .../aegis-nucleus-kernel/release/vmlinuz-7.2.8-lusoris2-realtime
+pacman -Qq linux-rt: error: package 'linux-rt' was not found
+/lib/modules holds ['.old', '6.18.55-2-cachyos-lts', '7.2.10-1-cachyos',
+     '7.2.10-1-cachyos-rt-bore']; 7.2.8-lusoris2-realtime is not among them
+```
+
+All six cases passed and the gate exited 0. The guest reported `#lusoris2 SMP
+PREEMPT_RT` from `uname -v` and `CONFIG_PREEMPT_RT=y` from its own
+`/proc/config.gz`. The figures:
+
+```text
+guest (7.2.8-lusoris2-realtime, PREEMPT_RT)  50000 cycles  max 1626276 ns
+      min 434 ns, avg 18580 ns
+host  (7.2.10-1-cachyos)                     50000 cycles  max  303656 ns
+      min 452 ns, avg 9886 ns
+```
+
+The guest exceeded the critical edge and satisfied the interactive, frame and
+RTL edges. The host's worst case was lower and its four verdicts still read
+kernel-not-realtime, which is the rule below. The reference host ran other work
+at a load average near 29, and the guest figure includes the host's scheduling
+of its virtual CPU, as the runs of 2026-09-27 record. The figure constants and
+`AEGIS_M26_GUEST` keep the 2026-09-13 run they were measured on; no constant is
+re-recorded from this run.
 
 ## The same probe, on both machines
 

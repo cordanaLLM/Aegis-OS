@@ -23,7 +23,6 @@
       "Bash(make verify-rust)",
       "Bash(make verify-systemd)",
       "Bash(make verify-mkosi)",
-      "Bash(make verify-kernel)",
       "Bash(make verify-reuse)",
       "Bash(make verify-bpf)",
       "Bash(make verify-sources)",
