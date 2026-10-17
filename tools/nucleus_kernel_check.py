@@ -133,8 +133,10 @@ def entry_problems(index, entry, feature):
         return [*problems, f"checks[{index}] decides a row the payload does not list"]
     for key, wanted in (("symbol", "symbol"), ("required", "state"), ("probe", "probe")):
         if entry[key] != feature.get(wanted):
-            problems.append(f"checks[{index}].{key} is {entry[key]!r}, the payload's is "
-                            f"{feature.get(wanted)!r}")
+            problems.append(
+                f"checks[{index}].{key} is {entry[key]!r}, the payload's is "
+                f"{feature.get(wanted)!r}"
+            )
     return problems
 
 

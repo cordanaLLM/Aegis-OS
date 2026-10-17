@@ -1,4 +1,6 @@
-"""Positive, negative and boundary coverage for the D94 requirement check through nucleus (M10, E10-5).
+"""Positive, negative and boundary coverage for the D94 requirement check.
+
+The check runs through nucleus (M10, E10-5).
 
 `tools/nucleus_kernel_check.py` hands `build/kernel-requirement.json` and one
 kernel configuration to nucleus's single-kernel mode and reads its report. Two
@@ -112,12 +114,17 @@ class StubAnswerTests(unittest.TestCase):
     def test_a_satisfied_report_gives_every_row_and_no_rejection(self):
         rows, rejected = stubbed(answer(), 0)
         self.assertEqual(rejected, [])
-        self.assertEqual([row["symbol"] for row in rows],
-                         [feature["symbol"] for feature in REQUIREMENT["features"]])
+        self.assertEqual(
+            [row["symbol"] for row in rows],
+            [feature["symbol"] for feature in REQUIREMENT["features"]],
+        )
         self.assertTrue(all(row["satisfied"] for row in rows))
 
     def test_a_rejected_report_gives_nucleus_reasons(self):
-        reason = f"{CORRELATION}: CONFIG_HZ_1000 (required-by x) requires built-in, observed unrecorded"
+        reason = (
+            f"{CORRELATION}: CONFIG_HZ_1000 (required-by x) "
+            "requires built-in, observed unrecorded"
+        )
         report = answer(reasons=[reason])
         report["checks"][1].update(observed=None, satisfied=False)
         rows, rejected = stubbed(report, 1)
@@ -227,8 +234,9 @@ class NucleusRuleTests(unittest.TestCase):
     def test_a_missing_required_option_is_rejected(self):
         """Negative, the planted defect: a configuration without one required option."""
         rows, rejected = self.decide(with_line(conforming_config(), "CONFIG_HZ_1000", None))
-        self.assertTrue(any("CONFIG_HZ_1000" in line and "unrecorded" in line for line in rejected),
-                        rejected)
+        self.assertTrue(
+            any("CONFIG_HZ_1000" in line and "unrecorded" in line for line in rejected), rejected
+        )
         row = next(row for row in rows if row["symbol"] == "CONFIG_HZ_1000")
         self.assertEqual((row["observed"], row["satisfied"]), (check.UNOBSERVED, False))
 

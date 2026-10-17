@@ -465,9 +465,7 @@ class RequirementCaseTests(unittest.TestCase):
         config = gate.planted(conforming_config(), "CONFIG_BPF_LSM", "CONFIG_BPF_LSM=n")
         passed, out = self.run_case(gate.requirement_case, config)
         self.assertFalse(passed)
-        self.assertIn(
-            "rejected: aegis-m18-kernel-requirement-0001: CONFIG_BPF_LSM", out
-        )
+        self.assertIn("rejected: aegis-m18-kernel-requirement-0001: CONFIG_BPF_LSM", out)
 
     @NEEDS_NUCLEUS
     def test_a_guest_without_the_trampoline_row_is_rejected_before_any_load(self):
