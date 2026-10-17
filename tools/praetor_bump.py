@@ -17,7 +17,10 @@ One run:
    proposes it;
 2. builds praetorctl at that commit the way CI does;
 3. runs `praetorctl adopt --force` in a fresh worktree of Aegis main, or
-   `praetorctl adopt` without `--force` for an engine refresh (`--plain-adopt`);
+   `praetorctl adopt` without `--force` for an engine refresh (`--plain-adopt`),
+   then copies the checkpoint evaluator scripts from the Praetor source
+   (`EVALUATOR_SCRIPTS`), which adopt keeps beside the hand-maintained
+   lefthook.yml;
 4. puts back every hand-maintained file adopt rewrote (`HAND_MAINTAINED`),
    restores AGENTS.md and recompiles its projections, then reverts each other
    change no Praetor gate needs (`minimise`);
@@ -128,6 +131,18 @@ HAND_MAINTAINED = (
     ".editorconfig",
     # Backups adopt leaves next to a file it replaced.
     "*.bak",
+)
+
+# The checkpoint evaluator scripts Praetor ships. adopt refreshes an earlier
+# Praetor copy of them only when it writes lefthook.yml itself; beside the
+# hand-maintained lefthook.yml above it keeps both as found, while the audit
+# still warns about an earlier release's text (Praetor's keepLefthookConfig in
+# internal/adopt/hooks.go against AuditCheckpointBundle in checkpoint_audit.go,
+# measured at 21bf536 on 2026-10-17). The bump copies each one the worktree
+# holds from the Praetor source; `minimise()` reverts a copy no gate needs.
+EVALUATOR_SCRIPTS = (
+    ".config/lefthook/scripts/checkpoint.py",
+    ".config/lefthook/scripts/common.py",
 )
 
 # The file, relative to the git common directory, where `lefthook install`
@@ -938,6 +953,22 @@ def adopt(session, tree, source):
             put_back(checksum, saved_checksum)
 
 
+def refresh_evaluator(tree, source):
+    """Copy each evaluator script the worktree holds from the Praetor source; return the copies."""
+    copied = []
+    for path in EVALUATOR_SCRIPTS:
+        target, origin = tree / path, source / path
+        if not target.is_file():
+            continue
+        if not origin.is_file():
+            raise BumpError(f"the Praetor source has no {path} to refresh the evaluator from")
+        content = origin.read_bytes()
+        if content != target.read_bytes():
+            target.write_bytes(content)
+            copied.append(path)
+    return copied
+
+
 def status(session, tree):
     """Return the worktree's changes as {path: status}."""
     argv = ["git", "-C", tree, "status", "--porcelain=v1", "-z", "--untracked-files=all"]
@@ -1130,6 +1161,8 @@ def prepare(session, plan, tree):
     copy_ledgers(session.args.repo, tree)
     source = build_praetorctl(session, plan.target)
     adopt(session, tree, source)
+    copied = refresh_evaluator(tree, source)
+    session.note(f"evaluator refreshed: {', '.join(copied) or 'nothing'}")
     kept, reverted = reconcile(session, tree)
     apply_pin(tree, plan, datetime.date.today())
     skips = run_gates(session, tree)
