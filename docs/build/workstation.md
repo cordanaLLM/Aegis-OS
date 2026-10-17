@@ -131,10 +131,10 @@ statement.
 
 ## The sandbox half
 
-1. The cached Firecracker binary, its LICENSE, the guest kernel and its
-   configuration are hashed against `build/sandbox/firecracker.pin.json`; a
-   mismatch is a FAIL. `--version` must print `Firecracker v1.17.0`, and the
-   kernel configuration must carry `CONFIG_BLK_DEV_INITRD=y`,
+1. The cached Firecracker binary, its LICENSE, its API spec, the guest kernel
+   and its configuration are hashed against
+   `build/sandbox/firecracker.pin.json`; a mismatch is a FAIL. `--version`
+   must print `Firecracker v1.17.0`, and the kernel configuration must carry `CONFIG_BLK_DEV_INITRD=y`,
    `CONFIG_KVM_GUEST=y`, `CONFIG_SERIAL_8250_CONSOLE=y`,
    `CONFIG_VIRTIO_MMIO=y` and `CONFIG_VIRTIO_VSOCKETS=y`.
 2. `aegis-vesta-sandbox` is built, and `aegis-vesta-guest` is built with
@@ -145,9 +145,12 @@ statement.
    `/dev/mem` (character device 1:1, mode 0600) and `/init`; nothing else is
    in the guest. The kernel mounts no devtmpfs over an initramfs, so the
    guest's one device node is packed into the archive.
-3. `aegis-vesta-sandbox run` runs eight cases, one microVM at a time, in its
+3. The gate reads the device limits from the release itself
+   (`sandbox/passthrough-limits`, a gate-side case; see
+   [The device passthrough limit](#the-device-passthrough-limit-m22-e22-1)).
+4. `aegis-vesta-sandbox run` runs eight cases, one microVM at a time, in its
    own session, under a 600 s deadline.
-4. The gate looks for anything the run left behind: a Firecracker or
+5. The gate looks for anything the run left behind: a Firecracker or
    `aegis-vesta-sandbox` process whose command line names the run directory,
    a socket file under it, or a change in `/sys/class/net`
    (`sandbox/nothing-left-behind`, a gate-side case). A shell, `tail` or
@@ -184,6 +187,7 @@ connection(s); restarting`, and Firecracker exited 0.
 | `sandbox/boot-time` | M22 / E22-1: each of the 64 microVMs is started with Firecracker's boot timer on; its guest, as pid 1, writes the boot-complete byte 123 to the timer at `0xc000_0000` through `/dev/mem` (`saeptum_microvm::guest::signal_boot_complete`), and Firecracker logs one `Guest-boot-time` line to the microVM's `console.log`; wall clock and CPU time are printed as minimum, median and maximum, and a microVM without exactly one line fails the case, naming it |
 | `sandbox/sixty-fifth-refused` | E21-2 boundary: the 65th request is the controller's `MicroVmTableFull`, and no process is started for it |
 | `sandbox/teardown` | every row terminated, every process killed and reaped within 5 s, every socket file removed |
+| `sandbox/passthrough-limits` | M22 / E22-1 boundary, gate-side: every endpoint the pinned release's API spec offers is one the pin reviewed and lists, and every listed one is offered; an endpoint nobody reviewed fails the case, because it could attach a host device |
 
 Guest memory is 64 MiB, the smallest power of two the pinned kernel boots in
 with this initramfs: on 2026-09-29 a probe booted 60 MiB and 64 MiB guests
@@ -206,6 +210,7 @@ written into the repository; it lives under `AEGIS_WORKSTATION_DIR`, default
 | Firecracker release archive | `firecracker-v1.17.0-x86_64.tgz`, 7464385 bytes, sha256 `06094a1108ae9e82aa4c23a775aa92758f53f1175d422270d9d6162cb9ade558` | the v1.17.0 GitHub release of 2026-09-10; the fetch also requires the release's `.sha256.txt` to name the same digest |
 | `firecracker` binary | `release-v1.17.0-x86_64/firecracker-v1.17.0-x86_64`, sha256 `99ad0f5cd0514a88aad0e9ae8cfdb3cc3b4ab9d190e1194602406c786b5de7a5` | extracted from the archive; the archive's own `SHA256SUMS` names the same digest |
 | Firecracker licence | `LICENSE`, Apache-2.0, sha256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30` | extracted beside the binary |
+| Firecracker API spec | `release-v1.17.0-x86_64/firecracker_spec-v1.17.0.yaml`, sha256 `473a0a392927b407834b341bf5fbc7925524fedaf9d925e1bbbafb6a1f48c671` | extracted beside the binary; the archive's own `SHA256SUMS` names the same digest |
 | Guest kernel | `vmlinux-6.18.44`, 27846248 bytes, sha256 `d8ced68bd61e27b6813e2c993cc53a4029c59e13210672180591c84109684fe4` | Firecracker's CI artifacts, `firecracker-ci/20260909-a8e1c3830545-0/x86_64/` |
 | Guest kernel configuration | `vmlinux-6.18.44.config`, sha256 `9fb2be18303d2f6e8ec35b3a20ecf1209f54a4ece10114a893cb37beabee7030` | the same prefix |
 
@@ -220,6 +225,34 @@ none. Neither the kernel M26 builds nor the Nucleus release M10 boots was
 reused: both configurations read `# CONFIG_VSOCKETS is not set` and
 `# CONFIG_VIRTIO_MMIO is not set` (checked on 2026-09-29), so neither guest
 could reach a vsock device on Firecracker's virtio-mmio bus.
+
+## The device passthrough limit (M22, E22-1)
+
+E22-1's boundary asks for the sandbox VMM's device passthrough limits to be
+read from the pinned release rather than assumed. The release archive ships
+its own OpenAPI document, `firecracker_spec-v1.17.0.yaml`, and every device a
+Firecracker microVM can carry is configured through one of its endpoints. The
+pin lists all 26 of them. The device endpoints are `/drives/{drive_id}`,
+`/network-interfaces/{iface_id}`, `/vsock`, `/pmem/{id}`, `/entropy`,
+`/balloon`, `/serial` and `/hotplug/memory`; each configures a device
+Firecracker emulates itself, and none names a host device. The document
+contains no `vfio`, no `passthrough` and no `pci`.
+
+The PCI support v1.17.0 carries is a transport, not passthrough: its
+`CHANGELOG.md` (#5364) adds `--enable-pci`, which creates the same VirtIO
+devices on a PCI VirtIO transport instead of MMIO, and `docs/device-hotplug.md`
+hot-plugs those virtio devices only. Firecracker therefore has no PCI
+passthrough, `VmmIdentity::Firecracker` reports none
+(`crates/aegis-vesta/tests/decision_register.rs`), and passthrough work stays
+with the QEMU-based harness (D58) rather than being worked around here.
+
+`sandbox/passthrough-limits` reads the endpoints from the cached spec, after
+the cache check has matched its digest, and compares them with the pin's list
+in both directions. An endpoint the spec offers and the pin lacks fails the
+case: a release that adds one must have it reviewed for device passthrough
+before the pin admits it. An endpoint the pin lists and the spec lacks fails
+too, because then the list no longer describes the release. The planted cases
+are in `tools/test_workstation_slices.py` (`PassthroughLimitTests`).
 
 ## The recorded run
 
