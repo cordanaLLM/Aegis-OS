@@ -275,6 +275,20 @@ jobs:
           AEGIS_REQUIRED_GATES: systemd,mkosi
         run: make verify-all
 
+      # The systemd gate admits every release from SYSTEMD_FLOOR up; the image
+      # above holds a newer one. This reruns it on the floor release itself,
+      # inside the image build/definitions/toolchain-floor.pin.json pins, so the
+      # floor is a version a run covers (C13-2). Required, so it fails, never
+      # skips, when the image is missing or the tools fall below the floor.
+      - name: Fetch the systemd floor image
+        run: make definitions-fetch-floor
+
+      - name: Systemd definition gate at the floor
+        env:
+          AEGIS_DEFINITIONS_CONTAINER: floor
+          AEGIS_REQUIRED_GATES: systemd
+        run: make verify-systemd
+
       # reuse, markdownlint-cli2, yamllint, flake8, black and shellcheck run
       # inside `make verify-all` (its prerequisite verify-lints), whose recipes
       # take their versions from the env block above; no step runs them twice.

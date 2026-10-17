@@ -15,6 +15,11 @@ build/definitions/toolchain.pin.json:
   with the repository and the root file system read-only, when the run sets
   AEGIS_DEFINITIONS_CONTAINER=1.
 
+A second pin, build/definitions/toolchain-floor.pin.json, holds systemd at
+SYSTEMD_FLOOR itself, so the floor the systemd gate admits is a version a run
+covers. `--fetch --floor` (`make definitions-fetch-floor`) builds it and
+AEGIS_DEFINITIONS_CONTAINER=floor runs a gate inside it.
+
 The choice is explicit. A run that asks for the container and finds no image
 fails; it never falls back to the host's tools, and a run that does not ask
 never reaches for the container.
@@ -36,10 +41,13 @@ from host import gid, uid
 
 ROOT = Path(__file__).resolve().parent.parent
 PIN = ROOT / "build" / "definitions" / "toolchain.pin.json"
+FLOOR_PIN = ROOT / "build" / "definitions" / "toolchain-floor.pin.json"
 VARIABLE = "AEGIS_DEFINITIONS_CONTAINER"
 # The only values VARIABLE may take: unset or empty selects the host, "1" the
-# container. Anything else is refused rather than read as either.
-SELECTS_CONTAINER = "1"
+# container pinned by PIN, "floor" the one pinned by FLOOR_PIN. Anything else is
+# refused rather than read as either.
+SELECTIONS = {"1": PIN, "floor": FLOOR_PIN}
+FETCH_TARGETS = {PIN: "definitions-fetch", FLOOR_PIN: "definitions-fetch-floor"}
 ENGINES = ("podman", "docker")
 IMAGE_NAME = "localhost/aegis-definitions"
 TAG_LENGTH = 16
@@ -119,14 +127,14 @@ def version_problems(pinned, listing):
 
 
 def selected(environ=None):
-    """Return (True or False, None), or (None, reason) for a value that is neither."""
+    """Return (pin path or False, None), or (None, reason) for a value outside SELECTIONS."""
     environ = os.environ if environ is None else environ
     value = environ.get(VARIABLE, "")
     if value == "":
         return False, None
-    if value == SELECTS_CONTAINER:
-        return True, None
-    return None, f"{VARIABLE}={value!r} is neither empty nor {SELECTS_CONTAINER!r}"
+    if value in SELECTIONS:
+        return SELECTIONS[value], None
+    return None, f"{VARIABLE}={value!r} is neither empty nor one of {sorted(SELECTIONS)}"
 
 
 def pick_engine():
@@ -180,7 +188,7 @@ def gate_argv(engine, tag, script, environ=None):
 
 def ready(environ=None):
     """Return (engine, pin, tag, None) when the selected container can run, else a reason last."""
-    _chosen, problem = selected(environ)
+    path, problem = selected(environ)
     if problem is not None:
         return None, None, None, problem
     if "," in str(ROOT):
@@ -189,12 +197,12 @@ def ready(environ=None):
     if problem is not None:
         return None, None, None, problem
     try:
-        pin, raw = load_pin()
+        pin, raw = load_pin(path)
     except (OSError, ValueError, FetchError) as error:
-        return None, None, None, f"{PIN} cannot be read: {error}"
+        return None, None, None, f"{path} cannot be read: {error}"
     tag = image_tag(raw)
     if not image_present(engine, tag):
-        return None, None, None, f"{engine} does not store {tag}; run `make definitions-fetch`"
+        return None, None, None, f"{engine} does not store {tag}; run `make {FETCH_TARGETS[path]}`"
     return engine, pin, tag, None
 
 
@@ -291,10 +299,13 @@ def fetch(path=PIN):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fetch", action="store_true", help="build the pinned image")
+    parser.add_argument(
+        "--floor", action="store_true", help=f"build the image {FLOOR_PIN.name} pins instead"
+    )
     options = parser.parse_args()
     if not options.fetch:
         parser.error("the module runs gates through dispatch(); pass --fetch to build the image")
-    return fetch()
+    return fetch(FLOOR_PIN if options.floor else PIN)
 
 
 if __name__ == "__main__":
