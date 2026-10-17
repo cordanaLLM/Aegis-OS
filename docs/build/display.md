@@ -170,6 +170,47 @@ case so in its summary, so a driver update alone does not turn the gate red.
 Re-recording means a new measurement under the driver that produced it (the
 D73 pattern). The content check is the index row, never the pin.
 
+## The subtitle fixture clip
+
+The milestone M32 fixture provides three synchronized sibling streams across a
+common three-second timeline at 30 frames per second:
+
+- `crates/aegis-scaena/fixtures/subtitle-clip-90.mjpeg`: 279,517 bytes, sha256
+  `499248fe9619c9b9457687cc7abce67e00eb6af23a6285d9532befb3239c493c`. It is
+  90 baseline JPEG frames of 256 x 64, 4:2:0.
+- `crates/aegis-scaena/fixtures/subtitle-clip-90.wav`: 288,044 bytes, sha256
+  `c45da1e5be8e950fcf01483646b4d8b5e58041986625f86b3cf2a23b366f3597`. It is
+  a 48,000 Hz, 16-bit mono PCM tone containing 144,000 samples.
+- `crates/aegis-scaena/fixtures/subtitle-clip-90.srt`: 157 bytes, sha256
+  `20a58bef6628d6628ee523dbcf656d5af8c02aab757cbdc8bcf12143b0917e71`. It is
+  hand-written for Aegis, with LF endings, no byte order mark, and three cues
+  whose timecodes are multiples of 100 ms, so each falls on a frame boundary at
+  30 frames per second.
+
+The files carry the project licence through the `REUSE.toml` `**` table. The
+gate never runs ffmpeg; the commands below document their provenance with
+ffmpeg n9.0.2 and reproduced identical digests on 2026-10-17:
+
+```sh
+ffmpeg -nostdin -hide_banner -loglevel error \
+  -f lavfi -i "testsrc=s=256x64:r=30,format=yuvj420p" \
+  -frames:v 90 -c:v mjpeg -q:v 2 -huffman default \
+  -fflags +bitexact -flags +bitexact -f mjpeg subtitle-clip-90.mjpeg
+
+ffmpeg -nostdin -hide_banner -loglevel error \
+  -f lavfi -i "sine=frequency=1000:sample_rate=48000" \
+  -t 3 -c:a pcm_s16le \
+  -fflags +bitexact -flags +bitexact -f wav subtitle-clip-90.wav
+```
+
+`tools/subtitle_fixture.py` pins all three digests, holds the two commands as
+argument vectors, and `tools/test_subtitle_fixture.py` runs inside
+`make verify-all`.
+
+Audio synchronization is by construction only: the audio and video streams
+share a common duration and timeline, without a demuxed audio-sync measurement.
+Revisit this assumption at the first container fixture or demuxer admission.
+
 ## The reference MPEG-2 frame
 
 `src/reference.rs` carries the one intra frame of cros-libva's
