@@ -231,6 +231,39 @@ the `rust-toolchain.toml` pin, 1.99.1, the only toolchain any gate builds on,
 and `crates/aegis-scaena/tests/manifest_hygiene.rs` holds the declaration to
 the pin and every resolved package's `rust-version` at or below it.
 
+## Crates pinned by git revision
+
+A crate taken from a git revision instead of a crates.io release has no
+release a reader can look up, and Renovate's dashboard reports new commits
+without saying why the pin exists. Each such crate therefore has one row here:
+the repository it comes from, the full commit, why it is not a crates.io
+release, and what makes the pin due for review (issue #224).
+`tools/verify_crate_pins.py` runs in `make verify-all` and fails when this
+table and the workspace disagree:
+
+- a git dependency in `[workspace.dependencies]` has no row, or a row names a
+  crate the workspace does not take from git;
+- the source or commit of a row differs from the manifest's `git` and `rev`;
+- a git dependency is pinned by `branch`, `tag` or a short revision instead of
+  a full 40-character `rev`;
+- a member manifest declares a `git` dependency of its own, outside the
+  workspace table;
+- the `Cargo.lock` source of a pinned crate is not exactly
+  `git+<source>?rev=<commit>#<commit>`, or the lock carries a git package with
+  no row;
+- a reason or review trigger is empty.
+
+A Renovate pull request that moves a revision fails this check until it also
+updates the row. That is intended: the row records the new commit, and the
+reason is re-read when it moves.
+
+| Crate | Source | Commit | Reason | Review trigger |
+| :--- | :--- | :--- | :--- | :--- |
+| `cros-libva` | `https://github.com/chromeos/cros-libva` | `59384456ac2ae78c0c3e5515f41ef1efd9b802cf` | the newest crates.io release, 0.0.13 of 2024-12-06, fails to compile against libva 2.24.1; D80 names this revision | a crates.io release above 0.0.13 that builds against the libva floor, or a Renovate revision pull request |
+| `saeptum-capsule` | `https://github.com/plurano/saeptum` | `24eef8cc4e2b3c10d28c5529175895d2df9f27be` | cut from `aegis-vesta` into a plurano repository (CUT-1632-03) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-microvm` |
+| `saeptum-microvm` | `https://github.com/plurano/saeptum` | `24eef8cc4e2b3c10d28c5529175895d2df9f27be` | cut from `aegis-vesta-sandbox` into a plurano repository (CUT-1632-04) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-capsule` |
+| `tornus-geometry` | `https://github.com/plurano/tornus` | `b2710c8ef386275db352bab06bfa4b8eb6859411` | cut from `aegis-hephaestus` into a plurano repository (CUT-1632-01) and not published on crates.io | a crates.io release, or a tornus revision Aegis needs |
+
 ## The systemd floor, and why it is a floor rather than a pin
 
 The Rust rows above pin an exact toolchain because `rust-toolchain.toml` can
@@ -1053,7 +1086,8 @@ taken, no milestone may cite them as admitted toolchain.
 - The workflow rows are the `env:` block of `.github/workflows/ci.yml`; each
   version appears exactly once and is interpolated into the command that runs.
 - The crate rows are `[workspace.dependencies]` in the root `Cargo.toml` and the
-  committed `Cargo.lock`.
+  committed `Cargo.lock`. The rows for crates pinned by git revision are read
+  back by `tools/verify_crate_pins.py` against both files.
 - The replaced distribution package is recorded in the local package-manager log
   as `removed rust (1:1.98.1-1.1)` immediately before
   `installed rustup (1.29.1-1.1)` on 2026-09-13.
