@@ -1,7 +1,7 @@
 SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
-.PHONY: verify-all verify-rust verify-systemd verify-mkosi definitions-fetch verify-a11y a11y-fetch verify-contract \
+.PHONY: verify-all verify-rust verify-systemd verify-mkosi definitions-fetch definitions-fetch-floor verify-a11y a11y-fetch verify-contract \
 	contract-fetch verify-bpf verify-latency verify-boot verify-display verify-sources \
 	verify-nucleus-kernel nucleus-kernel-fetch verify-workstation workstation-fetch verify-reuse verify-lints \
 	readiness test build boot release install-praetor-bump uninstall-praetor-bump
@@ -123,6 +123,13 @@ verify-mkosi:
 # read-only. See tools/definitions_container.py.
 definitions-fetch:
 	python3 tools/definitions_container.py --fetch
+
+# The same for the floor image, build/definitions/toolchain-floor.pin.json:
+# systemd at SYSTEMD_FLOOR itself, so the lowest release the systemd gate admits
+# is one a run covers (C13-2). AEGIS_DEFINITIONS_CONTAINER=floor runs a gate
+# inside it; CI does so for verify-systemd after verify-all.
+definitions-fetch-floor:
+	python3 tools/definitions_container.py --fetch --floor
 
 # The accessibility gate (M04, D16, D65, D76, D81): the P12 Concordia token
 # file and its one Svelte 5 component are installed from the lockfile, linted

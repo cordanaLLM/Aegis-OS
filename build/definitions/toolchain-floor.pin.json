@@ -1,0 +1,22 @@
+{
+  "schema": "aegis.definitions-toolchain-pin.v1",
+  "note": "M03 development evidence only. The systemd definition gate admits every systemd-repart and systemd-sysupdate at or above SYSTEMD_FLOOR in tools/verify_systemd_definitions.py; this image holds the floor release itself, so a run exercises the lowest version the gate accepts rather than only the one toolchain.pin.json installs. Its systemd major must equal SYSTEMD_FLOOR, which tools/test_definitions_container.py enforces. It carries no mkosi: the mkosi gate runs in the image toolchain.pin.json names. `make definitions-fetch-floor` builds it from the Arch Linux base image by digest and one Arch Linux Archive snapshot of the same date, and refuses the image unless pacman reports each package at exactly the version recorded here. A run that sets AEGIS_DEFINITIONS_CONTAINER=floor runs the gate inside it without a network, with the repository and the root file system read-only.",
+  "image": {
+    "reference": "docker.io/library/archlinux:base-20260920.0.596911@sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6",
+    "platform-digests": {
+      "linux/amd64": "sha256:917e543c9d0f1f495d70907bdf05bf53607e791b351e1b01ccd3aec2442303ed"
+    }
+  },
+  "archive": {
+    "snapshot": "2026/09/20",
+    "server": "https://archive.archlinux.org/repos/2026/09/20/$repo/os/$arch"
+  },
+  "packages": {
+    "systemd": "261.3-1",
+    "python": "3.14.7-1",
+    "dosfstools": "4.2-5",
+    "erofs-utils": "1.9.4-1",
+    "btrfs-progs": "7.1-1",
+    "cryptsetup": "2.8.8-1"
+  }
+}

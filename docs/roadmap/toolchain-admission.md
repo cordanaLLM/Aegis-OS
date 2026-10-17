@@ -44,7 +44,7 @@ Two rules follow from the clause and are applied below:
 | gitleaks | 8.30.1 | `.github/workflows/ci.yml`, `GITLEAKS_VERSION` plus the `GITLEAKS_SHA256` checksum of the release archive; scans every commit, reviewed false positives in `.gitleaksignore` | the dated `declared-linters` exception the 3bbde07 adoption wrote | the 3bbde07 pin, 2026-10-13 |
 | semgrep | 1.180.0 | `.github/workflows/ci.yml`, `SEMGREP_VERSION`, run through `pipx run` with the local rules in `.config/semgrep/hiss.yml` only and `--metrics=off` | the same exception | the 3bbde07 pin, 2026-10-13 |
 | trivy | 0.75.0 | `.github/workflows/ci.yml`, `TRIVY_VERSION` plus the `TRIVY_SHA256` checksum of the release archive; the binary, not `aquasecurity/trivy-action`, whose tags the March 2026 compromise rewrote (CVE-2026-33634) | the same exception | the 3bbde07 pin, 2026-10-13 |
-| systemd (`systemd-repart`, `systemd-sysupdate`) | floor 261; reference profile `systemd 261 (261.3-1-arch)`, the value the outcomes were recorded on; the reference profile reads `systemd 262 (262-1-arch)` since 2026-09-25 | `tools/verify_systemd_definitions.py`, `SYSTEMD_FLOOR = 261` and `REFERENCE_PROFILE_SYSTEMD`; each tool is taken from `PATH`, else from `/usr/lib/systemd`, printed, and held to the floor by its own `--version` before the gate runs (`systemctl --version` is printed as a cross-check only); CI runs the gate inside the image pinned below, at systemd `262-1` | nothing | M03 |
+| systemd (`systemd-repart`, `systemd-sysupdate`) | floor 261; reference profile `systemd 261 (261.3-1-arch)`, the value the outcomes were recorded on; the reference profile reads `systemd 262 (262-1-arch)` since 2026-09-25 | `tools/verify_systemd_definitions.py`, `SYSTEMD_FLOOR = 261` and `REFERENCE_PROFILE_SYSTEMD`; each tool is taken from `PATH`, else from `/usr/lib/systemd`, printed, and held to the floor by its own `--version` before the gate runs (`systemctl --version` is printed as a cross-check only); CI runs the gate inside the image pinned below, at systemd `262-1`, and again inside the floor image, at systemd `261.3-1` | nothing | M03 |
 | mkosi | 27; distribution package `extra/mkosi 27-1` on the reference profile | `build/mkosi.conf`, `MinimumVersion=27`, which mkosi itself enforces, and `tools/verify_mkosi_definitions.py`, `MKOSI_FLOOR = 27` and `REFERENCE_PROFILE_MKOSI`, read back from `mkosi --version` before the gate runs; CI runs the gate inside the image pinned below, at mkosi `27.1-1` | the M01 register's inherited `mkosi v24+` floor from export-007, which was a range rather than a pin and which no gate enforced | M18 (D14, D56) |
 | Linux source | none since D112 (2026-10-17); M26 pinned `linux-7.2.5`, sha256 `55ddf0df8325d9dad96fcff7bd93977d22e3f50af06527572af59b77c7632b78` | retired: `build/kernel/source.pin.json` and its gate were removed; the kernel the gates boot is the Nucleus release pinned in `build/kernel/nucleus-artifact.pin.json` | nothing | M26 (D70), retired by D112 |
 | Kernel base configuration | none since D112; M26 applied the two tracked fragments to `x86_64_defconfig` | retired with the source pin; the fragments stay, bound to the schema by `crates/aegis-fabrica-defs/tests/kernel_fragment.rs` | nothing | M26 (D70), retired by D112 |
@@ -295,6 +295,15 @@ holds on both releases. It then passed on 262 and again on the 261.3 tools
 extracted from the cached package; `docs/build/definitions.md` records both
 runs. Raising the floor to 262 would drop that 261 evidence without adding any.
 
+Until 2026-10-17 no recurring run held the floor itself: CI ran the gate only at
+262-1, so a 261 host passed the version check on the 2026-09-28 run alone (gap
+audit C13-2, #231). CI now runs the gate a second time inside the floor image
+described below, at systemd `261.3-1`, the release the reference outcomes were
+recorded on. `tools/test_definitions_container.py` requires that image's systemd
+major to equal `SYSTEMD_FLOOR` and its version to be the one
+`REFERENCE_PROFILE_SYSTEMD` names, so raising the floor without moving the image
+fails the gate.
+
 What the floor does **not** claim: that an older systemd cannot read these
 definitions. It claims only that the exit codes and diagnostics this repository
 records were observed on 261, and that a gate running below the floor would be
@@ -387,6 +396,33 @@ pinned systemd and mkosi must be at or above the gates' floors.
 What the container does **not** change: the floors and reference values above.
 A host with its own systemd 261 or newer and mkosi 27 or newer still runs the
 gates on its own tools when the variable is unset.
+
+## The systemd floor image (C13-2)
+
+The container above holds systemd `262-1`, above the floor. The systemd gate
+admits every release from `SYSTEMD_FLOOR` up, so CI also runs it on the floor
+release itself, inside a second local image that
+`build/definitions/toolchain-floor.pin.json` pins exactly:
+
+| Input | Pinned value | Role |
+| :--- | :--- | :--- |
+| base image | `docker.io/library/archlinux:base-20260920.0.596911@sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6`; linux/amd64 `sha256:917e543c9d0f1f495d70907bdf05bf53607e791b351e1b01ccd3aec2442303ed` | pulled by digest only; dated like the snapshot, so the install never downgrades |
+| Arch Linux Archive snapshot | `2026/09/20` | its `core` repository carries `systemd 261.3-1`; the only mirror pacman reads |
+| `systemd` | `261.3-1` | `systemd-repart` and `systemd-sysupdate` at `SYSTEMD_FLOOR`, the reference profile's release |
+| `python` | `3.14.7-1` | runs the gate script |
+| `dosfstools` | `4.2-5` | `Format=vfat` in `build/repart.d/00-esp.conf` |
+| `erofs-utils` | `1.9.4-1` | `Format=erofs` in `build/repart.d/10-root-a.conf` |
+| `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/repart.d/20-var.conf` |
+| `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/repart.d/20-var.conf` |
+
+`make definitions-fetch-floor` builds it the way `make definitions-fetch` builds
+the main image, with the same retries and the same exact-version check. A run
+that sets `AEGIS_DEFINITIONS_CONTAINER=floor` runs a gate inside it under the
+same restrictions; CI does so for `make verify-systemd` with `systemd` in
+`AEGIS_REQUIRED_GATES`, so a floor run that cannot execute fails the required
+check. The image holds no mkosi; the mkosi gate keeps the main image.
+`FloorPinTests` and `FloorAdmissionPageTests` in
+`tools/test_definitions_container.py` read this table and the floor back.
 
 ## The kernel build toolchain, and the source it builds (M26, retired by D112)
 
