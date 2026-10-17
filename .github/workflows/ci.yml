@@ -275,23 +275,9 @@ jobs:
           AEGIS_REQUIRED_GATES: systemd,mkosi
         run: make verify-all
 
-      - name: REUSE compliance
-        run: pipx run "reuse==${REUSE_VERSION}" lint
-
-      - name: Markdown lint
-        run: npx --yes "markdownlint-cli2@${MARKDOWNLINT_VERSION}"
-
-      - name: YAML lint
-        run: pipx run "yamllint==${YAMLLINT_VERSION}" .
-
-      - name: Python lint
-        run: |
-          pipx run "flake8==${FLAKE8_VERSION}" .
-          pipx run "black==${BLACK_VERSION}" --check --line-length 100 \
-            tools .config/agent/hooks
-
-      - name: Shell lint
-        run: git ls-files '*.sh' | xargs -r shellcheck -x
+      # reuse, markdownlint-cli2, yamllint, flake8, black and shellcheck run
+      # inside `make verify-all` (its prerequisite verify-lints), whose recipes
+      # take their versions from the env block above; no step runs them twice.
 
       # The security scans run as steps of this job, not as jobs of their own:
       # the ruleset requires this job's status, and a separate job could be
