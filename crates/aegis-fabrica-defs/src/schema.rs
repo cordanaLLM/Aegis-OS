@@ -31,7 +31,7 @@ pub const PRODUCT_INPUT_SCHEMA_PATH: &str = "build/product-input.schema.json";
 
 /// Renders the kernel requirement's JSON Schema as the committed file holds it.
 ///
-/// Two-space indented, keys in the order schemars writes them, one trailing
+/// Two-space indented, every object's keys sorted, one trailing
 /// newline.
 ///
 /// # Errors
@@ -43,7 +43,7 @@ pub fn kernel_requirement_schema() -> Result<String, serde_json::Error> {
 
 /// Renders the product input manifest's JSON Schema as the committed file holds it.
 ///
-/// Two-space indented, keys in the order schemars writes them, one trailing
+/// Two-space indented, every object's keys sorted, one trailing
 /// newline.
 ///
 /// # Errors
@@ -54,8 +54,16 @@ pub fn product_input_schema() -> Result<String, serde_json::Error> {
 }
 
 /// Renders one generated schema in the committed file's form.
+///
+/// The keys are sorted at every level so the bytes do not depend on whether
+/// `serde_json`'s `preserve_order` feature is on: Cargo unifies features over
+/// the packages one build selects, so a workspace build that includes a crate
+/// enabling it (gpui does) would otherwise write the keys in another order
+/// than a build of this crate alone.
 fn render(schema: &schemars::Schema) -> Result<String, serde_json::Error> {
-    let mut text = serde_json::to_string_pretty(schema)?;
+    let mut value = serde_json::to_value(schema)?;
+    value.sort_all_objects();
+    let mut text = serde_json::to_string_pretty(&value)?;
     text.push('\n');
     Ok(text)
 }

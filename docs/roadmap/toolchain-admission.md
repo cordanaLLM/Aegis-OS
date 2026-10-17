@@ -109,6 +109,8 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | serde_json | 1.0.151 | `[workspace.dependencies]`, optional, behind the `jsonl` feature | JSON Lines rendering, off the hashing path | M02 |
 | schemars | 1.2.2 | `[workspace.dependencies]`, `default-features = false`, `features = ["derive"]`; used by `crates/aegis-fabrica-defs` only | generates the JSON Schemas of both M18 contracts from their Rust types, committed under `build/` (D105) | D105, 2026-09-29 |
 | accesskit | 0.25.1 (MIT OR Apache-2.0), crate checksum `ad442f58ee04714aaa0ba0a2768c1ea1935b29507bb22ddece8cbbc76db02932` | `[workspace.dependencies]`, `default-features = false`, used only by `crates/aegis-forum-shell` | the accessibility tree's data model: the P05 canvas model is exported as an `accesskit::TreeUpdate`; no platform adapter | M16 (D101) |
+| gpui | git revision `322cd509dcccaee1f6bc44725d270598ae8171ad` of zed-industries/zed (package 0.2.2, Apache-2.0), the head of `main` read on 2026-10-17, committed 2026-10-16 | `[workspace.dependencies]`, `git` with `rev =`, `default-features = false`, `features = ["wayland"]`; locked as `git+https://github.com/zed-industries/zed?rev=322cd509...#322cd509...`; used only by `crates/aegis-forum-shell-gpui` | the toolkit: the layer-shell surface, canvas painting and the AccessKit integration (ADR-0004) | M28 (D102); licences admitted by D113, table below |
+| gpui_linux | the same revision (package 0.1.0, Apache-2.0) | as gpui, `features = ["wayland"]`, no X11 | the Linux platform gpui runs on, a crate of its own at this revision | M28 (D102) |
 | cros-libva | git revision `59384456ac2ae78c0c3e5515f41ef1efd9b802cf` of chromeos/cros-libva (package 0.0.13, BSD-3-Clause), the merge of #37 on 2026-09-01 and the head of `main` on 2026-09-29 | `[workspace.dependencies]`, `git` with `rev =`; locked as `git+https://github.com/chromeos/cros-libva?rev=59384456...#59384456...`; used only by `crates/aegis-scaena` | VA-API decode and DMA-BUF export through `Surface::export_prime` (D80) | M27 (D80) |
 | smithay-client-toolkit | 0.21.1 (MIT), crate checksum `74dc9ee14b0fdcb535f9556141bacac070c994a977d2240ee455d7438a617f00` | `[workspace.dependencies]`, `default-features = false`; used only by `crates/aegis-scaena` | the layer surface and the `zwp_linux_dmabuf_v1` client over wayland-client's pure-Rust backend; libwayland is neither linked nor loaded | M27 (D75) |
 | rustix | 1.1.5 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT), crate checksum `891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d` | `[workspace.dependencies]`, `features = ["net", "fs", "event"]`; used by `crates/aegis-scaena` and, since M21, by `crates/aegis-vesta-sandbox`, which adds the `system` feature | `sendmsg` and `recvmsg` with `SCM_RIGHTS` and `MSG_CMSG_CLOEXEC`, `SO_RCVTIMEO` and `SO_SNDTIMEO`, `fstatfs`, `fstat`, `lseek`, `poll` on the Wayland connection fd under a deadline, and in tests `memfd_create` (M27); `reboot(RebootCommand::Restart)`, with which the M21 guest init ends its microVM (M21) | M27 (D77); the `system` feature M21 |
@@ -153,6 +155,55 @@ toolchain, 1.99.1 (see below).
 declaration, the lock entry, and that the crate's own dependency closure
 (D78) holds no gpui, winit, wayland-client, zbus, atspi, accesskit_unix or
 tokio.
+
+gpui and gpui_linux were admitted for M28 on 2026-10-17 at the zed commit
+`322cd509dcccaee1f6bc44725d270598ae8171ad`, the head of `main` that day
+(read with the forge API).
+Both are declared once, with `rev =` and Wayland only, and are used only by
+`crates/aegis-forum-shell-gpui`, the member gpui enters through, so
+`aegis-forum-shell` keeps its toolkit-free closure.
+`crates/aegis-forum-shell-gpui/tests/admission.rs` reads the declaration and
+the lock source back, refuses a branch, a tag or another rev, and refuses any
+licence expression in the member's closure (D78: every platform, every
+dependency kind) that it does not record. Every expression it records is
+permissive or offers a permissive arm, except MPL-2.0, which it records for
+two packages only. D113 admitted the set on 2026-10-17 on these terms:
+
+| Package | Version | Expression | Arm taken | Terms |
+| :--- | :--- | :--- | :--- | :--- |
+| option-ext | 0.2.0 | `MPL-2.0` | MPL-2.0 | unmodified, from crates.io, reached through zed-font-kit, dirs 6 and dirs-sys; the test holds its lock entry to the index checksum `04744f49…6e7d` |
+| dwrote | 0.11.5 | `MPL-2.0` | MPL-2.0 | unmodified, from crates.io, reached through zed-font-kit on Windows only; the test holds its lock entry to the index checksum `9e1b3553…4d02` |
+| self_cell | 1.3.0 | `Apache-2.0 OR GPL-2.0-only` | Apache-2.0 | as published |
+| FreeType (system library) | as the host provides | `FTL OR GPL-2.0` | FTL | linked through freetype-sys 0.20.1 (MIT) |
+| zed-font-kit | 0.14.1-zed at `94b0f28166665e8fd2f53ff6d268a14955c82269` | `MIT OR Apache-2.0` | either | second git source, zed-industries/font-kit, at the revision the zed commit locks |
+
+MPL-2.0 is file-level copyleft, so a third MPL-2.0 package, or a patch to
+either of the two, is a new decision first; the test fails on the third and on
+a changed, doubled or overridden lock entry of the two.
+gpui renders through wgpu on Wayland: `gpui_linux`'s `wayland` feature
+requires `gpui_wgpu`, so wgpu 30.0.0 (a gfx-rs/wgpu git revision) is in
+`Cargo.lock`. ADR-0003 keeps wgpu out of P17's first slice, so
+`aegis-scaena`'s closure sweep still refuses it, and its lock-wide check
+now refuses wgpu in every member's closure but `aegis-forum-shell-gpui`'s
+(Servo, WebRender, mozjs and iceoryx2 stay refused anywhere in the lock).
+
+At this commit gpui resolves accesskit_unix 0.22.1, two minor versions behind
+the newest release, 0.24.0 of 2026-09-25; that is D69 drift, kept because the
+version is the one the pinned zed commit resolves. Its zbus is 5.19.0 and its
+atspi 0.29.0. It also resolves accesskit 0.24.1, beside the 0.25.1 M16
+admitted: zed `main` still declares accesskit 0.24.0, and 0.25.1 is not
+source-compatible with 0.24.1 for `aegis-forum-shell` (`TreeInfo` and `TreeId`
+do not exist there, measured on 2026-10-17), so the two versions coexist in the
+lock and the conversion between them is M28's to write and test (criterion 1's
+second branch). `aegis-forum-shell`'s own closure still holds exactly one
+accesskit, 0.25.1, which its manifest-hygiene test now reads from its closure
+rather than counting lock entries.
+
+Admitting gpui changes the features Cargo unifies over a whole-workspace build:
+serde_json gains `preserve_order`, among others. `aegis_fabrica_defs::schema`
+therefore sorts every object's keys before it renders the D105 schemas, so the
+committed files are the same bytes whether or not gpui is in the build; the
+JSON values are unchanged.
 
 The three M27 crates were admitted on 2026-09-29, each read that day from the
 crates.io API or with `git ls-remote`: smithay-client-toolkit 0.21.1
@@ -263,6 +314,25 @@ reason is re-read when it moves.
 | `saeptum-capsule` | `https://github.com/plurano/saeptum` | `24eef8cc4e2b3c10d28c5529175895d2df9f27be` | cut from `aegis-vesta` into a plurano repository (CUT-1632-03) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-microvm` |
 | `saeptum-microvm` | `https://github.com/plurano/saeptum` | `24eef8cc4e2b3c10d28c5529175895d2df9f27be` | cut from `aegis-vesta-sandbox` into a plurano repository (CUT-1632-04) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-capsule` |
 | `tornus-geometry` | `https://github.com/plurano/tornus` | `b2710c8ef386275db352bab06bfa4b8eb6859411` | cut from `aegis-hephaestus` into a plurano repository (CUT-1632-01) and not published on crates.io | a crates.io release, or a tornus revision Aegis needs |
+| `gpui` | `https://github.com/zed-industries/zed` | `322cd509dcccaee1f6bc44725d270598ae8171ad` | M28 toolkit; D102 takes it from one zed commit, and `gpui_linux`, which it runs on, has no crates.io release (index checked 2026-10-17) | a gpui crates.io release, or a zed revision M28 needs; moves together with `gpui_linux` |
+| `gpui_linux` | `https://github.com/zed-industries/zed` | `322cd509dcccaee1f6bc44725d270598ae8171ad` | the Linux platform of `gpui` (D102), built with the `wayland` feature alone; no crates.io release (index checked 2026-10-17) | moves together with `gpui` |
+
+## Git sources a pinned crate brings in
+
+A pinned crate can itself take packages from git. Those packages appear in
+`Cargo.lock` but in no manifest of this workspace, so the table above cannot
+name them. Each such source has one row here: the commit, the pinned crate
+that carries it, and every package the lock takes from it.
+`tools/verify_crate_pins.py` fails when a carried package's lock source is not
+exactly `git+<source>?rev=<commit>#<commit>`, when the carrier has no row in the
+table above, when a package is listed twice or also pinned directly, or when a
+git package in the lock is covered by neither table.
+
+| Source | Commit | Carried by | Packages | Review trigger |
+| :--- | :--- | :--- | :--- | :--- |
+| `https://github.com/zed-industries/zed` | `322cd509dcccaee1f6bc44725d270598ae8171ad` | `gpui` | `collections`, `derive_refineable`, `gpui_macros`, `gpui_shared_string`, `gpui_util`, `gpui_wgpu`, `http_client`, `refineable`, `scheduler`, `sum_tree`, `ztracing`, `ztracing_macro` | moves with the `gpui` row |
+| `https://github.com/gfx-rs/wgpu` | `3b3506ea31154edc04de64debda0e780cba2639c` | `gpui` | `naga`, `naga-types`, `wgpu`, `wgpu-core`, `wgpu-core-deps-apple`, `wgpu-core-deps-emscripten`, `wgpu-core-deps-linux-android-bsd`, `wgpu-core-deps-wasm`, `wgpu-core-deps-windows`, `wgpu-hal`, `wgpu-naga-bridge`, `wgpu-sync`, `wgpu-types` | a `gpui` revision that moves the wgpu commit zed's workspace names |
+| `https://github.com/zed-industries/font-kit` | `94b0f28166665e8fd2f53ff6d268a14955c82269` | `gpui` | `zed-font-kit` | a `gpui` revision that moves the font-kit commit; licence terms recorded in D113 |
 
 ## The systemd floor, and why it is a floor rather than a pin
 
@@ -861,7 +931,8 @@ decoded by any of this; decoding is the display gate's.
 
 These rows are proposals, not admissions, in the shape M27's rows had until M27
 admitted them.
-M16 admitted accesskit on 2026-09-29, and its row moved to
+M16 admitted accesskit on 2026-09-29 and M28 admitted gpui, gpui_linux and the
+accesskit_unix they resolve on 2026-10-17, and their rows moved to
 [Crates the workspace pins](#crates-the-workspace-pins); M28 admits the rest,
 each when its gate reads the row back before it runs; until then no gate may
 cite them. They are recorded now
@@ -872,8 +943,6 @@ API, from zed-industries/zed or from the reference profile's package manager.
 
 | Tool or crate | Reference version, read 2026-09-29 | Proposed pin or floor | Role |
 | :--- | :--- | :--- | :--- |
-| gpui | zed-industries/zed `main` at `bd747337d7be`, `crates/gpui` version 0.2.2 (Apache-2.0); the crates.io release is 0.2.2 of 2025-10-22 | one zed commit with `rev =`, chosen and locked at M28 (D102) | the toolkit: the layer-shell surface, canvas painting and the AccessKit integration |
-| accesskit_unix | 0.22 as zed `main` resolves it; the newest release is 0.24.0 (MIT OR Apache-2.0) of 2026-09-25 | the version the pinned zed commit resolves, recorded as D69 drift while it lags (M28) | exports the AccessKit tree to AT-SPI over D-Bus |
 | zbus, atspi | 5.19.0 and 0.30.0 (both Apache-2.0 OR MIT), the newest releases; accesskit_unix 0.24.0 requires zbus ^5.19 and atspi ^0.29 | as the pinned accesskit_unix resolves them; atspi also for the tests that read the tree back (M28) | pure-Rust D-Bus and AT-SPI below accesskit_unix |
 | libxkbcommon | 1.13.2 (`libxkbcommon 1.13.2-1.1`) | the floor the pinned xkbcommon crate (0.8.0 at zed `main`) needs, read at admission (M28) | the C keymap library gpui links for Linux keyboard input |
 | libwayland-client | 1.26.0 (`wayland 1.26.0-1.1`) | read at admission (M28) | loaded by wayland-backend through `dlopen` |

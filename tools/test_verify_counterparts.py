@@ -26,7 +26,6 @@ LEAVES = {
     "aegis-fabrica-defs",
     "aegis-hestia",
     "aegis-janus-lifecycle",
-    "aegis-scaena",
     "aegis-vulcan",
 }
 
@@ -84,16 +83,16 @@ class Positive(CounterpartTree):
         problems, leaves, entries = vc.check(self.root)
         self.assertEqual(problems, [])
         self.assertEqual(leaves, len(LEAVES))
-        self.assertEqual(entries, 18)
+        self.assertEqual(entries, 14)
 
-    def test_the_leaf_set_is_the_six_recorded_crates(self):
+    def test_the_leaf_set_is_the_five_recorded_crates(self):
         self.assertEqual(vc.leaf_crates(vc.workspace_graph(self.root)), LEAVES)
 
     def test_main_passes_on_the_repository(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             self.assertEqual(vc.main(["verify_counterparts.py", str(self.root)]), 0)
-        self.assertIn("PASS: 6 leaf crates", out.getvalue())
+        self.assertIn("PASS: 5 leaf crates", out.getvalue())
 
 
 class Negative(CounterpartTree):
@@ -132,7 +131,7 @@ class Negative(CounterpartTree):
         self.assert_refused("milestone 'M99' is not in planning/roadmap.json")
 
     def test_a_done_milestone_fails(self):
-        self.edit_entry("P17", 0, milestone="M27")
+        self.edit_entry("P15", 0, milestone="M27")
         self.assert_refused("milestone M27 is done")
 
     def test_an_empty_reason_fails(self):
@@ -150,10 +149,10 @@ class Negative(CounterpartTree):
 
     def test_a_repeated_entry_fails(self):
         data = self.components()
-        entries = self.row(data, "P17")[vc.FIELD]
+        entries = self.row(data, "P15")[vc.FIELD]
         entries.append(dict(entries[0]))
         self.write_components(data)
-        self.assert_refused("aegis-scaena: MOUNT_SHELL_CANVAS with P05 is recorded twice")
+        self.assert_refused("aegis-hestia: ZERO_COPY_MEDIA_INGEST with P03 is recorded twice")
 
     def test_entries_split_over_two_components_fail(self):
         data = self.components()
@@ -184,16 +183,16 @@ class Boundary(CounterpartTree):
         self.assertEqual(self.problems(), [])
 
     def test_a_milestone_not_yet_done_is_accepted(self):
-        self.edit_entry("P17", 1, milestone="M28")
+        self.edit_entry("P15", 1, milestone="M28")
         self.assertEqual(self.problems(), [])
 
     def test_a_renamed_dependency_still_pairs_the_crates(self):
         self.append_manifest(
-            "aegis-scaena",
+            "aegis-hestia",
             '\n[dev-dependencies]\nshell = { package = "aegis-forum-shell", '
             'path = "../aegis-forum-shell" }\n',
         )
-        self.assert_refused("aegis-scaena: has counterpart_gaps entries but is not a leaf any more")
+        self.assert_refused("aegis-hestia: has counterpart_gaps entries but is not a leaf any more")
 
     def test_a_target_specific_dependency_still_pairs_the_crates(self):
         self.append_manifest(

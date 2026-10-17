@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "aegis-forum-shell-gpui"
+description = "Aegis OS P05 Forum shell on gpui (M28): the workspace member gpui enters through, git-pinned to one zed-industries/zed commit (D102), so the M16 model crate aegis-forum-shell keeps its toolkit-free closure. It maps the P17 MOUNT_SHELL_CANVAS parameters onto gpui's layer-shell options."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+aegis-forum-shell = { path = "../aegis-forum-shell" }
+aegis-scaena = { path = "../aegis-scaena" }
+gpui.workspace = true
+gpui_linux.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true
