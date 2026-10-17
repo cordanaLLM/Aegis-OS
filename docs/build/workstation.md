@@ -394,12 +394,16 @@ The same run's footprint was min 57972 KiB, median 61620 KiB, max
   timer, which starts when Firecracker begins building the microVM, not when
   the request arrives, and is compared with no target. The microVMs boot one
   after another while earlier ones keep running, so the spread reflects a
-  host growing to 64 guests. The scaffold's boot literals stay `Unmeasured`
-  in `crates/aegis-vesta`.
+  host growing to 64 guests. REQ-P10-01's target of 125 ms is missed: the
+  median, 306 ms, is now `saeptum-capsule`'s `MEASURED_BOOT_TIME_MS`, which
+  names Firecracker 1.17.0 and run r20261017T124857-0027, and the target
+  stays `Unmeasured`.
 - **A footprint target.** `sandbox/footprint` records the monitor process's
   resident set, which includes the guest memory it has touched; it is not the
-  guest's view of its memory and is compared with no target. The scaffold's
-  literals stay `Unmeasured` in `crates/aegis-vesta`.
+  guest's view of its memory and is compared with no target. REQ-P10-01's
+  target of 5 MiB is missed: the median, 61620 KiB, is now
+  `MEASURED_FOOTPRINT_KIB`, on the same terms, and the target stays
+  `Unmeasured`.
 - **A meter.** The energy counter is AMD's model; see the accuracy statement.
   Only the package zone is read: `core` is recorded in the enumeration but
   its counter is not read, because the decision admits one command.

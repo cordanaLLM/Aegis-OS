@@ -72,8 +72,9 @@ pub const P10_RECORDED_CLAIMS: [RecordedClaim; 5] = [
         summary: "a microVM sandbox targets a boot time under 125 ms and a resident \
                   footprint under 5 MB",
         status: ClaimStatus::UnmeasuredTarget,
-        settled_by: "a real boot under a named monitor, which is milestone M22; this crate \
-                     starts no process and measures nothing",
+        settled_by: "a real boot under a named monitor, which M22 ran: Firecracker 1.17.0 \
+                     measured a 306 ms median boot and a 61620 KiB monitor footprint, so both \
+                     targets are missed; this crate starts no process and measures nothing",
         source: ClaimSource {
             export: "export-018",
             sha256_prefix: "5dbc6d071bbb",
@@ -84,8 +85,8 @@ pub const P10_RECORDED_CLAIMS: [RecordedClaim; 5] = [
         summary: "the crate header lists the same two figures among its standards targets, \
                   and the register records that the values are unmeasured",
         status: ClaimStatus::UnmeasuredTarget,
-        settled_by: "the same measurement; the scaffold's 112 ms literal is carried here as \
-                     an Unmeasured value so it cannot be read back as an observation",
+        settled_by: "the same measurement, which replaced the scaffold's 112 ms literal with \
+                     a Measured figure naming its monitor and run",
         source: ClaimSource {
             export: "export-037",
             sha256_prefix: "ce490c88081f",

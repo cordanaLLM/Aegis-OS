@@ -66,6 +66,7 @@ fn every_value_on_a_decision_path_owns_no_heap() {
     assert_no_heap::<ContractError>();
     assert_no_heap::<Correlation>();
     assert_no_heap::<Unmeasured<u32>>();
+    assert_no_heap::<aegis_vesta::Measured<u32>>();
 }
 
 /// Positive: driving both tables to their bounds changes no size.
