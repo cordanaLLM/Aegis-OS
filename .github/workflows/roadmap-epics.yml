@@ -1,0 +1,49 @@
+---
+# Roadmap epic check (issue #220): fails when an open issue labelled roadmap
+# carries a title or body other than the one tools/render_epics.py writes from
+# planning/roadmap.json on main. It reads issues and writes nothing; a red run
+# is fixed with `python3 tools/render_epics.py --apply` from a main checkout.
+# It runs on main only, not on pull requests: the issues follow main, so a pull
+# request that moves a rank would fail before the change it carries had landed.
+name: Roadmap epics
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - "planning/roadmap.json"
+      - "tools/render_epics.py"
+      - ".github/workflows/roadmap-epics.yml"
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: roadmap-epics
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Roadmap epics match the roadmap
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up the pinned Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Compare the open epics with the render
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/render_epics.py --check

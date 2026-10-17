@@ -61,9 +61,12 @@ Current verified state at revision time:
   E16-4), the M11 milestone with #52 to #55, #139, #148 and #149, and the M27
   milestone with #125 to #127 were re-synced to the ADR-0004 register on
   2026-09-29, their rank lines included (read back that day with `gh issue view`
-  and the milestones API). Rank lines in the other milestone descriptions and
-  issue bodies are not kept current; ranks are read from
-  `planning/roadmap.json`, which stays the source of truth.
+  and the milestones API). Rank lines in the other GitHub milestone
+  descriptions are not kept current; ranks are read from
+  `planning/roadmap.json`, which stays the source of truth. Open epic issues
+  are written from it: `python3 tools/render_epics.py --apply` sets each
+  title and body, and `.github/workflows/roadmap-epics.yml` runs `--check`
+  after the roadmap changes on main and once a day (issue #220).
 - cordanaLLM/imago and cordanaLLM/nucleus resolve. imago decodes both M18
   payloads at the commit M09 pins (16f964b until D107, 987b95a since), nucleus
   verifies `build/kernel-requirement.json` against the kconfig fragments of its
