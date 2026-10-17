@@ -45,7 +45,7 @@ env:
   # Published Praetor commit that builds the praetorctl this gate pins. The
   # name is the one Praetor's hook launcher looks for under .github/workflows,
   # so local hooks and this job resolve the same engine; a full commit SHA.
-  PRAETOR_REF: "5d4acfb4e38d6d0e67704e8fb31f007d8e23ce3b"
+  PRAETOR_REF: "67e0d4013eb4c03ab0a8a3f365fed48b6365d5d5"
   # D80 libva floor on this runner (maintainer decision of 2026-09-29): the
   # intel/libva release tarball, its sha256 as the GitHub release publishes it,
   # and the meson and ninja wheels that build it, each pinned by its PyPI sha256.
@@ -287,23 +287,9 @@ jobs:
           AEGIS_REQUIRED_GATES: systemd,mkosi
         run: make verify-all
 
-      - name: REUSE compliance
-        run: pipx run "reuse==${REUSE_VERSION}" lint
-
-      - name: Markdown lint
-        run: npx --yes "markdownlint-cli2@${MARKDOWNLINT_VERSION}"
-
-      - name: YAML lint
-        run: pipx run "yamllint==${YAMLLINT_VERSION}" .
-
-      - name: Python lint
-        run: |
-          pipx run "flake8==${FLAKE8_VERSION}" .
-          pipx run "black==${BLACK_VERSION}" --check --line-length 100 \
-            tools .config/agent/hooks
-
-      - name: Shell lint
-        run: git ls-files '*.sh' | xargs -r shellcheck -x
+      # reuse, markdownlint-cli2, yamllint, flake8, black and shellcheck run
+      # inside `make verify-all` (its prerequisite verify-lints), whose recipes
+      # take their versions from the env block above; no step runs them twice.
 
       # The security scans run as steps of this job, not as jobs of their own:
       # the ruleset requires this job's status, and a separate job could be

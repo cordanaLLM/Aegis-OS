@@ -61,9 +61,12 @@ Current verified state at revision time:
   E16-4), the M11 milestone with #52 to #55, #139, #148 and #149, and the M27
   milestone with #125 to #127 were re-synced to the ADR-0004 register on
   2026-09-29, their rank lines included (read back that day with `gh issue view`
-  and the milestones API). Rank lines in the other milestone descriptions and
-  issue bodies are not kept current; ranks are read from
-  `planning/roadmap.json`, which stays the source of truth.
+  and the milestones API). Rank lines in the other GitHub milestone
+  descriptions are not kept current; ranks are read from
+  `planning/roadmap.json`, which stays the source of truth. Open epic issues
+  are written from it: `python3 tools/render_epics.py --apply` sets each
+  title and body, and `.github/workflows/roadmap-epics.yml` runs `--check`
+  after the roadmap changes on main and once a day (issue #220).
 - cordanaLLM/imago and cordanaLLM/nucleus resolve. imago decodes both M18
   payloads at the commit M09 pins (16f964b until D107, 987b95a since), nucleus
   verifies `build/kernel-requirement.json` against the kconfig fragments of its
@@ -100,6 +103,43 @@ unverified external contract in their own flags or ancestry, then toward
 milestones without hardware. blocked_by lists direct blockers only; unblocks is
 its exact inverse.
 
+A leaf crate is a workspace member that no other member depends on and that
+depends on no other member. Its own tests cannot catch a contract drift against
+the component on the other side of an edge, so the card of the component it
+belongs to carries one `counterpart_gaps` entry per edge: the crate, the
+relation and counterpart, the milestone whose exit criteria bring the pairing
+(`null` when none does) and the reason (issue #230).
+`tools/verify_counterparts.py` runs inside `make verify-all` and fails when a
+leaf crate or one of its edges has no entry, when an entry names a crate that
+now has a counterpart, or when an entry names a milestone that is unknown or
+already done; `tools/test_verify_counterparts.py` plants each of those cases.
+
+Each component card also carries a `cut` record: what a build without the
+operating system would keep of it (issue #221). Its parts are the workspace
+crates, `bpf/*.bpf.c` programs and `ui/` directories the component holds, each
+with measured `ties`: a crate is `os-bound` when it ships a dependency outside
+the allow-list in `tools/verify_cut_classes.py` or an `os-bound` crate, a BPF
+program always is, a `ui/` token directory never is. The class follows from the
+parts: `standalone` (all `os-free`), `core-and-adapter` (both) or `os-only`
+(all `os-bound`). The class covers code in the tree only; a daemon a component
+still plans is no part until its code lands. `tools/verify_cut_classes.py` runs
+inside `make verify-all` and fails on a recorded tie or class that differs from
+the measured one and on a crate, program or `ui/` directory that is the part of
+no component or of two; `make readiness` prints each component's class and
+parts, and `tools/test_verify_cut_classes.py` plants each refusal.
+
+The pinned Praetor engine decides Rust self-recursion by a bare name only and
+lists mutual, nested, qualified, trait-impl, macro-template and macro-input
+recursion as known misses (cordanaLLM/praetor#1320). Until a pin adopts the
+engine fix, `tools/verify_recursion.py` runs inside `make verify-all`: it builds
+the call graph of every Rust function in the tree, counting only calls it can
+resolve to one function (bare, `self.`, `Self::`, module-path and `Type::`
+calls; a method call on another receiver is delegation) and skipping a bare call
+while the caller binds that name as a value, and fails on any cycle (issue #219).
+`tools/test_verify_recursion.py` plants the engine's six missed forms and
+its delegation, forwarding and shadowing negatives; the check retires once the
+engine catches the same forms.
+
 Cost scale:
 
 - trivial: hours, no new toolchain.
@@ -111,6 +151,18 @@ Cost scale:
 Unblocking value counts the milestones that become reachable once a milestone is
 done. The subsystem graph (export-062) is the graph of record; the two
 architecture documents (export-002, export-003) are annotated disputes.
+
+Work outside this repository can wait on a milestone too. A milestone records
+it as external_unblocks: a list of entries, each holding the plan node id of
+the waiting work and the source that names the dependency, an issue or decision
+record of the consuming repository. tools/rank_roadmap.py counts each such
+node once in the reach of every milestone that leads to it, and make readiness
+prints the nodes after the milestone's blockers. Entries come only from such a
+source, never from a guess; a milestone of this roadmap belongs in unblocks
+instead. tools/verify_preparation.py refuses an entry without a node id or a
+source, a node id shaped like a milestone id, and a node listed twice; the
+cases are in tools/test_preparation.py and tools/test_rank_roadmap.py
+(issue #222).
 
 Toolchain admission rule: every milestone that runs a new tool names that tool
 in its exit criteria and selects it through the template matrix with a pinned
@@ -434,6 +486,16 @@ the contract states what reaching it means: the gate stays down, and while it is
 down every gated action is refused. No required directive, exit criterion or
 epic changed. Nothing installs the unit, so the limit is a declared contract and
 no restart behaviour was measured.
+
+Dated 2026-10-17, appended after done (issue #232): the unit contract now
+writes its start rate limit down in `[Unit]`, `StartLimitIntervalSec=10s` and
+`StartLimitBurst=5`, the manager defaults systemd 262 reports and D108 relied
+on. `contracts::unit::review` refuses a unit that omits either setting, sets it
+twice (the older `StartLimitInterval=` spelling counts as the interval), sets
+it outside `[Unit]` or gives it anything but a positive whole number. No
+required directive, exit criterion or epic changed. Nothing installs the unit,
+so no restart and no start-limit stop was observed; that runtime case needs a
+booted image and stays open on M20.
 
 Not delivered, and not claimed: any transport. There is no D-Bus connection, no
 socket, no eBPF program and no TPM2 signing; a signature field is a field
@@ -5040,6 +5102,13 @@ beyond TPM2 (TDX, SEV-SNP, CCA).
   which M27's per-frame `created` and `presented` events require. It is
   recorded with M27's evidence as outside D83's scope, not waived; whether
   D83 names that binding too is the maintainer's to decide.
+  **Declared (2026-10-17, issue #223):** D83 is the HISS-03 entry for
+  `crates/aegis-scaena/src/decode.rs` in the exceptions list of
+  `.standards.yaml`, category A, expiring 90 days after entry. No engine gate
+  reads HISS-03, so `tools/verify_deviations.py` (in `make verify-all`) fails
+  once the entry expires, and whenever its reason does not name the cros-libva
+  revision `Cargo.lock` pins: a re-pin of the decoder fails the gate until the
+  deviation is reviewed and the entry renewed.
 
 ### Decisions from the M24 delivery (2026-09-28)
 

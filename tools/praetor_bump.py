@@ -16,7 +16,8 @@ One run:
    Aegis main already pins its head, or when the open bump pull request already
    proposes it;
 2. builds praetorctl at that commit the way CI does;
-3. runs `praetorctl adopt --force` in a fresh worktree of Aegis main;
+3. runs `praetorctl adopt --force` in a fresh worktree of Aegis main, or
+   `praetorctl adopt` without `--force` for an engine refresh (`--plain-adopt`);
 4. puts back every hand-maintained file adopt rewrote (`HAND_MAINTAINED`),
    restores AGENTS.md and recompiles its projections, then reverts each other
    change no Praetor gate needs (`minimise`);
@@ -64,6 +65,10 @@ PRAETOR_SLUG = "cordanaLLM/praetor"
 PRAETOR_URL = f"https://github.com/{PRAETOR_SLUG}.git"
 PRAETOR_BRANCH = "main"
 ADOPT_PROFILE = "os-image"
+# The adopt flags of each mode. The daily timer forces every template; an engine
+# refresh the controller announces runs plain adopt (#264, #265). Both modes go
+# through the same `HAND_MAINTAINED` restore and `minimise()` reverts.
+ADOPT_FLAGS = {False: ("--force",), True: ()}
 # Every bump is force-pushed to this one branch, so at most one bump pull
 # request is ever open, and a newer bump replaces an older one in place.
 ROLLING_BRANCH = "chore/praetor-pin-auto"
@@ -564,9 +569,14 @@ def listed_commits(total, commits):
     return shown + ([f"... and {more} more"] if more > 0 else [])
 
 
-def change_lines(kept, reverted):
+def adopt_command(plain):
+    """Return the adopt command line of one mode, as the commit message names it."""
+    return " ".join(["praetorctl", "adopt", *ADOPT_FLAGS[plain]])
+
+
+def change_lines(kept, reverted, plain=False):
     """Return the commit message's account of adopt's rewrite."""
-    lines = ["Kept from praetorctl adopt --force (a Praetor gate fails without it):"]
+    lines = [f"Kept from {adopt_command(plain)} (a Praetor gate fails without it):"]
     lines += [f"- {path}" for path in kept] or ["- nothing beyond the pin"]
     lines += ["", "Reverted to the content on main:"]
     lines += [f"- {path} ({why})" for path, why in reverted] or ["- nothing"]
@@ -578,7 +588,7 @@ def subject(target):
     return f"chore(governance): bump praetor to {target[:7]}"
 
 
-def commit_message(plan, commits, kept, reverted):
+def commit_message(plan, commits, kept, reverted, plain=False):
     """Return the commit message; `git commit --signoff` adds the sign-off."""
     total, lines = commits
     summary = (
@@ -594,7 +604,7 @@ def commit_message(plan, commits, kept, reverted):
         "Praetor commits taken:",
         *[f"- {line}" for line in listed_commits(total, lines)],
         "",
-        *change_lines(kept, reverted),
+        *change_lines(kept, reverted, plain),
         "",
         f"{TARGET_MARKER}{plan.target}",
         f"{BASE_MARKER}{plan.base}",
@@ -606,11 +616,11 @@ def checklist(target):
     """Return the repository's pull request checklist, as this bump satisfies it."""
     return [
         "- [x] Local verification passed: `make verify-all` (with its `docs-lint` "
-        "Documentation Governance step) exits 0 with `praetorctl` built from "
+        "Documentation Governance step and its `verify-lints` step at CI's pinned linter "
+        "versions) exits 0 with `praetorctl` built from "
         f"`{target[:7]}` with CI's build flags; `praetorctl compile-context --verify`, "
-        "`praetorctl audit`, `praetorctl flavor audit .`, markdownlint-cli2, yamllint, flake8, "
-        "black, `reuse lint` and `mkdocs build --strict` pass on the workstation's linters and "
-        "Go (CI re-runs its pinned ones), except any gate listed above as a skip",
+        "`praetorctl audit`, `praetorctl flavor audit .` and `mkdocs build --strict` pass, "
+        "except any gate listed above as a skip",
         "- [x] No new HISS-16 / NASA Power-of-10 infractions (`praetorctl audit`)",
         "- [x] 3D Tests included: no public interface changed",
         "- [x] Agent contexts regenerated from `AGENTS.md`, not hand-edited: "
@@ -621,7 +631,7 @@ def checklist(target):
     ]
 
 
-def pr_body(plan, report):
+def pr_body(plan, report, plain=False):
     """Return the pull request body for this bump."""
     total, lines = report.commits
     return "\n".join(
@@ -637,7 +647,7 @@ def pr_body(plan, report):
             "**Praetor commits taken**",
             *[f"- {line}" for line in listed_commits(total, lines)],
             "",
-            *change_lines(report.kept, report.reverted),
+            *change_lines(report.kept, report.reverted, plain),
             "",
             "**Gates that reported a skip** (a skip did not run)",
             *([f"- {line}" for line in report.skips] or ["- none"]),
@@ -784,9 +794,9 @@ def open_bump_prs(session):
     return parse_prs(session.must(argv, DEADLINE_QUICK, what="gh pr list"))
 
 
-def failure_marker(cache, plan):
-    """Return the file that records a RED run for this Praetor and Aegis pair."""
-    return cache / "failed" / f"{plan.target}-{plan.base}"
+def failure_marker(cache, plan, plain=False):
+    """Return the file that records a RED run for this Praetor and Aegis pair and mode."""
+    return cache / "failed" / f"{plan.target}-{plan.base}{'-plain' if plain else ''}"
 
 
 def survey(session):
@@ -807,7 +817,7 @@ def survey(session):
         )
         return None, 0
     plan = Plan(target, pin, base)
-    marker = failure_marker(session.cache, plan)
+    marker = failure_marker(session.cache, plan, session.args.plain_adopt)
     if marker.is_file() and not session.args.retry:
         session.note(
             f"RED (unchanged): the bump to {target[:7]} on Aegis {base[:7]} already failed; "
@@ -906,7 +916,9 @@ def git_path(session, tree, name):
 
 
 def adopt(session, tree, source):
-    """Run `praetorctl adopt --force` in the worktree, leaving the shared git files as found.
+    """Run `praetorctl adopt` in the worktree, leaving the shared git files as found.
+
+    `--force` is passed unless the run is an engine refresh (`--plain-adopt`).
 
     adopt runs `lefthook install`, which writes two things every worktree of the
     primary checkout shares: the hooks directory, and `LEFTHOOK_CHECKSUM`, which
@@ -916,7 +928,8 @@ def adopt(session, tree, source):
     hooks = git_path(session, tree, "hooks")
     checksum = git_path(session, tree, LEFTHOOK_CHECKSUM)
     saved, saved_checksum = snapshot(hooks), capture(checksum)
-    argv = [session.binary, "adopt", "--force", "--path", ".", "--profile", ADOPT_PROFILE]
+    flags = ADOPT_FLAGS[session.args.plain_adopt]
+    argv = [session.binary, "adopt", *flags, "--path", ".", "--profile", ADOPT_PROFILE]
     try:
         session.must(argv + ["--lock-source-root", source], DEADLINE_ADOPT, cwd=tree)
     finally:
@@ -1014,15 +1027,16 @@ def apply_pin(tree, plan, today):
     write_exact(page, rewrite_admission(read_exact(page), plan.pin, plan.target, today))
 
 
-def gate_commands(binary, markdownlint, mkdocs=None, site=None):
+def gate_commands(binary, mkdocs=None, site=None):
     """Return (name, argv, deadline) for every gate the bump has to pass.
 
     `make verify-all` also runs `node tools/markdownlint/verify.mjs`, the
-    Documentation Governance check, through its `docs-lint` prerequisite.
+    Documentation Governance check, through its `docs-lint` prerequisite, and
+    reuse, markdownlint-cli2, yamllint, flake8, black and shellcheck at the
+    versions ci.yml pins, through its `verify-lints` prerequisite.
     `mkdocs` is the Python of the documentation venv; without one the portal
     build is not a gate here and the caller reports it as a skip.
     """
-    black = ["black", "--check", "--line-length", "100", "tools", ".config/agent/hooks"]
     gates = (
         (
             "make verify-all",
@@ -1032,11 +1046,6 @@ def gate_commands(binary, markdownlint, mkdocs=None, site=None):
         ("compile-context --verify", [binary, "compile-context", "--verify"], DEADLINE_QUICK),
         ("audit", praetor_argv(binary, ("audit",)), DEADLINE_QUICK),
         ("flavor audit", [binary, "flavor", "audit", "."], DEADLINE_QUICK),
-        ("markdownlint-cli2", ["npx", "--yes", f"markdownlint-cli2@{markdownlint}"], DEADLINE_LINT),
-        ("yamllint", ["yamllint", "."], DEADLINE_LINT),
-        ("flake8", ["flake8", "."], DEADLINE_LINT),
-        ("black", black, DEADLINE_LINT),
-        ("reuse lint", ["reuse", "lint"], DEADLINE_LINT),
     )
     if mkdocs is None:
         return gates
@@ -1081,13 +1090,12 @@ def mkdocs_python(session, tree):
 
 def run_gates(session, tree):
     """Run every gate; return the SKIP lines, or raise with the failing lines."""
-    markdownlint = ci_env(read_exact(tree / CI_WORKFLOW), "MARKDOWNLINT_VERSION")
     mkdocs, reason = mkdocs_python(session, tree)
     skips = [] if mkdocs else [f"SKIP: mkdocs build --strict did not run: {reason}"]
     for line in skips:
         session.note(f"gate mkdocs build --strict: {line}")
     failures = []
-    gates = gate_commands(session.binary, markdownlint, mkdocs, session.cache / "site")
+    gates = gate_commands(session.binary, mkdocs, session.cache / "site")
     for name, argv, deadline in gates:
         result = session.run(argv, deadline, cwd=tree)
         skips += skip_lines(result.out + "\n" + result.err)
@@ -1126,7 +1134,7 @@ def prepare(session, plan, tree):
     apply_pin(tree, plan, datetime.date.today())
     skips = run_gates(session, tree)
     commits = praetor_commits(session, plan)
-    message = commit_message(plan, commits, kept, reverted)
+    message = commit_message(plan, commits, kept, reverted, session.args.plain_adopt)
     commit(session, tree, message)
     return Report(kept, reverted, commits, skips, message)
 
@@ -1134,7 +1142,7 @@ def prepare(session, plan, tree):
 def open_or_update_pr(session, plan, report):
     """Open the rolling branch's pull request, or rewrite the open one; return its number."""
     body = session.cache / "pr-body.md"
-    write_exact(body, pr_body(plan, report))
+    write_exact(body, pr_body(plan, report, session.args.plain_adopt))
     title = subject(plan.target)
     prs = open_bump_prs(session)
     if prs:
@@ -1248,7 +1256,7 @@ def red(session, plan, tree, error):
     evidence = evidence / f"praetor-bump-{plan.target[:7]}.log"
     text = evidence_text(plan, tree, error, session.log_text(), session.pushed)
     write_exact(evidence, text)
-    marker = failure_marker(session.cache, plan)
+    marker = failure_marker(session.cache, plan, session.args.plain_adopt)
     marker.parent.mkdir(parents=True, exist_ok=True)
     write_exact(marker, f"{evidence}\n")
     pushed = pushed_state(session.pushed)
@@ -1320,6 +1328,11 @@ def parse_args(argv):
     parser.add_argument("--merge", action="store_true", help="queue auto-merge when allowed")
     parser.add_argument("--no-publish", action="store_true", help="commit locally, push nothing")
     parser.add_argument("--retry", action="store_true", help="rerun a pair that already failed")
+    parser.add_argument(
+        "--plain-adopt",
+        action="store_true",
+        help="run praetorctl adopt without --force, for an engine refresh",
+    )
     args = parser.parse_args(argv)
     args.repo = args.repo.resolve()
     args.cache_dir = args.cache_dir.expanduser().resolve()

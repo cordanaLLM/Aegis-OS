@@ -33,14 +33,14 @@ Two rules follow from the clause and are applied below:
 | Rust (`rustc`, `cargo`) | 1.99.1 | `rust-toolchain.toml`, `channel = "1.99.1"`, materialised by rustup | 1.99.0 until 2026-10-16; 1.98.1 until 2026-10-14; before it the distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.99 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | 0.1.98 until 2026-10-14; before it the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.10.0-stable | `rust-toolchain.toml`, same `components` list | 1.9.0-stable until 2026-10-14; before it the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
-| praetorctl | source commit `5d4acfb4e38d6d0e67704e8fb31f007d8e23ce3b` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `320b058d8cca48eb7ce29c67b19e2b0a1f1dd917`; the pin follows Praetor's `main` (see below) | M00 |
+| praetorctl | source commit `67e0d4013eb4c03ab0a8a3f365fed48b6365d5d5` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `5d4acfb4e38d6d0e67704e8fb31f007d8e23ce3b`; the pin follows Praetor's `main` (see below) | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; a build input for praetorctl and, since M09, for the imago `make contract-fetch` builds, held to imago's own floor below | M00; M09 for the imago build |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
-| reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, run through `pipx run` | nothing | M00 |
-| markdownlint-cli2 | 0.23.2 | `.github/workflows/ci.yml`, `MARKDOWNLINT_VERSION`, run through `npx --yes`; separately locked by Praetor's `tools/markdownlint/package-lock.json` for `make docs-lint`, which `praetorctl audit` requires byte-for-byte | nothing | M00; the Praetor gate with the `7e7746a` pin |
-| yamllint | 1.38.0 | `.github/workflows/ci.yml`, `YAMLLINT_VERSION`, run through `pipx run` | nothing | M00 |
-| flake8 | 7.3.0 | `.github/workflows/ci.yml`, `FLAKE8_VERSION`, run through `pipx run` | nothing | M00 |
-| black | 26.5.1 | `.github/workflows/ci.yml`, `BLACK_VERSION`, run through `pipx run` | nothing | M00 |
+| reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, read by `tools/ci_lints.py`, run through `pipx run` by `make verify-lints`, a prerequisite of `make verify-all` | nothing | M00 |
+| markdownlint-cli2 | 0.23.2 | `.github/workflows/ci.yml`, `MARKDOWNLINT_VERSION`, read by `tools/ci_lints.py`, run through `npx --yes` by `make verify-lints`; separately locked by Praetor's `tools/markdownlint/package-lock.json` for `make docs-lint`, which `praetorctl audit` requires byte-for-byte | nothing | M00; the Praetor gate with the `7e7746a` pin |
+| yamllint | 1.38.0 | `.github/workflows/ci.yml`, `YAMLLINT_VERSION`, read by `tools/ci_lints.py`, run through `pipx run` by `make verify-lints`, a prerequisite of `make verify-all` | nothing | M00 |
+| flake8 | 7.3.0 | `.github/workflows/ci.yml`, `FLAKE8_VERSION`, read by `tools/ci_lints.py`, run through `pipx run` by `make verify-lints`, a prerequisite of `make verify-all` | nothing | M00 |
+| black | 26.5.1 | `.github/workflows/ci.yml`, `BLACK_VERSION`, read by `tools/ci_lints.py`, run through `pipx run` by `make verify-lints`, a prerequisite of `make verify-all` | nothing | M00 |
 | gitleaks | 8.30.1 | `.github/workflows/ci.yml`, `GITLEAKS_VERSION` plus the `GITLEAKS_SHA256` checksum of the release archive; scans every commit, reviewed false positives in `.gitleaksignore` | the dated `declared-linters` exception the 3bbde07 adoption wrote | the 3bbde07 pin, 2026-10-13 |
 | semgrep | 1.180.0 | `.github/workflows/ci.yml`, `SEMGREP_VERSION`, run through `pipx run` with the local rules in `.config/semgrep/hiss.yml` only and `--metrics=off` | the same exception | the 3bbde07 pin, 2026-10-13 |
 | trivy | 0.75.0 | `.github/workflows/ci.yml`, `TRIVY_VERSION` plus the `TRIVY_SHA256` checksum of the release archive; the binary, not `aquasecurity/trivy-action`, whose tags the March 2026 compromise rewrote (CVE-2026-33634) | the same exception | the 3bbde07 pin, 2026-10-13 |
@@ -273,6 +273,39 @@ ten E0658 errors on 2026-10-13. D111 replaced the rule: the workspace declares
 the `rust-toolchain.toml` pin, 1.99.1, the only toolchain any gate builds on,
 and `crates/aegis-scaena/tests/manifest_hygiene.rs` holds the declaration to
 the pin and every resolved package's `rust-version` at or below it.
+
+## Crates pinned by git revision
+
+A crate taken from a git revision instead of a crates.io release has no
+release a reader can look up, and Renovate's dashboard reports new commits
+without saying why the pin exists. Each such crate therefore has one row here:
+the repository it comes from, the full commit, why it is not a crates.io
+release, and what makes the pin due for review (issue #224).
+`tools/verify_crate_pins.py` runs in `make verify-all` and fails when this
+table and the workspace disagree:
+
+- a git dependency in `[workspace.dependencies]` has no row, or a row names a
+  crate the workspace does not take from git;
+- the source or commit of a row differs from the manifest's `git` and `rev`;
+- a git dependency is pinned by `branch`, `tag` or a short revision instead of
+  a full 40-character `rev`;
+- a member manifest declares a `git` dependency of its own, outside the
+  workspace table;
+- the `Cargo.lock` source of a pinned crate is not exactly
+  `git+<source>?rev=<commit>#<commit>`, or the lock carries a git package with
+  no row;
+- a reason or review trigger is empty.
+
+A Renovate pull request that moves a revision fails this check until it also
+updates the row. That is intended: the row records the new commit, and the
+reason is re-read when it moves.
+
+| Crate | Source | Commit | Reason | Review trigger |
+| :--- | :--- | :--- | :--- | :--- |
+| `cros-libva` | `https://github.com/chromeos/cros-libva` | `59384456ac2ae78c0c3e5515f41ef1efd9b802cf` | the newest crates.io release, 0.0.13 of 2024-12-06, fails to compile against libva 2.24.1; D80 names this revision | a crates.io release above 0.0.13 that builds against the libva floor, or a Renovate revision pull request |
+| `saeptum-capsule` | `https://github.com/plurano/saeptum` | `24eef8cc4e2b3c10d28c5529175895d2df9f27be` | cut from `aegis-vesta` into a plurano repository (CUT-1632-03) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-microvm` |
+| `saeptum-microvm` | `https://github.com/plurano/saeptum` | `24eef8cc4e2b3c10d28c5529175895d2df9f27be` | cut from `aegis-vesta-sandbox` into a plurano repository (CUT-1632-04) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-capsule` |
+| `tornus-geometry` | `https://github.com/plurano/tornus` | `b2710c8ef386275db352bab06bfa4b8eb6859411` | cut from `aegis-hephaestus` into a plurano repository (CUT-1632-01) and not published on crates.io | a crates.io release, or a tornus revision Aegis needs |
 
 ## The systemd floor, and why it is a floor rather than a pin
 
@@ -1055,14 +1088,16 @@ one of two call sites, each with a deadline.
 These are run by a gate but pinned by nothing, so they are gaps recorded here
 rather than admissions:
 
-- `shellcheck`, run by the CI shell-lint step, comes from the runner image. No
-  version is pinned and none is asserted.
+- `shellcheck`, run by `make verify-lints`, comes from the runner image in CI
+  and from the workstation distribution locally. No version is pinned and none
+  is asserted; a missing `shellcheck` fails the target.
 - The glibc static archive M21's guest init links comes from the
   workstation's glibc package, recorded above and not pinned.
 - `python3`, which runs the preparation validator and its unit tests, comes from
   the runner image and from the workstation distribution.
-- `npx` and `pipx` are the delivery mechanism for four pinned linters; the
-  Node.js and Python runtimes behind them are the runner's.
+- `npx` and `pipx` are the delivery mechanism for five pinned linters; the
+  Node.js and Python runtimes behind them are the runner's. A missing launcher
+  fails `make verify-lints`.
 - `libdrm-dev` on the Verification gate's runner, which the pinned libva build
   compiles `libva-drm` against, comes from the runner's Ubuntu archive at
   whatever version it carries; only the libdrm floor of 2.4.75 that libva's
@@ -1073,14 +1108,13 @@ rather than admissions:
   `actions/setup-node` for major version 24. Praetor supplies both files. The
   accessibility gate's Node is a different one, admitted above: 26.12.0 by
   sha256, inside the container.
-- The praetor pin auto-bump (`tools/praetor_bump.py`) runs `yamllint`,
-  `flake8`, `black` and `reuse` as the workstation installs them, not through
-  `pipx` at the versions above, and builds the documentation portal with the
-  workstation's Python. It builds `praetorctl` with the workstation's `go`
-  under its own `GOTOOLCHAIN` setting, whereas CI installs the Go version
-  Praetor's `go.mod` declares and sets `GOTOOLCHAIN=local`. These versions
-  decide only whether a bump pull request is proposed; its CI re-runs the
-  pinned tools.
+- The praetor pin auto-bump (`tools/praetor_bump.py`) runs the linters only
+  through `make verify-all`, so at the versions above, and builds the
+  documentation portal with the workstation's Python. It builds `praetorctl`
+  with the workstation's `go` under its own `GOTOOLCHAIN` setting, whereas CI
+  installs the Go version Praetor's `go.mod` declares and sets
+  `GOTOOLCHAIN=local`. These versions decide only whether a bump pull request
+  is proposed; its CI re-runs the pinned tools.
 
 Pinning them is a separate decision, not an implicit part of M02. Until it is
 taken, no milestone may cite them as admitted toolchain.
@@ -1094,7 +1128,8 @@ taken, no milestone may cite them as admitted toolchain.
 - The workflow rows are the `env:` block of `.github/workflows/ci.yml`; each
   version appears exactly once and is interpolated into the command that runs.
 - The crate rows are `[workspace.dependencies]` in the root `Cargo.toml` and the
-  committed `Cargo.lock`.
+  committed `Cargo.lock`. The rows for crates pinned by git revision are read
+  back by `tools/verify_crate_pins.py` against both files.
 - The replaced distribution package is recorded in the local package-manager log
   as `removed rust (1:1.98.1-1.1)` immediately before
   `installed rustup (1.29.1-1.1)` on 2026-09-13.

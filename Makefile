@@ -3,7 +3,7 @@ PRAETORCTL ?= praetorctl
 
 .PHONY: verify-all verify-rust verify-systemd verify-mkosi definitions-fetch verify-a11y a11y-fetch verify-contract \
 	contract-fetch verify-kernel verify-bpf verify-latency verify-boot verify-display verify-sources \
-	verify-nucleus-kernel nucleus-kernel-fetch verify-workstation workstation-fetch verify-reuse \
+	verify-nucleus-kernel nucleus-kernel-fetch verify-workstation workstation-fetch verify-reuse verify-lints \
 	readiness test build boot release install-praetor-bump uninstall-praetor-bump
 
 # The gate every agent runs before concluding a turn. It carries the crate gate
@@ -17,6 +17,11 @@ PRAETORCTL ?= praetorctl
 verify-all:
 	python3 -B -m unittest discover -s tools -p 'test_*.py'
 	python3 tools/verify_preparation.py
+	python3 tools/verify_counterparts.py
+	python3 tools/verify_cut_classes.py
+	python3 tools/verify_deviations.py
+	python3 tools/verify_crate_pins.py
+	python3 tools/verify_recursion.py
 	$(MAKE) --no-print-directory verify-systemd
 	$(MAKE) --no-print-directory verify-mkosi
 	$(MAKE) --no-print-directory verify-a11y
@@ -30,6 +35,25 @@ verify-all:
 		printf '%s\n' 'SKIP: no Cargo.toml at the repository root; no crate gate to run.'; \
 	fi
 	@printf '%s\n' 'PASS: every gate above reported its own scope; a SKIP line means that gate did not run here. Image build, boot, hardware, accessibility and release remain blocked.'
+
+# The lints CI used to run as steps after the gate, now a prerequisite of
+# verify-all so CI and the local gate run them once, at the same versions.
+# tools/ci_lints.py reads each version from the env block of
+# .github/workflows/ci.yml, the one place Renovate bumps them; preflight fails
+# when a pin is unreadable or pipx, npx, shellcheck or git is missing, and a
+# pin that cannot be read leaves `pin` exiting 1 and the spec it feeds broken
+# (issue #226). The recipes name each linter, because Praetor's declared-linters
+# audit reads Make recipes reached through prerequisites, not scripts.
+verify-all: verify-lints
+verify-lints:
+	python3 tools/ci_lints.py preflight
+	pipx run "reuse==$$(python3 tools/ci_lints.py pin REUSE_VERSION)" lint
+	npx --yes "markdownlint-cli2@$$(python3 tools/ci_lints.py pin MARKDOWNLINT_VERSION)"
+	pipx run "yamllint==$$(python3 tools/ci_lints.py pin YAMLLINT_VERSION)" .
+	pipx run "flake8==$$(python3 tools/ci_lints.py pin FLAKE8_VERSION)" .
+	pipx run "black==$$(python3 tools/ci_lints.py pin BLACK_VERSION)" --check --line-length 100 \
+		tools .config/agent/hooks
+	git ls-files -z '*.sh' | xargs -0 -r shellcheck -x
 
 # The crate gate for every workspace member listed in Cargo.toml, including
 # crates whose component planning/components.json still records as a proposal,
@@ -534,6 +558,7 @@ verify-reuse:
 
 readiness:
 	python3 tools/verify_preparation.py --readiness
+	python3 tools/verify_cut_classes.py --print
 
 # The local praetor pin auto-bump (docs/build/praetor-bump.md). It installs
 # three systemd user units for the invoking user, never root:
