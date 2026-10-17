@@ -98,9 +98,6 @@ class PinTests(unittest.TestCase):
         pin = bump.read_pin(bump.read_exact(ROOT / bump.CI_WORKFLOW))
         page = (ROOT / bump.ADMISSION_PAGE).read_text(encoding="utf-8")
         self.assertIn(f"| praetorctl | source commit `{pin}` |", page)
-        self.assertTrue(
-            bump.ci_env(bump.read_exact(ROOT / bump.CI_WORKFLOW), "MARKDOWNLINT_VERSION")
-        )
 
     def test_a_short_or_upper_case_pin_is_refused(self):
         for bad in (OLD[:7], OLD.upper(), OLD + "0", ""):
@@ -765,7 +762,7 @@ class StrictAuditTests(unittest.TestCase):
         self.assertEqual(
             bump.praetor_argv(binary, ("flavor", "audit", ".")), [binary, "flavor", "audit", "."]
         )
-        gates = {name: argv for name, argv, _deadline in bump.gate_commands(binary, "0.23.2")}
+        gates = {name: argv for name, argv, _deadline in bump.gate_commands(binary)}
         self.assertEqual(gates["audit"], argv)
 
     def test_a_warning_fails_the_reconcile_gates(self):
@@ -783,23 +780,29 @@ class GateListTests(unittest.TestCase):
     """The bump runs the gates CI runs, with the pinned praetorctl."""
 
     def test_every_gate_carries_a_deadline_and_the_pinned_binary(self):
-        gates = bump.gate_commands(Path("/cache/bin/praetorctl"), "0.23.2")
+        gates = bump.gate_commands(Path("/cache/bin/praetorctl"))
         names = [name for name, _argv, _deadline in gates]
-        for expected in ("make verify-all", "audit", "flavor audit", "reuse lint", "black"):
+        for expected in ("make verify-all", "compile-context --verify", "audit", "flavor audit"):
             self.assertIn(expected, names)
         self.assertIn("PRAETORCTL=/cache/bin/praetorctl", [str(p) for p in gates[0][1]])
         self.assertTrue(all(deadline > 0 for _name, _argv, deadline in gates))
-        self.assertIn("markdownlint-cli2@0.23.2", gates[4][1])
+
+    def test_no_lint_runs_beside_verify_all(self):
+        """Negative: verify-lints runs the linters at CI's pins; no unpinned copy runs again."""
+        argvs = [argv for _name, argv, _deadline in bump.gate_commands(Path("/b"))]
+        words = {str(word) for argv in argvs for word in argv}
+        for linter in ("reuse", "yamllint", "flake8", "black", "shellcheck", "npx"):
+            self.assertNotIn(linter, words)
 
     def test_the_portal_build_is_a_gate_only_with_its_venv(self):
         """Positive and boundary: with a venv it runs strict; without, it is not claimed."""
-        gates = bump.gate_commands(Path("/b/praetorctl"), "0.23.2", Path("/v/python"), Path("/s"))
+        gates = bump.gate_commands(Path("/b/praetorctl"), Path("/v/python"), Path("/s"))
         name, argv, deadline = gates[-1]
         self.assertEqual(name, "mkdocs build --strict")
         self.assertEqual(argv[:5], [Path("/v/python"), "-m", "mkdocs", "build", "--strict"])
         self.assertEqual(argv[-2:], ["-d", Path("/s")])
         self.assertGreater(deadline, 0)
-        names = [name for name, _argv, _deadline in bump.gate_commands(Path("/b"), "0.23.2")]
+        names = [name for name, _argv, _deadline in bump.gate_commands(Path("/b"))]
         self.assertNotIn("mkdocs build --strict", names)
 
     def test_a_missing_portal_venv_is_a_reported_skip(self):

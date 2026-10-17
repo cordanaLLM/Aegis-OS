@@ -1066,14 +1066,13 @@ rather than admissions:
   `actions/setup-node` for major version 24. Praetor supplies both files. The
   accessibility gate's Node is a different one, admitted above: 26.12.0 by
   sha256, inside the container.
-- The praetor pin auto-bump (`tools/praetor_bump.py`) runs `yamllint`,
-  `flake8`, `black` and `reuse` as the workstation installs them, not through
-  `pipx` at the versions above, and builds the documentation portal with the
-  workstation's Python. It builds `praetorctl` with the workstation's `go`
-  under its own `GOTOOLCHAIN` setting, whereas CI installs the Go version
-  Praetor's `go.mod` declares and sets `GOTOOLCHAIN=local`. These versions
-  decide only whether a bump pull request is proposed; its CI re-runs the
-  pinned tools.
+- The praetor pin auto-bump (`tools/praetor_bump.py`) runs the linters only
+  through `make verify-all`, so at the versions above, and builds the
+  documentation portal with the workstation's Python. It builds `praetorctl`
+  with the workstation's `go` under its own `GOTOOLCHAIN` setting, whereas CI
+  installs the Go version Praetor's `go.mod` declares and sets
+  `GOTOOLCHAIN=local`. These versions decide only whether a bump pull request
+  is proposed; its CI re-runs the pinned tools.
 
 Pinning them is a separate decision, not an implicit part of M02. Until it is
 taken, no milestone may cite them as admitted toolchain.
