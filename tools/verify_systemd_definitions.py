@@ -34,6 +34,7 @@ import gate_policy
 from host import target as posix_target
 
 ROOT = Path(__file__).resolve().parent.parent
+FIRST_BOOT_REPART = ROOT / "build" / "mkosi.extra" / "usr" / "lib" / "repart.d"
 # Admitted floor, recorded in docs/roadmap/toolchain-admission.md. The gate
 # refuses to report a pass from an older systemd, whose diagnostics and exit
 # codes are not the ones the cases below were observed on. The floor is applied
@@ -44,12 +45,10 @@ REFERENCE_PROFILE_SYSTEMD = "systemd 261 (261.3-1-arch)"
 # Fixed so two runs of the gate produce the same partition UUIDs and roothash.
 SEED = "1d8b8b28-0b1f-4c1a-9a5f-2a0c3e4d5f60"
 IMAGE_SIZE = "32G"
-# /var is encrypted with Encrypt=tpm2, which binds to the PCR state of the
-# machine that seals it. Enrolment therefore belongs on the target machine at
-# first boot rather than in the build, so the partition is added to the table
-# and left unpopulated. The un-deferred run in docs/build/definitions.md also
-# failed to open /dev/tpmrm0; that was observed on 2026-09-13, before the
-# developer account joined tss, and the deferral does not rest on it.
+# Partition types deferred during assembly tests that include first-boot
+# definitions. /var carries Encrypt=tpm2, which binds to the PCR state of the
+# target machine and cannot be enrolled on the build host, so the full layout
+# assembly case defers it.
 DEFER_TYPES = "var"
 UNKNOWN_KEY = "Unknown key"
 COMMAND_TIMEOUT = 600
@@ -81,6 +80,39 @@ LISTING_CASES = ("sysupdate/positive", "sysupdate/root-tree")
 
 class GateError(Exception):
     """A gate could not be run at all, as opposed to a case that failed."""
+
+
+def build_time_encrypt_problems(directory):
+    """Return problems for TPM2 encryption in build-time repart definitions."""
+    dir_path = Path(directory)
+    if not dir_path.is_dir():
+        return [f"{dir_path} is not a directory"]
+    problems = []
+    try:
+        entries = sorted(dir_path.glob("*.conf"))[:MAX_CASES]
+    except OSError as error:
+        return [f"could not list {dir_path}: {error}"]
+    for entry in entries:
+        try:
+            content = entry.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as error:
+            problems.append(f"{entry.name} could not be read as utf-8: {error}")
+            continue
+        for line in content.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith(("#", ";")):
+                continue
+            if "=" not in stripped:
+                continue
+            key, value = stripped.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            if key == "Encrypt" and value.lower() in {"tpm2", "key-file+tpm2"}:
+                problems.append(
+                    f"{entry.name} declares Encrypt={value}; TPM2 enrolment belongs at "
+                    f"first boot (build/mkosi.extra/usr/lib/repart.d)"
+                )
+    return problems
 
 
 def parse_systemd_version(text):
@@ -219,7 +251,7 @@ def systemctl_banner():
     return out.splitlines()[0].strip() if code == 0 and out else ""
 
 
-def repart_argv(definitions, image, root, binary="systemd-repart"):
+def repart_argv(definitions, image, root, binary="systemd-repart", defer=None):
     """Build the repart invocation every repart case runs, with `binary` as argv[0].
 
     `--dry-run=yes` is kept because M03's exit criteria name it, but it is
@@ -231,19 +263,25 @@ def repart_argv(definitions, image, root, binary="systemd-repart"):
     file inside a TemporaryDirectory that is removed when the gate exits, so
     the divergence costs a throwaway image rather than a real device.
     """
-    return [
+    argv = [
         binary,
         "--empty=create",
         f"--size={IMAGE_SIZE}",
         # Inert under --empty=create on systemd 261; see this function's docstring.
         "--dry-run=yes",
         "--offline=yes",
-        f"--defer-partitions={DEFER_TYPES}",
-        f"--seed={SEED}",
-        f"--root={posix_target(root)}",
-        f"--definitions={posix_target(definitions)}",
-        posix_target(image),
     ]
+    if defer is not None:
+        argv.append(f"--defer-partitions={defer}")
+    argv.extend(
+        [
+            f"--seed={SEED}",
+            f"--root={posix_target(root)}",
+            f"--definitions={posix_target(definitions)}",
+            posix_target(image),
+        ]
+    )
+    return argv
 
 
 def scratch_root(base):
@@ -264,6 +302,25 @@ def os_release(base):
     return path
 
 
+def stage_first_boot_layout(base):
+    """Stage a directory combining build-time and first-boot repart drop-ins."""
+    layout = base / "first-boot-layout"
+    layout.mkdir(parents=True, exist_ok=True)
+    sources = [ROOT / "build" / "repart.d", FIRST_BOOT_REPART]
+    staged = 0
+    for source in sources:
+        if not source.is_dir():
+            raise GateError(f"{source} is not a directory; the first-boot layout cannot be staged")
+        for entry in sorted(source.glob("*.conf")):
+            if staged >= MAX_CASES:
+                raise GateError(f"more than {MAX_CASES} repart drop-ins to stage")
+            if (layout / entry.name).exists():
+                raise GateError(f"{entry.name} exists in both build-time and first-boot sets")
+            shutil.copy2(entry, layout / entry.name)
+            staged += 1
+    return layout
+
+
 def repart_cases(base, root, positive_image, binary="systemd-repart"):
     """Return the repart gate's positive, negative and boundary cases.
 
@@ -272,37 +329,48 @@ def repart_cases(base, root, positive_image, binary="systemd-repart"):
     definitions actually produced rather than a second, hand-written one.
     """
     fixtures = ROOT / "tests" / "systemd"
+    first_boot_dir = stage_first_boot_layout(base)
     rows = [
-        ("repart/positive", ROOT / "build" / "repart.d", [outcome(0, forbids=[UNKNOWN_KEY])]),
+        ("repart/positive", ROOT / "build" / "repart.d", [outcome(0, forbids=[UNKNOWN_KEY])], None),
+        (
+            "repart/first-boot-layout",
+            first_boot_dir,
+            [outcome(0, forbids=[UNKNOWN_KEY])],
+            DEFER_TYPES,
+        ),
         (
             "repart/negative-missing-type",
             fixtures / "repart-missing-type",
             [outcome(1, requires=["Type= not defined, refusing."])],
+            None,
         ),
         (
             "repart/negative-inverted-size",
             fixtures / "repart-inverted-size",
             [outcome(1, requires=["SizeMinBytes= larger than SizeMaxBytes=, refusing."])],
+            None,
         ),
         (
             "repart/negative-unknown-key",
             fixtures / "repart-unknown-key",
             [outcome(0, requires=[UNKNOWN_KEY, "'Subsystem'"])],
+            None,
         ),
         (
             "repart/boundary-equal-size",
             fixtures / "repart-equal-size",
             [outcome(0, forbids=[UNKNOWN_KEY])],
+            None,
         ),
     ]
     cases = []
-    for index, (name, definitions, accepted) in enumerate(rows[:MAX_CASES]):
+    for index, (name, definitions, accepted, defer) in enumerate(rows[:MAX_CASES]):
         keep = name == "repart/positive"
         image = positive_image if keep else base / f"scratch-{index}.raw"
         cases.append(
             {
                 "name": name,
-                "argv": repart_argv(definitions, image, root, binary),
+                "argv": repart_argv(definitions, image, root, binary, defer=defer),
                 "accepted": accepted,
                 "env": None,
                 "image": None if keep else image,
@@ -550,6 +618,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args()
     if gate_policy.refuse_unknown():
+        return 1
+    # A static read of the files, so it runs on every host, before any tool
+    # discovery can turn the gate into a skip.
+    encrypt_problems = build_time_encrypt_problems(ROOT / "build" / "repart.d")
+    if encrypt_problems:
+        for problem in encrypt_problems:
+            print(f"FAIL: {problem}")
         return 1
     routed = definitions_container.dispatch(GATE, Path(__file__).name)
     if routed is not None:
