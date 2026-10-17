@@ -48,6 +48,11 @@
       "matchFileNames": ["ui/concordia-tokens/**"],
       "matchPackageNames": ["eslint", "eslint-plugin-svelte", "svelte-eslint-parser"],
       "groupName": "eslint for the ui HISS lint"
+    },
+    {
+      "description": "saeptum-capsule and saeptum-microvm come from one plurano/saeptum revision; separate pull requests would lock saeptum-capsule twice, once per revision",
+      "matchPackageNames": ["saeptum-capsule", "saeptum-microvm"],
+      "groupName": "saeptum crates"
     }
   ],
   "customManagers": [

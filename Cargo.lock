@@ -573,7 +573,7 @@ dependencies = [
 [[package]]
 name = "saeptum-capsule"
 version = "0.1.0"
-source = "git+https://github.com/plurano/saeptum?rev=dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b#dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b"
+source = "git+https://github.com/plurano/saeptum?rev=92b57ed6ee6f39cb9e3d91851b63f3c65984c37e#92b57ed6ee6f39cb9e3d91851b63f3c65984c37e"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
@@ -582,7 +582,7 @@ dependencies = [
 [[package]]
 name = "saeptum-microvm"
 version = "0.1.0"
-source = "git+https://github.com/plurano/saeptum?rev=dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b#dd67f6e1f3703dd7d5c33fe1a09fcc88f4804b7b"
+source = "git+https://github.com/plurano/saeptum?rev=92b57ed6ee6f39cb9e3d91851b63f3c65984c37e#92b57ed6ee6f39cb9e3d91851b63f3c65984c37e"
 dependencies = [
  "saeptum-capsule",
  "serde_json",
@@ -796,7 +796,7 @@ dependencies = [
 [[package]]
 name = "tornus-geometry"
 version = "0.1.0"
-source = "git+https://github.com/plurano/tornus?rev=ad996c1f1a1598e82b48705be9bc7b15828fee6f#ad996c1f1a1598e82b48705be9bc7b15828fee6f"
+source = "git+https://github.com/plurano/tornus?rev=b2710c8ef386275db352bab06bfa4b8eb6859411#b2710c8ef386275db352bab06bfa4b8eb6859411"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
