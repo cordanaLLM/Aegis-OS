@@ -57,6 +57,7 @@ pub mod mount;
 pub mod present;
 pub mod reference;
 pub mod slice;
+pub mod subtitle;
 pub mod surface;
 pub mod transport;
 pub mod wayland;
@@ -67,13 +68,16 @@ pub use descriptor::{
     CorrelationId, DecodedFrame, FourCc, MAX_PLANES, Plane, Planes, SCHEMA_V1, Schema,
 };
 pub use error::{
-    AttachError, DescriptorError, JsonCategory, LineError, MountError, SurfaceError,
+    AttachError, DescriptorError, JsonCategory, LineError, MountError, SubtitleError, SurfaceError,
     TransportError, WaitError,
 };
 pub use line::{LineBuffer, MAX_LINE_BYTES, METHOD, Refusal, Request, Response};
 pub use mount::{
     Anchor, Edge, KeyboardInteractivity, Layer, MOUNT_METHOD, MOUNT_SCHEMA_V1, MOUNTED, Margin,
     MountCanvas, MountRequest, MountSchema, Namespace,
+};
+pub use subtitle::{
+    Cue, MAX_CUE_TEXT_BYTES, MAX_CUES, MAX_SRT_BYTES, Offset, SYNC_BOUND, judge, parse_srt,
 };
 pub use surface::{ConfiguredSize, LayerSurfaceModel, SurfaceState};
 pub use transport::{Deadlines, FrameReceiver, FrameSender, Received, pair};
