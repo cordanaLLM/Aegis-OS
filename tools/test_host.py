@@ -214,6 +214,35 @@ class EndSessionTests(unittest.TestCase):
         self.assertFalse(ended)
         self.assertIn("could not be signalled", reason)
 
+    def test_a_mock_pid_is_refused_before_any_signal(self):
+        """Negative: a mock's pid indexes to 1, and killpg(1) is kill(-1) on Linux.
+
+        The patched `killpg` is a recorder, so the hazard never runs even when the
+        guard is missing; the recorder seeing no call is what the test asserts.
+        """
+        for pid in (mock.MagicMock().pid, True, 1, 0, -1, "4242", 4242.0):
+            with self.subTest(pid=pid), self.posix_group():
+                ended, reason = host.end_session(pid)
+                self.assertFalse(ended)
+                self.assertIn("refused", reason)
+                host.os.killpg.assert_not_called()
+
+    def test_the_callers_own_group_is_refused(self):
+        """Negative: ending the caller's own group would kill the gate itself."""
+        with self.posix_group(), mock.patch.object(host.os, "getpgrp", create=True) as own:
+            own.return_value = 4242
+            ended, reason = host.end_session(4242)
+            self.assertFalse(ended)
+            self.assertIn("own process group", reason)
+            host.os.killpg.assert_not_called()
+
+    def test_the_lowest_signalled_pid_is_two(self):
+        """Boundary: pid 2 is a real group leader candidate and reaches the signal."""
+        with self.posix_group(), mock.patch.object(host.os, "getpgrp", create=True) as own:
+            own.return_value = 4242
+            self.assertEqual(host.end_session(2), (True, None))
+            host.os.killpg.assert_called_once_with(2, 9)
+
 
 class PosixOnlyApiSweep(unittest.TestCase):
     """The class stays closed: no gate may call a POSIX-only API unguarded."""
