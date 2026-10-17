@@ -24,6 +24,7 @@ members = [
     "crates/aegis-vesta",
     "crates/aegis-vesta-sandbox",
     "crates/aegis-vulcan",
+    "crates/aegis-vulcan-gpu",
 ]
 
 [workspace.package]

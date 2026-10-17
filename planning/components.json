@@ -216,6 +216,20 @@
           "counterpart": "P15",
           "milestone": "M12",
           "reason": "aegis-vulcan encodes MediaIngestDescriptor (src/contracts/media_ingest.rs), but aegis-hestia has no ingest decoder. M12 brings the DMA-BUF paths in the booted image (E12-1, REQ-P15-02 and REQ-P15-03)."
+        },
+        {
+          "crate": "aegis-vulcan-gpu",
+          "relation": "GPUDIRECT_WEIGHT_STREAMING",
+          "counterpart": "P09",
+          "milestone": "M12",
+          "reason": "the record half reads host sysfs only"
+        },
+        {
+          "crate": "aegis-vulcan-gpu",
+          "relation": "ZERO_COPY_MEDIA_INGEST",
+          "counterpart": "P15",
+          "milestone": "M12",
+          "reason": "the record half reads host sysfs only"
         }
       ],
       "cut": {
@@ -223,6 +237,10 @@
         "parts": [
           {
             "path": "crates/aegis-vulcan",
+            "ties": "os-free"
+          },
+          {
+            "path": "crates/aegis-vulcan-gpu",
             "ties": "os-free"
           }
         ]
