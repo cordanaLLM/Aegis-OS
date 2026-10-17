@@ -10,7 +10,9 @@ build/definitions/toolchain.pin.json:
 * `--fetch` (`make definitions-fetch`, the one networked step) pulls the base
   image by digest, installs the pinned packages from one Arch Linux Archive
   snapshot, and refuses the image unless pacman reports every package at
-  exactly its pinned version;
+  exactly its pinned version; when every attempt against the archive server
+  fails, it loads the image a previous fetch saved under CACHE_VARIABLE and
+  checks it the same way;
 * `dispatch()` runs one gate script inside that image, without a network and
   with the repository and the root file system read-only, when the run sets
   AEGIS_DEFINITIONS_CONTAINER=1.
@@ -63,6 +65,12 @@ MAX_PACKAGES = 32
 # between attempts. FETCH_ATTEMPTS bounds the loop (HISS-02).
 FETCH_ATTEMPTS = 3
 RETRY_DELAY = 30
+# The second source: a directory holding the image a previous fetch built, saved
+# by the engine as one archive per pin (CI keeps it in an Actions cache keyed by
+# the pin's hash). A fetch loads it only after every attempt against the archive
+# server failed, and the loaded image passes the same version check as a built one.
+CACHE_VARIABLE = "AEGIS_DEFINITIONS_CACHE"
+SAVE_TIMEOUT = 900
 
 
 class FetchError(Exception):
@@ -277,7 +285,51 @@ def check_versions(engine, pin, tag):
         raise FetchError("the built image differs from its pin: " + "; ".join(problems))
 
 
-def fetch(path=PIN):
+def cache_archive(tag, environ=None):
+    """Return the archive CACHE_VARIABLE names for `tag`, or None when the variable is unset."""
+    environ = os.environ if environ is None else environ
+    directory = environ.get(CACHE_VARIABLE, "")
+    if not directory:
+        return None
+    return Path(directory) / (tag.rsplit("/", 1)[-1].replace(":", "-") + ".tar")
+
+
+def load_cached(engine, tag, archive):
+    """Load `tag` from `archive`; raise FetchError naming the archive when that fails."""
+    if archive is None:
+        raise FetchError(f"no second source, {CACHE_VARIABLE} is not set")
+    if not archive.is_file():
+        raise FetchError(f"{archive} holds no saved image")
+    code, _, stderr = run([engine, "load", "-i", str(archive)], PULL_TIMEOUT)
+    if code != 0 or not image_present(engine, tag):
+        raise FetchError(f"{engine} load -i {archive} did not produce {tag} {stderr}".strip())
+
+
+def save_cached(engine, tag, archive):
+    """Save `tag` to `archive` for a later run's second source, unless one is there already."""
+    if archive is None or archive.is_file():
+        return
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    code, _, stderr = run([engine, "save", "-o", str(archive), tag], SAVE_TIMEOUT)
+    if code != 0:
+        raise FetchError(f"{engine} save -o {archive} exited {code} {stderr}".strip())
+
+
+def produce(engine, pin, tag, archive, sleep=time.sleep):
+    """Build `tag`, or load it from `archive` once the archive server failed; name the source."""
+    try:
+        attempt = build_with_retries(engine, pin, tag, sleep)
+    except FetchError as primary:
+        print(f"RETRY: {primary}; trying the second source.")
+        try:
+            load_cached(engine, tag, archive)
+        except FetchError as second:
+            raise FetchError(f"both sources failed: {primary}; then {second}") from second
+        return f"loaded from {archive} after the archive server failed"
+    return f"built on attempt {attempt}"
+
+
+def fetch(path=PIN, environ=None, sleep=time.sleep):
     """Produce the pinned image; return 0, or 1 after saying why it was refused."""
     engine, problem = pick_engine()
     if problem is not None:
@@ -285,14 +337,16 @@ def fetch(path=PIN):
         return 1
     pin, raw = load_pin(path)
     tag = image_tag(raw)
+    archive = cache_archive(tag, environ)
     try:
-        attempt = build_with_retries(engine, pin, tag)
+        source = produce(engine, pin, tag, archive, sleep)
         check_versions(engine, pin, tag)
+        save_cached(engine, tag, archive)
     except FetchError as error:
         print(f"FAIL: {error}")
         return 1
     pinned = ", ".join(f"{name} {pin['packages'][name]}" for name in sorted(pin["packages"]))
-    print(f"PASS: {tag} built with {engine} on attempt {attempt} and holds exactly {pinned}.")
+    print(f"PASS: {tag} {source} with {engine} and holds exactly {pinned}.")
     return 0
 
 

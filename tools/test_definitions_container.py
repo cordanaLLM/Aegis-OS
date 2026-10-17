@@ -362,6 +362,153 @@ class FetchRetryTests(unittest.TestCase):
         self.assertIn("FAIL: the built image differs from its pin", printed)
 
 
+class SecondSourceTests(unittest.TestCase):
+    """The saved image a fetch falls back to once the archive server is unreachable."""
+
+    def setUp(self):
+        self.pin, raw = container.load_pin()
+        self.tag = container.image_tag(raw)
+        scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(scratch.cleanup)
+        self.cache = Path(scratch.name)
+        self.archive = container.cache_archive(self.tag, {container.CACHE_VARIABLE: scratch.name})
+        self.engine_calls = []
+
+    def engine(self, argv, timeout, capture=True):
+        """Stand in for the engine: load passes, save writes the archive, inspect finds the tag."""
+        self.engine_calls.append(argv[1])
+        if argv[1] == "save":
+            Path(argv[3]).write_bytes(b"image")
+        return 0, "", ""
+
+    def outage(self):
+        """Every attempt against the archive server fails, as on 2026-10-17."""
+        stall = container.FetchError("podman build exited 1 Connection timed out")
+        return patch.object(container, "build", side_effect=stall)
+
+    def _fetch(self, environ, check=None):
+        """Run fetch() with the engine and the version check stood in for."""
+        check = check or patch.object(container, "check_versions")
+        with patch.object(container, "pick_engine", return_value=("podman", None)), patch.object(
+            container, "run", side_effect=self.engine
+        ), check as checked:
+            code, printed = capture(container.fetch, environ=environ, sleep=lambda _: None)
+        return code, printed, checked
+
+    def environ(self):
+        return {container.CACHE_VARIABLE: str(self.cache)}
+
+    def test_the_archive_is_named_after_the_pin_tag(self):
+        """Positive: one file per pin, in the directory the variable names."""
+        digest = self.tag.rsplit(":", 1)[1]
+        self.assertEqual(self.archive, self.cache / f"aegis-definitions-{digest}.tar")
+
+    def test_an_unset_variable_gives_no_second_source(self):
+        """Boundary: unset and empty both mean no archive, never the working directory."""
+        for environ in ({}, {container.CACHE_VARIABLE: ""}):
+            self.assertIsNone(container.cache_archive(self.tag, environ))
+
+    def test_a_reachable_server_builds_and_saves_for_later(self):
+        """Positive: the server answers; the image is built as before and saved once."""
+        with patch.object(container, "build"):
+            code, printed, checked = self._fetch(self.environ())
+        self.assertEqual(code, 0)
+        self.assertIn(f"PASS: {self.tag} built on attempt 1 with podman", printed)
+        self.assertEqual(self.engine_calls, ["save"])
+        self.assertTrue(self.archive.is_file())
+        checked.assert_called_once()
+
+    def test_a_saved_archive_is_not_written_again(self):
+        """Boundary: an archive restored from the cache is left as it is."""
+        self.archive.write_bytes(b"restored")
+        with patch.object(container, "build"):
+            code, _, _ = self._fetch(self.environ())
+        self.assertEqual((code, self.engine_calls), (0, []))
+        self.assertEqual(self.archive.read_bytes(), b"restored")
+
+    def test_a_planted_outage_completes_from_the_saved_image(self):
+        """Negative: the server is unreachable; the saved image is loaded and still checked."""
+        self.archive.write_bytes(b"image")
+        with self.outage():
+            code, printed, checked = self._fetch(self.environ())
+        self.assertEqual(code, 0)
+        self.assertIn(f"loaded from {self.archive} after the archive server failed", printed)
+        self.assertIn("trying the second source", printed)
+        self.assertEqual(self.engine_calls, ["load", "image"])
+        checked.assert_called_once()
+
+    def test_a_saved_image_off_its_pin_is_refused(self):
+        """Negative: the loaded image passes the same version check a built one does."""
+        self.archive.write_bytes(b"image")
+        mismatch = container.FetchError("the built image differs from its pin: systemd 1 != 2")
+        with self.outage():
+            code, printed, _ = self._fetch(
+                self.environ(), patch.object(container, "check_versions", side_effect=mismatch)
+            )
+        self.assertEqual(code, 1)
+        self.assertIn("FAIL: the built image differs from its pin", printed)
+        self.assertNotIn("save", self.engine_calls)
+
+    def test_a_version_mismatch_after_a_build_never_reaches_the_cache(self):
+        """Negative: an image built off its pin is a snapshot problem; nothing is loaded."""
+        self.archive.write_bytes(b"image")
+        mismatch = container.FetchError("the built image differs from its pin: systemd 1 != 2")
+        with patch.object(container, "build"):
+            code, _, _ = self._fetch(
+                self.environ(), patch.object(container, "check_versions", side_effect=mismatch)
+            )
+        self.assertEqual((code, self.engine_calls), (1, []))
+
+    def test_both_sources_down_fails_and_names_both(self):
+        """Boundary: no server and no saved image; the failure names each source it tried."""
+        with self.outage():
+            code, printed, checked = self._fetch(self.environ())
+        self.assertEqual(code, 1)
+        self.assertIn("FAIL: both sources failed", printed)
+        self.assertIn(self.pin["archive"]["server"], printed)
+        self.assertIn(f"{self.archive} holds no saved image", printed)
+        checked.assert_not_called()
+
+    def test_no_cache_variable_names_the_missing_second_source(self):
+        """Boundary: without the variable the outage fails and says why nothing was loaded."""
+        with self.outage():
+            code, printed, _ = self._fetch({})
+        self.assertEqual(code, 1)
+        self.assertIn(f"no second source, {container.CACHE_VARIABLE} is not set", printed)
+        self.assertEqual(self.engine_calls, [])
+
+    def test_an_archive_that_does_not_load_the_tag_fails(self):
+        """Negative: a load that leaves the pinned tag absent counts as a failed source."""
+        self.archive.write_bytes(b"other image")
+
+        def engine(argv, timeout, capture=True):
+            self.engine_calls.append(argv[1])
+            return (1, "", "") if argv[1] == "image" else (0, "", "")
+
+        with self.outage(), patch.object(
+            container, "pick_engine", return_value=("podman", None)
+        ), patch.object(container, "run", side_effect=engine):
+            code, printed = capture(container.fetch, environ=self.environ(), sleep=lambda _: None)
+        self.assertEqual(code, 1)
+        self.assertIn(f"did not produce {self.tag}", printed)
+
+    def test_a_failed_save_fails_the_fetch(self):
+        """Negative: a run asked to keep the image that cannot write it says so."""
+
+        def engine(argv, timeout, capture=True):
+            return (1, "", "no space left on device") if argv[1] == "save" else (0, "", "")
+
+        with patch.object(container, "build"), patch.object(
+            container, "pick_engine", return_value=("podman", None)
+        ), patch.object(container, "run", side_effect=engine), patch.object(
+            container, "check_versions"
+        ):
+            code, printed = capture(container.fetch, environ=self.environ(), sleep=lambda _: None)
+        self.assertEqual(code, 1)
+        self.assertIn("save -o", printed)
+        self.assertIn("no space left on device", printed)
+
+
 class GateRoutingTests(unittest.TestCase):
     def test_each_gate_hands_a_selected_run_to_the_container(self):
         """Positive: main returns the container's exit code and never runs the guard."""
