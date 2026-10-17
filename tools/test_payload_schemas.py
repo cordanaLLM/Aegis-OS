@@ -66,9 +66,9 @@ JSON_TYPES = {
     "null": lambda value: value is None,
 }
 LOOKAROUND = re.compile(r"\(\?[=!<]")
-# nucleus's own `required-by` rule, scripts/verify_kernel_requirement.py line 111
-# at 852be742eb173700d5ef93b0c6f867b855f9c640, unchanged since 0a4eac9 (line 90)
-# and 82aa6b7 (line 106): its ADR-0007 form (D103).
+# nucleus's own `required-by` rule, scripts/verify_kernel_requirement.py line 108
+# at 677dd401b68363b9ac3a1f2e891e6c1a1e9a0d9a, unchanged since 0a4eac9 (line 90),
+# 82aa6b7 (line 106) and 852be74 (line 111): its ADR-0007 form (D103).
 NUCLEUS_REQUIRED_BY = re.compile(r"(?!REQ-$)[A-Z][A-Z0-9-]*")
 # The characters, and the longest value, the D103 equivalence sweep enumerates.
 SWEEP_ALPHABET = "REQ-AF0a"

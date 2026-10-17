@@ -138,11 +138,11 @@ on the host. A pass on this profile is development evidence only.
 | :--- | :--- |
 | `build/kernel/nucleus-artifact.pin.json` | the release, every asset by sha256 and size, the tag commit, the keyless signer |
 | `tools/verify_nucleus_kernel.py` | the gate, run as `make verify-nucleus-kernel`; `--fetch` is `make nucleus-kernel-fetch` |
-| `tools/kernel_requirement_check.py` | the D94 check of `build/kernel-requirement.json` against one configuration |
+| `tools/nucleus_kernel_check.py` | the D94 check of `build/kernel-requirement.json` against one configuration, through nucleus's `--kernel-config` mode |
 | `tools/guest/aegis-nucleus-init.sh` | PID 1 of both guests |
 | `tools/guest/aegis-nucleus-probe.sh` | the sched_ext, BPF LSM and BTF probe, run in the guest and on the host |
 | `bpf/loader/aegis_bpf_probe.c` | M19's loader, with M10's `tp-attach` mode and `--map-set` option |
-| `tools/test_nucleus_kernel.py`, `tools/test_kernel_requirement_check.py` | the half of the gate that runs inside `make verify-all` |
+| `tools/test_nucleus_kernel.py`, `tools/test_nucleus_kernel_check.py` | the half of the gate that runs inside `make verify-all` |
 
 Not tracked: the release, the guest trees, the reports, the verifier logs and
 each run's `summary.json`. They live under `AEGIS_NUCLEUS_KERNEL_DIR`, default
@@ -249,7 +249,7 @@ refused it with
 is called.
 
 Boundary: `abi.minimum-release` is `6.12`. The release rule of
-`KernelRelease::at_least`, reimplemented in `tools/kernel_requirement_check.py`,
+`KernelRelease::at_least`, applied by nucleus's `--kernel-config` mode,
 admits `6.12` and `6.12.0-lusoris1` and refuses `6.11.999`, the highest
 release below the floor. The kernel's own `7.2.8-lusoris1-realtime` is
 admitted, and a kernel reporting `6.11.999` is rejected by the requirement
@@ -285,8 +285,12 @@ labels the second of them `required; decided by the requirement case`.
 
 ## D94: the requirement against the built kernel
 
-`tools/kernel_requirement_check.py` decides every row of
-`build/kernel-requirement.json` by the M18 rules: built-in by `y` only, module
+Since 2026-10-17 `tools/nucleus_kernel_check.py` hands the configuration to
+the pinned nucleus verifier's single-kernel mode (`--kernel-config`, nucleus
+pull request 176) and reads its `nucleus.kernel-check-report.v1`; until then
+`tools/kernel_requirement_check.py` held a Python copy of the same rules,
+and the runs below were decided by that copy. Either way every row of
+`build/kernel-requirement.json` is decided by the M18 rules: built-in by `y` only, module
 by `m` only, present by either, absent by `not set`, and an unobserved symbol
 by nothing. It also mirrors the identity half of `KernelRequirement::unmet`:
 every listed architecture, the release floor, and `abi.module-abi` as an
