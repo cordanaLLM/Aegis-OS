@@ -290,9 +290,9 @@ the pinned nucleus verifier's single-kernel mode (`--kernel-config`, nucleus
 pull request 176) and reads its `nucleus.kernel-check-report.v1`; until then
 `tools/kernel_requirement_check.py` held a Python copy of the same rules,
 and the runs below were decided by that copy. Either way every row of
-`build/kernel-requirement.json` is decided by the M18 rules: built-in by `y` only, module
-by `m` only, present by either, absent by `not set`, and an unobserved symbol
-by nothing. It also mirrors the identity half of `KernelRequirement::unmet`:
+`build/kernel-requirement.json` is decided by the M18 rules: built-in by `y`
+only, module by `m` only, present by either, absent by `not set`, and an
+unobserved symbol by nothing. It also mirrors the identity half of `KernelRequirement::unmet`:
 every listed architecture, the release floor, and `abi.module-abi` as an
 exact release when a payload fixes one. It refuses any key the schema does
 not name, as the Rust decoders' `deny_unknown_fields` does. It does not
