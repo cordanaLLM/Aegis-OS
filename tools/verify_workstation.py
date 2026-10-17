@@ -21,6 +21,9 @@ each of which runs or prints why it did not:
   the ``aegis-vesta`` controller admitted, one candidate evaluation round-trips
   over ``AF_VSOCK``, the 64th microVM is accepted with all 64 running, the 65th
   and an over-limit memory request are refused, and everything is torn down.
+  Before the run, ``sandbox/passthrough-limits`` reads every endpoint the
+  release's own API spec offers and fails on one the pin did not review, so
+  the device passthrough limit is read from the release, not assumed (E22-1).
   The gate then looks for any process, socket or network device left behind.
 
 A host without a half's capabilities prints
@@ -132,6 +135,7 @@ MAX_WATCH_READS = 200
 MAX_ELF_HEADERS = 64
 MAX_CPUINFO_LINES = 20000
 MAX_WALK_ENTRIES = 4096
+MAX_SPEC_LINES = 20000
 
 FIRECRACKER_NAME = "firecracker-v1.17.0-x86_64"
 PROGRAMS = ("cargo", "rustc", "sudo", "curl", FIRECRACKER_NAME, RAPL_BINARY, HOST_BINARY)
@@ -155,6 +159,7 @@ SANDBOX_CASES = (
     "sandbox/sixty-fifth-refused",
     "sandbox/teardown",
 )
+LIMITS_CASE = "sandbox/passthrough-limits"
 SKIP, PASS, FAIL = "skip", "pass", "fail"
 # The initramfs members ahead of /init: /dev, and /dev/mem for the boot timer
 # (character device 1:1, readable and writable by its owner only).
@@ -222,6 +227,7 @@ def load_pin(path=PIN_FILE):
         ("archive", firecracker["archive"]["sha256"]),
         ("binary", firecracker["binary"]["sha256"]),
         ("licence", firecracker["licence_file"]["sha256"]),
+        ("api spec", firecracker["api_spec"]["sha256"]),
         ("kernel", kernel["sha256"]),
         ("kernel config", kernel["config"]["sha256"]),
     ):
@@ -575,12 +581,13 @@ def available_mib(path=MEMINFO):
 
 
 def cached_paths(cache, pin):
-    """Return where the fetch keeps the firecracker binary, the kernel and its config."""
+    """Return where the fetch keeps the firecracker binary, its spec, the kernel and config."""
     firecracker, kernel = pin["firecracker"], pin["guest_kernel"]
     release = cache / "firecracker" / firecracker["tag"]
     return {
         "firecracker": release / firecracker["binary"]["file"],
         "licence": release / firecracker["licence_file"]["file"],
+        "api_spec": release / firecracker["api_spec"]["file"],
         "kernel": cache / "kernel" / kernel["file"],
         "config": cache / "kernel" / kernel["config"]["file"],
     }
@@ -620,6 +627,7 @@ def cache_problems(cache, pin):
     expected = {
         "firecracker": firecracker["binary"]["sha256"],
         "licence": firecracker["licence_file"]["sha256"],
+        "api_spec": firecracker["api_spec"]["sha256"],
         "kernel": kernel["sha256"],
         "config": kernel["config"]["sha256"],
     }
@@ -633,6 +641,49 @@ def cache_problems(cache, pin):
         if line not in config.splitlines():
             problems.append(f"the pinned kernel's configuration lacks {line}")
     return problems
+
+
+def api_endpoints(text):
+    """Return the endpoints an OpenAPI document's top-level paths block offers, in order."""
+    endpoints, inside = [], False
+    for line in text.splitlines()[:MAX_SPEC_LINES]:
+        if line and not line[0].isspace():
+            inside = line.rstrip() == "paths:"
+        elif inside and line.startswith("  /") and line.rstrip().endswith(":"):
+            endpoints.append(line.strip()[:-1])
+    return endpoints
+
+
+def passthrough_problems(text, pin):
+    """Return how the release's API spec differs from the endpoints the pin reviewed."""
+    offered = api_endpoints(text)
+    if not offered:
+        return ["the pinned API spec offers no endpoint, so no device limit was read from it"]
+    reviewed = pin["firecracker"]["api_spec"]["endpoints"]
+    problems = [
+        f"the pinned API spec offers {endpoint}, which the pin does not list: "
+        "review it for device passthrough before admitting it"
+        for endpoint in offered
+        if endpoint not in reviewed
+    ]
+    problems += [
+        f"the pin lists {endpoint}, which the pinned API spec does not offer"
+        for endpoint in reviewed
+        if endpoint not in offered
+    ]
+    return problems
+
+
+def passthrough_lines(pin):
+    """Return the lines a passing sandbox/passthrough-limits case prints."""
+    spec = pin["firecracker"]["api_spec"]
+    return [
+        f"{spec['file']}, sha256 {spec['sha256']} (pinned, from the release archive)",
+        f"offers {len(spec['endpoints'])} endpoints, each one the pin lists; none attaches "
+        "a host device",
+        "PCI passthrough stays with the QEMU harness (D58); "
+        "VmmIdentity::Firecracker reports none",
+    ]
 
 
 def firecracker_version(binary, pin, runner=run):
@@ -837,6 +888,11 @@ def sandbox_half(cache, run_dir):
     if reasons:
         return SKIP, reasons
     host_binary, paths, initrd = sandbox_prepare(cache, pin, run_dir)
+    limits = gate_case(
+        LIMITS_CASE,
+        passthrough_problems(read_text(paths["api_spec"]) or "", pin),
+        passthrough_lines(pin),
+    )
     vms = run_dir / "vms"
     vms.mkdir()
     before = net_devices()
@@ -852,7 +908,7 @@ def sandbox_half(cache, run_dir):
     (run_dir / "sandbox.log").write_text(f"exit {code}\n{stdout}\n--- stderr\n{stderr}", "utf-8")
     for line in stdout.splitlines()[:MAX_OUTPUT_LINES]:
         print(line)
-    problems = judge_child(code, stdout, SANDBOX_CASES, HOST_BINARY)
+    problems = limits + judge_child(code, stdout, SANDBOX_CASES, HOST_BINARY)
     problems += gate_case(
         "sandbox/nothing-left-behind",
         cleanup_problems(run_dir, before),
@@ -970,6 +1026,7 @@ def fetch(cache):
     for key, row in (
         ("firecracker", firecracker["binary"]),
         ("licence", firecracker["licence_file"]),
+        ("api_spec", firecracker["api_spec"]),
     ):
         lines.append(extract_member(archive, row["member"], paths[key], row["sha256"]))
     paths["firecracker"].chmod(0o755)

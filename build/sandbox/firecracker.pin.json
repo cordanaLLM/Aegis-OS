@@ -1,6 +1,6 @@
 {
   "schema": "aegis.m21.sandbox-pin.v1",
-  "note": "M21 development evidence only (D58, D71). The sandbox monitor and the guest kernel make verify-workstation boots, pinned by digest. `make workstation-fetch` is the one networked step: it downloads the Firecracker release archive and the guest kernel named here, refuses either if its sha256 or size differs, checks the archive digest against the .sha256.txt the release publishes, and extracts only the firecracker binary and its LICENSE, each hashed against this file. The bytes are cached outside the repository under AEGIS_WORKSTATION_DIR and hashed again before every run. The jailer is not used: it needs root to chroot and change user, and the maintainer's decision of 2026-09-29 admits no privilege beyond one scoped counter read.",
+  "note": "M21 development evidence only (D58, D71). The sandbox monitor and the guest kernel make verify-workstation boots, pinned by digest. `make workstation-fetch` is the one networked step: it downloads the Firecracker release archive and the guest kernel named here, refuses either if its sha256 or size differs, checks the archive digest against the .sha256.txt the release publishes, and extracts only the firecracker binary, its LICENSE and its API spec, each hashed against this file. The bytes are cached outside the repository under AEGIS_WORKSTATION_DIR and hashed again before every run. The jailer is not used: it needs root to chroot and change user, and the maintainer's decision of 2026-09-29 admits no privilege beyond one scoped counter read.",
   "firecracker": {
     "version": "1.17.0",
     "tag": "v1.17.0",
@@ -24,6 +24,40 @@
       "member": "release-v1.17.0-x86_64/LICENSE",
       "file": "LICENSE",
       "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    "api_spec": {
+      "member": "release-v1.17.0-x86_64/firecracker_spec-v1.17.0.yaml",
+      "file": "firecracker_spec-v1.17.0.yaml",
+      "sha256": "473a0a392927b407834b341bf5fbc7925524fedaf9d925e1bbbafb6a1f48c671",
+      "note": "The release's own OpenAPI document; its SHA256SUMS names this digest. Every endpoint it offers is listed here, and none attaches a host device: the PCI transport v1.17.0 adds behind --enable-pci carries Firecracker's own virtio devices (CHANGELOG, #5364), so PCI passthrough stays with the QEMU harness (D58). sandbox/passthrough-limits reads the endpoints from the cached spec and fails on one this list lacks, or on one listed here that the spec does not offer.",
+      "endpoints": [
+        "/",
+        "/actions",
+        "/balloon",
+        "/balloon/statistics",
+        "/balloon/hinting/start",
+        "/balloon/hinting/status",
+        "/balloon/hinting/stop",
+        "/boot-source",
+        "/cpu-config",
+        "/drives/{drive_id}",
+        "/pmem/{id}",
+        "/logger",
+        "/machine-config",
+        "/metrics",
+        "/mmds",
+        "/mmds/config",
+        "/entropy",
+        "/serial",
+        "/hotplug/memory",
+        "/network-interfaces/{iface_id}",
+        "/snapshot/create",
+        "/snapshot/load",
+        "/version",
+        "/vm",
+        "/vm/config",
+        "/vsock"
+      ]
     },
     "jailer": "not used"
   },

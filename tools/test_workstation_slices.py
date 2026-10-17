@@ -42,6 +42,8 @@ BINARY_SHA256 = "99ad0f5cd0514a88aad0e9ae8cfdb3cc3b4ab9d190e1194602406c786b5de7a
 LICENCE_SHA256 = "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
 KERNEL_SHA256 = "d8ced68bd61e27b6813e2c993cc53a4029c59e13210672180591c84109684fe4"
 CONFIG_SHA256 = "9fb2be18303d2f6e8ec35b3a20ecf1209f54a4ece10114a893cb37beabee7030"
+# The release's own SHA256SUMS line for firecracker_spec-v1.17.0.yaml.
+SPEC_SHA256 = "473a0a392927b407834b341bf5fbc7925524fedaf9d925e1bbbafb6a1f48c671"
 SUDO = ("sudo", "-n", "cat", "/sys/class/powercap/intel-rapl:0/energy_uj")
 
 
@@ -100,6 +102,7 @@ class PinTests(unittest.TestCase):
         self.assertEqual(firecracker["archive"]["sha256"], ARCHIVE_SHA256)
         self.assertEqual(firecracker["binary"]["sha256"], BINARY_SHA256)
         self.assertEqual(firecracker["licence_file"]["sha256"], LICENCE_SHA256)
+        self.assertEqual(firecracker["api_spec"]["sha256"], SPEC_SHA256)
         self.assertEqual(kernel["sha256"], KERNEL_SHA256)
         self.assertEqual(kernel["config"]["sha256"], CONFIG_SHA256)
         self.assertIn("CONFIG_VIRTIO_VSOCKETS=y", kernel["required_config"])
@@ -502,7 +505,7 @@ class SandboxCapabilityTests(unittest.TestCase):
         pin = gate.load_pin()
         with tempfile.TemporaryDirectory() as scratch:
             problems = gate.cache_problems(self.cache(scratch, pin), pin)
-        self.assertEqual(sum("not the pinned" in problem for problem in problems), 4)
+        self.assertEqual(sum("not the pinned" in problem for problem in problems), 5)
 
     def test_a_cache_that_matches_its_pin_has_no_problem(self):
         """Positive and negative: a pin of the files' own digests, then a missing option."""
@@ -513,6 +516,7 @@ class SandboxCapabilityTests(unittest.TestCase):
             digest = gate.file_sha256(paths["kernel"])
             pin["firecracker"]["binary"]["sha256"] = digest
             pin["firecracker"]["licence_file"]["sha256"] = digest
+            pin["firecracker"]["api_spec"]["sha256"] = digest
             pin["guest_kernel"]["sha256"] = digest
             pin["guest_kernel"]["config"]["sha256"] = digest
             pin["guest_kernel"]["required_config"] = ["CONFIG_VIRTIO_VSOCKETS=y"]
@@ -538,6 +542,65 @@ class SandboxCapabilityTests(unittest.TestCase):
         bad = mock.Mock(return_value=(0, "Firecracker v1.16.2\n", ""))
         with self.assertRaises(gate.GateError):
             gate.firecracker_version(Path(gate.FIRECRACKER_NAME), pin, bad)
+
+
+def spec(endpoints, tail="definitions:\n  Balloon:\n    type: object\n"):
+    """Write an OpenAPI document shaped like the release's, offering `endpoints`."""
+    lines = ['swagger: "2.0"', "info:", "  title: Firecracker API", "paths:"]
+    for endpoint in endpoints:
+        lines += [f"  {endpoint}:", "    put:", "      summary: planted"]
+    return "\n".join(lines) + "\n" + tail
+
+
+class PassthroughLimitTests(unittest.TestCase):
+    """E22-1's boundary: the device limits are read from the pinned release's API spec."""
+
+    def endpoints(self):
+        """Return the endpoints the pin lists for the release's API spec."""
+        return list(gate.load_pin()["firecracker"]["api_spec"]["endpoints"])
+
+    def test_the_pinned_endpoints_are_the_release_spec(self):
+        """Positive: the spec offering exactly the pinned endpoints has no problem."""
+        pin = gate.load_pin()
+        self.assertEqual(gate.passthrough_problems(spec(self.endpoints()), pin), [])
+        self.assertEqual(len(self.endpoints()), 26)
+        self.assertIn("/vsock", self.endpoints())
+
+    def test_an_unpinned_endpoint_is_refused(self):
+        """Negative: an endpoint nobody reviewed, such as a planted /vfio, fails the case."""
+        pin = gate.load_pin()
+        problems = gate.passthrough_problems(spec(self.endpoints() + ["/vfio/{id}"]), pin)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("/vfio/{id}", problems[0])
+        self.assertIn("passthrough", problems[0])
+
+    def test_a_pinned_endpoint_the_spec_lacks_is_refused(self):
+        """Negative: the pin and the release disagree, so the limit is not read."""
+        pin = gate.load_pin()
+        problems = gate.passthrough_problems(spec(self.endpoints()[1:]), pin)
+        self.assertEqual(len(problems), 1)
+        self.assertIn(self.endpoints()[0], problems[0])
+
+    def test_only_the_paths_block_holds_endpoints(self):
+        """Boundary: a nested path and one after the block are not endpoints."""
+        tail = "definitions:\n  /not-an-endpoint:\n    type: object\n"
+        text = spec(["/vsock"], tail).replace("      summary: planted", "    /nested:", 1)
+        self.assertEqual(gate.api_endpoints(text), ["/vsock"])
+        self.assertEqual(gate.api_endpoints("swagger: x\n"), [])
+
+    def test_a_spec_without_endpoints_is_refused(self):
+        """Boundary: an empty or unreadable spec is a problem, never a pass."""
+        pin = gate.load_pin()
+        problems = gate.passthrough_problems("", pin)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("no endpoint", problems[0])
+
+    def test_the_case_names_the_spec_and_the_qemu_harness(self):
+        """Positive: the pass lines name the spec digest and where passthrough goes."""
+        text = "\n".join(gate.passthrough_lines(gate.load_pin()))
+        self.assertIn(SPEC_SHA256, text)
+        self.assertIn("QEMU", text)
+        self.assertIn("D58", text)
 
 
 class LeftoverTests(unittest.TestCase):
@@ -832,9 +895,10 @@ class MakefileTests(unittest.TestCase):
     def test_the_page_records_the_pin_and_the_cases(self):
         """Boundary: docs/build/workstation.md carries the pins, the read and every case."""
         page = PAGE.read_text(encoding="utf-8")
-        for value in (ARCHIVE_SHA256, BINARY_SHA256, KERNEL_SHA256, " ".join(SUDO)):
+        for value in (ARCHIVE_SHA256, BINARY_SHA256, KERNEL_SHA256, SPEC_SHA256, " ".join(SUDO)):
             self.assertIn(value, page)
-        for case in gate.RAPL_CASES + (gate.WRAP_CASE,) + gate.SANDBOX_CASES:
+        cases = gate.RAPL_CASES + (gate.WRAP_CASE,) + gate.SANDBOX_CASES + (gate.LIMITS_CASE,)
+        for case in cases:
             self.assertIn(case, page)
 
 
