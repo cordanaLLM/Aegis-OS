@@ -170,6 +170,21 @@ def exclusive_lock(handle):
     return True, None
 
 
+def _unsafe_group(pid):
+    """Return why signalling the group `pid` is refused, or None when it is safe.
+
+    `type(pid) is int` rather than `isinstance`: `bool` is an int subclass, and
+    anything else with `__index__` (a mock included) would be accepted by
+    `os.killpg` as the number it indexes to.
+    """
+    if type(pid) is not int or pid <= 1:
+        return f"refused to signal process group {pid!r}: not a plain int above 1"
+    getpgrp = getattr(os, "getpgrp", None)
+    if getpgrp is not None and pid == getpgrp():
+        return f"refused to signal process group {pid}: it is the caller's own process group"
+    return None
+
+
 def end_session(pid):
     """Kill every process still in the session that `pid` leads.
 
@@ -182,9 +197,15 @@ def end_session(pid):
     the caller then falls back to killing the one child it holds.
 
     Positive: a running group is killed. Negative: a host without `os.killpg`
-    or without `signal.SIGKILL` answers with a reason. Boundary: a group that
+    or without `signal.SIGKILL` answers with a reason, and so does a `pid` that
+    is not a plain int above 1 or that names the caller's own group: on Linux
+    `killpg(1, ...)` is `kill(-1, ...)`, which signals every process the user
+    owns, and a test double's `pid` indexes to 1. Boundary: a group that
     already ended is not an error.
     """
+    refused = _unsafe_group(pid)
+    if refused is not None:
+        return False, refused
     killpg = getattr(os, "killpg", None)
     sigkill = getattr(signal, "SIGKILL", None)
     if killpg is None or sigkill is None:
