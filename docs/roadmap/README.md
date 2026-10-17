@@ -1987,8 +1987,9 @@ Exit criteria:
   records which VMM produced it; Firecracker and QEMU microvm numbers are never
   presented as interchangeable.
 - One AF_VSOCK candidate evaluation round-trips over the measured transport,
-  with /dev/vhost-vsock and the CONFIG_VHOST_VSOCK=m module recorded as the
-  mechanism.
+  with Firecracker's hybrid vsock (AF_UNIX on the host, AF_VSOCK in the guest)
+  recorded as the mechanism, and the host's /dev/vhost-vsock and
+  CONFIG_VHOST_VSOCK=m state recorded and shown unused.
 - Verify against the pinned release before relying on it: the sandbox VMM's
   device passthrough limits are read from the pinned release documentation
   rather than assumed
@@ -2019,10 +2020,12 @@ Epics:
   being worked around.
 - **E22-2 AF_VSOCK transport measured on the admitted VMM**. Requirements:
   REQ-P10-03, REQ-P16-04. Acceptance: Positive: one candidate evaluation
-  round-trips over the measured transport with /dev/vhost-vsock and
-  CONFIG_VHOST_VSOCK=m recorded as the mechanism, and the figure names its
-  VMM. Negative: the transport is not assumed from the round-trip M21 proved
-  -- a measurement taken on a different VMM than the one recorded is refused.
+  round-trips over the measured transport with Firecracker's hybrid vsock
+  (AF_UNIX on the host, AF_VSOCK in the guest) recorded as the mechanism and
+  the host's /dev/vhost-vsock and CONFIG_VHOST_VSOCK=m state recorded and shown
+  unused, and the figure names its VMM. Negative: the transport is not assumed
+  from the round-trip M21 proved -- a measurement taken on a different VMM than
+  the one recorded is refused.
   Boundary: a pass here is development evidence on the reference profile and
   closes no hardware gate.
 

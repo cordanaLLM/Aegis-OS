@@ -1744,7 +1744,7 @@
       "exit_criteria": [
         "D58 is decided: Firecracker is the sandbox VMM, pinned through the template matrix before any microVM run (1.17.0 installed on the reference profile, currently absent) or QEMU 11.1.1 with the microvm machine type and MICROVM.4m.fd (already present).",
         "Every measured boot time and memory footprint that replaces a scaffold literal records which VMM produced it; Firecracker and QEMU microvm numbers are never presented as interchangeable.",
-        "One AF_VSOCK candidate evaluation round-trips over the measured transport, with /dev/vhost-vsock and the CONFIG_VHOST_VSOCK=m module recorded as the mechanism.",
+        "One AF_VSOCK candidate evaluation round-trips over the measured transport, with Firecracker's hybrid vsock (AF_UNIX on the host, AF_VSOCK in the guest) recorded as the mechanism, and the host's /dev/vhost-vsock and CONFIG_VHOST_VSOCK=m state recorded and shown unused.",
         "Verify against the pinned release before relying on it: the sandbox VMM's device passthrough limits are read from the pinned release documentation rather than assumed",
         "One criterion states that a pass on the reference profile is development evidence only: it does not qualify hardware, does not close the hardware gate, and is not release evidence.",
         "A pass here is development evidence on the reference profile and closes no hardware gate",
@@ -1770,10 +1770,13 @@
             "REQ-P10-03",
             "REQ-P16-04"
           ],
-          "acceptance": "Positive: one candidate evaluation round-trips over the measured transport with /dev/vhost-vsock and CONFIG_VHOST_VSOCK=m recorded as the mechanism, and the figure names its VMM. Negative: the transport is not assumed from the round-trip M21 proved -- a measurement taken on a different VMM than the one recorded is refused. Boundary: a pass here is development evidence on the reference profile and closes no hardware gate."
+          "acceptance": "Positive: one candidate evaluation round-trips over the measured transport with Firecracker's hybrid vsock (AF_UNIX on the host, AF_VSOCK in the guest) recorded as the mechanism and the host's /dev/vhost-vsock and CONFIG_VHOST_VSOCK=m state recorded and shown unused, and the figure names its VMM. Negative: the transport is not assumed from the round-trip M21 proved -- a measurement taken on a different VMM than the one recorded is refused. Boundary: a pass here is development evidence on the reference profile and closes no hardware gate."
         }
       ],
-      "evidence": [],
+      "evidence": [
+        "Disclosure, in the shape M18 recorded, because a milestone that edits its own bar must say so where the bar is judged: on 2026-10-17, before the state moved, exit criterion 3 and E22-2's positive were amended by the maintainer's answer recorded as aegis-os-e22-2-mechanism. Both named /dev/vhost-vsock and CONFIG_VHOST_VSOCK=m as the mechanism, which describes a vhost-based monitor; Firecracker 1.17.0, the VMM D58 admitted, carries vsock through its own virtio-vsock device model and an AF_UNIX socket on the host (docs/vsock.md at v1.17.0), as M21's evidence point 5 recorded. Both now name that hybrid vsock as the mechanism and require the host's vhost state to be recorded and shown unused. It is not a relaxation: the measured transport, the VMM identity and the negative are unchanged, and the vhost state is still recorded. No other criterion, epic or the cheapest exit was rewritten.",
+        "E22-2 (2026-10-17): run r20261017T022908-f3ef of make verify-workstation on the reference profile (kernel 7.2.10-1-cachyos) passed every case, sandbox/nothing-left-behind included; its gate.log is kept under ~/.cache/aegis-workstation/runs/r20261017T022908-f3ef. sandbox/vsock-transport recorded /dev/vhost-vsock present and CONFIG_VHOST_VSOCK=m, with vhost_vsock references 0 before the first boot and 0 while sandbox 100 ran, so vhost was not in the path, and timed 12 round trips of the candidate evaluation on sandbox 100 under Firecracker 1.17.0, each from the AF_UNIX connect to the close: min 188.7 us, median 197.6 us, max 494.6 us (docs/build/workstation.md, The recorded transport figure). A vhost_vsock reference count that rose during the timed run fails the case, and the figure names its VMM through aegis_vesta::VmmIdentity. Development evidence on the reference profile only; it closes no hardware gate."
+      ],
       "split_from": "M21",
       "reference_profile": {
         "support": "full",
