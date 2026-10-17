@@ -759,11 +759,18 @@ def build_initramfs(guest, target):
     return hashlib.sha256(archive).hexdigest()
 
 
-def net_devices(root=NET):
-    """Return the host's network device names, bounded."""
+def tap_devices(root=NET):
+    """Return the host's tun and tap device names, bounded.
+
+    A tap device is the only network device Firecracker attaches, and the kernel
+    gives each tun or tap device a tun_flags attribute that a veth or bridge
+    lacks. Other workloads' containers add and remove veths during a run, so
+    only tun and tap devices are attributed to it.
+    """
     if not root.is_dir():
         return []
-    return sorted(entry.name for entry in root.iterdir())[:MAX_NET_ENTRIES]
+    entries = sorted(root.iterdir())[:MAX_NET_ENTRIES]
+    return [entry.name for entry in entries if (entry / "tun_flags").is_file()]
 
 
 def started_by_run(command, marker):
@@ -839,18 +846,18 @@ def kill(pid):
         return
 
 
-def cleanup_problems(run_dir, before):
-    """Return what the run left behind: processes, sockets, network devices."""
+def cleanup_problems(run_dir, before, net=NET, proc=PROC):
+    """Return what the run left behind: processes, sockets, tap devices."""
     problems = []
-    for pid in leftover_processes(str(run_dir)):
+    for pid in leftover_processes(str(run_dir), proc):
         problems.append(
             f"process {pid} ({FIRECRACKER_NAME} or {HOST_BINARY}) outlived the run; killed"
         )
         kill(pid)
     problems += [f"socket {path} was left behind" for path in leftover_sockets(run_dir)]
-    after = net_devices()
+    after = tap_devices(net)
     if after != before:
-        problems.append(f"network devices changed from {before} to {after}")
+        problems.append(f"tap devices changed from {before} to {after}")
     return problems
 
 
@@ -895,7 +902,7 @@ def sandbox_half(cache, run_dir):
     )
     vms = run_dir / "vms"
     vms.mkdir()
-    before = net_devices()
+    before = tap_devices()
     argv = [
         str(host_binary),
         "run",
@@ -914,7 +921,7 @@ def sandbox_half(cache, run_dir):
         cleanup_problems(run_dir, before),
         [
             f"no Firecracker or {HOST_BINARY} process names {run_dir}; no socket file under it",
-            f"network devices unchanged: {len(before)} before and after; no tap device",
+            f"tap devices unchanged: {len(before)} before and after; other devices not the run's",
         ],
     )
     return (FAIL if problems else PASS), problems
