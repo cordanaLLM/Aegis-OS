@@ -349,7 +349,7 @@ class Main(unittest.TestCase):
 
     def test_planted_cycle_fails_with_both_names(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = pathlib.Path(tmp)
+            root = pathlib.Path(tmp).resolve()
             paths = write_crate(root, {"src/lib.rs": REFUSED["mutual"]})
             with mock.patch.object(vr, "rust_files", return_value=paths):
                 code, _, err = self.run_main(root)
@@ -358,7 +358,7 @@ class Main(unittest.TestCase):
 
     def test_unreadable_source_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = pathlib.Path(tmp)
+            root = pathlib.Path(tmp).resolve()
             paths = write_crate(root, {"src/lib.rs": "pub fn f() { ]\n"})
             with mock.patch.object(vr, "rust_files", return_value=paths):
                 code, _, err = self.run_main(root)
