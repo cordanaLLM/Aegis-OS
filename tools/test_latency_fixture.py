@@ -8,8 +8,12 @@ so a checkout that cannot boot a guest still fails when one of those drifts.
 """
 
 import ast
+import hashlib
 import io
+import json
+import os
 import re
+import tempfile
 import unittest
 from unittest import mock
 from contextlib import redirect_stdout
@@ -207,7 +211,7 @@ class AdmissionTests(unittest.TestCase):
     def test_the_page_records_the_reused_kernel_pin_and_the_path_not_taken(self):
         text = ADMISSION.read_text()
         self.assertIn("rt-tests 2.10-1.1", text)
-        self.assertIn("linux-7.2.5", text)
+        self.assertIn("v7.2.8-realtime-lusoris2", text)
         self.assertIn("pacman -Qq linux-rt", text)
         self.assertIn("by construction", text)
 
@@ -452,9 +456,10 @@ class ThresholdTests(unittest.TestCase):
         found = dict(gate.thresholds())
         self.assertEqual(found, EXPECTED_THRESHOLDS)
 
-    def test_the_recorded_identities_are_the_two_kernels(self):
+    def test_the_recorded_identities_are_the_three_kernels(self):
         self.assertEqual(gate.recorded_release("AEGIS_M26_GUEST"), "7.2.5-aegis-m26")
         self.assertEqual(gate.recorded_release("REFERENCE_HOST"), "7.2.4-1-cachyos")
+        self.assertEqual(gate.recorded_release(gate.GUEST_IDENTITY), "7.2.8-lusoris2-realtime")
 
     def test_a_missing_constant_is_a_gate_error_rather_than_a_default(self):
         with self.assertRaises(gate.GateError):
@@ -470,6 +475,81 @@ class ThresholdTests(unittest.TestCase):
                 rf"pub const {constant}: Measured<u64> =\s*Measured::new\([0-9_]+, {identity},"
             )
             self.assertRegex(text, pattern, f"{constant} does not name {identity}")
+
+
+class PinnedKernelTests(unittest.TestCase):
+    """The guest is the pinned Nucleus image, checked before it boots (D112)."""
+
+    PAYLOAD = b"not a kernel, but bytes with a known digest"
+
+    def pinned(self, payload, size_delta=0):
+        """Return a pin tuple that records `payload` with its size moved by `size_delta`."""
+        digest = hashlib.sha256(payload).hexdigest()
+        return "vmlinuz-test", "7.2.8-test", digest, len(payload) + size_delta
+
+    def image(self, payload):
+        handle = tempfile.TemporaryDirectory()
+        self.addCleanup(handle.cleanup)
+        path = Path(handle.name) / "vmlinuz-test"
+        path.write_bytes(payload)
+        return path
+
+    def test_the_pin_names_the_release_the_crate_records(self):
+        name, release, sha256, size = gate.pinned_kernel()
+        self.assertEqual(release, gate.recorded_release(gate.GUEST_IDENTITY))
+        self.assertTrue(name.endswith(release), f"{name} does not carry {release}")
+        self.assertRegex(sha256, r"^[0-9a-f]{64}$")
+        self.assertGreater(size, 0)
+
+    def test_the_pinned_image_is_returned_unchanged(self):
+        path = self.image(self.PAYLOAD)
+        with mock.patch.object(gate, "pinned_kernel", return_value=self.pinned(self.PAYLOAD)):
+            self.assertEqual(gate.verified_image(path), path)
+
+    def test_a_changed_byte_is_refused_before_the_boot(self):
+        changed = bytes([self.PAYLOAD[0] ^ 0xFF]) + self.PAYLOAD[1:]
+        path = self.image(changed)
+        with mock.patch.object(gate, "pinned_kernel", return_value=self.pinned(self.PAYLOAD)):
+            with self.assertRaisesRegex(gate.GateError, "has sha256 .* it was not booted"):
+                gate.verified_image(path)
+
+    def test_one_byte_more_or_less_is_refused(self):
+        path = self.image(self.PAYLOAD)
+        for delta in (-1, 1):
+            pin = self.pinned(self.PAYLOAD, size_delta=delta)
+            with mock.patch.object(gate, "pinned_kernel", return_value=pin):
+                with self.assertRaisesRegex(gate.GateError, "bytes, the pin records"):
+                    gate.verified_image(path)
+
+    def test_a_missing_image_names_the_fetch_target(self):
+        handle = tempfile.TemporaryDirectory()
+        self.addCleanup(handle.cleanup)
+        with mock.patch.dict(os.environ, {gate.NUCLEUS_CACHE[0]: handle.name}):
+            artifacts, reason = gate.kernel_artifacts()
+        self.assertIsNone(artifacts)
+        self.assertIn("make nucleus-kernel-fetch", reason)
+
+    def test_a_present_image_is_found_under_the_release_directory(self):
+        handle = tempfile.TemporaryDirectory()
+        self.addCleanup(handle.cleanup)
+        name, release, _sha256, _size = gate.pinned_kernel()
+        (Path(handle.name) / "release").mkdir()
+        (Path(handle.name) / "release" / name).write_bytes(b"x")
+        with mock.patch.dict(os.environ, {gate.NUCLEUS_CACHE[0]: handle.name}):
+            artifacts, reason = gate.kernel_artifacts()
+        self.assertIsNone(reason)
+        self.assertEqual(artifacts, (Path(handle.name) / "release" / name, release))
+
+    def test_a_pin_without_the_image_row_is_a_gate_error(self):
+        handle = tempfile.TemporaryDirectory()
+        self.addCleanup(handle.cleanup)
+        pin = Path(handle.name) / "pin.json"
+        pin.write_text(
+            json.dumps({"kernel": {"image": "vmlinuz-a", "release": "r"}, "artifacts": []}),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(gate.GateError, "names no pinned kernel image"):
+            gate.pinned_kernel(pin)
 
 
 class ArgumentTests(unittest.TestCase):

@@ -3,18 +3,14 @@
 
 //! The tracked kernel configuration fragment, tied to its producer.
 //!
-//! Milestone M26 applies `build/kernel/50-aegis-requirement.config` to a named
-//! base configuration and builds the result. That file is only a legitimate
-//! statement of the product requirement if it is what
-//! [`KernelRequirement::config_fragment`] renders from
-//! `build/kernel-requirement.json`; a hand-edited copy would let the build
-//! agree with a file instead of with the schema. These tests are the binding.
-//!
-//! `tools/verify_kernel_build.py` runs the fragment through the kernel's own
-//! kconfig and reads the produced configuration back from inside a guest. This
-//! suite runs on a machine with no kernel source and no emulator, so a checkout
-//! that cannot execute that gate still learns whether the tracked fragment
-//! still says what the payload says.
+//! Milestone M26 applied `build/kernel/50-aegis-requirement.config` to a named
+//! base configuration and built the result. D112 retired that build: the
+//! kernel the gates boot is the one Nucleus publishes against
+//! `build/kernel-requirement.json`. The fragment stays the Kconfig form of the
+//! requirement, and it is only a legitimate statement of it if it is what
+//! [`KernelRequirement::config_fragment`] renders from the payload; a
+//! hand-edited copy would agree with a file instead of with the schema. These
+//! tests are the binding.
 
 mod common;
 
@@ -192,7 +188,7 @@ fn no_reviewed_kernel_input_names_a_private_path() -> Fallible {
     let sources = [
         tracked_fragment()?,
         tracked_support()?,
-        reviewed("kernel/source.pin.json")?.1,
+        reviewed("kernel/nucleus-artifact.pin.json")?.1,
     ];
     for text in &sources {
         for marker in PRIVATE_MARKERS {
@@ -204,41 +200,25 @@ fn no_reviewed_kernel_input_names_a_private_path() -> Fallible {
 
 // --- Boundary -------------------------------------------------------------
 
-/// Boundary: the pin names the fragments the gate actually applies, in order.
+/// Boundary: the pinned Nucleus release is at or above the payload's ABI floor.
 ///
-/// The pin is the only tracked statement of what is built. A pin that listed a
-/// fragment the gate does not apply, or omitted one it does, would make the
-/// recorded build unreproducible from the repository alone.
+/// The kernel the latency fixture and the M10 gate boot is the one
+/// `build/kernel/nucleus-artifact.pin.json` pins (D112). A release older than
+/// the minimum the payload declares could not satisfy it whatever its
+/// configuration said, so the pin and the payload have to agree before any
+/// boot is attempted.
 #[test]
-fn the_pin_lists_both_fragments_in_the_order_they_are_applied() -> Fallible {
-    let pin = reviewed("kernel/source.pin.json")?.1;
-    let support = pin
-        .find("build/kernel/10-base-support.config")
-        .ok_or("the pin does not list the base-support fragment")?;
-    let requirement = pin
-        .find("build/kernel/50-aegis-requirement.config")
-        .ok_or("the pin does not list the requirement fragment")?;
-    assert!(support < requirement);
-    Ok(())
-}
-
-/// Boundary: the pinned release is at or above the payload's own ABI floor.
-///
-/// One step is all that is checked here: a source older than the minimum the
-/// payload declares could not satisfy it whatever the fragment said, so the
-/// pin and the payload have to agree before any build is attempted.
-#[test]
-fn the_pinned_release_is_not_below_the_payload_abi_floor() -> Fallible {
-    let pin = reviewed("kernel/source.pin.json")?.1;
+fn the_pinned_nucleus_release_is_not_below_the_payload_abi_floor() -> Fallible {
+    let pin = reviewed("kernel/nucleus-artifact.pin.json")?.1;
     let document: serde_json::Value = serde_json::from_str(&pin)?;
     let pinned = document
-        .get("version")
+        .pointer("/kernel/release")
         .and_then(serde_json::Value::as_str)
-        .ok_or("the pin records no version")?;
+        .ok_or("the pin records no kernel release")?;
     let requirement = shipped()?;
     let minimum = requirement.abi.minimum_release.to_string();
     let parse = |text: &str| -> Vec<u32> {
-        text.split('.')
+        text.split(['.', '-'])
             .map_while(|part| part.parse::<u32>().ok())
             .collect()
     };
@@ -246,5 +226,16 @@ fn the_pinned_release_is_not_below_the_payload_abi_floor() -> Fallible {
         parse(pinned) >= parse(&minimum),
         "pinned {pinned} is below the payload floor {minimum}"
     );
+    // The comparison admits the floor itself and refuses one step below it.
+    let floor = parse(&minimum);
+    let mut below = floor.clone();
+    let last = below
+        .last_mut()
+        .ok_or("the payload floor has no numeric part")?;
+    *last = last
+        .checked_sub(1)
+        .ok_or("the payload floor ends in zero")?;
+    assert!(floor >= parse(&minimum));
+    assert!(below < floor);
     Ok(())
 }
