@@ -36,11 +36,11 @@ Two rules follow from the clause and are applied below:
 | praetorctl | source commit `5d4acfb4e38d6d0e67704e8fb31f007d8e23ce3b` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `320b058d8cca48eb7ce29c67b19e2b0a1f1dd917`; the pin follows Praetor's `main` (see below) | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; a build input for praetorctl and, since M09, for the imago `make contract-fetch` builds, held to imago's own floor below | M00; M09 for the imago build |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
-| reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, run through `pipx run` | nothing | M00 |
-| markdownlint-cli2 | 0.23.2 | `.github/workflows/ci.yml`, `MARKDOWNLINT_VERSION`, run through `npx --yes`; separately locked by Praetor's `tools/markdownlint/package-lock.json` for `make docs-lint`, which `praetorctl audit` requires byte-for-byte | nothing | M00; the Praetor gate with the `7e7746a` pin |
-| yamllint | 1.38.0 | `.github/workflows/ci.yml`, `YAMLLINT_VERSION`, run through `pipx run` | nothing | M00 |
-| flake8 | 7.3.0 | `.github/workflows/ci.yml`, `FLAKE8_VERSION`, run through `pipx run` | nothing | M00 |
-| black | 26.5.1 | `.github/workflows/ci.yml`, `BLACK_VERSION`, run through `pipx run` | nothing | M00 |
+| reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, read by `tools/ci_lints.py`, run through `pipx run` by `make verify-lints`, a prerequisite of `make verify-all` | nothing | M00 |
+| markdownlint-cli2 | 0.23.2 | `.github/workflows/ci.yml`, `MARKDOWNLINT_VERSION`, read by `tools/ci_lints.py`, run through `npx --yes` by `make verify-lints`; separately locked by Praetor's `tools/markdownlint/package-lock.json` for `make docs-lint`, which `praetorctl audit` requires byte-for-byte | nothing | M00; the Praetor gate with the `7e7746a` pin |
+| yamllint | 1.38.0 | `.github/workflows/ci.yml`, `YAMLLINT_VERSION`, read by `tools/ci_lints.py`, run through `pipx run` by `make verify-lints`, a prerequisite of `make verify-all` | nothing | M00 |
+| flake8 | 7.3.0 | `.github/workflows/ci.yml`, `FLAKE8_VERSION`, read by `tools/ci_lints.py`, run through `pipx run` by `make verify-lints`, a prerequisite of `make verify-all` | nothing | M00 |
+| black | 26.5.1 | `.github/workflows/ci.yml`, `BLACK_VERSION`, read by `tools/ci_lints.py`, run through `pipx run` by `make verify-lints`, a prerequisite of `make verify-all` | nothing | M00 |
 | gitleaks | 8.30.1 | `.github/workflows/ci.yml`, `GITLEAKS_VERSION` plus the `GITLEAKS_SHA256` checksum of the release archive; scans every commit, reviewed false positives in `.gitleaksignore` | the dated `declared-linters` exception the 3bbde07 adoption wrote | the 3bbde07 pin, 2026-10-13 |
 | semgrep | 1.180.0 | `.github/workflows/ci.yml`, `SEMGREP_VERSION`, run through `pipx run` with the local rules in `.config/semgrep/hiss.yml` only and `--metrics=off` | the same exception | the 3bbde07 pin, 2026-10-13 |
 | trivy | 0.75.0 | `.github/workflows/ci.yml`, `TRIVY_VERSION` plus the `TRIVY_SHA256` checksum of the release archive; the binary, not `aquasecurity/trivy-action`, whose tags the March 2026 compromise rewrote (CVE-2026-33634) | the same exception | the 3bbde07 pin, 2026-10-13 |
@@ -1013,14 +1013,16 @@ one of two call sites, each with a deadline.
 These are run by a gate but pinned by nothing, so they are gaps recorded here
 rather than admissions:
 
-- `shellcheck`, run by the CI shell-lint step, comes from the runner image. No
-  version is pinned and none is asserted.
+- `shellcheck`, run by `make verify-lints`, comes from the runner image in CI
+  and from the workstation distribution locally. No version is pinned and none
+  is asserted; a missing `shellcheck` fails the target.
 - The glibc static archive M21's guest init links comes from the
   workstation's glibc package, recorded above and not pinned.
 - `python3`, which runs the preparation validator and its unit tests, comes from
   the runner image and from the workstation distribution.
-- `npx` and `pipx` are the delivery mechanism for four pinned linters; the
-  Node.js and Python runtimes behind them are the runner's.
+- `npx` and `pipx` are the delivery mechanism for five pinned linters; the
+  Node.js and Python runtimes behind them are the runner's. A missing launcher
+  fails `make verify-lints`.
 - `libdrm-dev` on the Verification gate's runner, which the pinned libva build
   compiles `libva-drm` against, comes from the runner's Ubuntu archive at
   whatever version it carries; only the libdrm floor of 2.4.75 that libva's
