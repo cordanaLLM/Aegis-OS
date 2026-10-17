@@ -17,6 +17,7 @@ PRAETORCTL ?= praetorctl
 verify-all:
 	python3 -B -m unittest discover -s tools -p 'test_*.py'
 	python3 tools/verify_preparation.py
+	python3 tools/verify_counterparts.py
 	python3 tools/verify_crate_pins.py
 	$(MAKE) --no-print-directory verify-systemd
 	$(MAKE) --no-print-directory verify-mkosi

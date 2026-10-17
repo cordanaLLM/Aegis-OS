@@ -100,6 +100,17 @@ unverified external contract in their own flags or ancestry, then toward
 milestones without hardware. blocked_by lists direct blockers only; unblocks is
 its exact inverse.
 
+A leaf crate is a workspace member that no other member depends on and that
+depends on no other member. Its own tests cannot catch a contract drift against
+the component on the other side of an edge, so the card of the component it
+belongs to carries one `counterpart_gaps` entry per edge: the crate, the
+relation and counterpart, the milestone whose exit criteria bring the pairing
+(`null` when none does) and the reason (issue #230).
+`tools/verify_counterparts.py` runs inside `make verify-all` and fails when a
+leaf crate or one of its edges has no entry, when an entry names a crate that
+now has a counterpart, or when an entry names a milestone that is unknown or
+already done; `tools/test_verify_counterparts.py` plants each of those cases.
+
 Cost scale:
 
 - trivial: hours, no new toolchain.
