@@ -31,6 +31,10 @@ build/*.schema.json text eol=lf
 ui/concordia-tokens/concordia-tokens.css text eol=lf
 crates/aegis-concordia/src/tokens.rs text eol=lf
 
+# tools/subtitle_fixture.py pins the M32 fixture clip by size and sha256; a
+# host-dependent line ending in the SubRip file would change the pinned bytes.
+crates/aegis-scaena/fixtures/subtitle-clip-90.* -text
+
 # BEGIN praetor managed attributes (praetorctl adopt)
 # praetorctl audit hashes these files; keep their checkout bytes the same on every platform.
 tools/figures/** text eol=lf
