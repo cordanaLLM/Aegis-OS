@@ -606,11 +606,11 @@ def checklist(target):
     """Return the repository's pull request checklist, as this bump satisfies it."""
     return [
         "- [x] Local verification passed: `make verify-all` (with its `docs-lint` "
-        "Documentation Governance step) exits 0 with `praetorctl` built from "
+        "Documentation Governance step and its `verify-lints` step at CI's pinned linter "
+        "versions) exits 0 with `praetorctl` built from "
         f"`{target[:7]}` with CI's build flags; `praetorctl compile-context --verify`, "
-        "`praetorctl audit`, `praetorctl flavor audit .`, markdownlint-cli2, yamllint, flake8, "
-        "black, `reuse lint` and `mkdocs build --strict` pass on the workstation's linters and "
-        "Go (CI re-runs its pinned ones), except any gate listed above as a skip",
+        "`praetorctl audit`, `praetorctl flavor audit .` and `mkdocs build --strict` pass, "
+        "except any gate listed above as a skip",
         "- [x] No new HISS-16 / NASA Power-of-10 infractions (`praetorctl audit`)",
         "- [x] 3D Tests included: no public interface changed",
         "- [x] Agent contexts regenerated from `AGENTS.md`, not hand-edited: "
@@ -1014,15 +1014,16 @@ def apply_pin(tree, plan, today):
     write_exact(page, rewrite_admission(read_exact(page), plan.pin, plan.target, today))
 
 
-def gate_commands(binary, markdownlint, mkdocs=None, site=None):
+def gate_commands(binary, mkdocs=None, site=None):
     """Return (name, argv, deadline) for every gate the bump has to pass.
 
     `make verify-all` also runs `node tools/markdownlint/verify.mjs`, the
-    Documentation Governance check, through its `docs-lint` prerequisite.
+    Documentation Governance check, through its `docs-lint` prerequisite, and
+    reuse, markdownlint-cli2, yamllint, flake8, black and shellcheck at the
+    versions ci.yml pins, through its `verify-lints` prerequisite.
     `mkdocs` is the Python of the documentation venv; without one the portal
     build is not a gate here and the caller reports it as a skip.
     """
-    black = ["black", "--check", "--line-length", "100", "tools", ".config/agent/hooks"]
     gates = (
         (
             "make verify-all",
@@ -1032,11 +1033,6 @@ def gate_commands(binary, markdownlint, mkdocs=None, site=None):
         ("compile-context --verify", [binary, "compile-context", "--verify"], DEADLINE_QUICK),
         ("audit", praetor_argv(binary, ("audit",)), DEADLINE_QUICK),
         ("flavor audit", [binary, "flavor", "audit", "."], DEADLINE_QUICK),
-        ("markdownlint-cli2", ["npx", "--yes", f"markdownlint-cli2@{markdownlint}"], DEADLINE_LINT),
-        ("yamllint", ["yamllint", "."], DEADLINE_LINT),
-        ("flake8", ["flake8", "."], DEADLINE_LINT),
-        ("black", black, DEADLINE_LINT),
-        ("reuse lint", ["reuse", "lint"], DEADLINE_LINT),
     )
     if mkdocs is None:
         return gates
@@ -1081,13 +1077,12 @@ def mkdocs_python(session, tree):
 
 def run_gates(session, tree):
     """Run every gate; return the SKIP lines, or raise with the failing lines."""
-    markdownlint = ci_env(read_exact(tree / CI_WORKFLOW), "MARKDOWNLINT_VERSION")
     mkdocs, reason = mkdocs_python(session, tree)
     skips = [] if mkdocs else [f"SKIP: mkdocs build --strict did not run: {reason}"]
     for line in skips:
         session.note(f"gate mkdocs build --strict: {line}")
     failures = []
-    gates = gate_commands(session.binary, markdownlint, mkdocs, session.cache / "site")
+    gates = gate_commands(session.binary, mkdocs, session.cache / "site")
     for name, argv, deadline in gates:
         result = session.run(argv, deadline, cwd=tree)
         skips += skip_lines(result.out + "\n" + result.err)
