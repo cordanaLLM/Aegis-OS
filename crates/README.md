@@ -224,9 +224,10 @@ D78 sweep in `aegis-forum-shell` keeps refusing it there. It is not published
 to any registry. `tests/admission.rs` reads gpui and `gpui_linux` back as one
 declaration each at the admitted zed rev and as that rev in the lock, refuses
 a branch, a tag or another rev, and refuses any licence expression in its
-closure that the test does not record; the closure's one MPL-2.0 package,
-option-ext, waits on the maintainer's licence decision, and nothing on this
-crate merges before it.
+closure that the test does not record. It records MPL-2.0 for option-ext
+0.2.0 and dwrote 0.11.5 alone (D113), holds each lock entry to the crates.io
+release and its index checksum, and fails on a third MPL-2.0 package; the
+licence table is in `docs/roadmap/toolchain-admission.md`.
 
 `aegis-scaena` carries its component's name and sits at the path the C18 row
 proposes, and **P17 remains a proposal all the same**: a pass inside

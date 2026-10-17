@@ -382,11 +382,15 @@
         }
       ],
       "cut": {
-        "class": "standalone",
+        "class": "core-and-adapter",
         "parts": [
           {
             "path": "crates/aegis-forum-shell",
             "ties": "os-free"
+          },
+          {
+            "path": "crates/aegis-forum-shell-gpui",
+            "ties": "os-bound"
           }
         ]
       },
@@ -1314,36 +1318,6 @@
         {
           "to": "P04",
           "relation": "MOUNT_LAYER_SURFACE"
-        }
-      ],
-      "counterpart_gaps": [
-        {
-          "crate": "aegis-scaena",
-          "relation": "MOUNT_SHELL_CANVAS",
-          "counterpart": "P05",
-          "milestone": "M28",
-          "reason": "aegis-scaena owns the request schema and both codecs (src/mount.rs); aegis-forum-shell sends no mount request. The gpui shell that sends it is M28's (E28-2, D82)."
-        },
-        {
-          "crate": "aegis-scaena",
-          "relation": "STREAM_DECODED_FRAME",
-          "counterpart": "P08",
-          "milestone": null,
-          "reason": "aegis-scaena attaches frames from its own P08 stand-in (src/decode.rs, M27); aegis-calliope produces no decoded-frame descriptor. No milestone's exit criteria bring it."
-        },
-        {
-          "crate": "aegis-scaena",
-          "relation": "ENFORCE_RUNTIME_A11Y",
-          "counterpart": "P12",
-          "milestone": null,
-          "reason": "aegis-scaena has no accessibility code to hold against the aegis-concordia tokens; no milestone's exit criteria bring it."
-        },
-        {
-          "crate": "aegis-scaena",
-          "relation": "MOUNT_LAYER_SURFACE",
-          "counterpart": "P04",
-          "milestone": null,
-          "reason": "aegis-scaena's layer surface targets the host session's compositor (D79, client half only); aegis-compositor serves no zwlr_layer_shell_v1, and no milestone plans one that does."
         }
       ],
       "cut": {

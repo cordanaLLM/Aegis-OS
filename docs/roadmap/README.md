@@ -5858,6 +5858,35 @@ against the decoder of `061bbde`.
   2026-10-17 with all six cases passing; M23 and M26 carry the dated evidence.
   D70's text stays as recorded.
 
+### Decision on the gpui licences (2026-10-17)
+
+- **D113** Which licences does M28 admit with gpui? E28-1 pins gpui and
+  gpui_linux at the zed commit `322cd509dcccaee1f6bc44725d270598ae8171ad`
+  (D102), and the member's closure (D78: every platform, every dependency
+  kind) carries one expression with no permissive arm: option-ext 0.2.0 under
+  MPL-2.0, reached through the font stack (zed-font-kit, dirs 6, dirs-sys).
+  It also takes self_cell 1.3.0 under Apache-2.0 OR GPL-2.0-only, links the
+  system FreeType (FTL OR GPL-2.0), and adds a second git source,
+  zed-industries/font-kit. Before this decision the test recorded MPL-2.0
+  for any package and the member's text held it for the maintainer.
+  **Decision (2026-10-17, controller id aegis-os-e28-1-gpui-licences,
+  paraphrased):** admit the gpui set. option-ext 0.2.0 is taken under MPL-2.0
+  unmodified, self_cell under its Apache-2.0 arm, FreeType under its FTL arm,
+  and zed-industries/font-kit is recorded as the second git source. Patching
+  option-ext later is a new decision, because MPL-2.0 is file-level copyleft.
+  Binding MPL-2.0 to option-ext alone then showed a second MPL-2.0 package the
+  old any-package entry had hidden: dwrote 0.11.5, which zed-font-kit reaches
+  on Windows only (`cargo metadata --filter-platform
+  x86_64-unknown-linux-gnu` resolves no dwrote). **Decision (2026-10-17,
+  controller id aegis-os-e28-1-dwrote-mpl, paraphrased):** dwrote 0.11.5 is
+  recorded under MPL-2.0 unmodified on the same terms, held to its lock-entry
+  checksum; patching it is a new decision.
+  `crates/aegis-forum-shell-gpui/tests/admission.rs` records MPL-2.0 for these
+  two packages alone, fails on a third, and holds each `Cargo.lock` entry to
+  the crates.io release and the checksum the crates.io index records for it,
+  with no override in the workspace manifest; the licence table in
+  `docs/roadmap/toolchain-admission.md` lists each arm.
+
 ## Evidence
 
 Bundle sha256: 8186bf0336e16764216396a147c536d96b3933901f5b2b81a4d0d3b74ffa25c6.
