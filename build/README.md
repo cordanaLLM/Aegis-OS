@@ -46,24 +46,22 @@ These are reviewed declarative inputs, not a built image. No image, artefact,
 signature or boot evidence is produced or claimed here. `mkosi summary` resolves
 configuration and prints it; no gate in this repository runs `mkosi build`.
 
-## Reviewed and gated (M26)
+## Reviewed (M26; the build retired by D112)
 
 | Path | What it declares |
 | :--- | :--- |
-| `kernel/source.pin.json` | the pinned Linux source: version, tarball digest, signature keys, the named base configuration, the fragment order and the expected kernel release |
 | `kernel/10-base-support.config` | the Kconfig and guest-boot prerequisites the requirement rows depend on; it states no product requirement |
 | `kernel/50-aegis-requirement.config` | the product requirement as a Kconfig fragment, byte-identical to what `KernelRequirement::config_fragment` renders from `kernel-requirement.json` |
 
-Decision D70 puts kernel construction here while Nucleus is a scaffold, for the
-same reason D56 keeps image-definition validation here while Imago is a
-scaffold. `make verify-kernel` verifies the pinned source's digest and
-signature, applies the two fragments to `x86_64_defconfig`, builds, boots the
-result in a guest and makes the guest report its own `/proc/config.gz`. It is
-**not** part of `make verify-all`: the reasoning is on the `verify-kernel`
-target in the `Makefile`, and what CI does re-run is the crate and Python tests
-that keep the fragment tied to the schema. Nothing it produces is a release
-artifact and nothing is written into this repository. The commands, the guest's
-own output and the scope limits are in `docs/build/kernel.md`.
+Decision D70 put kernel construction here while Nucleus was a scaffold, and
+`make verify-kernel` built and booted a kernel from a pinned `linux-7.2.5`
+source. Decision D112 (2026-10-17) retired that build: Nucleus publishes the
+kernel, `kernel/nucleus-artifact.pin.json` pins it, and the M23 latency fixture
+boots it as the M10 gate does. The source pin, the gate and its guest init were
+removed. The two fragments stay as the Kconfig form of the requirement, and
+`crates/aegis-fabrica-defs/tests/kernel_fragment.rs` still fails if they stop
+being what the schema renders. `docs/build/kernel.md` keeps the record of what
+the retired gate built.
 
 ## Reviewed and gated (M24)
 

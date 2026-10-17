@@ -27,7 +27,8 @@
 use aegis_calliope::{
     AEGIS_M26_GUEST, Declared, DeterminismVerdict, GUEST_WORST_WAKEUP_NS, HOST_WORST_WAKEUP_NS,
     KernelIdentity, MAX_KERNEL_RELEASE_LEN, Measured, MeasurementTool, NANOS_PER_MILLI,
-    PreemptionModel, REFERENCE_HOST, TARGET_RTL_LATENCY_MS, TARGET_RTL_LATENCY_NS, TierAttainment,
+    NUCLEUS_LUSORIS2_GUEST, PreemptionModel, REFERENCE_HOST, TARGET_RTL_LATENCY_MS,
+    TARGET_RTL_LATENCY_NS, TierAttainment,
 };
 
 /// The P07 critical-tier edge, in nanoseconds.
@@ -108,6 +109,14 @@ fn the_recorded_identities_carry_the_two_probe_lines() {
         "# CONFIG_PREEMPT_RT is not set"
     );
     assert_eq!(AEGIS_M26_GUEST.to_string(), "7.2.5-aegis-m26, PREEMPT_RT");
+    assert_eq!(
+        NUCLEUS_LUSORIS2_GUEST.to_string(),
+        "7.2.8-lusoris2-realtime, PREEMPT_RT"
+    );
+    assert_eq!(
+        NUCLEUS_LUSORIS2_GUEST.preemption().config_line(),
+        "CONFIG_PREEMPT_RT=y"
+    );
     assert_eq!(PreemptionModel::ALL.len(), 2);
 }
 
@@ -116,7 +125,7 @@ fn the_recorded_identities_carry_the_two_probe_lines() {
 #[test]
 fn the_recorded_releases_fit_the_uts_bound() {
     assert_eq!(MAX_KERNEL_RELEASE_LEN, 64);
-    for identity in [AEGIS_M26_GUEST, REFERENCE_HOST] {
+    for identity in [AEGIS_M26_GUEST, NUCLEUS_LUSORIS2_GUEST, REFERENCE_HOST] {
         assert!(
             identity.release_within_bound(),
             "{identity} is out of bound"

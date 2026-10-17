@@ -456,6 +456,17 @@ impl Measured<u64> {
 pub const AEGIS_M26_GUEST: KernelIdentity =
     KernelIdentity::new("7.2.5-aegis-m26", PreemptionModel::PreemptRt);
 
+/// The kernel cordanaLLM/nucleus published as `v7.2.8-realtime-lusoris2`, as
+/// the guest reported itself.
+///
+/// The latency fixture boots this kernel since D112 retired D70: the image is
+/// the one `build/kernel/nucleus-artifact.pin.json` pins, hashed against that
+/// pin before every boot. `uname -r` printed `7.2.8-lusoris2-realtime` and the
+/// kernel's own `/proc/config.gz` carried `CONFIG_PREEMPT_RT=y`, both read from
+/// inside the guest on 2026-10-17.
+pub const NUCLEUS_LUSORIS2_GUEST: KernelIdentity =
+    KernelIdentity::new("7.2.8-lusoris2-realtime", PreemptionModel::PreemptRt);
+
 /// The reference development host, as the same probe reported it.
 ///
 /// `uname -r` printed `7.2.4-1-cachyos` and the same probe script run against

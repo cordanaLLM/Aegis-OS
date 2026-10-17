@@ -46,14 +46,14 @@ Two rules follow from the clause and are applied below:
 | trivy | 0.75.0 | `.github/workflows/ci.yml`, `TRIVY_VERSION` plus the `TRIVY_SHA256` checksum of the release archive; the binary, not `aquasecurity/trivy-action`, whose tags the March 2026 compromise rewrote (CVE-2026-33634) | the same exception | the 3bbde07 pin, 2026-10-13 |
 | systemd (`systemd-repart`, `systemd-sysupdate`) | floor 261; reference profile `systemd 261 (261.3-1-arch)`, the value the outcomes were recorded on; the reference profile reads `systemd 262 (262-1-arch)` since 2026-09-25 | `tools/verify_systemd_definitions.py`, `SYSTEMD_FLOOR = 261` and `REFERENCE_PROFILE_SYSTEMD`; each tool is taken from `PATH`, else from `/usr/lib/systemd`, printed, and held to the floor by its own `--version` before the gate runs (`systemctl --version` is printed as a cross-check only); CI runs the gate inside the image pinned below, at systemd `262-1`, and again inside the floor image, at systemd `261.3-1` | nothing | M03 |
 | mkosi | 27; distribution package `extra/mkosi 27-1` on the reference profile | `build/mkosi.conf`, `MinimumVersion=27`, which mkosi itself enforces, and `tools/verify_mkosi_definitions.py`, `MKOSI_FLOOR = 27` and `REFERENCE_PROFILE_MKOSI`, read back from `mkosi --version` before the gate runs; CI runs the gate inside the image pinned below, at mkosi `27.1-1` | the M01 register's inherited `mkosi v24+` floor from export-007, which was a range rather than a pin and which no gate enforced | M18 (D14, D56) |
-| Linux source | `linux-7.2.5`, sha256 `55ddf0df8325d9dad96fcff7bd93977d22e3f50af06527572af59b77c7632b78` | `build/kernel/source.pin.json`; the digest is re-checked on every run and the detached signature is verified against key `647F28654894E3BD457199BE38DBBDC86092693E` | nothing; no kernel source was pinned before | M26 (D70) |
-| Kernel base configuration | `x86_64_defconfig` of the pinned source, plus two tracked fragments | `build/kernel/source.pin.json`; the requirement fragment is byte-identical to `KernelRequirement::config_fragment` and no full `.config` is tracked | nothing | M26 (D70) |
+| Linux source | none since D112 (2026-10-17); M26 pinned `linux-7.2.5`, sha256 `55ddf0df8325d9dad96fcff7bd93977d22e3f50af06527572af59b77c7632b78` | retired: `build/kernel/source.pin.json` and its gate were removed; the kernel the gates boot is the Nucleus release pinned in `build/kernel/nucleus-artifact.pin.json` | nothing | M26 (D70), retired by D112 |
+| Kernel base configuration | none since D112; M26 applied the two tracked fragments to `x86_64_defconfig` | retired with the source pin; the fragments stay, bound to the schema by `crates/aegis-fabrica-defs/tests/kernel_fragment.rs` | nothing | M26 (D70), retired by D112 |
 | clang (BPF target) | floor 19.0.0; reference profile `clang version 22.1.8`, distribution package `extra/clang 22.1.8-2` | `tools/verify_bpf_objects.py`, `CLANG_FLOOR` and `REFERENCE_PROFILE_CLANG`, read back from `clang --version` and `clang -print-targets` before anything is compiled | the M26 row recording clang as installed and **not** admitted, because no gate ran it; M19 runs it | M19 |
 | bpftool | floor 7.4.0; reference profile `bpftool v7.8.0`, distribution package `core/bpf 7.2.5-1` | `tools/verify_bpf_objects.py`, `BPFTOOL_FLOOR` and `REFERENCE_PROFILE_BPFTOOL`, read back from `bpftool version` | nothing | M19 |
 | libbpf (linked by the loader) | floor 1.5; reference profile `1.7.0`, distribution package `core/libbpf 1.7.0-1.1` | `tools/verify_bpf_objects.py`, `LIBBPF_FLOOR` and `REFERENCE_PROFILE_LIBBPF`, read back from `pkg-config --modversion libbpf` and again at runtime from `libbpf_version_string()` | the M01 register's `libbpf v1.8`, which was a reading of the wrong artefact (see below) | M19 |
 | llvm-strip | floor 19.0.0; reference profile LLVM 22.1.8, same `extra/clang 22.1.8-2` toolchain | `tools/verify_bpf_objects.py`, `LLVM_STRIP_FLOOR`, read back from `llvm-strip --version` | nothing | M19 |
 | rt-tests (`cyclictest`) | floor 2.10; reference profile `cyclictest V 2.10`, distribution package `rt-tests 2.10-1.1` from `cachyos-extra-znver4` | `tools/verify_latency_fixture.py`, `TOOLCHAIN`, read back from `cyclictest --help` before anything is measured | nothing; no latency tool was admitted before, and none was installed | M23 |
-| Realtime kernel source | the M26 pin reused unchanged: `linux-7.2.5` with `CONFIG_PREEMPT_RT=y` from `build/kernel/50-aegis-requirement.config` | `build/kernel/source.pin.json`; the guest reports the release and the option back from inside itself | the distribution `linux-rt` package D57 recommended, which is **not** downloaded, installed or booted here | M23 (D57, D70) |
+| Realtime kernel | Nucleus release `v7.2.8-realtime-lusoris2`: image `vmlinuz-7.2.8-lusoris2-realtime`, `kernel.release` `7.2.8-lusoris2-realtime`, `CONFIG_PREEMPT_RT=y` | `build/kernel/nucleus-artifact.pin.json`, the pin the M10 gate uses; the gate hashes the image against the pin's sha256 and size before every boot, and the guest reports the release and the option back from inside itself | M26's `linux-7.2.5` build (D70, retired by D112), and the distribution `linux-rt` package D57 recommended, which is **not** downloaded, installed or booted here | M23 (D57, D112) |
 | Firecracker | 1.17.0, release archive `firecracker-v1.17.0-x86_64.tgz` sha256 `06094a1108ae9e82aa4c23a775aa92758f53f1175d422270d9d6162cb9ade558`, binary sha256 `99ad0f5cd0514a88aad0e9ae8cfdb3cc3b4ab9d190e1194602406c786b5de7a5`, Apache-2.0 | `build/sandbox/firecracker.pin.json`; fetched by `make workstation-fetch`, hashed again and read back with `--version` before every run; the jailer is not used | the distribution package `firecracker 1.17.0-1.1` at `/usr/bin/firecracker`, which M06 probed and no gate runs | M21 (D58) |
 | Guest kernel for Firecracker | `vmlinux-6.18.44` from Firecracker's CI artifacts, sha256 `d8ced68bd61e27b6813e2c993cc53a4029c59e13210672180591c84109684fe4`, configuration sha256 `9fb2be18303d2f6e8ec35b3a20ecf1209f54a4ece10114a893cb37beabee7030` | `build/sandbox/firecracker.pin.json`; the gate hashes both and requires five configuration options before every run | nothing; no Firecracker guest was pinned before | M21 |
 
@@ -424,7 +424,13 @@ check. The image holds no mkosi; the mkosi gate keeps the main image.
 `FloorPinTests` and `FloorAdmissionPageTests` in
 `tools/test_definitions_container.py` read this table and the floor back.
 
-## The kernel build toolchain, and the source it builds (M26)
+## The kernel build toolchain, and the source it builds (M26, retired by D112)
+
+Retired on 2026-10-17 by D112: `tools/verify_kernel_build.py` and
+`tools/test_kernel_build.py` were removed, so no gate runs these tools and no
+test reads this table back. The table and the text below record the admission
+M26 held; the kernel the gates boot is now the Nucleus release in the M10
+section.
 
 Every row below is a tool `tools/verify_kernel_build.py` runs. Its floor is the
 floor the **pinned source itself declares** -- `scripts/min-tool-version.sh` and
@@ -536,18 +542,18 @@ repository. The exact installed package is `rt-tests 2.10-1.1`, read back with
 `--version` is not an option it accepts, which is why the gate reads the banner
 from `--help`.
 
-**The realtime kernel source row is a reuse, not a new pin, and it replaces a
-path this milestone deliberately did not take.** D57 recommended a distribution
-`linux-rt` package booted as a guest kernel. D70 then put kernel construction in
-this repository while Nucleus is a scaffold, and M26 built one with
-`CONFIG_PREEMPT_RT=y` from the pinned `linux-7.2.5` source. M23 consumes that
-image and nothing else: no `linux-rt` package is downloaded, installed or
-booted, and `pacman -Qq linux-rt` reports it is not installed, which the gate
-records. D57's actual constraint -- that the reference host is not modified --
-is therefore satisfied **by construction** rather than by a download-only
-procedure: the kernel is a file under `AEGIS_KERNEL_BUILD_DIR` that no package
-owns, no `/lib/modules` entry exists for, and nothing in this repository
-installs.
+**The realtime kernel row is the Nucleus release, and it replaces two paths.**
+D57 recommended a distribution `linux-rt` package booted as a guest kernel. D70
+then put kernel construction in this repository while Nucleus was a scaffold,
+and M23 first booted the `linux-7.2.5` kernel M26 built. D112 (2026-10-17)
+retired that build: the guest now boots `vmlinuz-7.2.8-lusoris2-realtime` from
+the Nucleus release the M10 gate pins, and the gate hashes it against
+`build/kernel/nucleus-artifact.pin.json` before every boot. No `linux-rt`
+package is downloaded, installed or booted, and `pacman -Qq linux-rt` reports it
+is not installed, which the gate records. D57's actual constraint -- that the
+reference host is not modified -- is therefore satisfied **by construction**:
+the kernel is a file under `AEGIS_NUCLEUS_KERNEL_DIR` that no package owns, no
+`/lib/modules` entry exists for, and nothing in this repository installs.
 
 What these rows do **not** claim: that a latency figure measured here qualifies
 hardware, that it bounds a worst case over anything but the run that produced
@@ -556,7 +562,7 @@ virtual CPU is scheduled by a host that is not realtime, so the guest figure is
 a composite; `docs/build/latency.md` records that and the rest of the
 methodology.
 
-### How the pinned source was verified
+### How M26's pinned source was verified (retired by D112)
 
 Two independent checks, both re-run by the gate on every invocation, and neither
 of them a claim that the digest in this page is trustworthy because it is
@@ -1134,13 +1140,9 @@ taken, no milestone may cite them as admitted toolchain.
   and additionally by mkosi itself: `MinimumVersion=` in `build/mkosi.conf` is
   read by the tool, so the floor cannot drift away from what the tool accepts
   without the gate failing.
-- The kernel rows are checked by `tools/test_kernel_build.py`, which asserts
-  that every tool name and reference version in the M26 table also appears in
-  the gate's `TOOLCHAIN` list, that the pinned digest, base configuration and
-  signing-key fingerprint appear on this page, and that every recorded
-  reference version is at or above its floor. `make verify-kernel` then reads
-  each version back from the tool itself before it builds anything, so the
-  evidence names the compiler that actually ran.
+- The M26 kernel build rows were checked by `tools/test_kernel_build.py` and
+  `make verify-kernel` until D112 removed both; they now record a retired
+  admission and nothing reads them back.
 - The M23 rows are checked by `tools/test_latency_fixture.py` the same way, and
   that test additionally holds the set of programs the latency gate is allowed
   to invoke at all. That set is the D57 statement in mechanical form: it

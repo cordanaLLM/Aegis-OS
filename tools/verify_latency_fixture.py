@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
-"""Measure wakeup latency on the M26 realtime guest and on the reference host.
+"""Measure wakeup latency on the Nucleus realtime guest and on the reference host.
 
-Milestone M23. Decision D70 keeps the guest kernel an interim source for this
-fixture: it is the kernel `make verify-kernel` builds while Nucleus is a
-scaffold, and the kernel the product ships is built by Nucleus against the M18
-schema once Nucleus is real. Decision D57 asks for the realtime kernel to be
-obtained without modifying the reference host; M26's kernel satisfies that by
-construction, because it is a file in a build directory that nothing installs,
-packages or boots. No distribution realtime package is downloaded here, and
-none is installed.
+Milestone M23. Decision D112 retired D70: the guest kernel is the one
+cordanaLLM/nucleus built and published, pinned by
+``build/kernel/nucleus-artifact.pin.json`` and fetched by
+``make nucleus-kernel-fetch``, not a kernel this repository builds. The image is
+hashed against the pin before the guest boots, and an image that differs is
+refused rather than measured. Decision D57 asks for the realtime kernel to be
+obtained without modifying the reference host; the pinned image satisfies that
+by construction, because it is a file in a cache directory that nothing
+installs, packages or boots. No distribution realtime package is downloaded
+here, and none is installed.
 
 Six cases, no simulation and no failure suppression:
 
-* ``latency/guest-preempt-rt`` boots M26's image and requires the guest to
-  report the recorded release and ``CONFIG_PREEMPT_RT=y`` from its own
-  ``/proc/config.gz``;
+* ``latency/guest-preempt-rt`` boots the pinned image and requires the guest to
+  report the pinned release, the release the crate records, and
+  ``CONFIG_PREEMPT_RT=y`` from its own ``/proc/config.gz``;
 * ``latency/host-not-preempt-rt`` runs the same probe script on the reference
   host and requires ``# CONFIG_PREEMPT_RT is not set``;
 * ``latency/host-unmodified`` records what D57 can be checked against without
@@ -31,10 +33,12 @@ Six cases, no simulation and no failure suppression:
 Nothing is built inside the repository. The guest tree and the retained JSON
 live under ``AEGIS_LATENCY_BUILD_DIR`` (default
 ``${XDG_CACHE_HOME:-$HOME/.cache}/aegis-latency``); the kernel image comes from
-``AEGIS_KERNEL_BUILD_DIR`` (default ``.../aegis-kernel``), which M26 produced.
+``AEGIS_NUCLEUS_KERNEL_DIR`` (default ``.../aegis-nucleus-kernel``), which
+``make nucleus-kernel-fetch`` fills and verifies.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -51,6 +55,10 @@ PROBE_SCRIPT = ROOT / "tools" / "guest" / "aegis-preempt-probe.sh"
 GUEST_INIT = ROOT / "tools" / "guest" / "aegis-latency-init.sh"
 TIER_SOURCE = ROOT / "crates" / "aegis-lictor" / "src" / "tier.rs"
 MEASURED_SOURCE = ROOT / "crates" / "aegis-calliope" / "src" / "measured.rs"
+NUCLEUS_PIN = ROOT / "build" / "kernel" / "nucleus-artifact.pin.json"
+NUCLEUS_CACHE = ("AEGIS_NUCLEUS_KERNEL_DIR", "aegis-nucleus-kernel")
+# The KernelIdentity in aegis-calliope that names the guest kernel.
+GUEST_IDENTITY = "NUCLEUS_LUSORIS2_GUEST"
 HOST_CONFIG = Path("/proc/config.gz")
 HOST_MODULES = Path("/lib/modules")
 
@@ -73,6 +81,8 @@ MAX_GUEST_LIBRARIES = 64
 MAX_PROBLEM_LINES = 24
 MAX_MODULE_DIRECTORIES = 64
 MAX_DIAGNOSTIC_LINES = 20
+HASH_CHUNK = 1 << 20
+MAX_HASH_CHUNKS = 1 << 12
 
 GUEST_MARK = "AEGIS-M23"
 GUEST_MEMORY = "2048"
@@ -210,14 +220,52 @@ def cache_dir(variable, name):
     return root / name
 
 
+def pinned_kernel(pin_path=NUCLEUS_PIN):
+    """Return (image name, release, sha256, size) the Nucleus pin records."""
+    try:
+        pin = json.loads(pin_path.read_text(encoding="utf-8"))
+        kernel = pin["kernel"]
+        row = next(row for row in pin["artifacts"] if row["name"] == kernel["image"])
+        return kernel["image"], kernel["release"], row["sha256"], row["size"]
+    except (OSError, ValueError, KeyError, TypeError, StopIteration) as error:
+        raise GateError(f"{pin_path.name} names no pinned kernel image: {error!r}") from error
+
+
 def kernel_artifacts():
-    """Return (bzImage, release) for the kernel M26 built, or a reason it is absent."""
-    base = cache_dir("AEGIS_KERNEL_BUILD_DIR", "aegis-kernel") / "out" / "positive"
-    image = base / "arch" / "x86" / "boot" / "bzImage"
-    release_file = base / "include" / "config" / "kernel.release"
-    if not image.is_file() or not release_file.is_file():
-        return None, f"{image} does not exist; run `make verify-kernel` first"
-    return (image, release_file.read_text(encoding="utf-8").strip()), None
+    """Return (image, release) for the pinned Nucleus kernel, or a reason it is absent."""
+    name, release, _sha256, _size = pinned_kernel()
+    image = cache_dir(*NUCLEUS_CACHE) / "release" / name
+    if not image.is_file():
+        return None, f"{image} does not exist; run `make nucleus-kernel-fetch` first"
+    return (image, release), None
+
+
+def file_sha256(path):
+    """Return the sha256 of the file at `path`, read in bounded chunks."""
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for _ in range(MAX_HASH_CHUNKS):
+            chunk = handle.read(HASH_CHUNK)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def verified_image(image):
+    """Return `image` when it is the pinned kernel image; raise GateError otherwise.
+
+    Called immediately before the boot, so an image replaced after the fetch
+    verified it is refused rather than measured.
+    """
+    _name, _release, sha256, size = pinned_kernel()
+    found = image.stat().st_size
+    if found != size:
+        raise GateError(f"{image} is {found} bytes, the pin records {size}; it was not booted")
+    digest = file_sha256(image)
+    if digest != sha256:
+        raise GateError(f"{image} has sha256 {digest}, the pin records {sha256}; it was not booted")
+    return image
 
 
 def rust_u64(source, pattern, label):
@@ -531,7 +579,7 @@ def report(name, problems, notes=()):
 
 
 def guest_identity_case(report_text, nonce, release):
-    """Case 1: the guest is the kernel M26 built, and it says so about itself."""
+    """Case 1: the guest is the pinned Nucleus kernel, and it says so about itself."""
     problems = []
     reported_nonce = guest_field(report_text, "NONCE")
     if reported_nonce != nonce:
@@ -540,13 +588,13 @@ def guest_identity_case(report_text, nonce, release):
             "it was not written by this boot and proves nothing about it"
         )
     reported = guest_field(report_text, "UNAME-R")
-    recorded = recorded_release("AEGIS_M26_GUEST")
+    recorded = recorded_release(GUEST_IDENTITY)
     host, absent = kernel_release()
     if host is None:
         print(f"SKIP latency/guest-preempt-rt: {absent}")
         return []
     if reported != release:
-        problems.append(f"the guest reports {reported!r}, not the built release {release!r}")
+        problems.append(f"the guest reports {reported!r}, not the pinned release {release!r}")
     if reported != recorded:
         problems.append(f"the guest reports {reported!r}; the crate records {recorded!r}")
     if reported == host:
@@ -787,7 +835,8 @@ def run_cases(base, image, release):
     edges = thresholds()
     print(f"     {len(edges)} thresholds read from the crates: {edges}")
     nonce = f"aegis-{os.getpid()}-{secrets.token_hex(NONCE_BYTES)}"
-    report_text = boot(image, build_initramfs(base), base, nonce)
+    initramfs = build_initramfs(base)
+    report_text = boot(verified_image(image), initramfs, base, nonce)
     (base / "guest" / "retained-report.txt").write_text(report_text, encoding="utf-8")
     failed = 1 if guest_identity_case(report_text, nonce, release) else 0
     failed += 1 if host_identity_case() else 0
@@ -807,9 +856,13 @@ def main():
     base = cache_dir("AEGIS_LATENCY_BUILD_DIR", "aegis-latency")
     base.mkdir(parents=True, exist_ok=True)
     (base / "guest").mkdir(parents=True, exist_ok=True)
-    print(f"Latency fixture gate (M23, D57, D70, development evidence only). Work tree: {base}")
+    print(f"Latency fixture gate (M23, D57, D112, development evidence only). Work tree: {base}")
     reasons = check_toolchain()
-    artifacts, absent = kernel_artifacts()
+    try:
+        artifacts, absent = kernel_artifacts()
+    except GateError as error:
+        print(f"FAIL: the gate could not run: {error}")
+        return 1
     if absent:
         reasons.append(absent)
     if not HOST_CONFIG.exists():
@@ -829,8 +882,8 @@ def main():
         print(f"FAIL: {failed} latency case(s) did not match their recorded outcome.")
         return 1
     print(
-        "PASS: latency fixture on the reference profile (M23, D57, D70). Figures "
-        "were measured in a guest running the kernel M26 builds and on the host. "
+        "PASS: latency fixture on the reference profile (M23, D57, D112). Figures "
+        "were measured in a guest running the pinned Nucleus kernel and on the host. "
         "Nothing was installed and no package owns the image; /boot was not read, "
         "so no claim is made about bootloader entries. The boot, hardware and "
         "release gates remain blocked."

@@ -2,7 +2,7 @@ SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
 .PHONY: verify-all verify-rust verify-systemd verify-mkosi definitions-fetch definitions-fetch-floor verify-a11y a11y-fetch verify-contract \
-	contract-fetch verify-kernel verify-bpf verify-latency verify-boot verify-display verify-sources \
+	contract-fetch verify-bpf verify-latency verify-boot verify-display verify-sources \
 	verify-nucleus-kernel nucleus-kernel-fetch verify-workstation workstation-fetch verify-reuse verify-lints \
 	readiness test build boot release install-praetor-bump uninstall-praetor-bump
 
@@ -211,55 +211,12 @@ verify-contract:
 contract-fetch:
 	python3 tools/verify_contract_pair.py --fetch
 
-# The kernel build gate (M26, D70): the pinned linux source is verified, the
-# tracked fragments are applied to x86_64_defconfig, the result is compiled and
-# booted in a guest, and the guest reports its own configuration back.
-#
-# It is deliberately NOT part of verify-all, and the omission is the decision
-# rather than an oversight:
-#
-#   * verify-all is the per-turn gate. This one downloads 160 MB, extracts 1.4 GB
-#     and compiles a kernel; on the reference profile's 32 threads that is
-#     about a minute and a half of wall clock and several gigabytes of scratch,
-#     which is the wrong cost for a gate that runs before every conclusion;
-#   * the CI runner has no kernel toolchain, no /dev/kvm and no emulator, so
-#     wiring it into verify-all would put a step into CI that can only skip.
-#     A gate that always skips is not a gate;
-#   * nothing this target produces is an input to anything verify-all checks.
-#     The binding that does need checking everywhere -- that the tracked
-#     fragment is what the M18 schema renders -- is a crate test
-#     (crates/aegis-fabrica-defs/tests/kernel_fragment.rs) and a Python test
-#     (tools/test_kernel_build.py), and both already run inside verify-all.
-#
-# So: verify-all proves the fragment still states the requirement; this target
-# proves a kernel built from it satisfies the requirement. Run it by hand when
-# the fragment, the pin or the payload changes. It never suppresses a failure.
-#
-# A host that cannot run it has two outcomes, and they are not the same claim:
-#
-#   * a tool that is missing, or below the floor the pinned source declares,
-#     prints 'SKIP: <reason>; the kernel build gate did not run.' and exits 0,
-#     which is the convention verify-systemd and verify-mkosi already use. An
-#     exit 0 from this target is therefore evidence only when the case lines
-#     are above it; with no toolchain it means nothing was verified, not that
-#     a kernel was built. Observed with pahole off PATH: one SKIP line, exit 0;
-#   * a host that has the toolchain but cannot obtain the pinned source -- no
-#     network and no cached tarball -- prints 'FAIL: the gate could not run:'
-#     and exits 1, so make fails. An unverifiable source is a refusal, not a
-#     skip: the supply-chain check is the point of the target.
-#
-# The build tree is AEGIS_KERNEL_BUILD_DIR, default
-# ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-kernel. Nothing is written into the
-# repository, nothing is installed, and the output is never a release artifact.
-verify-kernel:
-	python3 tools/verify_kernel_build.py
-
 # The eBPF verifier gate (M19): the tracked objects under bpf/ are compiled with
 # clang -target bpf and put through the RUNNING kernel's verifier, with the
 # verifier log retained for every load, positive and negative.
 #
-# It is deliberately NOT part of verify-all, for the same reason verify-kernel is
-# not, plus one this target has of its own:
+# It is deliberately NOT part of verify-all: it needs a kernel and a privilege the
+# CI runner does not have, plus one reason this target has of its own:
 #
 #   * it needs CAP_BPF and CAP_PERFMON. The gate drops to the caller's own uid
 #     with exactly that capability set through `sudo setpriv`, so it needs
@@ -297,17 +254,17 @@ verify-kernel:
 verify-bpf:
 	python3 tools/verify_bpf_objects.py
 
-# The latency fixture gate (M23, D57, D70): the kernel M26 built is booted in a
-# guest, cyclictest measures wakeup latency inside it and again on the reference
+# The latency fixture gate (M23, D57, D112): the Nucleus kernel the pin in
+# build/kernel/nucleus-artifact.pin.json names is hashed against that pin and
+# booted in a guest, cyclictest measures wakeup latency inside it and again on the reference
 # host with the identical argument vector, and every figure is reported against
 # the P07 tier edges and the P08 target with the kernel that produced it.
 #
-# It is deliberately NOT part of verify-all, for the reasons verify-kernel is
-# not, plus two of its own:
+# It is deliberately NOT part of verify-all, for two reasons:
 #
-#   * it consumes verify-kernel's output. Without a built bzImage under
-#     AEGIS_KERNEL_BUILD_DIR there is nothing to boot, so on a checkout that has
-#     not run `make verify-kernel` this target can only stand down;
+#   * it consumes nucleus-kernel-fetch's output. Without the pinned image under
+#     AEGIS_NUCLEUS_KERNEL_DIR there is nothing to boot, so on a checkout that
+#     has not run `make nucleus-kernel-fetch` this target can only stand down;
 #   * the CI runner has no /dev/kvm, no emulator and no rt-tests, so wiring it
 #     into verify-all would put a step into CI that can only skip. A gate that
 #     always skips is not a gate.
@@ -321,7 +278,7 @@ verify-bpf:
 #
 # A host that cannot run it prints 'SKIP: <reason>; the latency fixture gate did
 # not run.' and exits 0, the convention verify-systemd, verify-mkosi,
-# verify-kernel and verify-bpf already use. An exit 0 from this target is
+# verify-bpf and verify-nucleus-kernel already use. An exit 0 from this target is
 # therefore evidence only when the case lines are above it. It never suppresses
 # a failure.
 #
@@ -332,7 +289,8 @@ verify-bpf:
 #
 # The guest tree and the retained JSON go to AEGIS_LATENCY_BUILD_DIR, default
 # ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-latency. The kernel image comes from
-# AEGIS_KERNEL_BUILD_DIR. Nothing is written into the repository.
+# AEGIS_NUCLEUS_KERNEL_DIR, and an image whose sha256 or size differs from the
+# pin is refused before any boot. Nothing is written into the repository.
 #
 # A pass is development evidence on the reference profile. It closes no hardware
 # gate: the guest's virtual CPU is scheduled by a host that is not realtime, so

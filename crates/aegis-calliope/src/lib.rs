@@ -154,7 +154,7 @@ pub use crate::latency::{
 pub use crate::measured::{
     AEGIS_M26_GUEST, DeterminismVerdict, GUEST_WORST_WAKEUP_NS, HOST_WORST_WAKEUP_NS,
     KernelIdentity, MAX_KERNEL_RELEASE_LEN, Measured, MeasurementTool, NANOS_PER_MILLI,
-    PreemptionModel, REFERENCE_HOST, TARGET_RTL_LATENCY_NS, TierAttainment,
+    NUCLEUS_LUSORIS2_GUEST, PreemptionModel, REFERENCE_HOST, TARGET_RTL_LATENCY_NS, TierAttainment,
 };
 pub use crate::plugin::{
     MAX_PLUGIN_SLOTS, PluginFormat, PluginHost, PluginSandboxSlot, PluginSlotId, PluginStage,

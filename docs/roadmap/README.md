@@ -2278,6 +2278,21 @@ Evidence:
   action_gate is M10's controlled comparison. docs/build/kernel.md records the
   runs.
 
+- Dated 2026-10-17, appended after done (D112); no exit criterion and no epic
+  text changes. D112 retired this milestone's build:
+  build/kernel/source.pin.json, tools/verify_kernel_build.py,
+  tools/test_kernel_build.py, tools/guest/aegis-readback-init.sh and the make
+  verify-kernel target were removed, and the kernel the gates boot is the
+  Nucleus release pinned in build/kernel/nucleus-artifact.pin.json, which M10
+  passed on 2026-10-11 and M23 measured on 2026-10-17. The two fragments stay as
+  the Kconfig form of the requirement:
+  crates/aegis-fabrica-defs/tests/kernel_fragment.rs still requires the
+  requirement fragment to be byte-identical to what
+  KernelRequirement::config_fragment renders, and now requires the pinned
+  Nucleus release to be at or above the payload's ABI floor. The evidence above
+  records what the retired gate did and is unchanged; docs/build/kernel.md and
+  docs/roadmap/toolchain-admission.md mark the build retired.
+
 Epics:
 
 - **E26-1 Pinned source and configuration fragment**. Requirements: REQ-P07-01,
@@ -2333,6 +2348,35 @@ the admitted latency tool there, then run it again on the reference host and
 record that the host is not realtime. The wording said 'the distribution
 realtime kernel' before D70 moved kernel construction into this repository; no
 distribution kernel is downloaded or booted.
+
+- Dated 2026-10-17, appended after done (D112); no exit criterion and no epic
+  text changes. The guest kernel is now the Nucleus release
+  v7.2.8-realtime-lusoris2 that build/kernel/nucleus-artifact.pin.json pins for
+  M10, in place of the kernel M26 built under D70.
+  tools/verify_latency_fixture.py reads the image name, kernel.release, sha256
+  and size from that pin, takes the image from AEGIS_NUCLEUS_KERNEL_DIR, which
+  make nucleus-kernel-fetch fills, and hashes it against the pin immediately
+  before the boot. make verify-latency on the reference profile on 2026-10-17
+  exited 0 with all six cases PASS: the guest reported uname -r
+  7.2.8-lusoris2-realtime, uname -v '#lusoris2 SMP PREEMPT_RT Fri Sep 25
+  14:37:14 UTC 2026' and CONFIG_PREEMPT_RT=y from its own /proc/config.gz, and
+  measured 50000 cycles, min 434 ns, avg 18580 ns, max 1626276 ns, exceeding the
+  critical edge and satisfying the interactive, frame and RTL edges; the host,
+  7.2.10-1-cachyos, measured min 452 ns, avg 9886 ns, max 303656 ns and reached
+  four kernel-not-realtime verdicts; pacman reports no owner for the image,
+  linux-rt is not installed, and /lib/modules holds no entry for the guest
+  release. The host carried other work at a load average near 29. Planted
+  defects, each run through the real gate: the image with one byte flipped exits
+  1 with 'has sha256 71f414c2..., the pin records 4cf748d5...; it was not
+  booted', the image one byte longer exits 1 with 'is 17388545 bytes, the pin
+  records 17388544; it was not booted', and an empty cache prints a SKIP naming
+  make nucleus-kernel-fetch and exits 0. tools/test_latency_fixture.py (59
+  tests) holds the pin reading, the pre-boot refusal of a changed byte and of a
+  size one byte off either way, the missing-image reason and the recorded
+  identity NUCLEUS_LUSORIS2_GUEST in crates/aegis-calliope/src/measured.rs; with
+  both pre-boot comparisons disabled two of them fail. The figure constants and
+  AEGIS_M26_GUEST keep the 2026-09-13 run they were measured on.
+  docs/build/latency.md records the run.
 
 Epics:
 
@@ -5793,6 +5837,26 @@ against the decoder of `061bbde`.
   literal assertions in aegis-hephaestus, aegis-ludus and aegis-minerva read
   the pin. This supersedes the `rust-version` rule of M27 criterion 2 and
   E27-3's boundary; their accepted text and evidence stay as recorded.
+
+### Decision on the Nucleus kernel (2026-10-17)
+
+- **D112** Does Aegis keep building its own kernel now that Nucleus publishes
+  one? D70 put kernel construction here while Nucleus was a scaffold, M26 built
+  `linux-7.2.5` with the requirement fragments, and M23 measured latency on that
+  build. Nucleus has since published `v7.2.8-realtime-lusoris2`, built to the
+  D107 requirement; M10 pins it and every M10 case passed on it on 2026-10-11.
+  Options: keep both kernels; move M23 onto the Nucleus release and retire the
+  local build; or retire the build and leave M23 unmeasured until later.
+  Recommended: move M23 and retire the build. Why: a second construction path
+  keeps a kernel no product ships under test, and an M23 without a guest run
+  would leave its fixture unexercised. **Decision (2026-10-17, controller id
+  aegis-os-117-retire-scope, paraphrased):** move the M23 fixture onto the
+  Nucleus release, run it, then retire D70 and remove the source pin and the
+  build gate in one change. The flip of the product-input record and the imago
+  re-vendor are a later change across repositories, announced to the imago
+  owner first. D56 stays until M11. The fixture ran on the Nucleus guest on
+  2026-10-17 with all six cases passing; M23 and M26 carry the dated evidence.
+  D70's text stays as recorded.
 
 ## Evidence
 
