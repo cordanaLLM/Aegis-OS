@@ -1663,7 +1663,7 @@
     {
       "id": "M25",
       "title": "GPU host slices on the reference profile: DMA-BUF and VFIO",
-      "rank": 23,
+      "rank": 24,
       "state": "ready",
       "blocked_by": [
         "M08",
@@ -1882,7 +1882,7 @@
     {
       "id": "M28",
       "title": "P05 native shell on gpui: layer surface, AT-SPI tree, frame time",
-      "rank": 24,
+      "rank": 25,
       "state": "ready",
       "blocked_by": [
         "M16",
@@ -1980,7 +1980,7 @@
     {
       "id": "M29",
       "title": "P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher",
-      "rank": 25,
+      "rank": 26,
       "state": "blocked",
       "blocked_by": [
         "M28",
@@ -2571,7 +2571,7 @@
     {
       "id": "M30",
       "title": "P05 canvas accessibility: semantics, pointer alternatives, text scale",
-      "rank": 26,
+      "rank": 27,
       "state": "blocked",
       "blocked_by": [
         "M28"
@@ -2630,7 +2630,7 @@
     {
       "id": "M31",
       "title": "P12 D76 heads-up theme: reduced motion, security states, flash limit",
-      "rank": 27,
+      "rank": 28,
       "state": "blocked",
       "blocked_by": [
         "M28"
@@ -2689,8 +2689,8 @@
     {
       "id": "M32",
       "title": "P17 Scaena subtitle timing on a fixture clip with audio and subtitles",
-      "rank": 28,
-      "state": "ready",
+      "rank": 23,
+      "state": "done",
       "blocked_by": [
         "M27"
       ],
@@ -2725,6 +2725,13 @@
           ],
           "acceptance": "Positive: a fixture clip with a timed subtitle track presents each subtitle within 100 ms of its timecode, measured against the wp_presentation timestamp of the frame it accompanies. Negative: a subtitle presented 150 ms late fails. Boundary: 100 ms passes and 101 ms fails."
         }
+      ],
+      "evidence": [
+        "Disclosure, in the shape M18 recorded: no exit criterion, epic or the cheapest exit was rewritten. Two points differ from the letter of the bar and are recorded instead. (1) On 2026-10-17 the host session's KWin had the NVIDIA card as its main device (renderD128) and the gate skipped on it (run r20261017T194646-392c), so the evidence run went to a second KWin 6.8.0-1.1 on the virtual backend, started under the user session with KWIN_RENDER_NODES=/dev/dri/renderD130 in its own environment and bound to the Intel card (kernel driver xe); its wp_presentation timestamps come from KWin's virtual output clock, not a scanout, and no host setting changed. (2) The case lines keep M27's fixed label, which names the host session's compositor; docs/build/display.md, The recorded subtitle run, names the compositor that served the run and the commands that started it.",
+        "Criterion 1 (2026-10-17), the fixture clip: crates/aegis-scaena/fixtures/subtitle-clip-90.mjpeg (279,517 bytes, 90 frames from testsrc), subtitle-clip-90.wav (288,044 bytes, 3 s of a 1 kHz sine at 48,000 Hz) and subtitle-clip-90.srt (157 bytes, three cues written for Aegis), generated with ffmpeg n9.0.2 whose two commands are recorded as provenance in docs/build/display.md and as argument vectors in tools/subtitle_fixture.py, which pins all three sizes and digests and runs inside make verify-all (#307). The files carry the project licence through REUSE.toml and are marked -text in .gitattributes, so a checkout that converts line endings keeps the pinned bytes. Audio and video are sibling streams on one timeline, so audio synchronization holds by construction and is not measured (ledger aegis-os-m32-clip-form).",
+        "Criterion 2 and E32-1 (2026-10-17) on run r20261017T194814-f961 of make verify-display (reference profile; logs kept under ~/.cache/aegis-display/r20261017T194814-f961): the subtitles child decoded the 90 frames under iHD on the compositor's main device 226:130 (renderD130, kernel driver xe), presented them paced to 30 frames per second with a largest per-frame slip of 1 ms, and passed subtitle/cue-1-within-100ms (timecode 500 ms, presented offset 483 ms), subtitle/cue-2-within-100ms (1200 ms, 1183 ms) and subtitle/cue-3-within-100ms (2000 ms, 1983 ms), each offset the wp_presentation timestamp of the frame the cue's start falls on, measured from frame 0; the negative subtitle/planted-150ms-late-refused refused cue 2 moved 150 ms later as late. The boundary, 100 ms passing and 101 ms failing, is held by crates/aegis-scaena/tests/subtitle_timing.rs (#306). Every wait has a deadline: the pacing sleep is capped at 100 ms per frame and each presentation wait keeps M27's deadline.",
+        "Criterion 3 (2026-10-17), the gate: the subtitles mode of aegis-scaena-display runs inside make verify-display between run and driver-probe, under the same SKIP convention, and tools/verify_display.py refuses to start when the subtitle fixture fails its pins; tools/test_verify_display.py and tools/test_display_slice.py cover that integration and tools/test_subtitle_fixture.py the provenance, all inside make verify-all. docs/build/display.md records the run, and the REQ-P17-08 row of docs/roadmap/requirements.md names M32 (E32-1).",
+        "Criterion 4 (2026-10-17), labelling (D79): the subtitles child prints that it is client-half development evidence and that subtitle text is not rasterised, so each subtitle's presentation time is that of the frame its start timecode falls on. A pass closes no hardware, accessibility or release gate."
       ]
     },
     {
