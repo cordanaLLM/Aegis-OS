@@ -30,6 +30,15 @@
           "relation": "PRODUCES_UKI_IMAGE"
         }
       ],
+      "counterpart_gaps": [
+        {
+          "crate": "aegis-fabrica-defs",
+          "relation": "PRODUCES_UKI_IMAGE",
+          "counterpart": "P02",
+          "milestone": "M11",
+          "reason": "The UKI is built by Imago, not by this crate: aegis-fabrica-defs parses the repart and sysupdate definitions and the product input manifest, and produces no image. aegis-janus-lifecycle models the A/B slot transfer with a stubbed transfer and reads no image either. M11 brings the first image/UKI back from Imago and exercises the A/B transfer on it (E11-4)."
+        }
+      ],
       "candidate_sources": [
         "blueprints/[Report P01] Project Fabrica - OS Build System & UKI Synthesis.md"
       ],
@@ -92,6 +101,36 @@
           "relation": "PROVIDES_TPM2_ATTESTATION"
         }
       ],
+      "counterpart_gaps": [
+        {
+          "crate": "aegis-janus-lifecycle",
+          "relation": "PRODUCES_UKI_IMAGE",
+          "counterpart": "P01",
+          "milestone": "M11",
+          "reason": "aegis-janus-lifecycle stubs the transfer it consumes and aegis-fabrica-defs produces no image (the UKI is Imago's); M11 brings the first image/UKI and its A/B transfer (E11-4)."
+        },
+        {
+          "crate": "aegis-janus-lifecycle",
+          "relation": "ATTEST_GAME_TRANSACTION",
+          "counterpart": "P11",
+          "milestone": null,
+          "reason": "aegis-ludus encodes the receipt (src/contracts/transaction_receipt.rs) for a TPM2 PCR quote, but aegis-janus-lifecycle has no attestation code to receive it; no milestone's exit criteria bring it, and M20's TPM2 slice covers P02 and P06 only."
+        },
+        {
+          "crate": "aegis-janus-lifecycle",
+          "relation": "TRIGGER_SYSUPDATE_ROLLBACK",
+          "counterpart": "P16",
+          "milestone": null,
+          "reason": "aegis-athena builds aegis_athena::PromotionTrigger (src/contracts/promotion.rs), but aegis-janus-lifecycle has no decoder for it: its machine moves only on the Event values its own callers offer. No milestone's exit criteria bring it."
+        },
+        {
+          "crate": "aegis-janus-lifecycle",
+          "relation": "PROVIDES_TPM2_ATTESTATION",
+          "counterpart": "P06",
+          "milestone": "M20",
+          "reason": "Neither side holds attestation code: aegis-janus-lifecycle records the edge only in a comment (src/clock.rs), and aegis-justitia names a Tpm2RsaPss algorithm label but signs nothing. M20 brings TPM2 audit-record signing on swtpm."
+        }
+      ],
       "candidate_sources": [
         "blueprints/[Report P02] Project Janus & Vallum - Partition Geometry & Storage Security.md"
       ],
@@ -143,6 +182,22 @@
         {
           "to": "P15",
           "relation": "ZERO_COPY_MEDIA_INGEST"
+        }
+      ],
+      "counterpart_gaps": [
+        {
+          "crate": "aegis-vulcan",
+          "relation": "GPUDIRECT_WEIGHT_STREAMING",
+          "counterpart": "P09",
+          "milestone": "M12",
+          "reason": "aegis-vulcan encodes WeightStreamDescriptor (src/contracts/weight_stream.rs), but aegis-minerva loads no model and streams no weights, so nothing decodes it. M12 brings the P03 to P09 transfer path in the booted image (E12-2, REQ-P09-04)."
+        },
+        {
+          "crate": "aegis-vulcan",
+          "relation": "ZERO_COPY_MEDIA_INGEST",
+          "counterpart": "P15",
+          "milestone": "M12",
+          "reason": "aegis-vulcan encodes MediaIngestDescriptor (src/contracts/media_ingest.rs), but aegis-hestia has no ingest decoder. M12 brings the DMA-BUF paths in the booted image (E12-1, REQ-P15-02 and REQ-P15-03)."
         }
       ],
       "candidate_sources": [
@@ -738,6 +793,29 @@
           "relation": "ENFORCE_RUNTIME_A11Y"
         }
       ],
+      "counterpart_gaps": [
+        {
+          "crate": "aegis-concordia",
+          "relation": "CONSUMES_DESIGN_TOKENS",
+          "counterpart": "P05",
+          "milestone": "M28",
+          "reason": "aegis-concordia holds the generated theme constants, but aegis-forum-shell paints nothing and records the edge only as metadata (src/tokens.rs). The gpui shell that compiles the constants is M28's (D101)."
+        },
+        {
+          "crate": "aegis-concordia",
+          "relation": "ENFORCE_A11Y_STANDARDS",
+          "counterpart": "P15",
+          "milestone": null,
+          "reason": "aegis-concordia carries the token values and the focus-ring floor; aegis-hestia has no accessibility code to hold against them. No milestone's exit criteria bring it."
+        },
+        {
+          "crate": "aegis-concordia",
+          "relation": "ENFORCE_RUNTIME_A11Y",
+          "counterpart": "P17",
+          "milestone": null,
+          "reason": "aegis-scaena has no accessibility code. M28 runs the live AT-SPI suite (REQ-P17-06) against the P05 shell's tree, not against aegis-scaena; no milestone's exit criteria bring it."
+        }
+      ],
       "candidate_sources": [
         "blueprints/[Report P12] Project Concordia - Accessible Sovereign Design System & EN 301 549 Conformance.md",
         "scaffold/ui/concordia-tokens/concordia-tokens.css"
@@ -915,6 +993,36 @@
           "relation": "REGISTER_PIP_OVERLAY"
         }
       ],
+      "counterpart_gaps": [
+        {
+          "crate": "aegis-hestia",
+          "relation": "ZERO_COPY_MEDIA_INGEST",
+          "counterpart": "P03",
+          "milestone": "M12",
+          "reason": "aegis-vulcan encodes the ingest descriptor; aegis-hestia has no decoder for it. M12 brings the DMA-BUF paths in the booted image (E12-1)."
+        },
+        {
+          "crate": "aegis-hestia",
+          "relation": "ENFORCE_A11Y_STANDARDS",
+          "counterpart": "P12",
+          "milestone": null,
+          "reason": "aegis-hestia has no accessibility code to hold against the aegis-concordia tokens; no milestone's exit criteria bring it."
+        },
+        {
+          "crate": "aegis-hestia",
+          "relation": "RENDER_GEOMETRY_MICROFRONTEND",
+          "counterpart": "P14",
+          "milestone": null,
+          "reason": "aegis-hephaestus encodes its viewport payload (src/contracts/viewport.rs); aegis-hestia has no decoder for it. No milestone's exit criteria bring it."
+        },
+        {
+          "crate": "aegis-hestia",
+          "relation": "REGISTER_PIP_OVERLAY",
+          "counterpart": "P04",
+          "milestone": null,
+          "reason": "aegis-hestia encodes OverlayRegistration (src/contracts/overlay_registration.rs); aegis-compositor decodes only aegis-calliope's DMA-BUF stream. No milestone plans a P04 that serves zwlr_layer_shell_v1 (D79)."
+        }
+      ],
       "candidate_sources": [
         "blueprints/[Report P15] Project Hestia - Sovereign Productivity & Native App Engine.md",
         "scaffold/crates/aegis-hestia/src/main.rs",
@@ -1034,6 +1142,36 @@
         {
           "to": "P04",
           "relation": "MOUNT_LAYER_SURFACE"
+        }
+      ],
+      "counterpart_gaps": [
+        {
+          "crate": "aegis-scaena",
+          "relation": "MOUNT_SHELL_CANVAS",
+          "counterpart": "P05",
+          "milestone": "M28",
+          "reason": "aegis-scaena owns the request schema and both codecs (src/mount.rs); aegis-forum-shell sends no mount request. The gpui shell that sends it is M28's (E28-2, D82)."
+        },
+        {
+          "crate": "aegis-scaena",
+          "relation": "STREAM_DECODED_FRAME",
+          "counterpart": "P08",
+          "milestone": null,
+          "reason": "aegis-scaena attaches frames from its own P08 stand-in (src/decode.rs, M27); aegis-calliope produces no decoded-frame descriptor. No milestone's exit criteria bring it."
+        },
+        {
+          "crate": "aegis-scaena",
+          "relation": "ENFORCE_RUNTIME_A11Y",
+          "counterpart": "P12",
+          "milestone": null,
+          "reason": "aegis-scaena has no accessibility code to hold against the aegis-concordia tokens; no milestone's exit criteria bring it."
+        },
+        {
+          "crate": "aegis-scaena",
+          "relation": "MOUNT_LAYER_SURFACE",
+          "counterpart": "P04",
+          "milestone": null,
+          "reason": "aegis-scaena's layer surface targets the host session's compositor (D79, client half only); aegis-compositor serves no zwlr_layer_shell_v1, and no milestone plans one that does."
         }
       ],
       "candidate_sources": [],

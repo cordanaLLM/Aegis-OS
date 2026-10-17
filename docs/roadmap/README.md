@@ -100,6 +100,17 @@ unverified external contract in their own flags or ancestry, then toward
 milestones without hardware. blocked_by lists direct blockers only; unblocks is
 its exact inverse.
 
+A leaf crate is a workspace member that no other member depends on and that
+depends on no other member. Its own tests cannot catch a contract drift against
+the component on the other side of an edge, so the card of the component it
+belongs to carries one `counterpart_gaps` entry per edge: the crate, the
+relation and counterpart, the milestone whose exit criteria bring the pairing
+(`null` when none does) and the reason (issue #230).
+`tools/verify_counterparts.py` runs inside `make verify-all` and fails when a
+leaf crate or one of its edges has no entry, when an entry names a crate that
+now has a counterpart, or when an entry names a milestone that is unknown or
+already done; `tools/test_verify_counterparts.py` plants each of those cases.
+
 Cost scale:
 
 - trivial: hours, no new toolchain.
@@ -434,6 +445,16 @@ the contract states what reaching it means: the gate stays down, and while it is
 down every gated action is refused. No required directive, exit criterion or
 epic changed. Nothing installs the unit, so the limit is a declared contract and
 no restart behaviour was measured.
+
+Dated 2026-10-17, appended after done (issue #232): the unit contract now
+writes its start rate limit down in `[Unit]`, `StartLimitIntervalSec=10s` and
+`StartLimitBurst=5`, the manager defaults systemd 262 reports and D108 relied
+on. `contracts::unit::review` refuses a unit that omits either setting, sets it
+twice (the older `StartLimitInterval=` spelling counts as the interval), sets
+it outside `[Unit]` or gives it anything but a positive whole number. No
+required directive, exit criterion or epic changed. Nothing installs the unit,
+so no restart and no start-limit stop was observed; that runtime case needs a
+booted image and stays open on M20.
 
 Not delivered, and not claimed: any transport. There is no D-Bus connection, no
 socket, no eBPF program and no TPM2 signing; a signature field is a field
