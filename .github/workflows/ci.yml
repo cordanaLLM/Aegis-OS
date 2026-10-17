@@ -270,12 +270,26 @@ jobs:
       # built is kept in an Actions cache keyed by the pin's hash, and the fetch
       # loads it, and checks it like a built one, only after every attempt
       # against the server failed. A green fetch with no cached copy saves one.
+      # A pull request's cache is scoped to its merge ref, so the run on main
+      # after a pin change cannot restore it (run 39029749159): a pull request
+      # whose cache missed also uploads the image as an artifact named after
+      # the key, and a run whose cache missed takes the newest such artifact
+      # from this repository first (tools/definitions_handoff.py).
       - name: Restore the definition gates' saved image
         id: definitions-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/definitions-cache/main
           key: "definitions-${{ hashFiles('build/definitions/toolchain.pin.json') }}"
+
+      - name: Take the definition gates' image a merged pull request built
+        if: steps.definitions-cache.outputs.cache-hit != 'true'
+        env:
+          AEGIS_DEFINITIONS_CACHE: ${{ runner.temp }}/definitions-cache/main
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 tools/definitions_handoff.py
+          --name "definitions-${{ hashFiles('build/definitions/toolchain.pin.json') }}"
 
       - name: Fetch the definition gates' pinned image
         env:
@@ -288,6 +302,18 @@ jobs:
         with:
           path: ${{ runner.temp }}/definitions-cache/main
           key: "definitions-${{ hashFiles('build/definitions/toolchain.pin.json') }}"
+
+      - name: Hand the definition gates' image to the run after the merge
+        if: >-
+          steps.definitions-cache.outputs.cache-hit != 'true'
+          && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: "definitions-${{ hashFiles('build/definitions/toolchain.pin.json') }}"
+          path: ${{ runner.temp }}/definitions-cache/main
+          retention-days: 14
+          compression-level: 0
+          if-no-files-found: error
 
       # make verify-all runs the crate gate itself once a workspace manifest is
       # present, so the cargo evidence sits inside this one job. That is
@@ -320,6 +346,15 @@ jobs:
           path: ${{ runner.temp }}/definitions-cache/floor
           key: "definitions-floor-${{ hashFiles('build/definitions/toolchain-floor.pin.json') }}"
 
+      - name: Take the systemd floor image a merged pull request built
+        if: steps.definitions-floor-cache.outputs.cache-hit != 'true'
+        env:
+          AEGIS_DEFINITIONS_CACHE: ${{ runner.temp }}/definitions-cache/floor
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 tools/definitions_handoff.py --floor
+          --name "definitions-floor-${{ hashFiles('build/definitions/toolchain-floor.pin.json') }}"
+
       - name: Fetch the systemd floor image
         env:
           AEGIS_DEFINITIONS_CACHE: ${{ runner.temp }}/definitions-cache/floor
@@ -331,6 +366,18 @@ jobs:
         with:
           path: ${{ runner.temp }}/definitions-cache/floor
           key: "definitions-floor-${{ hashFiles('build/definitions/toolchain-floor.pin.json') }}"
+
+      - name: Hand the systemd floor image to the run after the merge
+        if: >-
+          steps.definitions-floor-cache.outputs.cache-hit != 'true'
+          && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: "definitions-floor-${{ hashFiles('build/definitions/toolchain-floor.pin.json') }}"
+          path: ${{ runner.temp }}/definitions-cache/floor
+          retention-days: 14
+          compression-level: 0
+          if-no-files-found: error
 
       - name: Systemd definition gate at the floor
         env:
