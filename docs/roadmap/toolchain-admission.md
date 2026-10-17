@@ -467,6 +467,21 @@ went through that path with podman: saved (529 MB), removed, then loaded through
 a planted outage and checked at its pinned versions; without the archive the
 same run failed and named both sources.
 
+An Actions cache saved by a pull request run is scoped to that pull request's
+merge ref, so the run on main after a pin change cannot restore it: run
+39029749159 on main found no floor image although #291 had saved one, and failed
+with both sources down. A pull request run whose cache missed therefore also
+uploads the image as an artifact named after the cache key
+(`actions/upload-artifact` v7.0.2, kept 14 days), and a run whose cache missed
+first runs `tools/definitions_handoff.py`. It takes the newest unexpired
+artifact of that name whose run came from this repository, never a fork, and
+extracts only the archive the pin names into the cache directory; the fetch then
+treats it as its second source, with the same version check. Finding none is a
+printed skip, and the fetch still fails by name when the server is down too.
+`tools/test_definitions_handoff.py` covers the planted double outage with only a
+handed-off image present, its twin without one, and fork, expired and malformed
+artifacts.
+
 A run that sets
 `AEGIS_DEFINITIONS_CONTAINER=1` then runs each gate inside that image with
 `--pull=never`, `--network=none`, a read-only root file system and the
