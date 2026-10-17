@@ -19,9 +19,18 @@ TIER_EXTERNAL = 3
 TIER_RELEASE = 4
 
 
+def external_nodes(row):
+    """Return the plan nodes outside this repository that wait on a milestone (#222).
+
+    Each is counted once in the reach of every milestone that leads to it, like
+    a milestone of this roadmap; the prefix keeps a node id apart from a milestone id.
+    """
+    return {f"external:{entry['node']}" for entry in row.get("external_unblocks", [])}
+
+
 def transitive_unblocks(rows):
     """Count what each milestone makes reachable, with a bounded sweep."""
-    direct = {row["id"]: set(row.get("unblocks", [])) for row in rows}
+    direct = {row["id"]: set(row.get("unblocks", [])) | external_nodes(row) for row in rows}
     reach = {key: set(value) for key, value in direct.items()}
     for _ in range(len(rows)):
         changed = False

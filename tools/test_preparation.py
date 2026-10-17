@@ -758,6 +758,45 @@ class PreparationTests(unittest.TestCase):
         self.write_roadmap([first, untitled])
         self.assertEqual(len(check.verify_roadmap()), 2)
 
+    def test_external_unblocks_name_outside_nodes_with_a_source(self):
+        """Positive: a node with its source; negative: malformed entries; boundary: none."""
+        source = "cordanaLLM/praetor ADR-0001"
+        entry = {"node": "K4", "source": source}
+        self.write_roadmap([self.milestone("M00", 0, "ready", external_unblocks=[entry])])
+        self.assertEqual(len(check.verify_roadmap()), 1)
+        for planted in (
+            {"node": "K4"},
+            {"node": "K4", "source": " "},
+            {"node": "K4", "source": source, "why": "x"},
+            {"node": "M01", "source": source},
+            {"node": "k4", "source": source},
+            {"node": 4, "source": source},
+            "K4",
+        ):
+            self.write_roadmap([self.milestone("M00", 0, "ready", external_unblocks=[planted])])
+            with self.assertRaises(ValueError):
+                check.verify_roadmap()
+        self.write_roadmap([self.milestone("M00", 0, "ready", external_unblocks=[entry, entry])])
+        with self.assertRaises(ValueError):
+            check.verify_roadmap()
+        for not_a_list in ({"K4": source}, {}, ""):
+            self.write_roadmap([self.milestone("M00", 0, "ready", external_unblocks=not_a_list)])
+            with self.assertRaises(ValueError):
+                check.verify_roadmap()
+        self.write_roadmap([self.milestone("M00", 0, "ready", external_unblocks=[])])
+        self.assertEqual(len(check.verify_roadmap()), 1)
+
+    def test_readiness_names_the_outside_nodes_a_milestone_unblocks(self):
+        """Positive: nodes listed; boundary: no field and an empty list print nothing extra."""
+        entries = [{"node": "K4", "source": "a"}, {"node": "S22a", "source": "b"}]
+        row = self.milestone("M00", 0, "ready", external_unblocks=entries)
+        self.assertTrue(check.milestone_line(row).endswith("; unblocks outside: K4, S22a"))
+        for row in (
+            self.milestone("M00", 0, "ready"),
+            self.milestone("M00", 0, "ready", external_unblocks=[]),
+        ):
+            self.assertNotIn("outside", check.milestone_line(row))
+
     def test_planning_prose_ends_on_a_full_stop(self):
         """Positive: finished sentences; negative: a sliced rationale; boundary: trailing space."""
 

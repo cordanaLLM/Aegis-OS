@@ -63,6 +63,45 @@ class RankingTests(unittest.TestCase):
         self.assertEqual(order[1], "M02")
         self.assertEqual(reach["M02"], 1)
 
+    def test_an_outside_node_waiting_on_a_milestone_moves_it_up(self):
+        """Planted: one external_unblocks entry turns the order of two equal milestones."""
+        rows = [
+            milestone("M00", 0, state="done", unblocks=["M01", "M02"]),
+            milestone("M01", 1, blocked_by=["M00"]),
+            milestone("M02", 2, blocked_by=["M00"]),
+        ]
+        self.write(rows)
+        loaded, absent = ranker.load()
+        _, order, diffs, _ = ranker.drift(loaded, absent)
+        self.assertEqual((order, diffs), (["M00", "M01", "M02"], []))
+        rows[2]["external_unblocks"] = [{"node": "K4", "source": "an issue"}]
+        self.write(rows)
+        loaded, absent = ranker.load()
+        _, order, diffs, reach = ranker.drift(loaded, absent)
+        self.assertEqual(order, ["M00", "M02", "M01"])
+        self.assertEqual(reach["M02"], 1)
+        self.assertTrue(diffs)
+
+    def test_an_outside_node_counts_once_through_every_path(self):
+        """Boundary: reached directly and through a child, a node is one unit of reach."""
+        outside = [{"node": "K4", "source": "an issue"}]
+        rows = [
+            milestone("M01", 0, unblocks=["M02"], external_unblocks=outside),
+            milestone("M02", 1, blocked_by=["M01"], external_unblocks=outside),
+        ]
+        reach = ranker.transitive_unblocks(rows)
+        self.assertEqual(reach, {"M01": 2, "M02": 1})
+
+    def test_an_outside_node_named_like_a_milestone_stays_apart(self):
+        """Negative: an outside node never merges with the milestone of the same name."""
+        rows = [
+            milestone(
+                "M01", 0, unblocks=["M02"], external_unblocks=[{"node": "M02", "source": "x"}]
+            ),
+            milestone("M02", 1, blocked_by=["M01"]),
+        ]
+        self.assertEqual(ranker.transitive_unblocks(rows)["M01"], 2)
+
     def test_tiers_order_local_before_hardware_external_and_release(self):
         rows = [
             milestone("M00", 0, state="done", unblocks=["M01", "M02", "M03", "M04"]),

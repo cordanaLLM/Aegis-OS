@@ -138,6 +138,18 @@ Unblocking value counts the milestones that become reachable once a milestone is
 done. The subsystem graph (export-062) is the graph of record; the two
 architecture documents (export-002, export-003) are annotated disputes.
 
+Work outside this repository can wait on a milestone too. A milestone records
+it as external_unblocks: a list of entries, each holding the plan node id of
+the waiting work and the source that names the dependency, an issue or decision
+record of the consuming repository. tools/rank_roadmap.py counts each such
+node once in the reach of every milestone that leads to it, and make readiness
+prints the nodes after the milestone's blockers. Entries come only from such a
+source, never from a guess; a milestone of this roadmap belongs in unblocks
+instead. tools/verify_preparation.py refuses an entry without a node id or a
+source, a node id shaped like a milestone id, and a node listed twice; the
+cases are in tools/test_preparation.py and tools/test_rank_roadmap.py
+(issue #222).
+
 Toolchain admission rule: every milestone that runs a new tool names that tool
 in its exit criteria and selects it through the template matrix with a pinned
 version before any gate runs. The admissions are:
