@@ -18,6 +18,7 @@ verify-all:
 	python3 -B -m unittest discover -s tools -p 'test_*.py'
 	python3 tools/verify_preparation.py
 	python3 tools/verify_counterparts.py
+	python3 tools/verify_cut_classes.py
 	python3 tools/verify_crate_pins.py
 	python3 tools/verify_recursion.py
 	$(MAKE) --no-print-directory verify-systemd
@@ -556,6 +557,7 @@ verify-reuse:
 
 readiness:
 	python3 tools/verify_preparation.py --readiness
+	python3 tools/verify_cut_classes.py --print
 
 # The local praetor pin auto-bump (docs/build/praetor-bump.md). It installs
 # three systemd user units for the invoking user, never root:

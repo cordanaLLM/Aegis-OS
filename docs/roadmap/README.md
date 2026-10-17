@@ -114,6 +114,20 @@ leaf crate or one of its edges has no entry, when an entry names a crate that
 now has a counterpart, or when an entry names a milestone that is unknown or
 already done; `tools/test_verify_counterparts.py` plants each of those cases.
 
+Each component card also carries a `cut` record: what a build without the
+operating system would keep of it (issue #221). Its parts are the workspace
+crates, `bpf/*.bpf.c` programs and `ui/` directories the component holds, each
+with measured `ties`: a crate is `os-bound` when it ships a dependency outside
+the allow-list in `tools/verify_cut_classes.py` or an `os-bound` crate, a BPF
+program always is, a `ui/` token directory never is. The class follows from the
+parts: `standalone` (all `os-free`), `core-and-adapter` (both) or `os-only`
+(all `os-bound`). The class covers code in the tree only; a daemon a component
+still plans is no part until its code lands. `tools/verify_cut_classes.py` runs
+inside `make verify-all` and fails on a recorded tie or class that differs from
+the measured one and on a crate, program or `ui/` directory that is the part of
+no component or of two; `make readiness` prints each component's class and
+parts, and `tools/test_verify_cut_classes.py` plants each refusal.
+
 The pinned Praetor engine decides Rust self-recursion by a bare name only and
 lists mutual, nested, qualified, trait-impl, macro-template and macro-input
 recursion as known misses (cordanaLLM/praetor#1320). Until a pin adopts the
