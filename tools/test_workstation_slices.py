@@ -625,7 +625,7 @@ class ReportTests(unittest.TestCase):
         pair = re.search(r"PAIR_CASES: \[&str; 6\] = \[(.*?)\];", rapl, re.S).group(1)
         self.assertEqual(tuple(re.findall(r'"([^"]+)"', pair)), gate.RAPL_CASES)
         self.assertIn(f'OBSERVED_WRAP_CASE: &str = "{gate.WRAP_CASE}"', rapl)
-        cases = re.search(r"HOST_CASES: \[&str; 6\] = \[(.*?)\];", host_run, re.S).group(1)
+        cases = re.search(r"HOST_CASES: \[&str; 7\] = \[(.*?)\];", host_run, re.S).group(1)
         self.assertEqual(tuple(re.findall(r'"([^"]+)"', cases)), gate.SANDBOX_CASES)
 
 

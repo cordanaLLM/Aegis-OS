@@ -32,12 +32,13 @@ const USAGE: &str = "usage: aegis-vesta-sandbox run <firecracker> <kernel> <init
 /// The line the guest prints outside a microVM.
 const NOT_INIT: &str = "aegis-vesta-guest: not process 1; it runs only as a microVM's init\n";
 
-/// The six cases a sandbox run prints, in order.
-const CASES: [&str; 6] = [
+/// The seven cases a sandbox run prints, in order.
+const CASES: [&str; 7] = [
     "sandbox/over-limit-memory-refused",
     "sandbox/boot-and-round-trip",
     "sandbox/vsock-transport",
     "sandbox/sixty-fourth-accepted",
+    "sandbox/footprint",
     "sandbox/sixty-fifth-refused",
     "sandbox/teardown",
 ];
