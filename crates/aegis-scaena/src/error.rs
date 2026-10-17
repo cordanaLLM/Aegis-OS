@@ -279,6 +279,39 @@ pub enum SurfaceError {
     Closed,
 }
 
+/// Why a `SubRip` subtitle stream or cue was refused (REQ-P17-08, E32-1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
+pub enum SubtitleError {
+    /// The input is empty or contains no cues.
+    #[error("the subtitle input is empty")]
+    Empty,
+    /// The input is longer than [`crate::subtitle::MAX_SRT_BYTES`].
+    #[error("the subtitle input exceeds the byte bound")]
+    TooLong,
+    /// The stream contains more than [`crate::subtitle::MAX_CUES`] cues.
+    #[error("the subtitle stream exceeds the maximum admitted cue count")]
+    TooManyCues,
+    /// A cue's text is longer than [`crate::subtitle::MAX_CUE_TEXT_BYTES`].
+    #[error("cue text exceeds the byte bound")]
+    TextTooLong,
+    /// A timecode is malformed (syntax, separators, minutes/seconds > 59, ms > 999).
+    #[error("malformed timecode")]
+    MalformedTimecode,
+    /// A cue's end time is at or before its start time.
+    #[error("cue end time is at or before start time")]
+    EndBeforeStart,
+    /// A cue's start time is before the previous cue's start time.
+    #[error("cue start time is before previous cue start time")]
+    CueStartBeforePrevious,
+    /// A cue index is not sequential (expected previous + 1, starting at 1).
+    #[error("cue index is not sequential")]
+    InvalidIndex,
+    /// A cue block structure or framing is malformed.
+    #[error("malformed cue block structure")]
+    MalformedBlock,
+}
+
 /// Why a wait on the Wayland connection failed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 #[non_exhaustive]
