@@ -4647,7 +4647,7 @@ dependencies = [
 [[package]]
 name = "tornus-geometry"
 version = "0.1.0"
-source = "git+https://github.com/plurano/tornus?rev=b2710c8ef386275db352bab06bfa4b8eb6859411#b2710c8ef386275db352bab06bfa4b8eb6859411"
+source = "git+https://github.com/plurano/tornus?rev=79b268b511e529e49d71c089ad17f1e76d82f6d7#79b268b511e529e49d71c089ad17f1e76d82f6d7"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
