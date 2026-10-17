@@ -364,10 +364,17 @@ and E24-1's positive half asked that the artifact's digest and signature verify
 before boot "whether it is a pinned upstream distribution image or an Imago
 return". This harness proves that for the upstream kind only:
 
-- The pin schema, `aegis.m24.boot-artifact-pin.v1`, implements one signature
-  scheme, `gpg-clearsigned-checksum`, a producer version of the form
+- The pin schema, `aegis.m24.boot-artifact-pin.v1`, implements two signature
+  schemes: `gpg-clearsigned-checksum` and `cosign-keyless-sha256sums`.
+  `gpg-clearsigned-checksum` verifies a producer version of the form
   `MAJOR-MINOR.RESPIN` and Fedora's `SHA256 (<file>) = <digest>` CHECKSUM line.
-  `load_pin` refuses any other scheme, and a unit test holds that refusal.
+  `cosign-keyless-sha256sums` verifies `cosign verify-blob --offline` on
+  `SHA256SUMS` against the exact certificate identity, OIDC issuer, GitHub
+  workflow SHA and workflow ref, and parses coreutils `SHA256SUMS` records.
+  `load_pin` refuses any other scheme, and unit tests hold that refusal.
+  Wiring `cosign-keyless-sha256sums` into `verify_artifact` and `fetch_pinned`,
+  and the raw backing, version, file and boot shape, come with the record
+  that amends E11-2, not with this change.
 - The Imago return's signature form is not pinned. Imago's proposed result
   schema, `imago.p01.product-result.v1` (its ADR-0020), carries an
   `image-digest` and a `signature-ref` string. It was to be agreed in M09;

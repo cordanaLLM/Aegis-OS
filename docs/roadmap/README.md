@@ -3958,6 +3958,25 @@ Evidence:
   unchanged and one is added. Nothing else in this milestone changed; it stays
   ready by the register rule while its external BLOCKED-until criterion holds,
   and this entry is not evidence that any criterion is met.
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, on 2026-10-18
+  under controller decision aegis-os-e11-1-scheme-scope, E11-1's acceptance
+  gained its last sentence, which names the pin scheme. Before it, E11-1 ended
+  'This half moved from M24's criterion 2 and E24-1, whose requirements it
+  shares.' and named no scheme. The scheme is the signature form Imago's
+  aegis-build workflow produces at commit
+  6fd9c170be9b2038b17b26751560b5e17dbb36f8 (cosign sign-blob --bundle
+  SHA256SUMS.bundle SHA256SUMS, keyless, verified there with the workflow
+  identity and that issuer). It is not a relaxation: it fixes which signature is
+  accepted and adds the workflow SHA and ref, which the producer's own check
+  omits. tools/verify_boot_harness.py reads the scheme from a pin and builds the
+  cosign argument vector, and tools/test_boot_harness.py refuses a wrong issuer,
+  identity, workflow SHA or ref, a missing bundle, a failed or silent cosign run
+  and a SHA256SUMS with zero or two lines for the file, against a stubbed
+  cosign. No Imago artifact was verified or booted; the positive case waits for
+  an Imago build whose boot passes. Nothing else in this milestone changed; it
+  stays ready by the register rule while its external BLOCKED-until criterion
+  holds, and this entry is not evidence that any criterion is met.
 
 Epics:
 
@@ -3971,7 +3990,12 @@ Epics:
   signature verify before the boot, a tampered digest or a bad signature is
   refused before boot and not during it, and the upstream pin M24 recorded still
   verifies unchanged. This half moved from M24's criterion 2 and E24-1, whose
-  requirements it shares.
+  requirements it shares. The pin scheme is cosign-keyless-sha256sums: cosign
+  verify-blob --offline checks the release's SHA256SUMS against its bundle for
+  the exact certificate identity, the GitHub Actions OIDC issuer (host
+  token.actions.githubusercontent.com), the GitHub workflow SHA and the workflow
+  ref the pin records, and the artifact's digest is the one SHA256SUMS line
+  naming its file.
 - **E11-2 The Imago artifact runs through the M24 harness, changed only by the
   D85 pin scheme**. Requirements: REQ-P01-05, REQ-P01-01. Acceptance: Positive:
   the Imago artifact is fed to the M24 harness with no change to the harness
