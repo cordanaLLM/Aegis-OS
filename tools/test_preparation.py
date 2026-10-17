@@ -797,6 +797,54 @@ class PreparationTests(unittest.TestCase):
         ):
             self.assertNotIn("outside", check.milestone_line(row))
 
+    def blocked_outside(self, state, entries, contract=True):
+        return self.milestone(
+            "M00", 0, state, external_blockers=entries, needs_external_contract=contract
+        )
+
+    def test_external_blockers_hold_a_milestone_blocked(self):
+        """Positive: an outside release blocks; negative: malformed or ignored; boundary: none."""
+        entry = {"release": "amussis v0.1.0", "source": "issue #225"}
+        self.write_roadmap([self.blocked_outside("blocked", [entry])])
+        self.assertEqual(len(check.verify_roadmap()), 1)
+        self.write_roadmap([self.blocked_outside("done", [entry], contract=True)])
+        with self.assertRaises(ValueError):
+            check.verify_roadmap()
+        for planted in (
+            self.blocked_outside("ready", [entry]),
+            self.blocked_outside("blocked", [entry], contract=False),
+            self.blocked_outside("blocked", [entry, entry]),
+            self.blocked_outside("blocked", entry),
+            self.blocked_outside("blocked", [{"release": "amussis v0.1.0"}]),
+            self.blocked_outside("blocked", [{"release": " ", "source": "issue #225"}]),
+            self.blocked_outside("blocked", [dict(entry, why="x")]),
+            self.blocked_outside("blocked", [{"release": 1, "source": "issue #225"}]),
+        ):
+            self.write_roadmap([planted])
+            with self.assertRaises(ValueError):
+                check.verify_roadmap()
+        for empty in ([], None):
+            row = self.milestone("M00", 0, "ready")
+            if empty is not None:
+                row["external_blockers"] = empty
+            self.write_roadmap([row])
+            self.assertEqual(len(check.verify_roadmap()), 1)
+        self.write_roadmap([self.milestone("M00", 0, "blocked", external_blockers=[])])
+        with self.assertRaises(ValueError):
+            check.verify_roadmap()
+
+    def test_readiness_names_the_outside_releases_a_milestone_waits_on(self):
+        """Positive: releases listed; boundary: no field prints nothing extra."""
+        entries = [
+            {"release": "amussis v0.1.0", "source": "a"},
+            {"release": "imago v1", "source": "b"},
+        ]
+        row = self.blocked_outside("blocked", entries)
+        self.assertTrue(
+            check.milestone_line(row).endswith("; waits outside: amussis v0.1.0, imago v1")
+        )
+        self.assertNotIn("waits", check.milestone_line(self.milestone("M00", 0, "ready")))
+
     def test_planning_prose_ends_on_a_full_stop(self):
         """Positive: finished sentences; negative: a sliced rationale; boundary: trailing space."""
 

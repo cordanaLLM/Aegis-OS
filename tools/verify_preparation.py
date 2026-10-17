@@ -352,6 +352,45 @@ def verify_external_unblocks(row):
         raise ValueError(f"Milestone {row['id']} lists an external_unblocks node twice")
 
 
+# external_blockers: releases outside this repository a milestone waits on, each
+# with the issue or decision record that names the wait. A milestone of this
+# roadmap belongs in blocked_by. An open entry holds the milestone blocked, so
+# readiness shows the wait rather than a ready milestone with a missing input.
+EXTERNAL_BLOCKER_KEYS = {"release", "source"}
+
+
+def blocker_entry_valid(entry):
+    """True when an entry holds exactly a non-empty release and a non-empty source."""
+    if not isinstance(entry, dict) or set(entry) != EXTERNAL_BLOCKER_KEYS:
+        return False
+    return all(isinstance(entry[key], str) and entry[key].strip() for key in EXTERNAL_BLOCKER_KEYS)
+
+
+def verify_external_blockers(row):
+    """external_blockers is a list of valid entries naming each release once.
+
+    Returns the entries. A milestone that waits outside needs an external
+    contract, so the ranking controller places it in that tier.
+    """
+    entries = row.get("external_blockers", [])
+    if not isinstance(entries, list) or not all(blocker_entry_valid(e) for e in entries):
+        raise ValueError(
+            f"Milestone {row['id']} external_blockers must be a list of entries carrying "
+            "exactly a release outside this roadmap and the source that names the wait"
+        )
+    releases = [entry["release"] for entry in entries]
+    if len(set(releases)) != len(releases):
+        raise ValueError(f"Milestone {row['id']} lists an external_blockers release twice")
+    if entries and not row.get("needs_external_contract"):
+        raise ValueError(
+            f"Milestone {row['id']} waits on {releases[0]} but does not set "
+            "needs_external_contract"
+        )
+    if entries and row["state"] == "done":
+        raise ValueError(f"Milestone {row['id']} is done while it still waits on {releases[0]}")
+    return entries
+
+
 def verify_milestone(row, by_id):
     missing = MILESTONE_FIELDS - row.keys()
     if missing:
@@ -366,7 +405,10 @@ def verify_milestone(row, by_id):
     if row["state"] == "done" and not row.get("evidence"):
         raise ValueError(f"Milestone {row['id']} is done without recorded evidence")
     verify_external_unblocks(row)
-    blockers_done = all(by_id[b]["state"] == "done" for b in row["blocked_by"])
+    waits_outside = verify_external_blockers(row)
+    blockers_done = not waits_outside and all(
+        by_id[b]["state"] == "done" for b in row["blocked_by"]
+    )
     expected = "ready" if blockers_done else "blocked"
     if row["state"] != "done" and row["state"] != expected:
         raise ValueError(f"Milestone {row['id']} must be {expected} given its blockers")
@@ -775,13 +817,16 @@ def verify_sources():
 
 
 def milestone_line(row):
-    """One readiness line: state, rank, cost, blockers and the plan nodes outside that wait."""
+    """One readiness line: state, rank, cost, blockers, outside waits and outside nodes."""
     marker = "READY" if row["state"] == "ready" else row["state"]
     blockers = ", ".join(row["blocked_by"]) or "nothing"
     line = (
         f"{row['id']} [{marker}] rank {row['rank']} cost {row['cost']}: "
         f"{row['title']}; blocked by {blockers}"
     )
+    waits = [entry["release"] for entry in row.get("external_blockers", [])]
+    if waits:
+        line += f"; waits outside: {', '.join(waits)}"
     outside = [entry["node"] for entry in row.get("external_unblocks", [])]
     if outside:
         line += f"; unblocks outside: {', '.join(outside)}"
