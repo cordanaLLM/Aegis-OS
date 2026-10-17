@@ -92,12 +92,29 @@ ESP_TYPE = uuid.UUID("c12a7328-f81f-11d2-ba4b-00a0c93ec93b")
 DEFAULT_OVMF_DIR = "/usr/share/edk2/x64"
 KEY_FILE = "signing-keys.gpg"
 PIN_SCHEMA = "aegis.m24.boot-artifact-pin.v1"
+COSIGN_SCHEME = "cosign-keyless-sha256sums"
+GPG_SCHEME = "gpg-clearsigned-checksum"
+SIGNATURE_FIELDS = {
+    GPG_SCHEME: ("scheme", "checksum-file", "checksum-url", "key-url", "fingerprint"),
+    COSIGN_SCHEME: (
+        "scheme",
+        "checksum-file",
+        "checksum-url",
+        "bundle-file",
+        "bundle-url",
+        "identity",
+        "issuer",
+        "workflow-sha",
+        "workflow-ref",
+    ),
+}
 
 # Deadlines. Every external command carries one, and every process the harness
 # starts in the background is ended with its whole session on every way out.
 VERSION_TIMEOUT = 30
 TOOL_TIMEOUT = 120
 GPG_TIMEOUT = 120
+COSIGN_TIMEOUT = 120
 FETCH_TIMEOUT = 1800
 SOCKET_TIMEOUT = 30
 REPORT_TIMEOUT = 120
@@ -117,6 +134,7 @@ MAX_LOGIN_TIMEOUT = 1800
 MAX_DIGEST_CHUNKS = 4096
 MAX_CONSOLE_BYTES = 32 << 20
 MAX_REPORT_LINES = 400
+MAX_SUMS_LINES = 64
 MAX_PROBLEM_LINES = 24
 MAX_QMP_LINES = 64
 MAX_QMP_BYTES = 65536
@@ -141,6 +159,13 @@ PCR_VALUE = re.compile(r"[0-9a-f]{64}")
 EFI_BYTES = re.compile(r"\d{1,3}(?: \d{1,3}){4}")
 VERSION = re.compile(r"(\d+)-(\d+)\.(\d+)")
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,200}")
+HEX_40 = re.compile(r"[0-9a-f]{40}")
+WORKFLOW_REF = re.compile(r"refs/(heads|tags)/[A-Za-z0-9._/-]{1,200}")
+IDENTITY = re.compile(
+    r"https://github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+/\.github/workflows/"
+    r"[A-Za-z0-9._-]+\.ya?ml@refs/(heads|tags)/[A-Za-z0-9._/-]+"
+)
+GITHUB_ISSUER = "https://token.actions.githubusercontent.com"
 UKI_PATH = re.compile(r"(?:[A-Za-z0-9][A-Za-z0-9._-]*/){1,4}[A-Za-z0-9][A-Za-z0-9._-]*\.efi")
 MICROSOFT_DB = ("none", "uefi11", "uefi23")
 LOGIN_PROMPT = re.compile(r"(?m)^[A-Za-z0-9][A-Za-z0-9.-]{0,62} login: ")
@@ -445,14 +470,68 @@ def pin_shape_problems(pin):
     """Return the fields a pin lacks, section by section."""
     top = ("schema", "name", "version", "version-floor", "architecture", "format", "file")
     top += ("url", "sha256", "size", "signature", "boot")
-    signature = ("scheme", "checksum-file", "checksum-url", "key-url", "fingerprint")
     boot = ("login-prompt-timeout-seconds", "guest-microsoft-db", "shim-fallback-no-reboot")
     problems = [f"missing {key}" for key in top if key not in pin]
     if problems:
         return problems
-    problems += [f"signature lacks {key}" for key in signature if key not in pin["signature"]]
+    sig = pin["signature"]
+    scheme = sig.get("scheme")
+    if scheme not in SIGNATURE_FIELDS:
+        problems.append(f"signature scheme {scheme} is not built")
+    else:
+        fields = SIGNATURE_FIELDS[scheme]
+        problems += [f"signature lacks {key}" for key in fields if key not in sig]
     problems += [f"boot lacks {key}" for key in boot + ("uki-path",) if key not in pin["boot"]]
     return problems
+
+
+def gpg_signature_problems(sig):
+    """Return why a GPG signature section cannot be acted on, or []."""
+    checks = (
+        (re.fullmatch(r"[0-9A-F]{40}", sig["fingerprint"]), "fingerprint is not 40 hex digits"),
+        (SAFE_NAME.fullmatch(sig["checksum-file"]), "checksum-file is not a plain file name"),
+    )
+    return [message for passed, message in checks if not passed]
+
+
+def cosign_signature_problems(sig):
+    """Return why a cosign signature section cannot be acted on, or []."""
+    checksum_file = sig["checksum-file"]
+    bundle_file = sig["bundle-file"]
+    identity = sig["identity"]
+    workflow_ref = sig["workflow-ref"]
+    identity_ok = bool(IDENTITY.fullmatch(identity) and identity.endswith("@" + workflow_ref))
+    files_differ = checksum_file != bundle_file
+    checks = (
+        (sig["issuer"] == GITHUB_ISSUER, f"issuer is not {GITHUB_ISSUER}"),
+        (HEX_40.fullmatch(sig["workflow-sha"]), "workflow-sha is not 40 hex digits"),
+        (WORKFLOW_REF.fullmatch(workflow_ref), "workflow-ref is not refs/heads or refs/tags"),
+        (identity_ok, "identity does not match workflow-ref or repository workflow shape"),
+        (SAFE_NAME.fullmatch(checksum_file), "checksum-file is not a plain file name"),
+        (SAFE_NAME.fullmatch(bundle_file), "bundle-file is not a plain file name"),
+        (files_differ, "checksum-file and bundle-file must differ"),
+    )
+    return [message for passed, message in checks if not passed]
+
+
+def signature_value_problems(sig):
+    """Return problems in `sig` according to its declared scheme."""
+    scheme = sig.get("scheme")
+    if scheme == GPG_SCHEME:
+        return gpg_signature_problems(sig)
+    if scheme == COSIGN_SCHEME:
+        return cosign_signature_problems(sig)
+    return [f"signature scheme {scheme} is not built"]
+
+
+def signature_urls(sig):
+    """Return the URLs declared in `sig` for its scheme."""
+    scheme = sig.get("scheme")
+    if scheme == GPG_SCHEME:
+        return (sig["checksum-url"], sig["key-url"])
+    if scheme == COSIGN_SCHEME:
+        return (sig["checksum-url"], sig["bundle-url"])
+    return ()
 
 
 def pin_value_problems(pin):
@@ -460,16 +539,13 @@ def pin_value_problems(pin):
     sig, boot = pin["signature"], pin["boot"]
     timeout = boot["login-prompt-timeout-seconds"]
     expected_file = f"{pin['name']}-{pin['version']}.{pin['architecture']}.{pin['format']}"
-    urls = (pin["url"], sig["checksum-url"], sig["key-url"])
+    urls = (pin["url"],) + signature_urls(sig)
     checks = (
         (pin["schema"] == PIN_SCHEMA, f"schema is not {PIN_SCHEMA}"),
         (PCR_VALUE.fullmatch(pin["sha256"]), "sha256 is not 64 lower-case hex digits"),
-        (re.fullmatch(r"[0-9A-F]{40}", sig["fingerprint"]), "fingerprint is not 40 hex digits"),
-        (sig["scheme"] == "gpg-clearsigned-checksum", "only gpg-clearsigned-checksum is built"),
         (VERSION.fullmatch(pin["version"]), "version is not MAJOR-MINOR.RESPIN"),
         (VERSION.fullmatch(pin["version-floor"]), "version-floor is not MAJOR-MINOR.RESPIN"),
         (pin["file"] == expected_file, f"file is not {expected_file}"),
-        (SAFE_NAME.fullmatch(sig["checksum-file"]), "checksum-file is not a plain file name"),
         (all(url.startswith("https://") for url in urls), "every URL must be https"),
         (isinstance(timeout, int) and 0 < timeout <= MAX_LOGIN_TIMEOUT, "timeout out of range"),
         (boot["guest-microsoft-db"] in MICROSOFT_DB, "guest-microsoft-db is not admitted"),
@@ -477,7 +553,9 @@ def pin_value_problems(pin):
         (UKI_PATH.fullmatch(boot["uki-path"]), "uki-path is not a relative .efi path"),
         (isinstance(pin["size"], int) and pin["size"] > 0, "size is not a positive integer"),
     )
-    return [message for passed, message in checks if not passed]
+    problems = [message for passed, message in checks if not passed]
+    problems.extend(signature_value_problems(sig))
+    return problems
 
 
 def load_pin(path):
@@ -553,6 +631,27 @@ def gpg_argv(keyring):
     return ["gpg", "--homedir", str(keyring), "--batch", "--no-autostart"]
 
 
+def cosign_argv(pin, checksum, bundle):
+    """Return the cosign verify-blob argument vector for `checksum` with `bundle`."""
+    sig = pin["signature"]
+    return [
+        "cosign",
+        "verify-blob",
+        "--offline",
+        "--bundle",
+        str(bundle),
+        "--certificate-identity",
+        sig["identity"],
+        "--certificate-oidc-issuer",
+        sig["issuer"],
+        "--certificate-github-workflow-sha",
+        sig["workflow-sha"],
+        "--certificate-github-workflow-ref",
+        sig["workflow-ref"],
+        str(checksum),
+    ]
+
+
 def import_key(keyring, key_file, fingerprint):
     """Import the published keys into the gate's own keyring and require the pinned one."""
     keyring.mkdir(parents=True, exist_ok=True)
@@ -617,6 +716,16 @@ def signed_checksum(context, checksum, plain):
     return plain.read_text(encoding="utf-8"), f"GOODSIG {status.get('GOODSIG', '')}"
 
 
+def cosign_checksum(pin, checksum, bundle):
+    """Verify `checksum` offline against `bundle` using cosign; return (text, good)."""
+    code, stdout, stderr = run(cosign_argv(pin, checksum, bundle), COSIGN_TIMEOUT)
+    output = stdout + stderr
+    if code != 0 or "Verified OK" not in output:
+        detail = output.strip()[-200:]
+        raise Refused("signature", f"the SHA256SUMS signature did not verify: {detail}")
+    return Path(checksum).read_text(encoding="utf-8"), "cosign: Verified OK"
+
+
 def gpg_status(stdout):
     """Return gpg's machine-readable status lines as {keyword: rest}, first occurrence kept."""
     status = {"BADSIG": "", "ERRSIG": "", "NO_PUBKEY": ""}
@@ -637,6 +746,17 @@ def signed_record(text, pin):
         raise Refused("checksum", f"the signed CHECKSUM names {len(found)} {pin['name']} images")
     version, digest = found[0]
     return digest, version
+
+
+def sha256sums_record(text, pin):
+    """Return the SHA-256 digest recorded for pin['file'] in coreutils SHA256SUMS format."""
+    file_name = pin["file"]
+    bounded_text = "\n".join(text.splitlines()[:MAX_SUMS_LINES])
+    pattern = re.compile(rf"^([0-9a-f]{{64}}) [ *]{re.escape(file_name)}$", re.M)
+    found = pattern.findall(bounded_text)
+    if len(found) != 1:
+        raise Refused("checksum", f"the signed SHA256SUMS names {len(found)} lines for {file_name}")
+    return found[0]
 
 
 def require_pinned(pin, artifact):

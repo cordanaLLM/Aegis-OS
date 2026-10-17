@@ -61,6 +61,7 @@ ALLOWED_PROGRAMS = {
     "openssl",
     "gpg",
     "curl",
+    "cosign",
 }
 # Tools that write host firmware state or boot entries, or that stand in for
 # the imported integration script REQ-BOOT-02 forbids as boot evidence.
@@ -371,6 +372,142 @@ class PinTests(unittest.TestCase):
                 gate.load_pin(path)
 
 
+def cosign_pin(**changes):
+    """Return a pin_copy() carrying a valid cosign signature section with changes applied."""
+    sig = {
+        "scheme": gate.COSIGN_SCHEME,
+        "checksum-file": "SHA256SUMS",
+        "checksum-url": "https://example.invalid/SHA256SUMS",
+        "bundle-file": "SHA256SUMS.bundle",
+        "bundle-url": "https://example.invalid/SHA256SUMS.bundle",
+        "identity": (
+            "https://github.com/cordanaLLM/Imago/.github/workflows/"
+            "aegis-build.yml@refs/heads/main"
+        ),
+        "issuer": "https://token.actions.githubusercontent.com",
+        "workflow-sha": "0123456789abcdef0123456789abcdef01234567",
+        "workflow-ref": "refs/heads/main",
+    }
+    sig.update(changes)
+    pin = pin_copy()
+    pin["signature"] = sig
+    return pin
+
+
+class CosignPinTests(unittest.TestCase):
+    """The cosign keyless signature scheme pin shape, value and boundary validation."""
+
+    def pin_without_bundle_file(self):
+        pin = cosign_pin()
+        del pin["signature"]["bundle-file"]
+        return pin
+
+    def test_valid_cosign_pin_loads(self):
+        with tempfile.TemporaryDirectory() as base:
+            pin = cosign_pin()
+            loaded = gate.load_pin(written_pin(pin, base))
+            self.assertEqual(loaded["signature"]["scheme"], gate.COSIGN_SCHEME)
+
+    def test_gpg_committed_pin_still_loads(self):
+        loaded = gate.load_pin(gate.PIN)
+        self.assertEqual(loaded["signature"]["scheme"], gate.GPG_SCHEME)
+
+    def test_negative_cases_are_refused(self):
+        bad_pins = (
+            ("wrong_issuer", cosign_pin(issuer="https://accounts.google.com")),
+            ("http_url", cosign_pin(**{"bundle-url": "http://example.invalid/bundle"})),
+            (
+                "identity_ref_differs",
+                cosign_pin(
+                    identity=(
+                        "https://github.com/cordanaLLM/Imago/.github/workflows/"
+                        "aegis-build.yml@refs/heads/dev"
+                    ),
+                    **{"workflow-ref": "refs/heads/main"},
+                ),
+            ),
+            (
+                "identity_on_another_host",
+                cosign_pin(
+                    identity=(
+                        "https://gitlab.com/cordanaLLM/Imago/.github/workflows/"
+                        "aegis-build.yml@refs/heads/main"
+                    )
+                ),
+            ),
+            (
+                "uppercase_workflow_sha",
+                cosign_pin(**{"workflow-sha": "0123456789ABCDEF0123456789ABCDEF01234567"}),
+            ),
+            (
+                "short_workflow_sha",
+                cosign_pin(**{"workflow-sha": "0123456789abcdef0123456789abcdef0123456"}),
+            ),
+            ("unknown_scheme", cosign_pin(scheme="other-scheme")),
+            ("missing_bundle_file", self.pin_without_bundle_file()),
+            ("only_gpg_fields", pin_copy(**{"signature.scheme": gate.COSIGN_SCHEME})),
+            ("checksum_and_bundle_file_equal", cosign_pin(**{"bundle-file": "SHA256SUMS"})),
+        )
+        for name, pin in bad_pins:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as base:
+                with self.assertRaises(gate.GateError):
+                    gate.load_pin(written_pin(pin, base))
+
+    def test_workflow_sha_boundary(self):
+        with tempfile.TemporaryDirectory() as base:
+            accepted = cosign_pin(**{"workflow-sha": "a" * 40})
+            self.assertEqual(
+                gate.load_pin(written_pin(accepted, base))["signature"]["workflow-sha"],
+                "a" * 40,
+            )
+        with tempfile.TemporaryDirectory() as base:
+            refused = cosign_pin(**{"workflow-sha": "a" * 41})
+            with self.assertRaises(gate.GateError):
+                gate.load_pin(written_pin(refused, base))
+
+    def test_workflow_ref_boundary(self):
+        with tempfile.TemporaryDirectory() as base:
+            accepted = cosign_pin(
+                **{
+                    "workflow-ref": "refs/tags/v1",
+                    "identity": (
+                        "https://github.com/cordanaLLM/Imago/.github/workflows/"
+                        "aegis-build.yml@refs/tags/v1"
+                    ),
+                }
+            )
+            self.assertEqual(
+                gate.load_pin(written_pin(accepted, base))["signature"]["workflow-ref"],
+                "refs/tags/v1",
+            )
+        with tempfile.TemporaryDirectory() as base:
+            refused = cosign_pin(
+                **{
+                    "workflow-ref": "refs/pull/1",
+                    "identity": (
+                        "https://github.com/cordanaLLM/Imago/.github/workflows/"
+                        "aegis-build.yml@refs/pull/1"
+                    ),
+                }
+            )
+            with self.assertRaises(gate.GateError):
+                gate.load_pin(written_pin(refused, base))
+
+    def test_workflow_ref_length_boundary(self):
+        """A ref name of 200 characters after refs/heads/ is accepted; 201 is refused."""
+        identity = "https://github.com/cordanaLLM/Imago/.github/workflows/aegis-build.yml@"
+        for length, accepted in ((199, True), (200, True), (201, False)):
+            ref = "refs/heads/" + "b" * length
+            pin = cosign_pin(**{"workflow-ref": ref, "identity": identity + ref})
+            with self.subTest(length=length), tempfile.TemporaryDirectory() as base:
+                if accepted:
+                    loaded = gate.load_pin(written_pin(pin, base))
+                    self.assertEqual(loaded["signature"], pin["signature"])
+                else:
+                    with self.assertRaises(gate.GateError):
+                        gate.load_pin(written_pin(pin, base))
+
+
 class VersionFloorTests(unittest.TestCase):
     """E24-1 boundary: a producer version at the floor is admitted, one below is refused."""
 
@@ -471,6 +608,139 @@ class SignedRecordTests(unittest.TestCase):
         self.assertEqual(status["GOODSIG"], "DBFCF71C6D9F90A6 Fedora (44)")
         self.assertEqual(status["VALIDSIG"].split()[-1], "36F612DC")
         self.assertEqual(status["BADSIG"], "")
+
+
+class CosignVerificationTests(unittest.TestCase):
+    """Offline cosign signature verification and SHA256SUMS coreutils line parsing."""
+
+    def test_cosign_argv_order(self):
+        pin = cosign_pin()
+        checksum = Path("/cache/SHA256SUMS")
+        bundle = Path("/cache/SHA256SUMS.bundle")
+        argv = gate.cosign_argv(pin, checksum, bundle)
+        expected = [
+            "cosign",
+            "verify-blob",
+            "--offline",
+            "--bundle",
+            str(bundle),
+            "--certificate-identity",
+            pin["signature"]["identity"],
+            "--certificate-oidc-issuer",
+            pin["signature"]["issuer"],
+            "--certificate-github-workflow-sha",
+            pin["signature"]["workflow-sha"],
+            "--certificate-github-workflow-ref",
+            pin["signature"]["workflow-ref"],
+            str(checksum),
+        ]
+        self.assertEqual(argv, expected)
+        self.assertIn("--offline", argv)
+
+    def test_cosign_checksum_accepted_with_verified_ok(self):
+        pin = cosign_pin()
+        with tempfile.TemporaryDirectory() as base:
+            checksum = Path(base) / "SHA256SUMS"
+            bundle = Path(base) / "SHA256SUMS.bundle"
+            checksum.write_text("dummy sha256sums content\n", encoding="utf-8")
+            bundle.write_bytes(b"dummy bundle")
+            with mock.patch.object(gate, "run", return_value=(0, "Verified OK\n", "")):
+                text, good = gate.cosign_checksum(pin, checksum, bundle)
+            self.assertEqual(text, "dummy sha256sums content\n")
+            self.assertEqual(good, "cosign: Verified OK")
+
+    def test_cosign_checksum_refused_on_error_code(self):
+        pin = cosign_pin()
+        with tempfile.TemporaryDirectory() as base:
+            checksum = Path(base) / "SHA256SUMS"
+            bundle = Path(base) / "SHA256SUMS.bundle"
+            checksum.write_text("dummy\n", encoding="utf-8")
+            bundle.write_bytes(b"dummy")
+            err = "Error: none of the expected identities matched\n"
+            with mock.patch.object(gate, "run", return_value=(1, "", err)):
+                with self.assertRaises(gate.Refused) as refused:
+                    gate.cosign_checksum(pin, checksum, bundle)
+            self.assertEqual(refused.exception.stage, "signature")
+            self.assertIn("none of the expected identities matched", str(refused.exception))
+
+    def test_cosign_checksum_refused_without_verified_ok(self):
+        pin = cosign_pin()
+        with tempfile.TemporaryDirectory() as base:
+            checksum = Path(base) / "SHA256SUMS"
+            bundle = Path(base) / "SHA256SUMS.bundle"
+            checksum.write_text("dummy\n", encoding="utf-8")
+            bundle.write_bytes(b"dummy")
+            with mock.patch.object(gate, "run", return_value=(0, "", "")):
+                with self.assertRaises(gate.Refused) as refused:
+                    gate.cosign_checksum(pin, checksum, bundle)
+            self.assertEqual(refused.exception.stage, "signature")
+            self.assertIn("the SHA256SUMS signature did not verify", str(refused.exception))
+
+    def test_cosign_checksum_refused_on_error_code_despite_verified_ok(self):
+        pin = cosign_pin()
+        with tempfile.TemporaryDirectory() as base:
+            checksum = Path(base) / "SHA256SUMS"
+            bundle = Path(base) / "SHA256SUMS.bundle"
+            checksum.write_text("dummy\n", encoding="utf-8")
+            bundle.write_bytes(b"dummy")
+            with mock.patch.object(gate, "run", return_value=(1, "", "Verified OK\n")):
+                with self.assertRaises(gate.Refused) as refused:
+                    gate.cosign_checksum(pin, checksum, bundle)
+            self.assertEqual(refused.exception.stage, "signature")
+
+    def test_sha256sums_record_does_not_take_a_longer_name(self):
+        text = f"{PIN['sha256']}  {PIN['file']}.sig\n"
+        with self.assertRaises(gate.Refused) as refused:
+            gate.sha256sums_record(text, PIN)
+        self.assertIn("names 0 lines", str(refused.exception))
+
+    def test_sha256sums_record_reads_a_bounded_number_of_lines(self):
+        """Boundary: the record on the last line read is taken, one line later is not."""
+        filler = [f"{'0' * 64}  other-{n}.raw" for n in range(gate.MAX_SUMS_LINES - 1)]
+        record = f"{PIN['sha256']}  {PIN['file']}"
+        self.assertEqual(gate.sha256sums_record("\n".join(filler + [record]), PIN), PIN["sha256"])
+        with self.assertRaises(gate.Refused):
+            gate.sha256sums_record("\n".join(filler + ["x", record]), PIN)
+
+    def test_sha256sums_record_two_space_form(self):
+        text = f"{PIN['sha256']}  {PIN['file']}\n"
+        self.assertEqual(gate.sha256sums_record(text, PIN), PIN["sha256"])
+
+    def test_sha256sums_record_binary_mode_form(self):
+        text = f"{PIN['sha256']} *{PIN['file']}\n"
+        self.assertEqual(gate.sha256sums_record(text, PIN), PIN["sha256"])
+
+    def test_sha256sums_record_two_lines_for_file_refused(self):
+        text = f"{PIN['sha256']}  {PIN['file']}\n{PIN['sha256']}  {PIN['file']}\n"
+        with self.assertRaises(gate.Refused) as refused:
+            gate.sha256sums_record(text, PIN)
+        self.assertEqual(refused.exception.stage, "checksum")
+        expected = f"the signed SHA256SUMS names 2 lines for {PIN['file']}"
+        self.assertIn(expected, str(refused.exception))
+
+    def test_sha256sums_record_63_hex_refused(self):
+        text = f"{PIN['sha256'][:63]}  {PIN['file']}\n"
+        with self.assertRaises(gate.Refused) as refused:
+            gate.sha256sums_record(text, PIN)
+        self.assertEqual(refused.exception.stage, "checksum")
+        expected = f"the signed SHA256SUMS names 0 lines for {PIN['file']}"
+        self.assertIn(expected, str(refused.exception))
+
+    def test_sha256sums_record_uppercase_hex_refused(self):
+        text = f"{PIN['sha256'].upper()}  {PIN['file']}\n"
+        with self.assertRaises(gate.Refused) as refused:
+            gate.sha256sums_record(text, PIN)
+        self.assertEqual(refused.exception.stage, "checksum")
+        expected = f"the signed SHA256SUMS names 0 lines for {PIN['file']}"
+        self.assertIn(expected, str(refused.exception))
+
+    def test_sha256sums_record_only_other_files_refused(self):
+        text = f"{PIN['sha256']}  other-image.qcow2\n"
+        with self.assertRaises(gate.Refused) as refused:
+            gate.sha256sums_record(text, PIN)
+        self.assertEqual(refused.exception.stage, "checksum")
+        expected = f"the signed SHA256SUMS names 0 lines for {PIN['file']}"
+        self.assertIn(expected, str(refused.exception))
 
 
 class DigestTests(unittest.TestCase):
