@@ -539,24 +539,48 @@ class AdoptModeTests(unittest.TestCase):
                 self.assertIn(kept, bump.commit_message(PLAN, (0, []), [], [], plain))
                 self.assertIn(kept, bump.pr_body(PLAN, report, plain))
 
+    def reconciled(self, plain):
+        """Run the real `reconcile()` in one mode over a fixed adopt output.
+
+        adopt touched two hand-maintained files and two others; the gates fail
+        while `Makefile` is reverted, so `minimise()` keeps it alone.
+        """
+        adopted = {"lefthook.yml": " M", ".vscode/settings.json": " M", "Makefile": " M"}
+        adopted["engine.mk"] = "??"
+        left = {path: adopted[path] for path in ("Makefile", "engine.mk")}
+        reverted = set()
+
+        def gates(session, tree, quiet=False):
+            return "Makefile" not in reverted, ""
+
+        def put_back(path, state):
+            reverted.discard(Path(path).name)
+
+        with tempfile.TemporaryDirectory() as base:
+            session = bump.Session(args(cache=base, plain_adopt=plain), stream=io.StringIO())
+            session.binary = Path("praetorctl")
+            ok = bump.Result((), 0, "", "")
+            with mock.patch.object(bump, "status", side_effect=[adopted, left]), mock.patch.object(
+                bump, "revert", side_effect=lambda s, tree, path, code: reverted.add(path)
+            ), mock.patch.object(bump, "praetor_gates", side_effect=gates), mock.patch.object(
+                bump, "put_back", side_effect=put_back
+            ), mock.patch.object(
+                bump, "run", return_value=ok
+            ):
+                return bump.reconcile(session, Path(base))
+
     def test_both_modes_share_the_hand_maintained_restore_and_minimise(self):
-        """Negative: a plain run restores and reverts exactly as the forced one does."""
-        outcomes = []
-        for plain in (False, True):
-            session = bump.Session(args(plain_adopt=plain), stream=io.StringIO())
-            with mock.patch.object(
-                bump, "status", return_value={"lefthook.yml": " M"}
-            ), mock.patch.object(
-                bump, "restore_fixed", return_value=[]
-            ) as restore, mock.patch.object(
-                bump, "praetor_gates", return_value=(True, "")
-            ), mock.patch.object(
-                bump, "minimise", return_value=[]
-            ) as minimise:
-                outcomes.append(bump.reconcile(session, Path("tree")))
-            restore.assert_called_once()
-            minimise.assert_called_once()
-        self.assertEqual(outcomes[0], outcomes[1])
+        """Negative: a revert list that drifts between the modes fails here."""
+        expected = (
+            ["Makefile"],
+            [
+                (".vscode/settings.json", "hand-maintained"),
+                ("engine.mk", "no gate needs it"),
+                ("lefthook.yml", "hand-maintained"),
+            ],
+        )
+        self.assertEqual(self.reconciled(False), expected)
+        self.assertEqual(self.reconciled(True), expected)
 
     def test_a_forced_failure_does_not_hold_back_a_plain_run(self):
         """Boundary: the failure marker carries the mode, so each mode fails on its own."""
