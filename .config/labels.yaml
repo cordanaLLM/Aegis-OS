@@ -27,3 +27,6 @@ labels:
   - name: "roadmap"
     color: "5319e7"
     description: "Milestone, epic, or blocking-state change in docs/roadmap and planning/roadmap.json"
+  - name: "hold"
+    color: "b60205"
+    description: "Merge train skips this pull request until the label is removed"
