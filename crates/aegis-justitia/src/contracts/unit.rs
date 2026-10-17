@@ -38,6 +38,25 @@ pub const REQUIRED_DIRECTIVES: [&str; 5] = [
     "Restart=always",
 ];
 
+/// The start rate-limit settings the unit must write down, each once, in its
+/// `[Unit]` section and with a positive value.
+///
+/// `StartLimitIntervalSec=0` beside `Restart=always` switches the limit off,
+/// and a gate failing on every start would then be restarted without bound
+/// (D108); inheriting the manager's default leaves the policy unwritten
+/// (issue #232). Both are refused.
+pub const START_LIMIT_DIRECTIVES: [&str; 2] = [START_LIMIT_INTERVAL, START_LIMIT_BURST];
+
+/// The interval of the start rate limit, in seconds.
+const START_LIMIT_INTERVAL: &str = "StartLimitIntervalSec";
+
+/// The number of starts the interval admits.
+const START_LIMIT_BURST: &str = "StartLimitBurst";
+
+/// The older spelling systemd still reads as `StartLimitIntervalSec=`; a line
+/// with it counts as a second declaration of the interval.
+const LEGACY_INTERVAL_KEY: &str = "StartLimitInterval";
+
 /// The systemd directories an installed unit would live in.
 ///
 /// The contract file is refused a home in any of them; [`is_installed_path`]
@@ -62,6 +81,32 @@ pub enum UnitContractError {
     /// The header does not say that the file is a contract, not a unit.
     #[error("the unit header does not carry the {CONTRACT_MARKER} marker")]
     MissingContractMarker,
+    /// A start rate-limit setting is absent.
+    #[error("the unit does not set {directive}")]
+    MissingStartLimit {
+        /// The setting that was not found.
+        directive: &'static str,
+    },
+    /// A start rate-limit setting is declared more than once, so a later line
+    /// could override the value the review read.
+    #[error("the unit sets {directive} more than once")]
+    RepeatedStartLimit {
+        /// The setting declared twice.
+        directive: &'static str,
+    },
+    /// A start rate-limit setting is not a positive whole number (seconds,
+    /// optionally suffixed `s`, for the interval).
+    #[error("the unit sets {directive} to a value that is not a positive whole number")]
+    InvalidStartLimit {
+        /// The setting whose value was refused.
+        directive: &'static str,
+    },
+    /// A start rate-limit setting sits outside the `[Unit]` section.
+    #[error("the unit sets {directive} outside its [Unit] section")]
+    MisplacedStartLimit {
+        /// The setting found in another section.
+        directive: &'static str,
+    },
     /// The text is longer than this module will read.
     #[error("the unit text of {actual} bytes exceeds the bound of {max}")]
     TooLong {
@@ -91,6 +136,85 @@ fn first_missing(present: [bool; REQUIRED_DIRECTIVES.len()]) -> Option<&'static 
     None
 }
 
+/// Returns which start rate-limit setting a directive key names, if any.
+fn start_limit_directive(key: &str) -> Option<&'static str> {
+    match key {
+        START_LIMIT_INTERVAL | LEGACY_INTERVAL_KEY => Some(START_LIMIT_INTERVAL),
+        START_LIMIT_BURST => Some(START_LIMIT_BURST),
+        _ => None,
+    }
+}
+
+/// Returns `true` when `value` is an accepted value for `directive`.
+///
+/// The accepted forms are an allow-list: ASCII digits that are not all zero,
+/// and for the interval the same followed by `s`. `0`, `infinity` and other
+/// time-span spellings are refused.
+fn start_limit_value_ok(directive: &str, value: &str) -> bool {
+    let digits = match value.strip_suffix('s') {
+        Some(stripped) if directive == START_LIMIT_INTERVAL => stripped,
+        _ => value,
+    };
+    !digits.is_empty()
+        && digits.bytes().all(|byte| byte.is_ascii_digit())
+        && digits.bytes().any(|byte| byte != b'0')
+}
+
+/// The state of one bounded pass over unit text.
+#[derive(Default)]
+struct Scan {
+    marked: bool,
+    in_unit_section: bool,
+    present: [bool; REQUIRED_DIRECTIVES.len()],
+    start_limits: [bool; START_LIMIT_DIRECTIVES.len()],
+}
+
+impl Scan {
+    /// Records one non-comment line.
+    fn directive(&mut self, line: &str) -> Result<(), UnitContractError> {
+        if line.starts_with('[') {
+            self.in_unit_section = line == "[Unit]";
+            return Ok(());
+        }
+        mark(&mut self.present, line);
+        let Some((key, value)) = line.split_once('=') else {
+            return Ok(());
+        };
+        let Some(directive) = start_limit_directive(key.trim()) else {
+            return Ok(());
+        };
+        for (seen, known) in self.start_limits.iter_mut().zip(START_LIMIT_DIRECTIVES) {
+            if known == directive && *seen {
+                return Err(UnitContractError::RepeatedStartLimit { directive });
+            }
+            *seen = *seen || known == directive;
+        }
+        if !self.in_unit_section {
+            return Err(UnitContractError::MisplacedStartLimit { directive });
+        }
+        if !start_limit_value_ok(directive, value.trim()) {
+            return Err(UnitContractError::InvalidStartLimit { directive });
+        }
+        Ok(())
+    }
+
+    /// Returns the first setting the pass did not find.
+    fn finish(self) -> Result<(), UnitContractError> {
+        if !self.marked {
+            return Err(UnitContractError::MissingContractMarker);
+        }
+        if let Some(directive) = first_missing(self.present) {
+            return Err(UnitContractError::MissingDirective { directive });
+        }
+        for (seen, directive) in self.start_limits.iter().zip(START_LIMIT_DIRECTIVES.iter()) {
+            if !*seen {
+                return Err(UnitContractError::MissingStartLimit { directive });
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Reviews unit text against the hardened-unit contract.
 ///
 /// Comment lines are read for [`CONTRACT_MARKER`] and ignored for directives,
@@ -101,8 +225,11 @@ fn first_missing(present: [bool; REQUIRED_DIRECTIVES.len()]) -> Option<&'static 
 ///
 /// Returns [`UnitContractError::TooLong`] past [`MAX_UNIT_BYTES`],
 /// [`UnitContractError::MissingContractMarker`] when the header marker is
-/// absent, and [`UnitContractError::MissingDirective`] naming the first
-/// required directive the text does not declare.
+/// absent, [`UnitContractError::MissingDirective`] naming the first
+/// required directive the text does not declare, and a start-limit error when
+/// a setting of [`START_LIMIT_DIRECTIVES`] is absent, repeated (the older
+/// `StartLimitInterval=` spelling included), outside `[Unit]` or not a
+/// positive whole number.
 pub fn review(text: &str) -> Result<(), UnitContractError> {
     if text.len() > MAX_UNIT_BYTES {
         return Err(UnitContractError::TooLong {
@@ -110,22 +237,15 @@ pub fn review(text: &str) -> Result<(), UnitContractError> {
             actual: text.len(),
         });
     }
-    let mut marked = false;
-    let mut present = [false; REQUIRED_DIRECTIVES.len()];
+    let mut scan = Scan::default();
     for line in text.lines().take(MAX_UNIT_LINES) {
         let trimmed = line.trim();
-        marked = marked || trimmed.contains(CONTRACT_MARKER);
-        if !trimmed.starts_with('#') {
-            mark(&mut present, trimmed);
+        scan.marked = scan.marked || trimmed.contains(CONTRACT_MARKER);
+        if !trimmed.starts_with('#') && !trimmed.starts_with(';') {
+            scan.directive(trimmed)?;
         }
     }
-    if !marked {
-        return Err(UnitContractError::MissingContractMarker);
-    }
-    match first_missing(present) {
-        Some(directive) => Err(UnitContractError::MissingDirective { directive }),
-        None => Ok(()),
-    }
+    scan.finish()
 }
 
 /// Returns `true` when `path` is inside a directory systemd loads units from.
