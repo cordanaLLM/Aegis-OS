@@ -18,6 +18,7 @@ import json
 import os
 import re
 import socket
+import stat
 import tarfile
 import tempfile
 import unittest
@@ -70,15 +71,16 @@ def elf(headers):
 
 
 def members(archive):
-    """Parse a newc archive back into (name, mode, data) triples."""
+    """Parse a newc archive back into (name, mode, data) triples, plus rdev for a device."""
     found, offset = [], 0
     for _ in range(64):
         fields = [int(archive[offset + 6 + 8 * i : offset + 14 + 8 * i], 16) for i in range(13)]
-        name_size, size, mode = fields[11], fields[6], fields[1]
+        name_size, size, mode, rdev = fields[11], fields[6], fields[1], (fields[9], fields[10])
         start = offset + 110
         name = archive[start : start + name_size - 1].decode()
         data_start = start + name_size + (-(110 + name_size) % 4)
-        found.append((name, mode, archive[data_start : data_start + size]))
+        member = (name, mode, archive[data_start : data_start + size])
+        found.append(member + (rdev,) if rdev != (0, 0) else member)
         offset = data_start + size + (-size % 4)
         if name == "TRAILER!!!":
             break
@@ -408,6 +410,26 @@ class InitramfsTests(unittest.TestCase):
             data = (Path(scratch) / "initramfs.cpio").read_bytes()
         self.assertEqual(digest, hashlib.sha256(data).hexdigest())
 
+    def test_the_initramfs_carries_dev_mem(self):
+        """Positive: /dev, the /dev/mem node 1:1 the boot timer is mapped through, /init."""
+        with tempfile.TemporaryDirectory() as scratch:
+            guest = Path(scratch) / "guest"
+            guest.write_bytes(elf([1]))
+            gate.build_initramfs(guest, Path(scratch) / "initramfs.cpio")
+            data = (Path(scratch) / "initramfs.cpio").read_bytes()
+        found = members(data)
+        self.assertEqual([member[0] for member in found], ["dev", "dev/mem", "init", "TRAILER!!!"])
+        self.assertEqual(found[1], ("dev/mem", 0o020600, b"", (1, 1)))
+        self.assertTrue(stat.S_ISCHR(found[1][1]))
+
+    def test_a_device_node_reads_back_with_its_numbers(self):
+        """Boundary: rdev round-trips, and a plain member keeps rdev 0:0."""
+        archive = gate.newc_archive([("dev/mem", 0o020600, b"", (1, 1)), ("x", 0o100644, b"")])
+        self.assertEqual(
+            members(archive)[:2], [("dev/mem", 0o020600, b"", (1, 1)), ("x", 0o100644, b"")]
+        )
+        self.assertEqual(archive, gate.newc_archive(members(archive)[:2]))
+
 
 class SandboxCapabilityTests(unittest.TestCase):
     """When the sandbox half skips, and when the cache is a failure instead."""
@@ -625,7 +647,7 @@ class ReportTests(unittest.TestCase):
         pair = re.search(r"PAIR_CASES: \[&str; 6\] = \[(.*?)\];", rapl, re.S).group(1)
         self.assertEqual(tuple(re.findall(r'"([^"]+)"', pair)), gate.RAPL_CASES)
         self.assertIn(f'OBSERVED_WRAP_CASE: &str = "{gate.WRAP_CASE}"', rapl)
-        cases = re.search(r"HOST_CASES: \[&str; 7\] = \[(.*?)\];", host_run, re.S).group(1)
+        cases = re.search(r"HOST_CASES: \[&str; 8\] = \[(.*?)\];", host_run, re.S).group(1)
         self.assertEqual(tuple(re.findall(r'"([^"]+)"', cases)), gate.SANDBOX_CASES)
 
 

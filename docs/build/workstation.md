@@ -25,8 +25,8 @@ make verify-workstation
 hardware, closes no hardware, isolation or release gate, and is not release
 evidence; re-measurement inside an Aegis image is a later acceptance. The memory
 footprint is M22's (E22-1) under decision D71 and names the monitor that
-produced it; boot time is not measured yet. Venus GPU pricing (E21-3,
-REQ-P10-02) is deferred to M12 and not claimed.
+produced it, as is the boot time, read from Firecracker's boot timer. Venus
+GPU pricing (E21-3, REQ-P10-02) is deferred to M12 and not claimed.
 
 ## What is tracked
 
@@ -35,7 +35,7 @@ REQ-P10-02) is deferred to M12 and not claimed.
 | `crates/aegis-tellus/src/rapl.rs` | the counter reading, the rollover delta and `MeasuredWattage`, the second implementation of M05's `WattageSource` seam; reads nothing |
 | `crates/aegis-tellus-rapl` | the readings document and the RAPL cases; `aegis-tellus-rapl run <document>` is the binary the gate starts |
 | `crates/aegis-vesta-sandbox/src/vm.rs` | the evaluation exchange over a running microVM; the Firecracker process itself (started from a controller row, reached over the hybrid vsock, killed, reaped and its sockets removed) is `saeptum-microvm`'s `vm` module since 2026-10-16 |
-| `crates/aegis-vesta-sandbox/src/run.rs` | the host run and its six cases; `aegis-vesta-sandbox` starts it |
+| `crates/aegis-vesta-sandbox/src/run.rs` | the host run and its eight cases; `aegis-vesta-sandbox` starts it |
 | `crates/aegis-vesta-sandbox/src/guest.rs` | the evaluation answer `aegis-vesta-guest` gives as the microVM's init, served through `saeptum-microvm`'s listener |
 | `saeptum-microvm` (plurano/saeptum, pinned in `Cargo.toml`) | the per-microVM Firecracker configuration file, the line framing and the guest listener, re-exported by `aegis-vesta-sandbox` |
 | `build/sandbox/firecracker.pin.json` | the pinned Firecracker release and guest kernel |
@@ -141,9 +141,11 @@ statement.
    `--release --target x86_64-unknown-linux-gnu` and
    `RUSTFLAGS=-C target-feature=+crt-static` in that child's environment
    only. The gate refuses a guest whose ELF program headers name an
-   interpreter, then writes a deterministic newc initramfs holding `/dev` and
-   `/init`; nothing else is in the guest.
-3. `aegis-vesta-sandbox run` runs six cases, one microVM at a time, in its
+   interpreter, then writes a deterministic newc initramfs holding `/dev`,
+   `/dev/mem` (character device 1:1, mode 0600) and `/init`; nothing else is
+   in the guest. The kernel mounts no devtmpfs over an initramfs, so the
+   guest's one device node is packed into the archive.
+3. `aegis-vesta-sandbox run` runs eight cases, one microVM at a time, in its
    own session, under a 600 s deadline.
 4. The gate looks for anything the run left behind: a Firecracker or
    `aegis-vesta-sandbox` process whose command line names the run directory,
@@ -179,6 +181,7 @@ connection(s); restarting`, and Firecracker exited 0.
 | `sandbox/vsock-transport` | M22 / E22-2: the first microVM answers 12 more evaluations, each timed from the `AF_UNIX` connect to the close; the figure names Firecracker 1.17.0, the host's `/dev/vhost-vsock` and `vhost_vsock` build state are recorded, and a `vhost_vsock` reference count that rose between the first boot and the timed run fails the case, since Firecracker's transport bypasses vhost |
 | `sandbox/sixty-fourth-accepted` | E21-2 boundary: microVMs 2 to 64 are admitted, booted and each answers, and all 64 Firecracker processes are running at once |
 | `sandbox/footprint` | M22 / E22-1: the resident set (`VmRSS` of `/proc/<pid>/status`) of each of the 64 Firecracker processes after its first answer, as minimum, median and maximum; every process's `/proc/<pid>/exe` must be the pinned binary, and a process naming no monitor or another one fails the case rather than entering the figure (D58) |
+| `sandbox/boot-time` | M22 / E22-1: each of the 64 microVMs is started with Firecracker's boot timer on; its guest, as pid 1, writes the boot-complete byte 123 to the timer at `0xc000_0000` through `/dev/mem` (`saeptum_microvm::guest::signal_boot_complete`), and Firecracker logs one `Guest-boot-time` line to the microVM's `console.log`; wall clock and CPU time are printed as minimum, median and maximum, and a microVM without exactly one line fails the case, naming it |
 | `sandbox/sixty-fifth-refused` | E21-2 boundary: the 65th request is the controller's `MicroVmTableFull`, and no process is started for it |
 | `sandbox/teardown` | every row terminated, every process killed and reaped within 5 s, every socket file removed |
 
@@ -366,13 +369,33 @@ it, r20261017T031922-b721 (same build), printed min 56128 KiB, median
 58896 KiB, max 66244 KiB and failed only `sandbox/nothing-left-behind`,
 again because a Docker `veth` device of another workload disappeared.
 
+## The recorded boot time (M22, E22-1)
+
+Run r20261017T124857-0027 of `make verify-workstation`, on 2026-10-17, on the
+same reference profile and kernel, with saeptum at `d5e6b94`, passed every
+case, the gate-side `sandbox/nothing-left-behind` included; its `gate.log` is
+kept under `~/.cache/aegis-workstation/runs/r20261017T124857-0027`. The
+`sandbox/boot-time` case printed:
+
+- Firecracker 1.17.0, 64 microVMs, each with one `Guest-boot-time` line
+  after its guest's boot-complete write;
+- wall clock from the start of the microVM build: min 254112 us, median
+  306210 us, max 551196 us;
+- CPU time of the boot: min 249661 us, median 300213 us, max 376637 us.
+
+The same run's footprint was min 57972 KiB, median 61620 KiB, max
+68292 KiB. The store that signals the timer is `unsafe` code; it lives in
+`saeptum-microvm` under one dated exception (category D, expires
+2027-02-14), and `aegis-vesta-sandbox` keeps `unsafe_code = "forbid"`.
+
 ## What is not claimed
 
-- **Boot time.** No figure is recorded. `saeptum-microvm` turns
-  Firecracker's boot timer on, and `aegis_vesta_sandbox::parse_boot_time`
-  reads its line, but the guest must write the magic byte to the timer's
-  device address through a mapped page, and `unsafe_code = "forbid"` rules
-  that store out; that exception is an open decision.
+- **A boot time target.** `sandbox/boot-time` records Firecracker's own
+  timer, which starts when Firecracker begins building the microVM, not when
+  the request arrives, and is compared with no target. The microVMs boot one
+  after another while earlier ones keep running, so the spread reflects a
+  host growing to 64 guests. The scaffold's boot literals stay `Unmeasured`
+  in `crates/aegis-vesta`.
 - **A footprint target.** `sandbox/footprint` records the monitor process's
   resident set, which includes the guest memory it has touched; it is not the
   guest's view of its memory and is compared with no target. The scaffold's

@@ -32,13 +32,14 @@ const USAGE: &str = "usage: aegis-vesta-sandbox run <firecracker> <kernel> <init
 /// The line the guest prints outside a microVM.
 const NOT_INIT: &str = "aegis-vesta-guest: not process 1; it runs only as a microVM's init\n";
 
-/// The seven cases a sandbox run prints, in order.
-const CASES: [&str; 7] = [
+/// The eight cases a sandbox run prints, in order.
+const CASES: [&str; 8] = [
     "sandbox/over-limit-memory-refused",
     "sandbox/boot-and-round-trip",
     "sandbox/vsock-transport",
     "sandbox/sixty-fourth-accepted",
     "sandbox/footprint",
+    "sandbox/boot-time",
     "sandbox/sixty-fifth-refused",
     "sandbox/teardown",
 ];
@@ -79,7 +80,7 @@ fn run_without_firecracker(run_dir: &str) -> Result<(Transcript, PathBuf), Strin
 // --- Positive -------------------------------------------------------------
 
 /// Positive: four paths after `run` are parsed into a launch and the run
-/// reaches all six cases; the admission case needs no microVM and passes,
+/// reaches all eight cases; the admission case needs no microVM and passes,
 /// and the start uses the Firecracker path the command line named.
 #[test]
 fn a_full_command_line_reaches_the_cases() -> Fallible {
@@ -109,6 +110,12 @@ fn a_missing_firecracker_fails_the_run() -> Fallible {
     assert_eq!(run.code, Some(1), "{run:#?}");
     assert!(
         run.stdout.contains("FAIL sandbox/boot-and-round-trip"),
+        "{run:#?}"
+    );
+    assert!(
+        run.stdout.contains(
+            "FAIL sandbox/boot-time\n     not run: the table was not filled to its bound"
+        ),
         "{run:#?}"
     );
     assert!(run.last_line().starts_with("RESULT fail: "), "{run:#?}");
