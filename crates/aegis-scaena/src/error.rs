@@ -11,6 +11,7 @@ use thiserror::Error;
 
 use crate::descriptor::{FourCc, MAX_PLANES};
 use crate::line::MAX_LINE_BYTES;
+use crate::mount::{MAX_EXTENT, MAX_NAMESPACE_BYTES};
 use crate::wayland::WaitEvent;
 
 /// Why a decoded-frame descriptor was refused.
@@ -35,6 +36,39 @@ pub enum DescriptorError {
     /// A dimension is zero or above the admitted bound.
     #[error("the width or the height is zero or above the admitted bound")]
     Dimensions,
+}
+
+/// Why a `MOUNT_SHELL_CANVAS` request's parameters were refused.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
+pub enum MountError {
+    /// The request names another schema than `aegis.p05-p17.mount-shell-canvas.v1`.
+    #[error("the mount request names a schema this build does not admit")]
+    Schema,
+    /// The namespace is empty, too long or outside its alphabet.
+    #[error(
+        "the namespace is empty, longer than {MAX_NAMESPACE_BYTES} bytes or outside [a-z0-9._-]"
+    )]
+    Namespace,
+    /// The layer is not one `zwlr_layer_shell_v1` defines.
+    #[error("the layer is not background, bottom, top or overlay")]
+    Layer,
+    /// An anchor names an unknown edge, names one twice or lists more than four.
+    #[error("the anchor names an unknown edge, repeats one or lists more than four")]
+    Anchor,
+    /// The exclusive zone is below -1 or above [`MAX_EXTENT`].
+    #[error("the exclusive zone is outside -1..={MAX_EXTENT}")]
+    ExclusiveZone,
+    /// The exclusive edge is unknown or not one the surface is anchored to
+    /// (the protocol's `invalid_exclusive_edge`).
+    #[error("the exclusive edge is unknown or not one the surface is anchored to")]
+    ExclusiveEdge,
+    /// A margin is outside -[`MAX_EXTENT`]..=[`MAX_EXTENT`].
+    #[error("a margin is outside -{MAX_EXTENT}..={MAX_EXTENT}")]
+    Margin,
+    /// The keyboard interactivity is not one the protocol defines.
+    #[error("the keyboard interactivity is not none, exclusive or on_demand")]
+    KeyboardInteractivity,
 }
 
 /// Why a JSON-RPC 2.0 line was refused.
@@ -63,7 +97,7 @@ pub enum LineError {
     #[error("the jsonrpc member is absent or not \"2.0\"")]
     Version,
     /// The method is not the one this socket serves.
-    #[error("the method is not STREAM_DECODED_FRAME")]
+    #[error("the method is not the one this socket serves")]
     Method,
     /// The request carries no numeric `id`.
     #[error("the request carries no numeric id")]
@@ -81,6 +115,9 @@ pub enum LineError {
     /// The descriptor inside the line was refused.
     #[error("the descriptor was refused: {0}")]
     Descriptor(#[from] DescriptorError),
+    /// The mount parameters inside the line were refused.
+    #[error("the mount parameters were refused: {0}")]
+    Mount(#[from] MountError),
 }
 
 /// A `Copy` mirror of `serde_json::error::Category`.
@@ -132,6 +169,13 @@ pub enum TransportError {
     /// every descriptor it did carry has been closed.
     #[error("the message carried {count} file descriptors; exactly one is admitted")]
     FdCount {
+        /// How many descriptors arrived.
+        count: usize,
+    },
+    /// A control-plane message carried descriptors, which that plane never
+    /// admits; every one it carried has been closed.
+    #[error("the control message carried {count} file descriptors; none are admitted")]
+    FdOnControl {
         /// How many descriptors arrived.
         count: usize,
     },

@@ -48,7 +48,7 @@ pub const MAX_DEADLINE: Duration = Duration::from_secs(60);
 /// How many descriptors the receive buffer is sized for: one admitted, one
 /// to detect a surplus. Alignment padding can leave room for a few more; any
 /// that arrive are counted and closed too.
-const FD_SLOTS: usize = 2;
+pub(crate) const FD_SLOTS: usize = 2;
 
 /// The most descriptors one message can carry on Linux (`SCM_MAX_FD`), which
 /// bounds the loop that counts and closes them.
@@ -64,7 +64,7 @@ pub struct Deadlines {
 }
 
 /// Maps a socket-call error onto the refusal it stands for.
-fn socket_error(error: Errno, deadline: TransportError) -> TransportError {
+pub(crate) fn socket_error(error: Errno, deadline: TransportError) -> TransportError {
     match error {
         Errno::AGAIN => deadline,
         Errno::PIPE | Errno::CONNRESET => TransportError::PeerClosed,
@@ -75,7 +75,7 @@ fn socket_error(error: Errno, deadline: TransportError) -> TransportError {
 }
 
 /// Sets one deadline on `socket`, refusing one outside the admitted range.
-fn set_deadline(
+pub(crate) fn set_deadline(
     socket: BorrowedFd<'_>,
     which: sockopt::Timeout,
     deadline: Duration,
@@ -204,7 +204,7 @@ pub struct FrameReceiver {
 /// Takes the descriptors out of a received control message: the first, and
 /// how many arrived in all. Every one but the first is dropped, which closes
 /// it.
-fn take_fds(control: &mut RecvAncillaryBuffer<'_>) -> (Option<OwnedFd>, usize) {
+pub(crate) fn take_fds(control: &mut RecvAncillaryBuffer<'_>) -> (Option<OwnedFd>, usize) {
     let mut first = None;
     let mut count = 0_usize;
     let rights = control.drain().filter_map(|message| match message {
