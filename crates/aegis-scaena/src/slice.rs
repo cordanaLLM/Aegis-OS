@@ -118,18 +118,23 @@ pub enum SliceError {
 }
 
 /// The report the run writes.
-struct Report<'w> {
-    out: &'w mut dyn Write,
-    failed: u32,
+pub(crate) struct Report<'w> {
+    pub(crate) out: &'w mut dyn Write,
+    pub(crate) failed: u32,
 }
 
 impl Report<'_> {
-    fn info(&mut self, key: &str, value: impl Display) -> Result<(), SliceError> {
+    pub(crate) fn info(&mut self, key: &str, value: impl Display) -> Result<(), SliceError> {
         writeln!(self.out, "info {key}: {value}")?;
         Ok(())
     }
 
-    fn case(&mut self, name: &str, passed: bool, notes: &[String]) -> Result<(), SliceError> {
+    pub(crate) fn case(
+        &mut self,
+        name: &str,
+        passed: bool,
+        notes: &[String],
+    ) -> Result<(), SliceError> {
         writeln!(self.out, "{} {name}", if passed { "PASS" } else { "FAIL" })?;
         for note in notes {
             writeln!(self.out, "     {note}")?;
@@ -140,7 +145,7 @@ impl Report<'_> {
         Ok(())
     }
 
-    fn verdict(&self) -> Verdict {
+    pub(crate) fn verdict(&self) -> Verdict {
         if self.failed == 0 {
             Verdict::Passed
         } else {
@@ -165,7 +170,10 @@ fn skip_reason(error: &SliceError) -> Option<String> {
 
 /// Resolves the decode node from the compositor's main device through
 /// `/sys/class/drm`, and refuses every other render node (negative (b)).
-fn decode_node(report: &mut Report<'_>, main_device: u64) -> Result<RenderNode, SliceError> {
+pub(crate) fn decode_node(
+    report: &mut Report<'_>,
+    main_device: u64,
+) -> Result<RenderNode, SliceError> {
     let root = Path::new(device::SYS_CLASS_DRM);
     let (major, minor) = (
         rustix::fs::major(main_device),
@@ -204,7 +212,7 @@ fn decode_node(report: &mut Report<'_>, main_device: u64) -> Result<RenderNode, 
 }
 
 /// Opens the VA display on the decode node and requires the iHD driver.
-fn open_decoder(
+pub(crate) fn open_decoder(
     report: &mut Report<'_>,
     node: &RenderNode,
 ) -> Result<Option<VaDevice>, SliceError> {
@@ -618,7 +626,7 @@ fn unanswered_presentation_case(
 
 /// Connects, reports the compositor process and waits for the surface's
 /// configure and feedback.
-fn connect(report: &mut Report<'_>) -> Result<Presenter, SliceError> {
+pub(crate) fn connect(report: &mut Report<'_>) -> Result<Presenter, SliceError> {
     let size = (content::FIXTURE_WIDTH, content::FIXTURE_HEIGHT);
     let mut presenter = Presenter::connect(size, DEADLINES)?;
     match presenter.peer().pid {
@@ -655,17 +663,18 @@ fn positive(
     Ok(None)
 }
 
+/// The banner header line for M27.
+pub const M27_HEADER: &str = "Display slice (M27, D79): development evidence, client half only; the compositor is the host session's, not P04.";
+
 /// Runs a body against a fresh presenter, closing it on every path and
 /// mapping a missing capability onto a skip.
-fn with_presenter(
+pub(crate) fn with_presenter(
     out: &mut dyn Write,
+    header: &str,
     body: fn(&mut Report<'_>, &mut Presenter) -> Result<Option<String>, SliceError>,
 ) -> Result<Verdict, SliceError> {
     let mut report = Report { out, failed: 0 };
-    writeln!(
-        report.out,
-        "Display slice (M27, D79): development evidence, client half only; the compositor is the host session's, not P04."
-    )?;
+    writeln!(report.out, "{header}")?;
     let result = connect(&mut report).and_then(|mut presenter| {
         let outcome = body(&mut report, &mut presenter);
         presenter.close();
@@ -684,7 +693,7 @@ fn with_presenter(
 ///
 /// Returns the first step that failed before its case could be decided.
 pub fn run_display(out: &mut dyn Write) -> Result<Verdict, SliceError> {
-    with_presenter(out, positive)
+    with_presenter(out, M27_HEADER, positive)
 }
 
 /// Negative (a): under the session's `LIBVA_DRIVER_NAME`, the decode node's
@@ -730,5 +739,5 @@ fn driver_probe(
 ///
 /// Returns the first step that failed before the case could be decided.
 pub fn run_driver_probe(out: &mut dyn Write) -> Result<Verdict, SliceError> {
-    with_presenter(out, driver_probe)
+    with_presenter(out, M27_HEADER, driver_probe)
 }

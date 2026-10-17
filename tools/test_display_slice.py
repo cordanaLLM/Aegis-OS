@@ -305,27 +305,43 @@ class ChildReportTests(unittest.TestCase):
         self.assertEqual(child.call_count, 1)
 
     def test_both_children_run_with_their_drivers(self):
-        """Positive: iHD for the run, nvidia for the probe, and both must pass."""
-        outputs = [(0, passing(gate.RUN_CASES)), (0, passing(gate.PROBE_CASES))]
+        """Positive: iHD for run and subtitles, nvidia for probe; all three must pass."""
+        outputs = [
+            (0, passing(gate.RUN_CASES)),
+            (0, passing(gate.SUBTITLE_CASES)),
+            (0, passing(gate.PROBE_CASES)),
+        ]
         with mock.patch.object(gate, "run_child", side_effect=outputs) as child:
             skipped, failures, _info = gate.run_cases(Path("/bin/true"))
         self.assertIsNone(skipped)
         self.assertEqual(failures, [])
         drivers = [call.args[2] for call in child.call_args_list]
-        self.assertEqual(drivers, ["iHD", "nvidia"])
+        self.assertEqual(drivers, ["iHD", "iHD", "nvidia"])
 
     def test_a_probe_child_that_fails_its_case_fails_the_gate(self):
         """Negative (a): a FAIL of driver-not-ihd-refused is a failure of the gate."""
         probe = "FAIL display/driver-not-ihd-refused\nRESULT fail: 1 case(s) failed\n"
-        outputs = [(0, passing(gate.RUN_CASES)), (1, probe)]
+        outputs = [
+            (0, passing(gate.RUN_CASES)),
+            (0, passing(gate.SUBTITLE_CASES)),
+            (1, probe),
+        ]
         with mock.patch.object(gate, "run_child", side_effect=outputs):
             _skipped, failures, _info = gate.run_cases(Path("/bin/true"))
         self.assertEqual(failures, ["display/driver-not-ihd-refused failed"])
 
     def test_a_child_that_exits_non_zero_after_passing_every_case_fails(self):
         """Negative: every case PASS is not enough when either child exits non-zero."""
-        for codes, expected in (((3, 0), "run exited 3"), ((0, 4), "driver-probe exited 4")):
-            outputs = [(codes[0], passing(gate.RUN_CASES)), (codes[1], passing(gate.PROBE_CASES))]
+        for codes, expected in (
+            ((3, 0, 0), "run exited 3"),
+            ((0, 3, 0), "subtitles exited 3"),
+            ((0, 0, 4), "driver-probe exited 4"),
+        ):
+            outputs = [
+                (codes[0], passing(gate.RUN_CASES)),
+                (codes[1], passing(gate.SUBTITLE_CASES)),
+                (codes[2], passing(gate.PROBE_CASES)),
+            ]
             with mock.patch.object(gate, "run_child", side_effect=outputs):
                 _skipped, failures, _info = gate.run_cases(Path("/bin/true"))
             self.assertEqual(len(failures), 1, failures)
@@ -335,6 +351,7 @@ class ChildReportTests(unittest.TestCase):
         """Positive (D73): a NOTE for the regression pin passes and is named not held."""
         outputs = [
             (0, passing(gate.RUN_CASES, PIN, PIN_NOTE)),
+            (0, passing(gate.SUBTITLE_CASES)),
             (0, passing(gate.PROBE_CASES)),
         ]
         with mock.patch.object(gate, "run_child", side_effect=outputs):

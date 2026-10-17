@@ -26,7 +26,7 @@ use common::Fallible;
 const BINARY: &str = env!("CARGO_BIN_EXE_aegis-scaena-display");
 
 /// The usage line the binary prints on a refused command line.
-const USAGE: &str = "usage: aegis-scaena-display run|driver-probe";
+const USAGE: &str = "usage: aegis-scaena-display run|subtitles|driver-probe";
 
 /// Where the dynamic loader finds libva when it is not a system library.
 const LOADER_PATH: &str = "LD_LIBRARY_PATH";
@@ -70,6 +70,25 @@ fn skipped_without_a_compositor(mode: &str) -> Fallible {
 #[test]
 fn run_dispatches_and_skips_without_a_compositor() -> Fallible {
     skipped_without_a_compositor("run")
+}
+
+/// Positive: `subtitles` dispatches to the subtitle timing run, which skips
+/// cleanly on a host with no compositor.
+#[test]
+fn subtitles_dispatches_and_skips_without_a_compositor() -> Fallible {
+    let run = display(&["subtitles"])?;
+    assert_eq!(run.code, Some(2), "{run:#?}");
+    assert!(
+        run.stdout.starts_with("Display slice (M32, D79)"),
+        "{run:#?}"
+    );
+    assert!(
+        run.last_line()
+            .starts_with("RESULT skip: no Wayland compositor could be reached"),
+        "{run:#?}"
+    );
+    assert!(!run.stdout.contains("decode node"), "{run:#?}");
+    Ok(())
 }
 
 /// Positive: `driver-probe` dispatches to negative (a), which skips the same

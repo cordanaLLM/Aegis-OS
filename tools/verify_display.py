@@ -57,6 +57,7 @@ import time
 from pathlib import Path
 
 import display_toolchain
+import subtitle_fixture
 
 ROOT = Path(__file__).resolve().parent.parent
 CRATE = "aegis-scaena"
@@ -155,6 +156,12 @@ RUN_CASES = (
     "display/unadvertised-pair-refused",
     "display/frame-crc-regression-pin",
     "display/presented-deadline",
+)
+SUBTITLE_CASES = (
+    "subtitle/cue-1-within-100ms",
+    "subtitle/cue-2-within-100ms",
+    "subtitle/cue-3-within-100ms",
+    "subtitle/planted-150ms-late-refused",
 )
 PROBE_CASES = ("display/driver-not-ihd-refused",)
 # The case a child may report with a NOTE line instead of PASS or FAIL: the
@@ -525,6 +532,7 @@ def prepare():
         display_toolchain.read_lock()
     )
     reasons += fixture_problems()
+    reasons += subtitle_fixture.fixture_problems()
     if reasons:
         raise GateError("; ".join(reasons[:MAX_PROBLEM_LINES]))
     toolchain = (rustc_version(), libva_version())
@@ -533,7 +541,7 @@ def prepare():
 
 
 def run_cases(binary, retain=None):
-    """Start both children; return (skip reason or None, failures, run info)."""
+    """Start the children; return (skip reason or None, failures, run info)."""
     code, stdout = run_child(binary, "run", POSITIVE_DRIVER, retain)
     info, cases, result, notes = parse_child(stdout)
     if code == EXIT_SKIP and result and result.startswith("skip: "):
@@ -542,12 +550,20 @@ def run_cases(binary, retain=None):
     info["not held"] = not_held(cases, notes)
     if code != 0 and not failures:
         failures.append(f"{BINARY} run exited {code}: {result}")
+    sub_code, sub_stdout = run_child(binary, "subtitles", POSITIVE_DRIVER, retain)
+    sub_info, sub_cases, sub_result, sub_notes = parse_child(sub_stdout)
+    if sub_code == EXIT_SKIP and sub_result and sub_result.startswith("skip: "):
+        return sub_result[len("skip: ") :], [], info
+    sub_failures = case_problems(sub_cases, SUBTITLE_CASES, sub_notes)
+    if sub_code != 0 and not sub_failures:
+        sub_failures.append(f"{BINARY} subtitles exited {sub_code}: {sub_result}")
+    info.update(sub_info)
     probe_code, probe_stdout = run_child(binary, "driver-probe", NEGATIVE_DRIVER, retain)
     _probe_info, probe_cases, probe_result, probe_notes = parse_child(probe_stdout)
     probe_failures = case_problems(probe_cases, PROBE_CASES, probe_notes)
     if probe_code != 0 and not probe_failures:
         probe_failures.append(f"{BINARY} driver-probe exited {probe_code}: {probe_result}")
-    return None, failures + probe_failures, info
+    return None, failures + sub_failures + probe_failures, info
 
 
 def skip(reasons):

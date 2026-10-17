@@ -58,6 +58,7 @@ pub mod present;
 pub mod reference;
 pub mod slice;
 pub mod subtitle;
+pub mod subtitle_run;
 pub mod surface;
 pub mod transport;
 pub mod wayland;
