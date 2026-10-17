@@ -111,6 +111,18 @@ leaf crate or one of its edges has no entry, when an entry names a crate that
 now has a counterpart, or when an entry names a milestone that is unknown or
 already done; `tools/test_verify_counterparts.py` plants each of those cases.
 
+The pinned Praetor engine decides Rust self-recursion by a bare name only and
+lists mutual, nested, qualified, trait-impl, macro-template and macro-input
+recursion as known misses (cordanaLLM/praetor#1320). Until a pin adopts the
+engine fix, `tools/verify_recursion.py` runs inside `make verify-all`: it builds
+the call graph of every Rust function in the tree, counting only calls it can
+resolve to one function (bare, `self.`, `Self::`, module-path and `Type::`
+calls; a method call on another receiver is delegation) and skipping a bare call
+while the caller binds that name as a value, and fails on any cycle (issue #219).
+`tools/test_verify_recursion.py` plants the engine's six missed forms and
+its delegation, forwarding and shadowing negatives; the check retires once the
+engine catches the same forms.
+
 Cost scale:
 
 - trivial: hours, no new toolchain.
