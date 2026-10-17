@@ -26,6 +26,11 @@ build/contract/*.json text eol=lf
 # fetch them at the commit they pin.
 build/*.schema.json text eol=lf
 
+# The Concordia token source and the constants generated from it hash and
+# compare byte for byte (tools/concordia_theme.py).
+ui/concordia-tokens/concordia-tokens.css text eol=lf
+crates/aegis-concordia/src/tokens.rs text eol=lf
+
 # BEGIN praetor managed attributes (praetorctl adopt)
 # praetorctl audit hashes these files; keep their checkout bytes the same on every platform.
 tools/figures/** text eol=lf

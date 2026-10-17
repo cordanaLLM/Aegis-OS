@@ -7,6 +7,7 @@ members = [
     "crates/aegis-athena",
     "crates/aegis-calliope",
     "crates/aegis-compositor",
+    "crates/aegis-concordia",
     "crates/aegis-fabrica-defs",
     "crates/aegis-forum-shell",
     "crates/aegis-hephaestus",
