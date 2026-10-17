@@ -43,6 +43,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "aegis-concordia"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "aegis-fabrica-defs"
 version = "0.1.0"
 dependencies = [
