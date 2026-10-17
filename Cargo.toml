@@ -39,7 +39,7 @@ accesskit = { version = "0.25.1", default-features = false }
 base16ct = { version = "1.0.0", default-features = false }
 cros-libva = { git = "https://github.com/chromeos/cros-libva", rev = "59384456ac2ae78c0c3e5515f41ef1efd9b802cf" }
 gpui = { git = "https://github.com/zed-industries/zed", rev = "322cd509dcccaee1f6bc44725d270598ae8171ad", default-features = false, features = ["wayland"] }
-gpui_linux = { git = "https://github.com/zed-industries/zed", rev = "322cd509dcccaee1f6bc44725d270598ae8171ad", default-features = false, features = ["wayland"] }
+gpui_linux = { git = "https://github.com/zed-industries/zed", rev = "56934ec0560bce8929025497411de7f5322fb6ca", default-features = false, features = ["wayland"] }
 rustix = { version = "1.1.5", features = ["net", "fs", "event"] }
 saeptum-capsule = { git = "https://github.com/plurano/saeptum", rev = "997a1b34f0a2912de8bf67231846b3af512ff041" }
 saeptum-microvm = { git = "https://github.com/plurano/saeptum", rev = "997a1b34f0a2912de8bf67231846b3af512ff041" }
