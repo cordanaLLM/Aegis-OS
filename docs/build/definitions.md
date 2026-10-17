@@ -25,7 +25,7 @@ or release gate.
 | `build/repart.d/10-root-a.conf` | root slot A: EROFS with dm-verity data | export-054 | REQ-P01-02, REQ-P02-07 |
 | `build/repart.d/10-root-b.conf` | root slot B: the empty alternate slot | export-063 (the A/B target) | REQ-P01-04, REQ-P02-04 |
 | `build/repart.d/11-root-verity.conf` | dm-verity hash partition for slot A | export-054 (its `Verity=data` pair) | REQ-P01-02, REQ-P02-07 |
-| `build/repart.d/20-var.conf` | TPM2-sealed Btrfs `/var` | export-055 | REQ-P01-03, REQ-P02-03 |
+| `build/mkosi.extra/usr/lib/repart.d/20-var.conf` | TPM2-sealed Btrfs `/var` | export-055 | REQ-P01-03, REQ-P02-03 |
 | `build/sysupdate.d/10-root.transfer` | dual-slot A/B root transfer | export-063 | REQ-P01-04, REQ-P02-04 |
 
 Each file carries its export id and the sha256 of that export in its own header
@@ -207,6 +207,22 @@ Since then the developer account has joined `tss` (re-read 2026-09-28,
 longer holds on the reference profile. The un-deferred run was not repeated, and
 the deferral stays: it rests on the first-boot sequence, which does not depend
 on group membership.
+
+Since then `20-var.conf` lives in `build/mkosi.extra/usr/lib/repart.d/`, which
+mkosi copies into the image as an extra tree. `systemd-repart.service` reads
+`/usr/lib/repart.d` at first boot on the target, leaves the four existing
+partitions as they are and creates and enrols `/var` there. The build-time set in
+`build/repart.d/` therefore carries no `Encrypt=tpm2` and runs without
+`--defer-partitions`; `build_time_encrypt_problems()` in
+`tools/verify_systemd_definitions.py` fails the gate if one comes back. The case
+`repart/first-boot-layout` stages both sets together with `--defer-partitions=var`,
+so the full layout is still checked.
+
+Without the 10 GiB `/var` minimum the raw image shrinks. Measured on 2026-10-17
+with systemd-repart 262, `--empty=create --size=auto --offline=yes`, the gate's
+seed and an empty scratch root: 548430336 bytes (523 MiB; ESP 512 MiB, root slot A
+4 KiB, root slot B 10 MiB, verity 4 KiB). A real image adds its EROFS root and
+verity content, so this is the floor of the table, not the size of a built image.
 
 ### `systemd-sysupdate --root=` reads no transfer on systemd 261
 

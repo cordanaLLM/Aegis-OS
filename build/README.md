@@ -9,7 +9,8 @@ and one locally tested request/result pair.
 
 | Path | What it declares |
 | :--- | :--- |
-| `repart.d/` | the five partition drop-ins: ESP, root slots A and B, the dm-verity hash partition and the TPM2-sealed `/var` |
+| `repart.d/` | the four build-time partition drop-ins: ESP, root slots A and B, and the dm-verity hash partition |
+| `mkosi.extra/usr/lib/repart.d/20-var.conf` | the TPM2-sealed `/var` partition drop-in shipped in the image for first boot |
 | `sysupdate.d/10-root.transfer` | the dual-slot A/B root transfer |
 
 Each file cites the private source it was derived from by export id and sha256

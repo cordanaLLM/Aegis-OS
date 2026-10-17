@@ -99,6 +99,23 @@ pub fn reviewed_transfer_set() -> Result<Vec<(String, String)>, Box<dyn std::err
     reviewed_directory("sysupdate.d", "transfer")
 }
 
+/// Reads the reviewed first-boot var repart drop-in from `build/mkosi.extra/usr/lib/repart.d/20-var.conf`.
+///
+/// # Errors
+///
+/// Returns the I/O error when the first-boot drop-in cannot be read.
+pub fn reviewed_first_boot_var() -> Result<(String, String), Box<dyn std::error::Error>> {
+    let path = repository_root()
+        .join("build")
+        .join("mkosi.extra")
+        .join("usr")
+        .join("lib")
+        .join("repart.d")
+        .join("20-var.conf");
+    let text = std::fs::read_to_string(&path)?;
+    Ok(("20-var.conf".to_owned(), text))
+}
+
 /// Reads one reviewed payload from `build/`, returning its text.
 ///
 /// # Errors
