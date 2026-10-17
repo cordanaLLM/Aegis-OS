@@ -74,7 +74,8 @@ set, so a missing ledger has to be restored explicitly. `bugs.meta.json` and
    workstation's, under its own `GOTOOLCHAIN` setting, whereas CI installs the
    version Praetor's `go.mod` declares and sets `GOTOOLCHAIN=local`.
 3. **Adopt.** In a fresh worktree of Aegis `main` under the cache directory it
-   runs `praetorctl adopt --force --profile os-image` against that commit.
+   runs `praetorctl adopt --force --profile os-image` against that commit
+   (without `--force` under `--plain-adopt`, see [Engine refresh](#engine-refresh)).
    adopt reinstalls the git hooks and rewrites `info/lefthook.checksum`, which
    lefthook reads before each hook run; both are shared with the primary
    checkout, so both are put back byte for byte afterwards, also when adopt
@@ -140,7 +141,24 @@ Such a run leaves its journal but no evidence file and no failure marker.
 | `--merge` | After a pass, queue `gh pr merge --squash --auto`, but only when the repository allows auto-merge. It does not today, so the flag only reports that. |
 | `--no-publish` | Commit in the worktree and stop: no push, no pull request. The worktree is kept until the next run that has work. |
 | `--retry` | Run a Praetor and Aegis pair that already failed. |
+| `--plain-adopt` | Run `praetorctl adopt` without `--force`, for an [engine refresh](#engine-refresh). A failure is recorded per mode, so a failed forced run does not hold back a plain one. |
 | `--cache-dir`, `--repo`, `--praetor-url`, `--praetor-checkout` | Relocate the cache, the Aegis checkout, the Praetor source and the object donor. |
+
+## Engine refresh
+
+An engine refresh that the fleet controller announces runs `praetorctl adopt`
+without `--force`. Its path is the same script with one flag, from the primary
+checkout:
+
+```sh
+python3 tools/praetor_bump.py --plain-adopt
+```
+
+Every other step is the timer's: the files in `HAND_MAINTAINED` go back to
+`main`, and each remaining change is reverted unless a Praetor gate fails
+without it. The commit message and the pull request body name the adopt that
+ran. Before this mode, the files to revert after a plain adopt were picked by
+hand (pull requests #262 and #264), and the list could drift from the timer's.
 
 ## Failure notice
 
