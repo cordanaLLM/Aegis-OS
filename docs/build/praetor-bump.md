@@ -79,12 +79,10 @@ set, so a missing ledger has to be restored explicitly. `bugs.meta.json` and
    adopt reinstalls the git hooks and rewrites `info/lefthook.checksum`, which
    lefthook reads before each hook run; both are shared with the primary
    checkout, so both are put back byte for byte afterwards, also when adopt
-   fails. adopt keeps the checkpoint evaluator scripts
-   `.config/lefthook/scripts/checkpoint.py` and `common.py` as found beside
-   the hand-maintained `lefthook.yml`, while `praetorctl audit` warns when
-   they hold an earlier release's text. The bump therefore copies each one
-   the worktree holds from the Praetor source (`EVALUATOR_SCRIPTS`), and
-   step 4 reverts a copy no gate needs.
+   fails. Since Praetor 963e6ee, adopt itself refreshes the checkpoint
+   evaluator scripts `.config/lefthook/scripts/checkpoint.py` and `common.py`
+   when they hold an earlier Praetor text, also beside the hand-maintained
+   `lefthook.yml`, so the bump copies nothing itself.
 4. **Reconcile.** Every file in `HAND_MAINTAINED` in `tools/praetor_bump.py`
    goes back to its content on `main`: `lefthook.yml`, the evasion interceptor
    and its six hook registrations, the editor settings and adopt's `*.bak`
