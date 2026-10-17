@@ -211,18 +211,19 @@ on group membership.
 Since then `20-var.conf` lives in `build/mkosi.extra/usr/lib/repart.d/`, which
 mkosi copies into the image as an extra tree. `systemd-repart.service` reads
 `/usr/lib/repart.d` at first boot on the target, leaves the four existing
-partitions as they are and creates and enrols `/var` there. The build-time set in
-`build/repart.d/` therefore carries no `Encrypt=tpm2` and runs without
+partitions as they are and creates and enrols `/var` there. The build-time set
+in `build/repart.d/` therefore carries no `Encrypt=tpm2` and runs without
 `--defer-partitions`; `build_time_encrypt_problems()` in
 `tools/verify_systemd_definitions.py` fails the gate if one comes back. The case
-`repart/first-boot-layout` stages both sets together with `--defer-partitions=var`,
-so the full layout is still checked.
+`repart/first-boot-layout` stages both sets together with
+`--defer-partitions=var`, so the full layout is still checked.
 
 Without the 10 GiB `/var` minimum the raw image shrinks. Measured on 2026-10-17
 with systemd-repart 262, `--empty=create --size=auto --offline=yes`, the gate's
-seed and an empty scratch root: 548430336 bytes (523 MiB; ESP 512 MiB, root slot A
-4 KiB, root slot B 10 MiB, verity 4 KiB). A real image adds its EROFS root and
-verity content, so this is the floor of the table, not the size of a built image.
+seed and an empty scratch root: 548430336 bytes (523 MiB; ESP 512 MiB, root slot
+A 4 KiB, root slot B 10 MiB, verity 4 KiB). A real image adds its EROFS root and
+verity content, so this is the floor of the table, not the size of a built
+image.
 
 ### `systemd-sysupdate --root=` reads no transfer on systemd 261
 

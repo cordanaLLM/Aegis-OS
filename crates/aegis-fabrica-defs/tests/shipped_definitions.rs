@@ -104,6 +104,7 @@ fn each_shipped_drop_in_still_declares_the_keys_its_requirement_needs() -> Falli
     let (var_name, var_text) = common::reviewed_first_boot_var()?;
     let var = RepartDefinition::parse(&var_name, &var_text)?;
     assert!(var.is_tpm2_encrypted(), "{var_name}");
+    assert_eq!(var.partition_type(), VAR_TYPE, "{var_name}");
     Ok(())
 }
 
