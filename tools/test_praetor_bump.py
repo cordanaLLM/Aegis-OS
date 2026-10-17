@@ -452,48 +452,20 @@ class HookSnapshotTests(unittest.TestCase):
 
 
 class EvaluatorRefreshTests(unittest.TestCase):
-    """adopt keeps the evaluator beside a hand-maintained lefthook.yml; the bump refreshes it."""
+    """adopt refreshes the evaluator itself since Praetor 963e6ee; the bump adds no copy step."""
 
-    def trees(self, base, tree_text=b"earlier\n", source_text=b"current\n"):
-        """Return an Aegis worktree and a Praetor source holding every evaluator script."""
-        tree, source = Path(base) / "aegis", Path(base) / "praetor"
-        for path in bump.EVALUATOR_SCRIPTS:
-            for root, text in ((tree, tree_text), (source, source_text)):
-                (root / path).parent.mkdir(parents=True, exist_ok=True)
-                (root / path).write_bytes(text)
-        return tree, source
-
-    def test_an_earlier_script_takes_the_source_text(self):
-        with tempfile.TemporaryDirectory() as base:
-            tree, source = self.trees(base)
-            self.assertEqual(bump.refresh_evaluator(tree, source), list(bump.EVALUATOR_SCRIPTS))
-            for path in bump.EVALUATOR_SCRIPTS:
-                self.assertEqual((tree / path).read_bytes(), b"current\n")
-
-    def test_a_source_without_the_script_is_refused(self):
-        """Negative: a missing source script stops the bump rather than keeping the stale copy."""
-        with tempfile.TemporaryDirectory() as base:
-            tree, source = self.trees(base)
-            (source / bump.EVALUATOR_SCRIPTS[0]).unlink()
-            with self.assertRaises(bump.BumpError):
-                bump.refresh_evaluator(tree, source)
-            self.assertEqual((tree / bump.EVALUATOR_SCRIPTS[0]).read_bytes(), b"earlier\n")
+    SCRIPTS = (
+        ".config/lefthook/scripts/checkpoint.py",
+        ".config/lefthook/scripts/common.py",
+    )
 
     def test_the_scripts_never_go_back_as_hand_maintained(self):
-        """Negative: a listed script would return to main's stale copy before the gates."""
-        for path in bump.EVALUATOR_SCRIPTS:
+        """Negative: a listed script would undo adopt's refresh before the gates."""
+        for path in self.SCRIPTS:
             self.assertFalse(bump.is_hand_maintained(path), path)
 
-    def test_an_absent_or_identical_script_is_left_alone(self):
-        """Boundary: the bump installs no script the worktree lacks and counts no equal one."""
-        with tempfile.TemporaryDirectory() as base:
-            tree, source = self.trees(base, tree_text=b"current\n")
-            (tree / bump.EVALUATOR_SCRIPTS[1]).unlink()
-            self.assertEqual(bump.refresh_evaluator(tree, source), [])
-            self.assertFalse((tree / bump.EVALUATOR_SCRIPTS[1]).exists())
-
-    def test_prepare_refreshes_after_adopt_and_before_reconcile(self):
-        """The refresh must land between adopt and the gates that minimise runs."""
+    def test_prepare_leaves_the_evaluator_to_adopt(self):
+        """Boundary: the bump writes no evaluator script between adopt and reconcile."""
         calls = []
 
         def record(name, result):
@@ -501,30 +473,37 @@ class EvaluatorRefreshTests(unittest.TestCase):
                 bump, name, side_effect=lambda *_a: calls.append(name) or result
             )
 
-        patches = [
-            record(name, [])
-            for name in (
-                "fresh_worktree",
-                "copy_ledgers",
-                "adopt",
-                "refresh_evaluator",
-                "apply_pin",
-                "run_gates",
-                "praetor_commits",
-                "commit_message",
-                "commit",
-            )
-        ]
-        patches += [record("build_praetorctl", Path("src")), record("reconcile", ([], []))]
-        session = bump.Session(args(), stream=io.StringIO())
-        for patch in patches:
-            patch.start()
-        try:
-            bump.prepare(session, PLAN, Path("tree"))
-        finally:
-            mock.patch.stopall()
+        with tempfile.TemporaryDirectory() as base:
+            tree, source = Path(base) / "aegis", Path(base) / "praetor"
+            for root, text in ((tree, b"earlier\n"), (source, b"current\n")):
+                for path in self.SCRIPTS:
+                    (root / path).parent.mkdir(parents=True, exist_ok=True)
+                    (root / path).write_bytes(text)
+            patches = [
+                record(name, [])
+                for name in (
+                    "fresh_worktree",
+                    "copy_ledgers",
+                    "adopt",
+                    "apply_pin",
+                    "run_gates",
+                    "praetor_commits",
+                    "commit_message",
+                    "commit",
+                )
+            ]
+            patches += [record("build_praetorctl", source), record("reconcile", ([], []))]
+            session = bump.Session(args(), stream=io.StringIO())
+            for patch in patches:
+                patch.start()
+            try:
+                bump.prepare(session, PLAN, tree)
+            finally:
+                mock.patch.stopall()
+            for path in self.SCRIPTS:
+                self.assertEqual((tree / path).read_bytes(), b"earlier\n", path)
         start, end = calls.index("adopt"), calls.index("reconcile")
-        self.assertEqual(calls[start : end + 1], ["adopt", "refresh_evaluator", "reconcile"])
+        self.assertEqual(calls[start : end + 1], ["adopt", "reconcile"])
 
 
 class AdoptRestoreTests(unittest.TestCase):
