@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """Parse the P01 image definition with the host's own mkosi and fail on drift.
 
-Three cases, no simulation and no failure suppression:
+Static section check plus four cases, no simulation and no failure suppression:
 
+* a static check scans ``build`` and drop-ins for unknown section headers that
+  mkosi skips without a diagnostic;
 * the positive case runs ``mkosi summary`` over ``build`` and requires exit 0
   with a parsable Output stanza that names the reviewed repart directory, the
   pinned distribution snapshot and the declared output format;
-* the negative case raises ``MinimumVersion=`` above the admitted floor in a
+* the negative floor case raises ``MinimumVersion=`` above the admitted floor in a
   scratch copy and requires mkosi to refuse the configuration;
+* the negative ignored-setting case plants an unknown setting in a scratch copy
+  and requires mkosi to report it as ignored;
 * the boundary case sets ``MinimumVersion=`` to the floor itself and requires
   mkosi to accept it.
 
@@ -70,7 +74,36 @@ REPART_DIRECTORY = "repart.d"
 # reported rather than truncated, because truncating is how an unreviewed set
 # would pass unseen.
 MAX_REPART_DIRECTORIES = 32
+MAX_DROPIN_FILES = 32
 REFUSAL = "or newer is required by this configuration"
+UNKNOWN_SETTING = "Unknown setting"
+IGNORED_DIAGNOSTICS = (
+    "should be configured in [",
+    "is deprecated, please use",
+    "specifier is deprecated",
+    UNKNOWN_SETTING,
+)
+PLANTED_SETTING = "AegisPlantedUnknownSetting"
+
+# The sections mkosi 27.1 config.py parses (SETTINGS sections plus Host, Match,
+# TriggerMatch, Assert, TriggerAssert).
+KNOWN_SECTIONS = frozenset(
+    {
+        "Assert",
+        "Build",
+        "Config",
+        "Content",
+        "Distribution",
+        "Host",
+        "Include",
+        "Match",
+        "Output",
+        "Runtime",
+        "TriggerAssert",
+        "TriggerMatch",
+        "Validation",
+    }
+)
 
 
 class GateError(Exception):
@@ -213,6 +246,52 @@ def check_repart_directories(listed, expected):
     return problems
 
 
+def scan_sections(path):
+    """Return problems found in one configuration file."""
+    problems = []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError) as error:
+        return [f"{posix_target(path)} could not be read: {error}"]
+    for line in text.splitlines()[:MAX_SUMMARY_LINES]:
+        stripped = line.strip()
+        if not stripped or stripped.startswith(("#", ";")):
+            continue
+        match = re.match(r"^\[([^\]]+)\]$", stripped)
+        if match is None:
+            continue
+        name = match.group(1)
+        if name not in KNOWN_SECTIONS:
+            problems.append(
+                f"{posix_target(path)}: section [{name}] is not one "
+                f"mkosi {MKOSI_FLOOR} parses; mkosi skips it without a diagnostic"
+            )
+    return problems
+
+
+def unknown_sections(directory):
+    """Return problems in directory/mkosi.conf and drop-ins."""
+    base = Path(directory)
+    problems = []
+    config = base / "mkosi.conf"
+    if not config.is_file():
+        problems.append(f"{posix_target(config)} does not exist")
+    paths = [config] if config.is_file() else []
+    dropin_dir = base / "mkosi.conf.d"
+    if dropin_dir.is_dir():
+        dropins = sorted(dropin_dir.glob("*.conf"))
+        if len(dropins) > MAX_DROPIN_FILES:
+            problems.append(
+                f"{posix_target(dropin_dir)} lists {len(dropins)} drop-ins, "
+                f"past the bound of {MAX_DROPIN_FILES}"
+            )
+        else:
+            paths.extend(dropins)
+    for path in paths[: MAX_DROPIN_FILES + 1]:
+        problems.extend(scan_sections(path))
+    return problems
+
+
 def check_summary(stdout, repart_directory):
     """Return the problems in a `mkosi summary` run that was expected to pass."""
     output = summary_stanza(stdout, OUTPUT_STANZA)
@@ -228,6 +307,41 @@ def check_summary(stdout, repart_directory):
         check_repart_directories(output.get("Repart Directories", []), repart_directory)
     )
     return problems
+
+
+def ignored_diagnostics(text):
+    """Return stripped lines from `text` containing any ignored-setting needle."""
+    found = []
+    for line in text.splitlines()[:MAX_SUMMARY_LINES]:
+        stripped = line.strip()
+        for needle in IGNORED_DIAGNOSTICS:
+            if needle in stripped:
+                found.append(stripped)
+                break
+    return found
+
+
+def ignored_problems(found, code):
+    """Return the problems a run that exited `code` with `found` warnings carries.
+
+    This is the judgement the positive and boundary cases receive. The planted
+    case is judged by the same function and must be rejected by it, so a
+    detector that stopped rejecting anything fails the planted case on a real
+    mkosi run, not only in the unit tests.
+    """
+    if code != 0:
+        return []
+    return [f"mkosi ignored part of the input: {line}" for line in found]
+
+
+def check_ignored_diagnostics(found, expects_ignored, code):
+    """Return problems from ignored-setting diagnostics for one case."""
+    rejected = ignored_problems(found, code)
+    if not expects_ignored:
+        return rejected
+    if not rejected:
+        return ["expected the gate to reject mkosi's report of the planted setting"]
+    return []
 
 
 def scratch_definition(base, minimum):
@@ -249,6 +363,16 @@ def scratch_definition(base, minimum):
     return target
 
 
+def scratch_ignored_setting(base):
+    """Copy the reviewed definition into `base` with one planted unknown setting."""
+    target = base / "ignored-setting"
+    shutil.copytree(ROOT / DEFINITION_DIRECTORY, target)
+    config = target / "mkosi.conf"
+    with config.open("a", encoding="utf-8") as handle:
+        handle.write(f"\n[Output]\n{PLANTED_SETTING}=1\n")
+    return target
+
+
 def cases(base):
     """Return the positive, negative and boundary cases, in order.
 
@@ -265,6 +389,7 @@ def cases(base):
             "code": 0,
             "requires": (),
             "repart_directory": reviewed / REPART_DIRECTORY,
+            "expects_ignored": False,
         },
         {
             "name": "mkosi/negative-below-floor",
@@ -272,6 +397,15 @@ def cases(base):
             "code": 1,
             "requires": (REFUSAL,),
             "repart_directory": None,
+            "expects_ignored": False,
+        },
+        {
+            "name": "mkosi/negative-ignored-setting",
+            "directory": scratch_ignored_setting(base),
+            "code": 0,
+            "requires": (UNKNOWN_SETTING,),
+            "repart_directory": None,
+            "expects_ignored": True,
         },
         {
             "name": "mkosi/boundary-at-floor",
@@ -279,6 +413,7 @@ def cases(base):
             "code": 0,
             "requires": (),
             "repart_directory": boundary / REPART_DIRECTORY,
+            "expects_ignored": False,
         },
     ]
 
@@ -295,6 +430,8 @@ def execute(case):
     for needle in case["requires"]:
         if needle not in stderr and needle not in stdout:
             problems.append(f"expected the diagnostic {needle!r}")
+    found = ignored_diagnostics(stderr + "\n" + stdout)
+    problems.extend(check_ignored_diagnostics(found, case["expects_ignored"], code))
     if case["repart_directory"] is not None and code == 0:
         problems.extend(check_summary(stdout, case["repart_directory"]))
     return code, problems, diagnostics
@@ -348,6 +485,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args()
     if gate_policy.refuse_unknown():
+        return 1
+    section_problems = unknown_sections(ROOT / DEFINITION_DIRECTORY)
+    if section_problems:
+        for problem in section_problems[:MAX_SUMMARY_LINES]:
+            print(f"FAIL: {problem}")
         return 1
     routed = definitions_container.dispatch(GATE, Path(__file__).name)
     if routed is not None:
