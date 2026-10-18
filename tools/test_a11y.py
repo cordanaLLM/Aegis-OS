@@ -77,7 +77,7 @@ ADMITTED_PACKAGES = {
 # D100 (M16): the lint's three packages, exact; with the six above they are
 # every devDependency the package declares.
 ADMITTED_LINT = {
-    "eslint": "10.12.0",
+    "eslint": "10.13.0",
     "eslint-plugin-svelte": "3.23.1",
     "svelte-eslint-parser": "1.9.0",
 }
@@ -805,7 +805,7 @@ class ReportTests(unittest.TestCase):
             "axePlaywright": "4.14.0",
             "svelte": "5.57.2",
             "vite": "8.3.4",
-            "eslint": "10.12.0",
+            "eslint": "10.13.0",
             "eslintPluginSvelte": "3.23.1",
             "svelteEslintParser": "1.9.0",
             "headlessShell": {"revision": "1248", "browserVersion": "156.0.8078.4"},

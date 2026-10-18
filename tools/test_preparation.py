@@ -679,10 +679,27 @@ class PreparationTests(unittest.TestCase):
 
     def test_the_ceiling_itself_passes_and_one_minute_more_fails(self):
         ceiling = check.JOB_TIMEOUT_CEILING
+        self.write_workflow(self.job(f"  timeout-minutes: {ceiling}\n"), "pages.yml")
+        check.verify_job_timeouts()
+        self.write_workflow(self.job(f"  timeout-minutes: {ceiling + 1}\n"), "pages.yml")
+        with self.assertRaises(ValueError):
+            check.verify_job_timeouts()
+
+    def test_the_verification_gate_has_its_measured_ceiling(self):
+        ceiling = check.MEASURED_JOB_TIMEOUT_CEILINGS["ci.yml"]
+        self.assertGreater(ceiling, check.JOB_TIMEOUT_CEILING)
         self.write_workflow(self.job(f"  timeout-minutes: {ceiling}\n"))
         check.verify_job_timeouts()
         self.write_workflow(self.job(f"  timeout-minutes: {ceiling + 1}\n"))
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, f"from 1 to {ceiling}"):
+            check.verify_job_timeouts()
+
+    def test_the_measured_ceiling_covers_its_own_workflow_only(self):
+        ceiling = check.MEASURED_JOB_TIMEOUT_CEILINGS["ci.yml"]
+        self.write_workflow(self.job(f"  timeout-minutes: {ceiling}\n"), "pages.yml")
+        with self.assertRaisesRegex(
+            ValueError, f"pages.yml.*from 1 to {check.JOB_TIMEOUT_CEILING}"
+        ):
             check.verify_job_timeouts()
 
     def cited_file(self, body="contract"):

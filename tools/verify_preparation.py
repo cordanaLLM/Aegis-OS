@@ -577,6 +577,11 @@ def verify_library_aborts():
 # Verification gate, took at most 397 s over its 40 latest successful runs on
 # 2026-10-13, so a 30-minute limit let a sixfold slowdown pass green.
 JOB_TIMEOUT_CEILING = 15
+# A workflow whose job measurably needs more names its own ceiling here. The
+# Verification gate's 40 latest successful runs on main took 494 to 821 s on
+# 2026-10-18; the engine audit wants timeout-minutes at 1.25 x the slowest of
+# the three latest, and 1.25 x 821 s is 17.1 minutes.
+MEASURED_JOB_TIMEOUT_CEILINGS = {"ci.yml": 18}
 RUNS_ON = re.compile(r"^(?P<indent> *)runs-on:")
 TIMEOUT = re.compile(r"^(?P<indent> *)timeout-minutes: *(?P<value>[^ #]*) *(#.*)?$")
 
@@ -593,7 +598,8 @@ def job_timeouts(text):
 
 
 def verify_job_timeouts():
-    """Every workflow job sets its own timeout, at most JOB_TIMEOUT_CEILING minutes."""
+    """Every workflow job sets its own timeout, at most JOB_TIMEOUT_CEILING minutes, or
+    the ceiling MEASURED_JOB_TIMEOUT_CEILINGS names for its workflow."""
     workflows = sorted((ROOT / ".github/workflows").glob("*.yml"))
     if not workflows:
         raise ValueError("no workflow under .github/workflows to check for job timeouts")
@@ -606,11 +612,12 @@ def verify_job_timeouts():
                 f"{name}: {len(runs)} job(s) but {len(job_limits)} job-level "
                 "timeout-minutes; every job sets its own (HISS-02)"
             )
+        ceiling = MEASURED_JOB_TIMEOUT_CEILINGS.get(path.name, JOB_TIMEOUT_CEILING)
         for value in job_limits:
-            if not value.isdigit() or not 0 < int(value) <= JOB_TIMEOUT_CEILING:
+            if not value.isdigit() or not 0 < int(value) <= ceiling:
                 raise ValueError(
                     f"{name}: timeout-minutes {value!r} is not a whole number from 1 "
-                    f"to {JOB_TIMEOUT_CEILING}"
+                    f"to {ceiling}"
                 )
 
 
