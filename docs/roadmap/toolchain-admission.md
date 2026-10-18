@@ -56,6 +56,8 @@ Two rules follow from the clause and are applied below:
 | Realtime kernel | Nucleus release `v7.2.8-realtime-lusoris2`: image `vmlinuz-7.2.8-lusoris2-realtime`, `kernel.release` `7.2.8-lusoris2-realtime`, `CONFIG_PREEMPT_RT=y` | `build/kernel/nucleus-artifact.pin.json`, the pin the M10 gate uses; the gate hashes the image against the pin's sha256 and size before every boot, and the guest reports the release and the option back from inside itself | M26's `linux-7.2.5` build (D70, retired by D112), and the distribution `linux-rt` package D57 recommended, which is **not** downloaded, installed or booted here | M23 (D57, D112) |
 | Firecracker | 1.17.0, release archive `firecracker-v1.17.0-x86_64.tgz` sha256 `06094a1108ae9e82aa4c23a775aa92758f53f1175d422270d9d6162cb9ade558`, binary sha256 `99ad0f5cd0514a88aad0e9ae8cfdb3cc3b4ab9d190e1194602406c786b5de7a5`, Apache-2.0 | `build/sandbox/firecracker.pin.json`; fetched by `make workstation-fetch`, hashed again and read back with `--version` before every run; the jailer is not used | the distribution package `firecracker 1.17.0-1.1` at `/usr/bin/firecracker`, which M06 probed and no gate runs | M21 (D58) |
 | Guest kernel for Firecracker | `vmlinux-6.18.44` from Firecracker's CI artifacts, sha256 `d8ced68bd61e27b6813e2c993cc53a4029c59e13210672180591c84109684fe4`, configuration sha256 `9fb2be18303d2f6e8ec35b3a20ecf1209f54a4ece10114a893cb37beabee7030` | `build/sandbox/firecracker.pin.json`; the gate hashes both and requires five configuration options before every run | nothing; no Firecracker guest was pinned before | M21 |
+| swtpm | 0.10.2; reference profile `TPM emulator version 0.10.2`, distribution package `extra/swtpm 0.10.2-1` | `tools/verify_boot_harness.py` (M24); `tools/verify_attestation.py` (M20), read back from `swtpm --version` before the gate runs | nothing | M24 (boot harness); M20 (verify-attestation) |
+| tpm2-tools | 5.8; reference profile `version="5.8"`, distribution package `extra/tpm2-tools 5.8-1` | `tools/verify_attestation.py` (M20), read back from `tpm2_quote --version` before the gate runs | nothing | M20 (verify-attestation) |
 
 The pinned Rust toolchain is materialised explicitly before the first cargo
 gate, because a runner image that ships rustup does not thereby ship the pinned
@@ -1215,6 +1217,36 @@ one of two call sites, each with a deadline.
 | aegis-tellus-rapl | `run <readings document>` | the RAPL cases |
 | aegis-vesta-sandbox | `run <firecracker> <kernel> <initramfs> <run-dir>`, in its own session | the sandbox cases |
 | curl | in `make workstation-fetch` only | M24's admission (8.22.0); the gate itself never touches the network |
+
+## The attestation gate's toolchain (M20)
+
+`make verify-attestation` (`tools/verify_attestation.py`) drives a private
+software TPM instance and tpm2-tools to verify attestation quotes against
+canonical audit-record digests from `crates/aegis-justitia`. Every value below
+was read on the reference profile on 2026-10-18.
+
+| Tool | Reference-profile version | Floor | Latest upstream, read 2026-10-18 | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| swtpm | 0.10.2 | none declared | 0.10.2, `v0.10.2` of 2026-08-19 | private TPM 2.0 instance in ephemeral directory |
+| tpm2-tools | 5.8 | none declared | 5.8, tag `5.8` of 2026-06-25 | EK/AK creation, PCR extension, quote and checkquote |
+
+### The attestation gate's programs
+
+`tools/test_verify_attestation.py` holds the gate's `REQUIRED_PROGRAMS` list,
+verifies missing capabilities with unit test doubles, and requires every process
+to run under a deadline.
+
+| Program | Invocation | Role |
+| :--- | :--- | :--- |
+| swtpm | `socket --tpm2 --tpmstate ... --server ... --ctrl ... --flags not-need-init,startup-clear` | private software TPM 2.0 emulator |
+| tpm2_createek | `-c ek.ctx -G rsa` | creates Endorsement Key |
+| tpm2_createak | `-C ek.ctx -c ak.ctx -G ecc -g sha256 -s ecdsa -u ak.pub -f pem -n ak.name` | creates Attestation Key |
+| tpm2_pcrextend | `<pcr>:sha256=<digest>` | extends PCRs 0, 4, 7, 11 |
+| tpm2_quote | `-c ak.ctx -l sha256:<pcrs> -q <digest> -m ... -s ... -o ... -g sha256` | generates quote over selected PCRs and qualifying data |
+| tpm2_checkquote | `-u ak.pub -m ... -s ... -f ... -g sha256 -q <digest>` | verifies cryptographic quote and PCR digest |
+| tpm2_print | `-t TPMS_ATTEST <msg>` | extracts `pcrSelect` for client selection enforcement |
+| tpm2_flushcontext | `-t` or `-s` | flushes transient and session contexts to avoid `0x902` memory exhaustion |
+| cargo | `cargo run --locked --offline -q -p aegis-justitia --example record_digest [other]` | computes canonical audit-record digests |
 
 ## Not yet admitted
 

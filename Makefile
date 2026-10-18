@@ -416,6 +416,36 @@ verify-display:
 verify-shell:
 	python3 tools/verify_shell.py
 
+# The TPM2 PCR quote attestation gate (M20 E20-1, issue #65):
+# creates EK and AK on a private software TPM (swtpm), extends PCRs 0, 4, 7, 11,
+# and verifies an audit record signed with a quote against canonical digest
+# output from crates/aegis-justitia's record_digest example. Verifies that
+# qualifying data binds the specific audit record, that PCR state changes
+# invalidate earlier quotes, and that the gate's selection judge enforces
+# exact PCR selection (0, 4, 7, 11) while rejecting missing PCR 11.
+#
+# A host without the required capabilities -- not Linux, no swtpm, missing
+# tpm2-tools, no cargo, or missing libtss2-tcti-swtpm.so -- prints
+# 'SKIP: <reason>; the attestation gate did not run.' and exits 0. An exit 0
+# from this target is therefore evidence only when the case lines are above it.
+# It never suppresses a failure.
+#
+# It is deliberately NOT part of verify-all, for the reasons verify-shell is
+# not: it needs a software TPM emulator (swtpm) and tpm2-tools which the clean
+# CI verification runner does not provide, so wiring it into verify-all would
+# put a step into CI that can only skip. A gate that always skips is not a gate.
+# What CI and verify-all do re-run is the unit tests in
+# tools/test_verify_attestation.py and the record_digest example in
+# crates/aegis-justitia.
+#
+# Each run starts its own private swtpm instance in an ephemeral directory
+# and destroys it; the host TPM is never touched and no persistent state is
+# altered. A pass is development evidence on swtpm: it is not rooted in a
+# firmware-verified boot chain (M11) and closes no release gate.
+verify-attestation:
+	python3 tools/verify_attestation.py
+
+
 # The Nucleus kernel gate (M10, D92, D94): the kernel cordanaLLM/nucleus built
 # and published, pinned by build/kernel/nucleus-artifact.pin.json, is verified
 # and recorded before it boots, checked against build/kernel-requirement.json
