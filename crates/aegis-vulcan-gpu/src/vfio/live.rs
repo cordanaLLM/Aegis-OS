@@ -220,10 +220,10 @@ fn query_bar_regions(
 fn map_and_verify_bar(
     device: BorrowedFd<'_>,
     regions: &[VfioRegionInfo],
-    prefetchable: &[bool; 6],
+    prefetchable: [bool; 6],
     lines: &mut Vec<String>,
 ) -> Result<usize, String> {
-    let bar_idx = choose_bar_to_map(regions, prefetchable).ok_or_else(|| {
+    let bar_idx = choose_bar_to_map(regions, &prefetchable).ok_or_else(|| {
         "mmap: no prefetchable BAR with MMAP flag and size >= 4096; register BARs are not read"
             .to_owned()
     })?;
@@ -253,7 +253,7 @@ fn query_and_map(
 ) -> Result<usize, String> {
     let regions = query_bar_regions(device, lines)?;
     let prefetchable = read_prefetchable_bars(sysfs, device_addr)?;
-    map_and_verify_bar(device, &regions, &prefetchable, lines)
+    map_and_verify_bar(device, &regions, prefetchable, lines)
 }
 
 /// Executes the full `map-bar` sequence against a device under `sysfs` and `dev`.
