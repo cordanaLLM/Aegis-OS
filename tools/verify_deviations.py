@@ -3,7 +3,8 @@
 
 A scoped deviation is a roadmap decision that lets third-party code break an
 invariant Aegis code keeps (D83: cros-libva heap-allocates for every decoded
-picture on P17's frame path, HISS-03). ``DEVIATIONS`` lists them; each must be
+picture on P17's frame path, HISS-03; D115: gpui rebuilds its AccessKit tree
+every frame on the native shell's path). ``DEVIATIONS`` lists them; each must be
 declared in the ``exceptions`` list of ``.standards.yaml`` as the entry for its
 rule and path, and the check fails when:
 
@@ -38,6 +39,12 @@ DEVIATIONS = (
         "rule": "HISS-03",
         "path": "crates/aegis-scaena/src/decode.rs",
         "package": "cros-libva",
+    },
+    {
+        "decision": "D115",
+        "rule": "HISS-03",
+        "path": "crates/aegis-forum-shell-gpui/Cargo.toml",
+        "package": "gpui",
     },
 )
 # The keys of one exceptions entry in the engine's schema (internal/config/exceptions.go).

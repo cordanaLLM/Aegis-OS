@@ -3154,7 +3154,7 @@ Exit criteria:
   frame-time case counts, this milestone records whether HISS-03 binds gpui's
   per-frame work -- gpui rebuilds its AccessKit tree every frame
   (crates/gpui/src/window/a11y.rs) -- the question D83 answered for P17's
-  decoder.
+  decoder; D115 answers it with a scoped deviation.
 - `make verify-shell`, a new target outside make verify-all like verify-display,
   runs the live cases (surface, AT-SPI, pixels and timing) on the reference
   profile; without its capabilities it prints `SKIP: <reason>; the native shell
@@ -6267,6 +6267,34 @@ against the decoder of `061bbde`.
   `build/mkosi.extra/` the boot-report unit and its script. Each branch carries
   positive, negative and boundary tests. M11's harness criterion and E11-2 are
   rewritten, with a disclosure entry; any other harness change still fails M11.
+
+- **D115** Does HISS-03 (no dynamic heap allocation in hot loops) bind gpui's
+  per-frame accessibility work on the native shell's path? M28 asks this before
+  E28-6's frame-time case counts. Options: a scoped deviation like D83, where
+  HISS-03 binds Aegis-authored code and gpui's allocation is named at its pin;
+  HISS-03 binds, and the allocation is removed upstream before the case counts;
+  the allocation is only recorded. Why: at zed commit
+  322cd509dcccaee1f6bc44725d270598ae8171ad (D102), while the AccessKit adapter
+  is active gpui rebuilds its tree every frame in
+  `crates/gpui/src/window/a11y.rs`: `mem::take` of `all_nodes` drops the
+  vector's capacity, `accesskit::Node::new` allocates per node, and
+  `repair_tree_update` collects an `FxHashSet`.
+  **Decision (2026-10-18):** a scoped deviation, the case D83 decided on
+  2026-09-28. HISS-03 binds the code Aegis writes. gpui's per-frame
+  accessibility allocation is a named deviation limited to the gpui revision
+  `Cargo.lock` pins, which enters through `crates/aegis-forum-shell-gpui` and no
+  other member, and it is reviewed at every re-pin of gpui. It grants nothing to
+  Aegis-authored code and waives no other invariant. E28-6 reports the
+  allocation's share of the frame time beside the frame-time figure. A gpui
+  change that keeps the vector's capacity is an upstream proposal and is not
+  part of this decision.
+  **Declared (2026-10-18):** D115 is the HISS-03 entry for
+  `crates/aegis-forum-shell-gpui/Cargo.toml` in the exceptions list of
+  `.standards.yaml`, category A, expiring 90 days after entry.
+  `tools/verify_deviations.py` (in `make verify-all`) fails once the entry
+  expires, and whenever its reason does not name the gpui revision `Cargo.lock`
+  pins: a re-pin of gpui fails the gate until the deviation is reviewed and the
+  entry renewed.
 
 ## Evidence
 
