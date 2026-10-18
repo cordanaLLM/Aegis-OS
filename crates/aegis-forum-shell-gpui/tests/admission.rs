@@ -25,8 +25,8 @@ use dependency_closure::{Invocation, closure, metadata, plant, set, synthetic};
 /// This member's package name.
 const PACKAGE: &str = "aegis-forum-shell-gpui";
 
-/// The zed-industries/zed commit gpui is pinned to (D102), read on 2026-10-17.
-const ZED_REV: &str = "322cd509dcccaee1f6bc44725d270598ae8171ad";
+/// The zed-industries/zed commit gpui is pinned to (D102), read on 2026-10-18.
+const ZED_REV: &str = "56934ec0560bce8929025497411de7f5322fb6ca";
 
 /// The zed crates admitted from that commit.
 const ZED_CRATES: [&str; 2] = ["gpui", "gpui_linux"];
