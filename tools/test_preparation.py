@@ -449,6 +449,7 @@ class PreparationTests(unittest.TestCase):
         self.write_register()
         self.write_profile()
         self.write_workflow(self.job())
+        self.release_workflow(*self.retried())
         out = io.StringIO()
         argv = ["verify_preparation.py", "--readiness"]
         with patch.object(sys, "argv", argv), patch.object(check, "LICENSE_TEXTS", {}):
@@ -566,6 +567,85 @@ class PreparationTests(unittest.TestCase):
             f"{indent}    - run: make\n"
         )
 
+    def release_step(self, extra="", action="v5.0.0"):
+        """One release-please step in the train's shape, extra lines given verbatim."""
+        return (
+            "      - name: Maintain the release pull request\n"
+            + "".join(f"        {line}\n" for line in extra.splitlines())
+            + f"        uses: googleapis/release-please-action@{action}\n"
+            "        with:\n"
+            "          config-file: release-please-config.json\n"
+        )
+
+    def release_workflow(self, *steps, tail=""):
+        """The release train with the given steps, then whatever follows the job."""
+        self.write_workflow(
+            "jobs:\n"
+            "  release-please:\n"
+            "    runs-on: ubuntu-26.04\n"
+            "    timeout-minutes: 10\n"
+            "    steps:\n" + "".join(steps) + tail,
+            "release-please.yml",
+        )
+
+    def retried(self, retry_extra="if: steps.train.outcome == 'failure'", **kwargs):
+        """A first attempt that may fail and a retry that runs only after it did."""
+        return (
+            self.release_step("id: train\ncontinue-on-error: true"),
+            self.release_step(retry_extra, **kwargs),
+        )
+
+    def test_a_retried_release_train_passes(self):
+        self.release_workflow(*self.retried())
+        check.verify_release_retry()
+
+    def test_a_missing_release_train_fails(self):
+        with self.assertRaisesRegex(ValueError, "release-please.yml"):
+            check.verify_release_retry()
+
+    def test_a_release_train_without_a_retry_fails(self):
+        self.release_workflow(self.release_step())
+        with self.assertRaisesRegex(ValueError, "1 release-please step"):
+            check.verify_release_retry()
+
+    def test_a_third_attempt_fails(self):
+        self.release_workflow(*self.retried(), self.release_step())
+        with self.assertRaisesRegex(ValueError, "3 release-please step"):
+            check.verify_release_retry()
+
+    def test_a_first_attempt_that_stops_the_job_fails(self):
+        self.release_workflow(
+            self.release_step("id: train"),
+            self.release_step("if: steps.train.outcome == 'failure'"),
+        )
+        with self.assertRaisesRegex(ValueError, "continue-on-error"):
+            check.verify_release_retry()
+
+    def test_a_retry_that_runs_unconditionally_or_on_another_step_fails(self):
+        for condition in ("", "if: always()", "if: steps.other.outcome == 'failure'"):
+            self.release_workflow(*self.retried(condition))
+            with self.assertRaisesRegex(ValueError, "steps.train.outcome"):
+                check.verify_release_retry()
+
+    def test_a_retry_whose_failure_is_ignored_fails(self):
+        self.release_workflow(
+            *self.retried("if: steps.train.outcome == 'failure'\ncontinue-on-error: true")
+        )
+        with self.assertRaisesRegex(ValueError, "retry"):
+            check.verify_release_retry()
+
+    def test_a_retry_with_another_pin_fails(self):
+        self.release_workflow(*self.retried(action="v4.4.0"))
+        with self.assertRaisesRegex(ValueError, "same"):
+            check.verify_release_retry()
+
+    def test_the_next_job_does_not_lend_its_condition_to_the_retry(self):
+        # The boundary of a step is the next line indented less than its dash.
+        tail = "  disabled-notice:\n    if: steps.train.outcome == 'failure'\n"
+        self.release_workflow(*self.retried(""), tail=tail)
+        with self.assertRaisesRegex(ValueError, "steps.train.outcome"):
+            check.verify_release_retry()
+
     def test_jobs_within_the_ceiling_pass(self):
         self.write_workflow(self.job())
         self.write_workflow(self.job("  timeout-minutes: 5  # short\n"), "pages.yml")
@@ -599,10 +679,27 @@ class PreparationTests(unittest.TestCase):
 
     def test_the_ceiling_itself_passes_and_one_minute_more_fails(self):
         ceiling = check.JOB_TIMEOUT_CEILING
+        self.write_workflow(self.job(f"  timeout-minutes: {ceiling}\n"), "pages.yml")
+        check.verify_job_timeouts()
+        self.write_workflow(self.job(f"  timeout-minutes: {ceiling + 1}\n"), "pages.yml")
+        with self.assertRaises(ValueError):
+            check.verify_job_timeouts()
+
+    def test_the_verification_gate_has_its_measured_ceiling(self):
+        ceiling = check.MEASURED_JOB_TIMEOUT_CEILINGS["ci.yml"]
+        self.assertGreater(ceiling, check.JOB_TIMEOUT_CEILING)
         self.write_workflow(self.job(f"  timeout-minutes: {ceiling}\n"))
         check.verify_job_timeouts()
         self.write_workflow(self.job(f"  timeout-minutes: {ceiling + 1}\n"))
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, f"from 1 to {ceiling}"):
+            check.verify_job_timeouts()
+
+    def test_the_measured_ceiling_covers_its_own_workflow_only(self):
+        ceiling = check.MEASURED_JOB_TIMEOUT_CEILINGS["ci.yml"]
+        self.write_workflow(self.job(f"  timeout-minutes: {ceiling}\n"), "pages.yml")
+        with self.assertRaisesRegex(
+            ValueError, f"pages.yml.*from 1 to {check.JOB_TIMEOUT_CEILING}"
+        ):
             check.verify_job_timeouts()
 
     def cited_file(self, body="contract"):

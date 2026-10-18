@@ -49,6 +49,7 @@ from collections import namedtuple
 from pathlib import Path
 
 import host
+from verify_public_host import HOME_RE
 
 CI_WORKFLOW = ".github/workflows/ci.yml"
 ADMISSION_PAGE = "docs/roadmap/toolchain-admission.md"
@@ -292,9 +293,19 @@ def failure_lines(name, result):
     return "\n".join([f"--- {name}: {describe(result)}", *flagged, "--- tail:", *tail])
 
 
+def public_line(line):
+    """Return the line with each home folder written as `~`.
+
+    Skip lines go into the pull request text, which the Verification gate scans
+    for host identifiers; a cache path under a home folder names the user.
+    """
+    return HOME_RE.sub("~", line)
+
+
 def skip_lines(text):
     """Return the lines where a gate said it did not run (a SKIP is not a pass)."""
-    return [line.strip() for line in text.splitlines() if line.startswith("SKIP")][:MAX_SKIP_LINES]
+    lines = [line.strip() for line in text.splitlines() if line.startswith("SKIP")]
+    return [public_line(line) for line in lines[:MAX_SKIP_LINES]]
 
 
 class Session:
@@ -1091,7 +1102,7 @@ def mkdocs_python(session, tree):
 def run_gates(session, tree):
     """Run every gate; return the SKIP lines, or raise with the failing lines."""
     mkdocs, reason = mkdocs_python(session, tree)
-    skips = [] if mkdocs else [f"SKIP: mkdocs build --strict did not run: {reason}"]
+    skips = [] if mkdocs else [public_line(f"SKIP: mkdocs build --strict did not run: {reason}")]
     for line in skips:
         session.note(f"gate mkdocs build --strict: {line}")
     failures = []
