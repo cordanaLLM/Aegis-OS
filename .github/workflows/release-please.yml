@@ -51,7 +51,25 @@ jobs:
           printf 'roadmap M13 state=%s -> skip-github-release=%s\n' "$state" "$skip"
           printf 'skip-github-release=%s\n' "$skip" >> "$GITHUB_OUTPUT"
 
+      # One transient forge error (a GraphQL 5xx on 2026-10-18) must not leave
+      # main's latest run red: the first attempt may fail, and the retry below
+      # runs the same pin with the same inputs once after a pause; a failed
+      # retry fails the run. tools/verify_preparation.py checks this shape.
       - name: Maintain the release pull request
+        id: train
+        continue-on-error: true
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          skip-github-release: ${{ steps.gate.outputs.skip-github-release }}
+
+      - name: Pause before the retry
+        if: steps.train.outcome == 'failure'
+        run: sleep 60
+
+      - name: Retry the release pull request once
+        if: steps.train.outcome == 'failure'
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           config-file: release-please-config.json
