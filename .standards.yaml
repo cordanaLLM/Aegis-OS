@@ -56,7 +56,7 @@ exceptions:
     expires: "2027-01-15"
   - rule: HISS-03
     path: crates/aegis-forum-shell-gpui/Cargo.toml
-    reason: 'D115: gpui at zed commit 322cd509dcccaee1f6bc44725d270598ae8171ad heap-allocates every frame while the accessibility adapter is active (crates/gpui/src/window/a11y.rs: mem::take of all_nodes drops the node capacity, accesskit::Node::new per node, an FxHashSet in repair_tree_update); the deviation is limited to that pinned gpui, enters through this one member (D102), grants nothing to Aegis-authored code and is reviewed at every re-pin of gpui (category A, 90 days)'
+    reason: 'D115: gpui at zed commit 56934ec0560bce8929025497411de7f5322fb6ca heap-allocates every frame while the accessibility adapter is active (crates/gpui/src/window/a11y.rs, unchanged since 322cd509dc and re-read at this re-pin on 2026-10-18: mem::take of all_nodes drops the node capacity, accesskit::Node::new per node, an FxHashSet in repair_tree_update); the deviation is limited to that pinned gpui, enters through this one member (D102), grants nothing to Aegis-authored code and is reviewed at every re-pin of gpui (category A, 90 days)'
     category: A
     entered: "2026-10-18"
     expires: "2027-01-16"
