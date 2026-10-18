@@ -38,7 +38,7 @@ authors = ["Lusoris <lusoris@proton.me>"]
 [workspace.dependencies]
 accesskit = { version = "0.25.1", default-features = false }
 async-io = "2.6.0"
-atspi = { version = "0.29.0", default-features = false, features = ["proxies"] }
+atspi = { version = "0.30.0", default-features = false, features = ["proxies"] }
 base16ct = { version = "1.0.0", default-features = false }
 cros-libva = { git = "https://github.com/chromeos/cros-libva", rev = "59384456ac2ae78c0c3e5515f41ef1efd9b802cf" }
 futures-lite = "2.6.1"
