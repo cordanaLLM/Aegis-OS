@@ -257,12 +257,20 @@ fn the_mpl_packages_are_locked_unmodified_from_crates_io() {
 /// Positive: the member's sources hold no `unsafe` token.
 #[test]
 fn the_sources_hold_no_unsafe_token() -> Fallible {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    for entry in std::fs::read_dir(dir)?.take(64) {
-        let path = entry?.path();
-        let text = std::fs::read_to_string(&path)?;
-        assert!(!text.contains("unsafe"), "{}", path.display());
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut read = 0_usize;
+    for dir in [src.clone(), src.join("bin")] {
+        for entry in std::fs::read_dir(dir)?.take(64) {
+            let path = entry?.path();
+            if path.is_dir() {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path)?;
+            assert!(!text.contains("unsafe"), "{}", path.display());
+            read += 1;
+        }
     }
+    assert!(read >= 4, "the sweep read {read} source files");
     Ok(())
 }
 
