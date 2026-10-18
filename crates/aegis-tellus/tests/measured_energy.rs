@@ -5,7 +5,7 @@
 //!
 //! Positive: the SCI rate is computed from measured energy. The two readings
 //! below are the ones `make verify-workstation` took on the reference profile
-//! in run `r20260929T200422-2476` (2026-09-29, AMD Ryzen 9 9950X3D, kernel
+//! in run `r20260929T200422-2476` (2026-09-29, AMD CPU with RAPL, kernel
 //! 7.2.8-1-cachyos) through the one scoped `sudo -n cat`, and the expected
 //! figures are hand-computed from them, not read back from the code.
 //! Negative: an unreadable, empty or malformed counter fails closed with an

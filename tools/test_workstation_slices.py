@@ -263,7 +263,7 @@ class RaplCapabilityTests(unittest.TestCase):
             "platform": "linux",
             "which": lambda name: f"/usr/bin/{name}",
             "powercap": self.powercap(scratch),
-            "cpu": gate.REFERENCE_CPU,
+            "cpu": "AMD Example 8-Core Processor",
             "uid": lambda: (1000, None),
         }
         options.update(overrides)
@@ -282,6 +282,7 @@ class RaplCapabilityTests(unittest.TestCase):
             self.assertIn("cargo", missing[1])
             self.assertIn("root", self.reasons(scratch, uid=lambda: (0, None))[0])
             self.assertIn("Intel", self.reasons(scratch, cpu="Intel(R) Core(TM) i9")[0])
+            self.assertIn("not an AMD CPU", self.reasons(scratch, cpu="")[0])
         for platform in ("darwin", "win32"):
             reasons = gate.rapl_reasons(platform=platform)
             self.assertEqual(len(reasons), 1)

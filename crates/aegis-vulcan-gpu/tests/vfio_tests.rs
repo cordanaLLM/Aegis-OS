@@ -25,10 +25,10 @@ fn sole_occupant_headless_admitted() {
     connectors.insert("card1-HDMI-A-1".to_string(), "disconnected".to_string());
 
     let input = VfioCandidateInput {
-        address: "0000:03:00.0".to_string(),
+        address: "0000:f3:00.0".to_string(),
         driver: "amdgpu".to_string(),
-        iommu_group: "25".to_string(),
-        group_members: vec!["0000:03:00.0".to_string()],
+        iommu_group: "925".to_string(),
+        group_members: vec!["0000:f3:00.0".to_string()],
         connectors,
         boot_vga: false,
     };
@@ -37,17 +37,17 @@ fn sole_occupant_headless_admitted() {
     assert_eq!(decision, VfioDecision::Admitted);
     assert_eq!(
         decision.format_line(&input.address, &input.driver),
-        "     0000:03:00.0 (amdgpu): admitted"
+        "     0000:f3:00.0 (amdgpu): admitted"
     );
 }
 
 #[test]
 fn group_with_two_functions_refused() -> Fallible {
     let input = VfioCandidateInput {
-        address: "0000:03:00.0".to_string(),
+        address: "0000:f3:00.0".to_string(),
         driver: "amdgpu".to_string(),
-        iommu_group: "25".to_string(),
-        group_members: vec!["0000:03:00.0".to_string(), "0000:03:00.1".to_string()],
+        iommu_group: "925".to_string(),
+        group_members: vec!["0000:f3:00.0".to_string(), "0000:f3:00.1".to_string()],
         connectors: BTreeMap::new(),
         boot_vga: false,
     };
@@ -58,7 +58,7 @@ fn group_with_two_functions_refused() -> Fallible {
             assert_eq!(reasons.len(), 1);
             let first = reasons.first().ok_or("missing reason")?;
             assert!(
-                first.contains("shares IOMMU group 25 with 0000:03:00.1"),
+                first.contains("shares IOMMU group 925 with 0000:f3:00.1"),
                 "unexpected reason: {first:?}"
             );
             Ok(())
@@ -74,10 +74,10 @@ fn connected_output_refused() -> Fallible {
     connectors.insert("card0-HDMI-A-1".to_string(), "disconnected".to_string());
 
     let input = VfioCandidateInput {
-        address: "0000:00:02.0".to_string(),
+        address: "0000:f0:02.0".to_string(),
         driver: "i915".to_string(),
-        iommu_group: "0".to_string(),
-        group_members: vec!["0000:00:02.0".to_string()],
+        iommu_group: "900".to_string(),
+        group_members: vec!["0000:f0:02.0".to_string()],
         connectors,
         boot_vga: false,
     };
@@ -100,10 +100,10 @@ fn connected_output_refused() -> Fallible {
 #[test]
 fn boot_vga_refused() -> Fallible {
     let input = VfioCandidateInput {
-        address: "0000:00:02.0".to_string(),
+        address: "0000:f0:02.0".to_string(),
         driver: "xe".to_string(),
-        iommu_group: "0".to_string(),
-        group_members: vec!["0000:00:02.0".to_string()],
+        iommu_group: "900".to_string(),
+        group_members: vec!["0000:f0:02.0".to_string()],
         connectors: BTreeMap::new(),
         boot_vga: true,
     };
@@ -129,10 +129,10 @@ fn multiple_refusal_reasons_accumulate() -> Fallible {
     connectors.insert("card0-DP-1".to_string(), "connected".to_string());
 
     let input = VfioCandidateInput {
-        address: "0000:00:02.0".to_string(),
+        address: "0000:f0:02.0".to_string(),
         driver: "xe".to_string(),
-        iommu_group: "0".to_string(),
-        group_members: vec!["0000:00:02.0".to_string(), "0000:00:02.1".to_string()],
+        iommu_group: "900".to_string(),
+        group_members: vec!["0000:f0:02.0".to_string(), "0000:f0:02.1".to_string()],
         connectors,
         boot_vga: true,
     };
@@ -144,7 +144,7 @@ fn multiple_refusal_reasons_accumulate() -> Fallible {
             let r0 = reasons.first().ok_or("missing r0")?;
             let r1 = reasons.get(1).ok_or("missing r1")?;
             let r2 = reasons.get(2).ok_or("missing r2")?;
-            assert!(r0.contains("shares IOMMU group 0"));
+            assert!(r0.contains("shares IOMMU group 900"));
             assert!(r1.contains("card0-DP-1 (connected)"));
             assert!(r2.contains("is the boot VGA device"));
             let line = decision.format_line(&input.address, &input.driver);
@@ -162,10 +162,10 @@ fn empty_iommu_group_refused() -> Fallible {
     connectors.insert("card1-DP-1".to_string(), "disconnected".to_string());
 
     let input = VfioCandidateInput {
-        address: "0000:03:00.0".to_string(),
+        address: "0000:f3:00.0".to_string(),
         driver: "amdgpu".to_string(),
         iommu_group: String::new(),
-        group_members: vec!["0000:03:00.0".to_string()],
+        group_members: vec!["0000:f3:00.0".to_string()],
         connectors,
         boot_vga: false,
     };
@@ -177,7 +177,7 @@ fn empty_iommu_group_refused() -> Fallible {
             let first = reasons.first().ok_or("missing reason")?;
             assert_eq!(
                 first,
-                "0000:03:00.0 has no IOMMU group: the IOMMU is off or the device is not isolated"
+                "0000:f3:00.0 has no IOMMU group: the IOMMU is off or the device is not isolated"
             );
             Ok(())
         }
@@ -192,10 +192,10 @@ fn unknown_connector_status_refused() -> Fallible {
     connectors.insert("card1-HDMI-A-1".to_string(), "disconnected".to_string());
 
     let input = VfioCandidateInput {
-        address: "0000:03:00.0".to_string(),
+        address: "0000:f3:00.0".to_string(),
         driver: "amdgpu".to_string(),
-        iommu_group: "25".to_string(),
-        group_members: vec!["0000:03:00.0".to_string()],
+        iommu_group: "925".to_string(),
+        group_members: vec!["0000:f3:00.0".to_string()],
         connectors,
         boot_vga: false,
     };
@@ -218,10 +218,10 @@ fn unknown_connector_status_refused() -> Fallible {
 #[test]
 fn group_with_only_itself_boundary_admitted() {
     let input = VfioCandidateInput {
-        address: "0000:03:00.0".to_string(),
+        address: "0000:f3:00.0".to_string(),
         driver: "amdgpu".to_string(),
         iommu_group: "42".to_string(),
-        group_members: vec!["0000:03:00.0".to_string()],
+        group_members: vec!["0000:f3:00.0".to_string()],
         connectors: BTreeMap::new(),
         boot_vga: false,
     };
@@ -236,10 +236,10 @@ fn writeback_connector_is_no_display_output() {
     connectors.insert("card0-DP-4".to_string(), "disconnected".to_string());
 
     let input = VfioCandidateInput {
-        address: "0000:7d:00.0".to_string(),
+        address: "0000:fd:00.0".to_string(),
         driver: "amdgpu".to_string(),
         iommu_group: "31".to_string(),
-        group_members: vec!["0000:7d:00.0".to_string()],
+        group_members: vec!["0000:fd:00.0".to_string()],
         connectors,
         boot_vga: false,
     };
@@ -254,10 +254,10 @@ fn writeback_beside_an_unknown_output_still_refuses_that_output() -> Fallible {
     connectors.insert("card0-DP-4".to_string(), "unknown".to_string());
 
     let input = VfioCandidateInput {
-        address: "0000:7d:00.0".to_string(),
+        address: "0000:fd:00.0".to_string(),
         driver: "amdgpu".to_string(),
         iommu_group: "31".to_string(),
-        group_members: vec!["0000:7d:00.0".to_string()],
+        group_members: vec!["0000:fd:00.0".to_string()],
         connectors,
         boot_vga: false,
     };
@@ -278,7 +278,7 @@ fn writeback_beside_an_unknown_output_still_refuses_that_output() -> Fallible {
 #[test]
 fn positive_pre_open_admits_and_fails_on_missing_group_node() -> Fallible {
     let fix = TempSysfs::new()?;
-    let addr = "0000:03:00.0";
+    let addr = "0000:f3:00.0";
     fix.add_gpu(addr, "0x8086", "0x56a5", "vfio-pci", "0", "42", &[addr])?;
 
     // Create container /dev/vfio/vfio in the fake dev tree
@@ -302,13 +302,13 @@ fn positive_pre_open_admits_and_fails_on_missing_group_node() -> Fallible {
 #[test]
 fn negative_driver_xe_refused_naming_xe_opens_nothing() -> Fallible {
     let fix = TempSysfs::new()?;
-    let addr = "0000:03:00.0";
-    fix.add_gpu(addr, "0x8086", "0x56a5", "xe", "0", "17", &[addr])?;
+    let addr = "0000:f3:00.0";
+    fix.add_gpu(addr, "0x8086", "0x56a5", "xe", "0", "917", &[addr])?;
 
     let vfio_dir = fix.dev.join("vfio");
     std::fs::create_dir_all(&vfio_dir)?;
     std::fs::write(vfio_dir.join("vfio"), "")?;
-    std::fs::write(vfio_dir.join("17"), "")?;
+    std::fs::write(vfio_dir.join("917"), "")?;
 
     let run = run_map_bar(&fix.sysfs, &fix.dev, addr);
     assert!(run.failed, "run must fail for driver xe");
@@ -328,15 +328,15 @@ fn negative_driver_xe_refused_naming_xe_opens_nothing() -> Fallible {
 #[test]
 fn negative_group_shared_refused() -> Fallible {
     let fix = TempSysfs::new()?;
-    let addr = "0000:03:00.0";
-    let other = "0000:03:00.1";
+    let addr = "0000:f3:00.0";
+    let other = "0000:f3:00.1";
     fix.add_gpu(
         addr,
         "0x8086",
         "0x56a5",
         "vfio-pci",
         "0",
-        "25",
+        "925",
         &[addr, other],
     )?;
 
@@ -348,7 +348,7 @@ fn negative_group_shared_refused() -> Fallible {
         "unexpected: {line}"
     );
     assert!(
-        line.contains("shares IOMMU group 25 with 0000:03:00.1"),
+        line.contains("shares IOMMU group 925 with 0000:f3:00.1"),
         "unexpected: {line}"
     );
     Ok(())
@@ -357,7 +357,7 @@ fn negative_group_shared_refused() -> Fallible {
 #[test]
 fn negative_connected_connector_refused() -> Fallible {
     let fix = TempSysfs::new()?;
-    let addr = "0000:03:00.0";
+    let addr = "0000:f3:00.0";
     fix.add_gpu(addr, "0x8086", "0x56a5", "vfio-pci", "0", "42", &[addr])?;
     let dev_dir = fix.sysfs.join("bus").join("pci").join("devices").join(addr);
     std::fs::create_dir_all(dev_dir.join("drm").join("card0"))?;
@@ -380,7 +380,7 @@ fn negative_connected_connector_refused() -> Fallible {
 #[test]
 fn boundary_writeback_unknown_status_admitted() -> Fallible {
     let fix = TempSysfs::new()?;
-    let addr = "0000:03:00.0";
+    let addr = "0000:f3:00.0";
     fix.add_gpu(addr, "0x8086", "0x56a5", "vfio-pci", "0", "42", &[addr])?;
     let dev_dir = fix.sysfs.join("bus").join("pci").join("devices").join(addr);
     std::fs::create_dir_all(dev_dir.join("drm").join("card0"))?;
@@ -537,7 +537,7 @@ fn vfio_opcodes_match_uapi_numbers() {
     assert_eq!(VFIO_DEVICE_GET_REGION_INFO, 0x3b6c);
 }
 
-/// The Arc A380 at 0000:03:00.0, read from sysfs `resource` on 2026-10-18:
+/// The Arc A380 at 0000:f3:00.0, read from sysfs `resource` on 2026-10-18:
 /// BAR0 16 MiB registers (non-prefetchable), BAR2 8 GiB VRAM (prefetchable).
 const ARC_RESOURCE: &str = "\
 0x00000000d9000000 0x00000000d9ffffff 0x0000000000140204
