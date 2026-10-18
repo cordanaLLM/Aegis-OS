@@ -9,8 +9,8 @@
 //! plane. Schema `aegis.p05-p17.mount-shell-canvas.v1` is owned here, by the
 //! consumer, under the rule milestone M14 set. Its parameters are the fields
 //! of gpui's `LayerShellOptions` (`crates/gpui/src/platform/layer_shell.rs`
-//! at zed-industries/zed `322cd509dcccaee1f6bc44725d270598ae8171ad`, read
-//! 2026-10-17), which the shell maps its `zwlr_layer_shell_v1` surface with:
+//! at zed-industries/zed `56934ec0560bce8929025497411de7f5322fb6ca`, read
+//! 2026-10-18), which the shell maps its `zwlr_layer_shell_v1` surface with:
 //!
 //! | Member | Wire form | Protocol request (wlr-layer-shell v5) |
 //! | :-- | :-- | :-- |
