@@ -21,7 +21,7 @@
 //! | [`surface`] | maps the surface on a compositor and decides the first configure outcome |
 //! | [`theme`] | the generated Concordia token constants as gpui types, the crate's only colours |
 //! | [`timing`] | pure frame-time and tree-update distributions, refusal rules, and line formats |
-//! | [`timing_fixture`] | frame-time measurement surface driving gpui profiler traces and AccessKit log capture |
+//! | `timing_fixture` (feature `timing`) | frame-time measurement surface driving gpui profiler traces and AccessKit log capture |
 
 pub mod capture;
 pub mod fixture;

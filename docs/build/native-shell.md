@@ -412,7 +412,23 @@ product's hardware or compositor.
 
 ### Frame-time evidence run
 
-Recorded by the reviewer.
+Recorded on 2026-10-18 with `python3 tools/verify_shell.py --timing-out
+<file>`: all 22 cases passed. Reference profile: Intel Arc A380 (DG2), Mesa
+26.2.4 (Intel open-source driver), KWin 6.8.0 headless, gpui at zed
+`322cd509dc`. The host ran other work at a load average between 32 and 34
+on 32 cores, so the figures carry that contention.
+
+| `timing/1000-nodes`, 600 frames, 1,004 nodes | min | p50 | p95 | p99 | max | mean |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Frame (`Window::draw`), ms | 17.46 | 27.61 | 36.09 | 40.71 | 46.40 | 28.00 |
+| Tree-update residual, ms | 2.30 | 4.35 | 6.67 | 8.22 | 9.94 | 4.51 |
+
+Allocator share: 1.4 % of the CPU samples perf took in the fixture process,
+all threads. A run on the same host at a load average of 35 to 49 measured
+frame p50 23.21 ms and tree-update p50 3.76 ms; its perf report timed out
+before the call-graph option was dropped. The two runs differ by about a
+fifth at the median, which is the noise this host adds; neither run is a
+benchmark.
 
 ## What is not claimed
 
@@ -423,4 +439,3 @@ Recorded by the reviewer.
   composited workspace.
 - A run on any host but the reference profile, or on any KWin version but the
   one recorded above.
-
