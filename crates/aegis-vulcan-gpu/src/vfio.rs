@@ -6,7 +6,22 @@
 //! Pure functions evaluating whether a GPU may be bound to VFIO for guest passthrough.
 //! Never opens or binds any device.
 
+pub mod live;
+pub mod sys;
+
 use std::collections::BTreeMap;
+
+pub use crate::vfio::live::{
+    MapBarRun, choose_bar_to_map, format_bar_region, format_region_flags, parse_prefetchable_bars,
+    run_map_bar,
+};
+pub use crate::vfio::sys::{
+    VFIO_API_VERSION, VFIO_CHECK_EXTENSION, VFIO_DEVICE_GET_REGION_INFO, VFIO_GET_API_VERSION,
+    VFIO_GROUP_FLAGS_CONTAINER_SET, VFIO_GROUP_FLAGS_VIABLE, VFIO_GROUP_GET_DEVICE_FD,
+    VFIO_GROUP_GET_STATUS, VFIO_GROUP_SET_CONTAINER, VFIO_REGION_INFO_FLAG_CAPS,
+    VFIO_REGION_INFO_FLAG_MMAP, VFIO_REGION_INFO_FLAG_READ, VFIO_REGION_INFO_FLAG_WRITE,
+    VFIO_SET_IOMMU, VFIO_TYPE1v2_IOMMU, VfioBarMapping, VfioGroupStatus, VfioRegionInfo,
+};
 
 /// Per-GPU facts required to evaluate VFIO candidate eligibility.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -40,6 +40,7 @@ pub use crate::drm_sched::{DrmSchedRecord, MAX_HOLDERS, inspect_holders, is_prov
 pub use crate::error::GpuError;
 pub use crate::gpus::{
     GpuRecord, MAX_CARD_ENTRIES, MAX_DRM_ENTRIES, MAX_PCI_DEVICES, discover_gpus,
+    read_candidate_input,
 };
 pub use crate::heap::{DmaHeapRecord, inspect_dma_heap};
 pub use crate::reader::{MAX_ATTR_BYTES, read_bounded};
@@ -48,4 +49,7 @@ pub use crate::record::{GPU_RECORD_SCHEMA, GpuRecordDocument, RecordRun, run_rec
 pub use crate::render_nodes::{
     MAX_MODESET_BYTES, MAX_RENDER_NODES, RenderNodeInfo, inspect_render_nodes,
 };
-pub use crate::vfio::{VfioCandidateInput, VfioDecision, evaluate_candidate};
+pub use crate::vfio::{
+    MapBarRun, VfioCandidateInput, VfioDecision, choose_bar_to_map, evaluate_candidate,
+    format_bar_region, format_region_flags, run_map_bar,
+};

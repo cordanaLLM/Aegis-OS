@@ -470,3 +470,66 @@ CPU model, kernel and rustc), `gate.log` (everything the gate printed), the
 readings document, the enumeration, the child logs, the initramfs and each
 microVM's configuration and console; nothing is written into the repository
 but cargo's target directory.
+
+## VFIO BAR mapping (M25, E25-1)
+
+`aegis-vulcan-gpu map-bar --device <PCI addr> [--sysfs ROOT] [--dev ROOT]`
+maps one Base Address Register (BAR) of a GPU through VFIO as an unprivileged
+user, once the operator has bound the device to `vfio-pci` and handed the user
+the group device node.
+
+Before it opens any device node, the tool reads sysfs and refuses the
+candidate when:
+
+- its driver is not `vfio-pci` (the refusal names the bound driver);
+- it shares its IOMMU group with another PCI function;
+- a display connector other than Writeback is not `disconnected`;
+- it is the boot VGA device.
+
+An admitted candidate gets `<dev>/vfio/vfio` and `<dev>/vfio/<group>` opened,
+the API version and the type-1v2 IOMMU extension checked, the group's
+viability checked, the group set on the container and the device descriptor
+fetched. The tool queries BARs 0..=5 and maps 4 KiB of the first BAR that is
+mmap-capable, at least 4 KiB long and prefetchable by the flags column of
+sysfs `resource` (`IORESOURCE_PREFETCH`, `0x2000`). Register BARs are never
+mapped, because a read of device registers can have side effects. On the
+reference profile's Arc A380 that is BAR2, the 8 GiB VRAM aperture; BAR0, the
+16 MiB register space, is skipped. The mapping is read-only, read with
+volatile 32-bit loads, hashed with SHA-256 and unmapped.
+
+`crates/aegis-vulcan-gpu/tests/vfio_tests.rs` holds the refusals, the BAR
+choice against the Arc's recorded `resource` table and the UAPI ioctl numbers
+and struct layouts.
+
+### The operator run
+
+Binding a device to `vfio-pci` is the operator's act; the tool, the tests and
+the gates never do it. `tools/operator/e25-1-vfio-run.sh` is that act for the
+Arc A380 at `0000:03:00.0`:
+
+```sh
+bash tools/operator/e25-1-vfio-run.sh            # preview, writes nothing
+bash tools/operator/e25-1-vfio-run.sh --apply    # bind, map-bar, rebind xe
+```
+
+It refuses unless the address is the Arc (`8086:56a5`) on `xe`, alone in IOMMU
+group 17, with no connected output. With `--apply` it binds `vfio-pci`, gives
+the user `/dev/vfio/17`, runs `map-bar`, and from an exit trap unbinds,
+clears `driver_override`, reprobes and reads back the driver of the Arc and of
+the NVIDIA device at `0000:06:00.0`, which it never writes to. The log goes to
+`.workingdir/evidence/e25-1-vfio-<UTC time>.log`. Processes holding the Arc's
+DRM nodes (Xwayland holds `card0` on the reference profile) are listed, never
+signalled.
+
+`tools/test_e25_vfio_card.py` runs the script's stub test
+(`tools/operator/e25-1-vfio-run-stub-test.sh`) inside `make verify-all`: a
+fake sysfs and a fake sudo, 16 cases, nothing under `/sys` or `/dev` touched.
+
+### Limits
+
+Recorded on the reference profile on 2026-10-18 with the Arc still on `xe`:
+`map-bar --device 0000:03:00.0` prints
+`FAIL: candidate: refused: 0000:03:00.0 driver is xe, expected vfio-pci` and
+exits 1. The positive run waits for the operator's `--apply`. It maps a BAR
+on the host through VFIO; it does not attach the device to a guest, so the
+milestone's guest-passthrough criterion stays open.
