@@ -17,9 +17,15 @@ if str(TOOLS_DIR) not in sys.path:
 
 import verify_shell  # noqa: E402
 from verify_shell import (  # noqa: E402
+    ALLOCATOR_SYMBOLS,
     REFERENCE_LINE,
+    TIMING_CASES,
+    allocator_share,
     capability_reasons,
+    compute_distribution,
+    evaluate_timing,
     find_atspi_program,
+    format_timing_lines,
     judge_atspi_late,
     judge_atspi_negative,
     judge_atspi_sound,
@@ -30,9 +36,16 @@ from verify_shell import (  # noqa: E402
     judge_refused_line,
     judge_ring_negative,
     judge_ring_positive,
+    judge_timing,
     main,
+    nearest_rank,
+    parse_frame_line,
+    parse_gpu_line,
     read_until,
     read_versions,
+    read_zed_commit,
+    run_timing_cases,
+    timing_argv,
     write_no_activation_config,
 )
 
@@ -399,18 +412,18 @@ class TestVerifyShellBoundary(unittest.TestCase):
 
     def test_summary_with_one_fail(self):
         results = [("surface/first-configure", False, "exited 1")] + [
-            (f"case-{n}", True, "") for n in range(18)
+            (f"case-{n}", True, "") for n in range(21)
         ]
         self.assertEqual(verify_shell.summary(results), "RESULT fail: 1 case(s) failed")
 
     def test_summary_of_zero_cases_fails(self):
-        self.assertEqual(verify_shell.summary([]), "RESULT fail: 0 of 19 cases ran")
+        self.assertEqual(verify_shell.summary([]), "RESULT fail: 0 of 22 cases ran")
 
-    def test_summary_of_nineteen_passes(self):
-        results = [(f"case-{n}", True, "") for n in range(19)]
+    def test_summary_of_twenty_two_passes(self):
+        results = [(f"case-{n}", True, "") for n in range(22)]
         self.assertEqual(verify_shell.summary(results), "RESULT pass")
 
-    def test_run_all_cases_runs_19_cases(self):
+    def test_run_all_cases_runs_22_cases(self):
         def fake_runner(argv, env):
             return 0, "OUTCOME configured 1280x48\n"
 
@@ -421,6 +434,9 @@ class TestVerifyShellBoundary(unittest.TestCase):
 
         def fake_ring_runner(shell_bin, ring_readback_bin, variant, is_positive, env, runner=None):
             return True, ""
+
+        def fake_timing_runner(shell_bin, env, seeded, **kwargs):
+            return 0, ["GPU mock\tdrv\tinfo\t0"]
 
         results = verify_shell.run_all_cases(
             "/bin/shell",
@@ -434,8 +450,9 @@ class TestVerifyShellBoundary(unittest.TestCase):
             ring_readback_bin="/bin/ring-readback",
             ring_env={},
             ring_case_runner=fake_ring_runner,
+            timing_case_runner=fake_timing_runner,
         )
-        self.assertEqual(len(results), 19)
+        self.assertEqual(len(results), 22)
 
 
 class TestNoActivationConfig(unittest.TestCase):
@@ -771,6 +788,320 @@ class KwinConfigTests(unittest.TestCase):
             (P(tmp) / "config").mkdir()
             env = self.launch(tmp, {})
             self.assertTrue((P(env["XDG_CONFIG_HOME"]) / "kwinrc").is_file())
+
+
+def make_frame_lines(warmup_count, measured_count, nodes_val=1005):
+    """Generates synthetic FRAME lines matching Rust tests/timing.rs."""
+    lines = []
+    for i in range(warmup_count):
+        node_str = "-" if nodes_val is None else str(nodes_val)
+        lines.append(f"FRAME {i} 0 {node_str}")
+    for i in range(1, measured_count + 1):
+        node_str = "-" if nodes_val is None else str(nodes_val)
+        lines.append(f"FRAME {i} 0 {node_str}")
+    return lines
+
+
+def reference_info():
+    """Returns standard reference RunInfo matching Rust tests/timing.rs."""
+    return {
+        "gpu": "Intel(R) Arc(TM) A380 Graphics (DG2)",
+        "driver": "Intel open-source Mesa driver",
+        "driver_info": "Mesa 25.0.0",
+        "software": False,
+        "compositor": "KWin 6.8.0",
+        "zed_commit": "322cd509dcccaee1f6bc44725d270598ae8171ad",
+    }
+
+
+class TestTimingJudges(unittest.TestCase):
+    """Positive, negative, and boundary tests for timing judges and distributions."""
+
+    def test_positive_run_judged_ok(self):
+        lines = make_frame_lines(60, 600, 1005)
+        info = reference_info()
+        ok, note = judge_timing(lines, info, frames=600, warmup=60, min_nodes=1000)
+        self.assertTrue(ok)
+        self.assertIn("frame p50=", note)
+        self.assertIn("tree-update p50=", note)
+        self.assertIn("Intel(R) Arc(TM) A380 Graphics (DG2)", note)
+        self.assertIn("KWin 6.8.0", note)
+        self.assertIn("322cd509dcccaee1f6bc44725d270598ae8171ad", note)
+
+        meas, ref = evaluate_timing(lines, info, frames=600, warmup=60, min_nodes=1000)
+        self.assertIsNone(ref)
+        self.assertEqual(meas["frames"], 600)
+        self.assertEqual((meas["nodes_min"], meas["nodes_max"]), (1005, 1005))
+        expected_dist = {"min": 1, "p50": 300, "p95": 570, "p99": 594, "max": 600, "mean": 300}
+        self.assertEqual(meas["frame"], expected_dist)
+        self.assertEqual(meas["tree_update"], expected_dist)
+
+    def test_positive_measurement_lines_format(self):
+        lines = make_frame_lines(60, 600, 1005)
+        info = reference_info()
+        meas, _ = evaluate_timing(lines, info, frames=600, warmup=60, min_nodes=1000)
+        t_lines = format_timing_lines(meas, info)
+        self.assertEqual(len(t_lines), 4)
+        self.assertEqual(t_lines[0], "TIMING frames 600 nodes 1005..1005")
+        self.assertEqual(
+            t_lines[1],
+            "TIMING frame_ns min 1 p50 300 p95 570 p99 594 max 600 mean 300",
+        )
+        self.assertEqual(
+            t_lines[2],
+            "TIMING tree_update_ns min 1 p50 300 p95 570 p99 594 max 600 mean 300",
+        )
+        self.assertIn("TIMING gpu Intel(R) Arc(TM) A380 Graphics (DG2)", t_lines[3])
+        self.assertIn("driver Intel open-source Mesa driver Mesa 25.0.0", t_lines[3])
+        self.assertIn("compositor KWin 6.8.0", t_lines[3])
+        self.assertIn("zed 322cd509dcccaee1f6bc44725d270598ae8171ad", t_lines[3])
+
+    def test_negative_adapter_inactive_refused(self):
+        lines = make_frame_lines(60, 600, 1005)
+        lines[70] = "FRAME 10 0 -"
+        ok, why = judge_timing(lines, reference_info())
+        self.assertFalse(ok)
+        self.assertEqual(
+            why, "REFUSED accessibility adapter inactive: 1 frames without tree update"
+        )
+
+    def test_negative_too_few_nodes_refused(self):
+        lines = make_frame_lines(60, 600, 1005)
+        lines[102] = "FRAME 10 0 999"
+        ok, why = judge_timing(lines, reference_info())
+        self.assertFalse(ok)
+        self.assertEqual(why, "REFUSED too few nodes: min seen 999, want 1000")
+
+    def test_negative_software_renderer_refused(self):
+        info = dict(reference_info(), software=True)
+        lines = make_frame_lines(60, 600, 1005)
+        ok, why = judge_timing(lines, info)
+        self.assertFalse(ok)
+        self.assertEqual(
+            why,
+            "REFUSED software renderer emulated: Intel(R) Arc(TM) A380 Graphics (DG2)",
+        )
+
+    def test_negative_missing_info_fields_refused(self):
+        lines = make_frame_lines(60, 600, 1005)
+        for field in ("gpu", "driver", "compositor", "zed_commit"):
+            with self.subTest(field=field):
+                info = dict(reference_info(), **{field: ""})
+                ok, why = judge_timing(lines, info)
+                self.assertFalse(ok)
+                self.assertEqual(why, f"REFUSED missing info field: {field}")
+
+    def test_negative_parse_frame_line_errors(self):
+        self.assertIsNone(parse_frame_line("FRAME 100 50"))
+        self.assertIsNone(parse_frame_line("FRAME 100 50 1005 extra"))
+        self.assertIsNone(parse_frame_line("NOT_FRAME 100 50 1005"))
+        self.assertIsNone(parse_frame_line("FRAME not_a_num 50 1005"))
+        self.assertIsNone(parse_frame_line("FRAME 100 not_a_num 1005"))
+        self.assertIsNone(parse_frame_line("FRAME 100 50 not_a_num"))
+
+    def test_boundary_frame_counts(self):
+        exact_lines = make_frame_lines(60, 600, 1005)
+        self.assertTrue(judge_timing(exact_lines, reference_info())[0])
+
+        short_lines = make_frame_lines(60, 599, 1005)
+        ok, why = judge_timing(short_lines, reference_info())
+        self.assertFalse(ok)
+        self.assertEqual(why, "REFUSED too few frames: got 599, want 600")
+
+    def test_boundary_nodes_at_exact_floor(self):
+        lines = make_frame_lines(60, 600, 1000)
+        ok, _ = judge_timing(lines, reference_info())
+        self.assertTrue(ok)
+        meas, _ = evaluate_timing(lines, reference_info())
+        self.assertEqual(meas["nodes_min"], 1000)
+        self.assertEqual(meas["nodes_max"], 1000)
+
+    def test_boundary_residual_saturates_at_zero(self):
+        sample = parse_frame_line("FRAME 50 100 1000")
+        self.assertIsNotNone(sample)
+        self.assertEqual(sample["residual_ns"], 0)
+
+    def test_boundary_distribution_single_and_empty(self):
+        self.assertEqual(
+            compute_distribution([42]),
+            {"min": 42, "p50": 42, "p95": 42, "p99": 42, "max": 42, "mean": 42},
+        )
+        self.assertIsNone(compute_distribution([]))
+
+    def test_nearest_rank_cases(self):
+        self.assertEqual(nearest_rank([10, 20, 30], 50), 20)
+        self.assertIsNone(nearest_rank([], 50))
+
+    def test_parse_gpu_line(self):
+        line = "GPU Intel Arc\tIntel Mesa\tMesa 25.0\t0"
+        info = parse_gpu_line(line)
+        self.assertEqual(info["gpu"], "Intel Arc")
+        self.assertEqual(info["driver"], "Intel Mesa")
+        self.assertEqual(info["driver_info"], "Mesa 25.0")
+        self.assertFalse(info["software"])
+
+        empty_info = parse_gpu_line("GPU -")
+        expected_empty = {"gpu": "", "driver": "", "driver_info": "", "software": False}
+        self.assertEqual(empty_info, expected_empty)
+        self.assertIsNone(parse_gpu_line("NOT_GPU"))
+        self.assertIsNone(parse_gpu_line("GPU too_few_fields"))
+
+
+class TestAllocatorShare(unittest.TestCase):
+    """Tests for parsing perf report stdio output and calculating allocator share."""
+
+    def test_allocator_symbols_contents(self):
+        self.assertIn("malloc", ALLOCATOR_SYMBOLS)
+        self.assertIn("__rust_alloc", ALLOCATOR_SYMBOLS)
+        self.assertIn("alloc::alloc::", ALLOCATOR_SYMBOLS)
+
+    def test_matching_allocator_symbols(self):
+        report = (
+            "# Overhead  Command  Shared Object      Symbol\n"
+            "    12.34%  binary   libc.so.6          [.] malloc\n"
+            "     5.60%  binary   aegis-forum-shell  [.] __rust_alloc\n"
+            "     1.20%  binary   libc.so.6          [.] free\n"
+            "     0.50%  binary   libc.so.6          [.] _int_malloc\n"
+            "     0.10%  binary   aegis-forum-shell  [.] alloc::alloc::realloc\n"
+            "     2.00%  binary   other.so           [.] some_other_func\n"
+        )
+        self.assertEqual(allocator_share(report), 19.74)
+
+    def test_non_matching_symbols_yields_zero(self):
+        report = (
+            "# Overhead  Command  Shared Object  Symbol\n"
+            "    99.00%  binary   libc.so.6      [.] render_stuff\n"
+        )
+        self.assertEqual(allocator_share(report), 0.0)
+
+    def test_empty_report_returns_none(self):
+        self.assertIsNone(allocator_share(""))
+        self.assertIsNone(allocator_share("# Overhead  Symbol\n# ...\n"))
+
+    def test_various_perf_stdio_formats(self):
+        rep1 = "  12.34%  [.] malloc\n"
+        self.assertEqual(allocator_share(rep1), 12.34)
+        rep2 = "  10.00%  binary  [k] __libc_free\n"
+        self.assertEqual(allocator_share(rep2), 10.0)
+        rep3 = "  5.50 %  malloc\n"
+        self.assertEqual(allocator_share(rep3), 5.5)
+
+
+class TestTimingArgv(unittest.TestCase):
+    """Tests for timing_argv command-line construction."""
+
+    def test_timing_argv_without_perf(self):
+        argv = timing_argv("/path/bin", 1000, None, None)
+        self.assertEqual(argv, ["/path/bin", "timing", REFERENCE_LINE, "1000"])
+
+    def test_timing_argv_with_perf(self):
+        argv = timing_argv("/path/bin", 1000, "/usr/bin/perf", "/tmp/p.data")
+        expected = [
+            "/usr/bin/perf",
+            "record",
+            "-F",
+            "999",
+            "-o",
+            "/tmp/p.data",
+            "--",
+            "/path/bin",
+            "timing",
+            REFERENCE_LINE,
+            "1000",
+        ]
+        self.assertEqual(argv, expected)
+
+
+class TestZedCommit(unittest.TestCase):
+    """Tests for reading pinned zed commit from Cargo.toml."""
+
+    def test_read_real_zed_commit(self):
+        commit = read_zed_commit()
+        self.assertEqual(commit, "322cd509dcccaee1f6bc44725d270598ae8171ad")
+
+    def test_read_missing_cargo_toml_returns_empty(self):
+        import tempfile
+        from pathlib import Path as P
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(read_zed_commit(P(tmp) / "Cargo.toml"), "")
+
+
+class TestTimingCases(unittest.TestCase):
+    """Tests for timing cases execution and judgements."""
+
+    def test_case_count_and_timing_cases_structure(self):
+        self.assertEqual(verify_shell.CASE_COUNT, 22)
+        self.assertEqual(len(TIMING_CASES), 3)
+        names = [c[0] for c in TIMING_CASES]
+        self.assertIn("timing/1000-nodes", names)
+        self.assertIn("timing/999-nodes", names)
+        self.assertIn("timing/adapter-inactive", names)
+
+    def test_run_timing_cases_with_mocks(self):
+        def fake_case_runner(shell_bin, env, seeded, **kwargs):
+            gpu_line = "GPU mock_gpu\tmock_drv\tmock_ver\t0"
+            if seeded == 1000 and "no-session-bus" in env.get("DBUS_SESSION_BUS_ADDRESS", ""):
+                # adapter inactive case
+                lines = make_frame_lines(60, 600, nodes_val=None)
+            elif seeded == 994:
+                # too few nodes case (999 nodes)
+                lines = make_frame_lines(60, 600, nodes_val=999)
+            else:
+                # positive case
+                lines = make_frame_lines(60, 600, nodes_val=1005)
+            return 0, [gpu_line] + lines
+
+        results = run_timing_cases(
+            "/bin/shell",
+            a11y_env={},
+            kwin_ver="6.8.0",
+            zed_commit="322cd509dcccaee1f6bc44725d270598ae8171ad",
+            case_runner=fake_case_runner,
+        )
+        self.assertEqual(len(results), 3)
+        for name, passed, why in results:
+            self.assertTrue(passed, f"case {name} failed: {why}")
+
+
+class TestTimingProcessHelpers(unittest.TestCase):
+    """The adapter-inactive environment and the wait after DONE."""
+
+    def test_timing_out_absent_is_none_and_ok(self):
+        self.assertEqual(verify_shell.parse_timing_out([]), (None, True))
+
+    def test_timing_out_reads_the_following_path(self):
+        self.assertEqual(
+            verify_shell.parse_timing_out(["--timing-out", "e.txt"]), (Path("e.txt"), True)
+        )
+
+    def test_timing_out_as_last_argument_is_refused(self):
+        self.assertEqual(verify_shell.parse_timing_out(["--timing-out"]), (None, False))
+
+    def test_inactive_env_points_the_bus_into_the_runtime_dir(self):
+        a11y = {"DBUS_SESSION_BUS_ADDRESS": "unix:path=/rt/bus", "AT_SPI_BUS_ADDRESS": "x"}
+        env = verify_shell.inactive_adapter_env(a11y, Path("/rt"))
+        self.assertEqual(env["DBUS_SESSION_BUS_ADDRESS"], "unix:path=/rt/no-session-bus")
+        self.assertNotIn("AT_SPI_BUS_ADDRESS", env)
+        self.assertEqual(a11y["DBUS_SESSION_BUS_ADDRESS"], "unix:path=/rt/bus")
+
+    def test_inactive_env_never_leaves_the_bus_unset(self):
+        env = verify_shell.inactive_adapter_env({"XDG_RUNTIME_DIR": "/xdg"}, None)
+        self.assertEqual(env["DBUS_SESSION_BUS_ADDRESS"], "unix:path=/xdg/no-session-bus")
+
+    def test_wait_child_returns_the_exit_code(self):
+        class Done:
+            def wait(self, timeout):
+                return 0
+
+        self.assertEqual(verify_shell.wait_child(Done(), 30), 0)
+
+    def test_wait_child_gives_none_when_the_child_outlives_the_wait(self):
+        class Hung:
+            def wait(self, timeout):
+                raise verify_shell.subprocess.TimeoutExpired("fixture", timeout)
+
+        self.assertIsNone(verify_shell.wait_child(Hung(), 0))
 
 
 if __name__ == "__main__":

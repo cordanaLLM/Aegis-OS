@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
 // SPDX-License-Identifier: EUPL-1.2
 
-//! `aegis-forum-shell-gpui`: surface mapping, accessibility fixture, and focus ring fixture entry point on gpui (M28 E28-2, E28-3, E28-4).
+//! `aegis-forum-shell-gpui`: surface mapping, accessibility fixture, focus ring, and timing entry point (M28).
 //!
 //! Subcommands:
 //! - `surface <request-line>`: decodes a `MOUNT_SHELL_CANVAS` request line, connects to the
@@ -10,6 +10,8 @@
 //!   the AT-SPI fixture surface exposing the accessible button, seeded list, and panels.
 //! - `ring <request-line> <variant>`: decodes the canvas, validates the ring variant, and hosts
 //!   the focus-ring fixture surface drawing the canvas node and focus ring.
+//! - `timing <request-line> <seeded-count>`: decodes the canvas, validates the seeded count, and hosts
+//!   the timing measurement surface collecting frame and tree-update durations (requires `timing` feature).
 //!
 //! Exit codes:
 //! - 0: surface configured / fixture completed cleanly
@@ -17,7 +19,7 @@
 //! - 4: compositor lacks `zwlr_layer_shell_v1`
 //! - 5: configure event did not arrive before deadline
 //! - 6: request line was refused before touching the display
-//! - 64: invalid command-line arguments or unknown variant
+//! - 64: invalid command-line arguments, unknown variant, or count out of range
 //!
 //! Every pass is development evidence for the client half only (D79).
 
@@ -28,6 +30,8 @@ use std::str::FromStr;
 use aegis_forum_shell_gpui::fixture::{Variant, run_fixture};
 use aegis_forum_shell_gpui::ring_fixture::{RingVariant, run_ring_fixture};
 use aegis_forum_shell_gpui::surface::{decode_canvas, exit_code, outcome_line, run_surface};
+
+const USAGE: &str = "usage: aegis-forum-shell-gpui surface <request-line> | aegis-forum-shell-gpui a11y <request-line> <variant> | aegis-forum-shell-gpui ring <request-line> <variant> | aegis-forum-shell-gpui timing <request-line> <seeded-count>";
 
 fn handle_surface(request_line: &str, mut out: impl Write) -> ExitCode {
     let outcome = match decode_canvas(request_line.as_bytes()) {
@@ -100,6 +104,47 @@ fn handle_ring(request_line: &str, variant_str: &str, mut out: impl Write) -> Ex
     ExitCode::from(exit_code(&outcome))
 }
 
+#[cfg(feature = "timing")]
+fn handle_timing(request_line: &str, count_str: &str, mut out: impl Write) -> ExitCode {
+    let canvas = match decode_canvas(request_line.as_bytes()) {
+        Ok(canvas) => canvas,
+        Err(refused) => {
+            let formatted = outcome_line(&refused);
+            let _ = writeln!(out, "{formatted}").and_then(|()| out.flush());
+            return ExitCode::from(exit_code(&refused));
+        }
+    };
+
+    let Ok(count) = count_str.parse::<usize>() else {
+        let _ = writeln!(
+            out,
+            "usage: aegis-forum-shell-gpui timing <request-line> <seeded-count>"
+        );
+        return ExitCode::from(64);
+    };
+
+    if !(1..=5000).contains(&count) {
+        let _ = writeln!(
+            out,
+            "usage: aegis-forum-shell-gpui timing <request-line> <seeded-count>"
+        );
+        return ExitCode::from(64);
+    }
+
+    let outcome = aegis_forum_shell_gpui::timing_fixture::run_timing_fixture(
+        &canvas,
+        count,
+        std::io::stdout(),
+    );
+    let formatted = outcome_line(&outcome);
+    let written = writeln!(out, "{formatted}").and_then(|()| out.flush());
+    if written.is_err() {
+        return ExitCode::from(3);
+    }
+
+    ExitCode::from(exit_code(&outcome))
+}
+
 fn main() -> ExitCode {
     let mut cli_args = std::env::args();
     let _binary = cli_args.next();
@@ -115,11 +160,23 @@ fn main() -> ExitCode {
         (Some("surface"), Some(line), None, None) => handle_surface(&line, out),
         (Some("a11y"), Some(line), Some(variant), None) => handle_a11y(&line, &variant, out),
         (Some("ring"), Some(line), Some(variant), None) => handle_ring(&line, &variant, out),
-        _ => {
+        #[cfg(feature = "timing")]
+        (Some("timing"), Some(line), Some(count), None) => handle_timing(&line, &count, out),
+        #[cfg(feature = "timing")]
+        (Some("timing"), _, _, _) => {
             let _ = writeln!(
                 out,
-                "usage: aegis-forum-shell-gpui surface <request-line> | aegis-forum-shell-gpui a11y <request-line> <variant> | aegis-forum-shell-gpui ring <request-line> <variant>"
+                "usage: aegis-forum-shell-gpui timing <request-line> <seeded-count>"
             );
+            ExitCode::from(64)
+        }
+        #[cfg(not(feature = "timing"))]
+        (Some("timing"), _, _, _) => {
+            let _ = writeln!(out, "timing needs the timing feature");
+            ExitCode::from(64)
+        }
+        _ => {
+            let _ = writeln!(out, "{USAGE}");
             ExitCode::from(64)
         }
     }

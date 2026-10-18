@@ -320,11 +320,107 @@ the `width-1-9` variant changed to paint 2.0 px, the same gate failed
 `ring/width-1-9` with "readback unexpectedly passed for negative variant
 width-1-9".
 
+## The frame-time cases
+
+The shell measures frame durations and AccessKit tree-update times over an
+active 1,000-node accessibility tree (M28 E28-6, REQ-P05-11, ADR-0004, D115).
+Rows scrolled out of the 400-pixel list stay in the tree (REQ-P05-11), so
+every seeded row is a node in every update.
+
+### What is measured
+
+Each frame sample captures:
+
+- **Frame duration**: The total duration of `Window::draw` in nanoseconds,
+  recorded through gpui's profiler tracing (`FrameEvent::Draw`).
+- **Post-paint residual (tree-update time)**: gpui exposes no direct timer for
+  the accessibility tree update. Within `Window::draw`, `DrawPhases` records the
+  layout, prepaint, and paint durations. Immediately following paint, while the
+  accessibility adapter is active, gpui calls `self.a11y.end_frame()`, emits the
+  debug log line `Sending a11y tree update: N nodes` (target `gpui::window`),
+  and pushes the update to the platform window's AccessKit adapter. The
+  residual `draw_duration.saturating_sub(request_layout + prepaint + paint)`
+  contains the AccessKit tree synthesis and adapter update, plus the draw's
+  own bookkeeping before layout and after paint. It is a derived upper bound
+  on the tree-update time, not a direct timer.
+- **Log pairing**: The fixture installs a safe logger ring buffer capturing
+  `(Instant, node_count)` tuples. Each drawn frame is paired with the tree
+  update whose instant falls within `[draw_start, draw_end]`, proving that an
+  update was built in that frame and confirming its node count.
+
+### Recorded frame count and warm-up
+
+The measurement records exactly 600 frames following a 60-frame warm-up window
+(approximately 10 seconds of steady animation at 60 Hz). This count is a
+measurement sample size established by E28-6, not a performance target or
+budget. Neither frame time nor tree-update duration enforces any threshold.
+
+### Acceptance cases and refusals
+
+Three cases evaluate positive, negative, and boundary criteria:
+
+| Case | Seeded | Adapter | Expected Outcome |
+| :--- | :--- | :--- | :--- |
+| `timing/1000-nodes` | 1,000 | Active | Pass: 1,004 nodes per update (the 1,000 rows plus four other nodes); distributions (min, p50, p95, p99, max, mean), GPU, driver, compositor and zed commit recorded. |
+| `timing/999-nodes` | 994 | Active | Planted defect: 994 rows yield 998 nodes, under the 1,000 floor; refused as too few nodes. |
+| `timing/adapter-inactive` | 1,000 | Inactive | The session bus points at a socket that does not exist, so no AT-SPI client activates the adapter and no update is logged; refused as adapter inactive. |
+
+Boundary behavior: exactly 600 post-warm-up frames are accepted; a run of 599
+frames is refused as `TooFewFrames`. A tree holding exactly 1,000 nodes is
+accepted. A software-emulated renderer (e.g. llvmpipe) is refused as
+`SoftwareRenderer`. Any empty device, driver, compositor, or commit identifier
+is refused as `MissingInfo`.
+
+### Allocation share via perf (D115)
+
+In accordance with decision D115, gpui's per-frame AccessKit allocation is a
+scoped HISS-03 deviation. When Linux `perf` is installed on `PATH`, the harness
+wraps the positive run with `perf record -F 999` and inspects the resulting
+profile with `perf report --no-children --sort sym --stdio --percent-limit 0`.
+It sums CPU samples attributed to memory allocation symbols (`malloc`, `free`,
+`calloc`, `realloc`, `tcache_*`, `__rust_alloc`, `__rust_dealloc`,
+`alloc::alloc::*`) across all threads in the fixture process, reporting the
+allocator percentage as a `NOTE`.
+
+Allocation measurement limits:
+
+- **Sampled**: Profile figures reflect statistical sampling at 999 Hz, not exact
+  call counts or heap byte totals.
+- **Process-wide**: The sample captures all threads in the shell process,
+  including gpui's event loop, async workers, and Wayland dispatch.
+- **Symbol allow-list**: Only symbols matching the known glibc and Rust
+  allocator allow-list are included in the sum.
+
+When `perf` is absent, the gate logs `SKIP: perf not installed; allocation`
+`share not measured` and completes without error. The allocation share value
+never fails the case.
+
+### Cargo timing feature
+
+Frame profiling is gated behind the `timing` cargo feature in
+`crates/aegis-forum-shell-gpui/Cargo.toml` (`[features] timing =`
+`["gpui/profiler"]`). It is off by default, so the product build compiles
+gpui without its profiler. Enabling it adds one package to `Cargo.lock`,
+`hdrhistogram` 7.6.0 (MIT or Apache-2.0, default features off). The gate
+builds the shell twice: the other cases run the build without the feature.
+
+### Reference profile context (D79)
+
+All figures measure the GPU, driver and KWin recorded in the evidence run,
+on a headless `kwin_wayland --virtual` (D79). They do not characterise the
+product's hardware or compositor.
+
+### Frame-time evidence run
+
+Recorded by the reviewer.
+
 ## What is not claimed
 
 - That P04 serves `zwlr_layer_shell_v1`. The compositor here is KWin.
-- Anything about frame timing.
+- That the timing figures reflect final product performance: the figures measure
+  that GPU, driver, and KWin, not the product, and no target is set.
 - That the pixel cases measure P04's painted output: they measure KWin's
   composited workspace.
 - A run on any host but the reference profile, or on any KWin version but the
   one recorded above.
+

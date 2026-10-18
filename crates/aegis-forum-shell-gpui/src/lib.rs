@@ -20,6 +20,8 @@
 //! | [`ring_fixture`] | focus-ring test surface, scale variants, and occluding panels on gpui |
 //! | [`surface`] | maps the surface on a compositor and decides the first configure outcome |
 //! | [`theme`] | the generated Concordia token constants as gpui types, the crate's only colours |
+//! | [`timing`] | pure frame-time and tree-update distributions, refusal rules, and line formats |
+//! | [`timing_fixture`] | frame-time measurement surface driving gpui profiler traces and AccessKit log capture |
 
 pub mod capture;
 pub mod fixture;
@@ -31,5 +33,8 @@ pub mod ring;
 pub mod ring_fixture;
 pub mod surface;
 pub mod theme;
+pub mod timing;
+#[cfg(feature = "timing")]
+pub mod timing_fixture;
 
 pub use layer::{LayerMapError, layer_shell_options};
