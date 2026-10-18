@@ -2,15 +2,15 @@
 # SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
 # SPDX-License-Identifier: EUPL-1.2
 
-"""Verify P05 Forum shell zwlr_layer_shell_v1 surface mapping and AT-SPI tree.
+"""Verify P05 Forum shell zwlr_layer_shell_v1 surface mapping, AT-SPI tree, and focus ring.
 
-Milestone M28 E28-2 and E28-3, decisions D79, D82 and ADR-0003. Starts a private
-headless KWin compositor (`kwin_wayland --virtual`) inside `dbus-run-session`
-and a private D-Bus session with at-spi2 infrastructure in a temporary
-`XDG_RUNTIME_DIR` (never the operator's display or session bus).
+Milestone M28 E28-2, E28-3, and E28-4, decisions D79, D82 and ADR-0003. Starts a private
+headless KWin compositor (`kwin_wayland --virtual`) inside a private D-Bus session
+with at-spi2 infrastructure in a temporary `XDG_RUNTIME_DIR` (never the operator's
+display or session bus).
 
-Drives the Rust binaries `aegis-forum-shell-gpui` and `aegis-atspi-readback`
-through eleven cases:
+Drives the Rust binaries `aegis-forum-shell-gpui`, `aegis-atspi-readback`, and
+`aegis-ring-readback` through nineteen cases:
 1. surface/first-configure: direct connection maps layer shell and receives first configure;
 2. surface/filter-control: verify wayland-info sees layer shell filtered out or preserved;
 3. surface/layer-shell-missing: compositor lacking layer shell reports LayerShellNotSupportedError;
@@ -21,7 +21,15 @@ through eleven cases:
 8. atspi/negative-button-as-container: button exposed as container fails;
 9. atspi/negative-unlabelled: planted unlabelled node fails and is named;
 10. atspi/negative-culled: culling that removes nodes fails 1000-node check;
-11. atspi/negative-hidden-shown: unhidden hidden subtree fails.
+11. atspi/negative-hidden-shown: unhidden hidden subtree fails;
+12. ring/min: minimum camera scale focus ring >= 2.0 px and >= 3:1 contrast;
+13. ring/unit: unit camera scale focus ring >= 2.0 px and >= 3:1 contrast;
+14. ring/max: maximum camera scale focus ring >= 2.0 px and >= 3:1 contrast;
+15. ring/partly-covered: partly covered focused node passes;
+16. ring/width-2-0: boundary 2.0 px ring passes;
+17. ring/scaled-layer: ring drawn inside scaled layer (1.5 px) fails width floor;
+18. ring/under-panel: focused node fully under panel fails;
+19. ring/width-1-9: boundary 1.9 px ring fails.
 
 Every pass is development evidence for the client half only (D79).
 """
@@ -46,6 +54,7 @@ import host  # noqa: E402
 
 BINARY = "aegis-forum-shell-gpui"
 READBACK_BINARY = "aegis-atspi-readback"
+RING_READBACK_BINARY = "aegis-ring-readback"
 PROGRAMS = (
     "cargo",
     "dbus-run-session",
@@ -59,6 +68,7 @@ PROGRAMS = (
     Path(sys.executable).name,
     BINARY,
     READBACK_BINARY,
+    RING_READBACK_BINARY,
 )
 
 ATSPI_DIRS = (
@@ -91,7 +101,7 @@ REFERENCE_REQUEST = {
 }
 # The binary takes exactly one newline-terminated line, as the socket would carry it.
 REFERENCE_LINE = json.dumps(REFERENCE_REQUEST) + "\n"
-CASE_COUNT = 11
+CASE_COUNT = 19
 
 ATSPI_CASES = (
     ("atspi/sound", "sound", False, 0.0),
@@ -101,6 +111,48 @@ ATSPI_CASES = (
     ("atspi/negative-culled", "culled", False, 0.0),
     ("atspi/negative-hidden-shown", "hidden-shown", False, 0.0),
 )
+
+RING_CASES = (
+    ("ring/min", "min", True),
+    ("ring/unit", "unit", True),
+    ("ring/max", "max", True),
+    ("ring/partly-covered", "partly-covered", True),
+    ("ring/width-2-0", "width-2-0", True),
+    ("ring/scaled-layer", "scaled-layer", False),
+    ("ring/under-panel", "under-panel", False),
+    ("ring/width-1-9", "width-1-9", False),
+)
+# The width a negative variant must measure on its best side: (low, high) in px.
+# A negative that fails for another reason (contrast, a missing side) fails its gate case.
+RING_NEGATIVE_WIDTH = {
+    "scaled-layer": (1.4, 1.6),
+    "under-panel": (0.0, 0.5),
+    "width-1-9": (1.8, 1.95),
+}
+
+NO_ACTIVATION_CONFIG = (
+    '<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"\n'
+    ' "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">\n'
+    "<busconfig>\n"
+    "  <type>session</type>\n"
+    "  <keep_umask/>\n"
+    "  <listen>unix:tmpdir=/tmp</listen>\n"
+    "  <auth>EXTERNAL</auth>\n"
+    '  <policy context="default">\n'
+    '    <allow send_destination="*" eavesdrop="true"/>\n'
+    '    <allow eavesdrop="true"/>\n'
+    '    <allow own="*"/>\n'
+    "  </policy>\n"
+    "</busconfig>\n"
+)
+
+
+def write_no_activation_config(runtime_dir):
+    """Writes a minimal session bus config that omits standard_session_servicedirs."""
+    config_path = runtime_dir / "session-noactivation.conf"
+    config_path.write_text(NO_ACTIVATION_CONFIG, encoding="utf-8")
+    return config_path
+
 
 READBACK_CASES = (
     "atspi/button-exposed",
@@ -226,7 +278,7 @@ def executable_from(messages, name=BINARY):
 
 
 def build_shell_binaries(runner=run_command):
-    """Builds both shell and readback binaries with cargo."""
+    """Builds shell and both readback binaries with cargo."""
     env = dict(os.environ)
     if "CARGO_BUILD_JOBS" not in env:
         env["CARGO_BUILD_JOBS"] = "2"
@@ -249,12 +301,15 @@ def build_shell_binaries(runner=run_command):
     readback_bin = executable_from(stdout, READBACK_BINARY)
     if readback_bin is None or not readback_bin.is_file():
         raise GateError(f"cargo reported no executable for {READBACK_BINARY}")
-    return shell_bin, readback_bin
+    ring_readback_bin = executable_from(stdout, RING_READBACK_BINARY)
+    if ring_readback_bin is None or not ring_readback_bin.is_file():
+        raise GateError(f"cargo reported no executable for {RING_READBACK_BINARY}")
+    return shell_bin, readback_bin, ring_readback_bin
 
 
 def build_shell_binary(runner=run_command):
     """Builds the aegis-forum-shell-gpui binary with cargo (backward compatibility)."""
-    shell_bin, _ = build_shell_binaries(runner=runner)
+    shell_bin, _, _ = build_shell_binaries(runner=runner)
     return shell_bin
 
 
@@ -282,19 +337,25 @@ def kwin_version(runner=run_command):
     return "kwin_wayland (unknown version)"
 
 
-def start_kwin(runtime_dir, socket_name="kwin-wayland-0", popen_fn=subprocess.Popen):
-    """Launches private headless KWin instance inside dbus-run-session."""
-    socket_path = runtime_dir / socket_name
-    log_file_path = runtime_dir / "kwin.log"
-    log_file = open(log_file_path, "w", encoding="utf-8")
-    env = dict(os.environ)
-    env.pop("WAYLAND_DISPLAY", None)
-    env.pop("DISPLAY", None)
-    env["XDG_RUNTIME_DIR"] = str(runtime_dir)
+KWIN_CONFIG = "[KDE]\nAnimationDurationFactor=0\n"
 
-    cmd = [
-        "dbus-run-session",
-        "--",
+
+def write_kwin_config(runtime_dir):
+    """Writes a gate-owned KWin configuration with animations off; returns its directory.
+
+    KWin otherwise reads the host user's configuration, and its fade-in effect leaves a
+    window half-composited for a capture taken right after the client's first frame.
+    """
+    config_dir = runtime_dir / "config"
+    config_dir.mkdir(exist_ok=True)
+    for name in ("kdeglobals", "kwinrc"):
+        (config_dir / name).write_text(KWIN_CONFIG, encoding="utf-8")
+    return config_dir
+
+
+def kwin_command(socket_name, config_file=None, dbus_addr=None):
+    """Returns the argument list for headless KWin, wrapped in a private bus unless given one."""
+    kwin = [
         "kwin_wayland",
         "--virtual",
         "--socket",
@@ -305,6 +366,39 @@ def start_kwin(runtime_dir, socket_name="kwin-wayland-0", popen_fn=subprocess.Po
         "--height",
         str(OUTPUT_HEIGHT),
     ]
+    if dbus_addr is not None:
+        return kwin
+    cmd = ["dbus-run-session"]
+    if config_file is not None:
+        cmd.append(f"--config-file={config_file}")
+    return cmd + ["--"] + kwin
+
+
+def kwin_env(runtime_dir, dbus_addr=None):
+    """Returns KWin's environment: no host display, gate-owned runtime and config dirs."""
+    env = dict(os.environ)
+    env.pop("WAYLAND_DISPLAY", None)
+    env.pop("DISPLAY", None)
+    env["XDG_RUNTIME_DIR"] = str(runtime_dir)
+    env["XDG_CONFIG_HOME"] = str(write_kwin_config(runtime_dir))
+    if dbus_addr is not None:
+        env["DBUS_SESSION_BUS_ADDRESS"] = dbus_addr
+    return env
+
+
+def start_kwin(
+    runtime_dir,
+    socket_name="kwin-wayland-0",
+    config_file=None,
+    dbus_addr=None,
+    popen_fn=subprocess.Popen,
+):
+    """Launches private headless KWin instance."""
+    socket_path = runtime_dir / socket_name
+    log_file_path = runtime_dir / "kwin.log"
+    log_file = open(log_file_path, "w", encoding="utf-8")
+    env = kwin_env(runtime_dir, dbus_addr)
+    cmd = kwin_command(socket_name, config_file, dbus_addr)
     # The child holds its own copy of the descriptor; the parent's is not needed past Popen.
     with log_file:
         proc = popen_fn(
@@ -362,12 +456,12 @@ def start_filter(listen_path, upstream_path, mode, popen_fn=subprocess.Popen):
     raise GateError(f"wayland_filter ({mode}) failed to announce ready at {listen_path}")
 
 
-def start_dbus_daemon(runtime_dir, popen_fn=subprocess.Popen):
+def start_dbus_daemon(runtime_dir, config_file=None, popen_fn=subprocess.Popen):
     """Starts private dbus-daemon and returns (proc, session_bus_address)."""
     socket_path = runtime_dir / "a11y-session-bus"
     cmd = [
         "dbus-daemon",
-        "--session",
+        f"--config-file={config_file}" if config_file is not None else "--session",
         "--nofork",
         "--print-address=1",
         f"--address=unix:path={socket_path}",
@@ -466,14 +560,21 @@ def query_a11y_address(env, runner=run_command):
 
 def start_a11y_bus(
     runtime_dir,
+    config_file=None,
+    session_bus=None,
     popen_fn=subprocess.Popen,
     runner=run_command,
     atspi_finder=find_atspi_program,
 ):
     """Launches private D-Bus session and at-spi2 infrastructure in runtime_dir."""
     procs = []
-    daemon_proc, session_addr = start_dbus_daemon(runtime_dir, popen_fn=popen_fn)
-    procs.append(daemon_proc)
+    if session_bus is not None:
+        session_addr = session_bus
+    else:
+        daemon_proc, session_addr = start_dbus_daemon(
+            runtime_dir, config_file=config_file, popen_fn=popen_fn
+        )
+        procs.append(daemon_proc)
 
     env = dict(os.environ)
     env["DBUS_SESSION_BUS_ADDRESS"] = session_addr
@@ -794,6 +895,136 @@ def run_atspi_cases(
     return results
 
 
+def judge_ring_positive(variant, code, stdout):
+    """Judges a positive ring case: readback must exit 0 and pass."""
+    if code != 0:
+        return False, f"readback exited {code}, want 0: {stdout.strip()[:100]}"
+    case_line = f"CASE ring/{variant} pass"
+    for line in stdout.splitlines():
+        if line.strip() == case_line:
+            return True, measure_summary(stdout)
+    return False, f"missing pass line '{case_line}': {stdout.strip()[:100]}"
+
+
+def measured_sides(stdout):
+    """Returns `(width, side, contrast)` for every well-formed `MEASURE` line."""
+    sides = []
+    for line in stdout.splitlines():
+        parts = line.split()
+        if len(parts) != 4 or parts[0] != "MEASURE":
+            continue
+        try:
+            sides.append((float(parts[2]), parts[1], float(parts[3])))
+        except ValueError:
+            continue
+    return sides
+
+
+def best_measured_width(stdout):
+    """Returns the widest `MEASURE <side> <width> <contrast>` width, or None if none parse."""
+    sides = measured_sides(stdout)
+    return max(sides)[0] if sides else None
+
+
+def measure_summary(stdout):
+    """Returns `best <side> <width> px, <contrast>:1` for the widest side, or an empty string."""
+    sides = measured_sides(stdout)
+    if not sides:
+        return ""
+    width, side, contrast = max(sides)
+    return f"best {side} {width:.3f} px, {contrast:.2f}:1"
+
+
+def judge_ring_negative(variant, code, stdout):
+    """Judges a negative ring case: exit 1, a fail line, and the planted width measured."""
+    if code == 0:
+        return False, f"readback unexpectedly passed for negative variant {variant}"
+    if code != 1:
+        return False, f"readback exited {code}, want 1 (a CASE failure): {stdout.strip()[:100]}"
+    fail_prefix = f"CASE ring/{variant} fail:"
+    reasons = [
+        line.strip()[len(fail_prefix) :].strip()
+        for line in stdout.splitlines()
+        if line.strip().startswith(fail_prefix)
+    ]
+    if not any(reasons):
+        return (
+            False,
+            f"missing fail line with a reason after '{fail_prefix}': {stdout.strip()[:100]}",
+        )
+    low, high = RING_NEGATIVE_WIDTH.get(variant, (0.0, 0.0))
+    best = best_measured_width(stdout)
+    if variant == "under-panel" and best is None:
+        return True, ""
+    if best is None or not low <= best <= high:
+        return False, f"best measured width {best}, want {low}..{high} px for {variant}"
+    return True, measure_summary(stdout)
+
+
+def run_ring_case(
+    shell_bin,
+    ring_readback_bin,
+    variant,
+    is_positive,
+    env,
+    popen_fn=subprocess.Popen,
+    runner=run_child,
+):
+    """Runs focus-ring fixture with given variant, reads geometry, runs readback, judges outcome."""
+    cmd = [str(shell_bin), "ring", REFERENCE_LINE, variant]
+    fixture_proc = popen_fn(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        bufsize=0,
+        env=env,
+        start_new_session=True,
+    )
+    ready, out = read_until(fixture_proc.stdout, "READY", READY_TIMEOUT)
+    if not ready:
+        teardown_process(fixture_proc)
+        return False, "fixture failed to announce READY"
+
+    ring_line = None
+    for line in out.splitlines():
+        if line.startswith("RING "):
+            ring_line = line.strip()
+            break
+    if ring_line is None:
+        teardown_process(fixture_proc)
+        return False, "fixture did not emit RING line"
+
+    rb_cmd = [str(ring_readback_bin), variant, ring_line]
+    code, stdout = runner(rb_cmd, env=env)
+    teardown_process(fixture_proc)
+
+    if is_positive:
+        return judge_ring_positive(variant, code, stdout)
+    return judge_ring_negative(variant, code, stdout)
+
+
+def run_ring_cases(
+    shell_bin,
+    ring_readback_bin,
+    env,
+    runner=run_child,
+    case_runner=run_ring_case,
+):
+    """Runs the 8 focus-ring test cases and returns list of (name, passed, why)."""
+    results = []
+    for name, variant, is_positive in RING_CASES:
+        passed, why = case_runner(
+            shell_bin,
+            ring_readback_bin,
+            variant,
+            is_positive,
+            env,
+            runner=runner,
+        )
+        results.append((name, passed, why))
+    return results
+
+
 def run_all_cases(
     binary,
     kwin_sock,
@@ -803,8 +1034,11 @@ def run_all_cases(
     readback_bin=None,
     a11y_env=None,
     atspi_case_runner=run_atspi_case,
+    ring_readback_bin=None,
+    ring_env=None,
+    ring_case_runner=run_ring_case,
 ):
-    """Runs all test cases (5 surface + 6 AT-SPI when readback_bin is provided)."""
+    """Runs all test cases (5 surface + 6 AT-SPI + 8 focus-ring)."""
     results = run_surface_cases(binary, kwin_sock, hide_sock, drop_sock, runner=runner)
     if readback_bin is not None and a11y_env is not None:
         atspi_results = run_atspi_cases(
@@ -815,6 +1049,15 @@ def run_all_cases(
             case_runner=atspi_case_runner,
         )
         results.extend(atspi_results)
+    if ring_readback_bin is not None and ring_env is not None:
+        ring_results = run_ring_cases(
+            binary,
+            ring_readback_bin,
+            ring_env,
+            runner=runner,
+            case_runner=ring_case_runner,
+        )
+        results.extend(ring_results)
     return results
 
 
@@ -848,6 +1091,8 @@ def report_run_summary(case_results, version, versions):
     """Prints per-case results, versions note, D79 note, and returns exit code."""
     for name, passed, why in case_results:
         sys.stdout.write(f"CASE {name} pass\n" if passed else f"CASE {name} fail: {why}\n")
+        if passed and why:
+            sys.stdout.write(f"NOTE {name}: {why}\n")
     sys.stdout.write(
         f"NOTE versions: at-spi2-core {versions['atspi-2']}, dbus {versions['dbus']}\n"
     )
@@ -874,11 +1119,17 @@ def main():
     procs = []
 
     try:
-        shell_bin, readback_bin = build_shell_binaries()
+        shell_bin, readback_bin, ring_readback_bin = build_shell_binaries()
         version = kwin_version()
         versions = read_versions()
 
-        kwin_proc, kwin_sock = start_kwin(runtime_dir)
+        config_file = write_no_activation_config(runtime_dir)
+        daemon_proc, session_addr = start_dbus_daemon(runtime_dir, config_file=config_file)
+        procs.append(daemon_proc)
+
+        kwin_proc, kwin_sock = start_kwin(
+            runtime_dir, config_file=config_file, dbus_addr=session_addr
+        )
         procs.append(kwin_proc)
 
         hide_sock = runtime_dir / "wayland-filter-hide"
@@ -889,7 +1140,9 @@ def main():
         drop_proc = start_filter(drop_sock, kwin_sock, "drop-layer-configure")
         procs.append(drop_proc)
 
-        a11y_procs, a11y_env = start_a11y_bus(runtime_dir)
+        a11y_procs, a11y_env = start_a11y_bus(
+            runtime_dir, config_file=config_file, session_bus=session_addr
+        )
         procs.extend(a11y_procs)
         a11y_env["WAYLAND_DISPLAY"] = str(kwin_sock)
 
@@ -900,6 +1153,8 @@ def main():
             drop_sock,
             readback_bin=readback_bin,
             a11y_env=a11y_env,
+            ring_readback_bin=ring_readback_bin,
+            ring_env=a11y_env,
         )
         return report_run_summary(case_results, version, versions)
     except GateError as err:

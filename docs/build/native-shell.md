@@ -201,9 +201,130 @@ crate and fails on a call to `rgb(`, `rgba(`, `hsl(` or `hsla(` anywhere
 outside `src/theme.rs`. Before this change, it named the two hard-coded
 backgrounds in `src/surface.rs` and `src/fixture.rs`.
 
+## The focus-ring cases
+
+The shell draws focus rings in screen space so their rendered width remains
+invariant under camera zoom (E28-4, REQ-P05-13). When the camera zooms out
+to `MIN_SCALE` (0.125) or in to `MAX_SCALE` (8.0), the focus ring must remain
+at least 2.0 px wide and maintain a 3:1 contrast ratio against the surface.
+A ring drawn inside the scaled layer would shrink with zoom and become
+unreadable.
+
+The fixture displays a node with a focus ring on KWin's workspace, and the
+readback client captures the composited pixels via KWin's `ScreenShot2` D-Bus
+interface (`org.kde.KWin.ScreenShot2.CaptureArea`). The client passes a pipe
+writer file descriptor to KWin, drains the raw pixel bytes into memory under a
+strict deadline, and measures the painted edges perpendicular to each side of
+the node.
+
+A case passes when at least one side measures at least 1.95 px (the 2.0 px
+floor less the 0.05 px `WIDTH_TOLERANCE_PX` in `src/ring.rs`) at a contrast
+of at least 3:1 (`judge_ring` in `src/pixels.rs`). One side suffices because
+a panel may cover the rest of the ring. Eight cases cover the camera scales,
+planted defects, occlusion and the width boundary. A negative case passes
+only when the readback fails it, and only for the expected reason: its best
+measured width must lie in the range `RING_NEGATIVE_WIDTH` in
+`tools/verify_shell.py` names.
+
+| Case | Variant | Expected |
+| :--- | :--- | :--- |
+| `ring/min` | `min` | Camera at `MIN_SCALE` (0.125): ring passes. |
+| `ring/unit` | `unit` | Camera at 1.0: ring passes. |
+| `ring/max` | `max` | Camera at `MAX_SCALE` (8.0): ring passes. |
+| `ring/partly-covered` | `partly-covered` | A panel covers the left side; the other three pass. |
+| `ring/width-2-0` | `width-2-0` | Boundary: a 2.0 px ring passes. |
+| `ring/scaled-layer` | `scaled-layer` | Planted defect: ring drawn in layer space at scale 0.5 measures 1.4 to 1.6 px and fails. |
+| `ring/under-panel` | `under-panel` | A panel covers the whole ring; no side measures above 0.5 px. |
+| `ring/width-1-9` | `width-1-9` | Boundary: a 1.9 px ring measures 1.8 to 1.95 px and fails. |
+
+A passing ring case prints its widest side as a `NOTE`, for example
+`NOTE ring/width-1-9: best top 1.902 px, 5.85:1`.
+
+### Making the capture deterministic
+
+A capture taken as soon as the fixture prints `READY` showed the empty
+workspace or a frame of KWin's fade-in, about one run in three. Three
+measures close that, and each one alone was measured as insufficient:
+
+- **READY after a drawn frame.** gpui runs `on_next_frame` callbacks at the
+  start of a frame, before it draws and presents (`crates/gpui/src/window.rs`
+  at the pinned zed revision). The fixture therefore prints the `RING` line
+  and `READY` from a second nested `on_next_frame`, after the first frame
+  with the ring has been drawn.
+- **Animations off.** The gate starts KWin with `XDG_CONFIG_HOME` pointing at
+  a directory it writes itself (`write_kwin_config`), holding `kdeglobals` and
+  `kwinrc` with `[KDE] AnimationDurationFactor=0`. This also keeps KWin from
+  reading the operator's own configuration.
+- **Surface probe.** Before measuring, the readback captures the single pixel
+  at `SURFACE_PROBE` (4, 4) until it shows `COLOR_SURFACE`, at most 50
+  attempts 20 ms apart (`wait_for_pixel` in `src/capture.rs`). That point
+  lies outside every ring and panel (`tests/ring.rs`), and the empty
+  workspace reads black there.
+
+### Exact stroke widths
+
+gpui snaps border widths to whole device pixels: a 1.9 px border painted as
+2.0 px, so the `width-1-9` case passed, and a 1.5 px border painted as
+1.0 px. `stroke` in `src/ring_fixture.rs` paints a border of
+`ceil(width)` px in a colour mixed from `COLOR_SURFACE` toward
+`COLOR_FOCUS_RING` by `width / ceil(width)`. The coverage the readback sums
+then equals the requested width: 1.902 px for 1.9 and 1.501 px for 1.5 in
+the evidence run below. The lighter mix also lowers the measured contrast,
+to 5.85:1 and 3.86:1.
+
+### The ScreenShot2 call
+
+KWin 6.8.0 declares
+`CaptureArea(i x, i y, u width, u height, a{sv} options, h pipe)`: width
+and height are unsigned, read by introspecting `org.kde.KWin.ScreenShot2`.
+A call with signed sizes returns `UnknownMethod`. `capture_area` converts
+the sizes and refuses negative ones. The reply must be raw format at
+scale 1.0.
+
+### Pixel measurement algorithm
+
+- **Anti-aliased coverage**: Pixel coverage is computed as the vector
+  projection of `(pixel - surface)` onto `(ring - surface)`, clamped to
+  `[0.0, 1.0]`. This measures sub-pixel and anti-aliased edge contributions
+  without hard thresholding.
+- **Perpendicular scanlines**: For each side (Left, Right, Top, Bottom), a
+  scanline perpendicular to the edge through the side's midpoint sums coverage
+  across the band from `outer_edge - 1` to `inner_edge + 1`.
+- **WCAG contrast ratio**: Relative luminance is linearised from sRGB using the
+  standard 0.04045 piecewise threshold. Contrast is evaluated as
+  `(L1 + 0.05) / (L2 + 0.05)` between the peak ring pixel and the adjacent
+  surface pixel.
+- **D-Bus activation isolation**: KWin and the readback client share a
+  dedicated session bus configured via `write_no_activation_config`. The config
+  omits `<standard_session_servicedirs />`, so no call on that bus activates
+  a desktop portal or another KDE service. Before this, a ring run left an
+  activated `xdg-desktop-portal` behind.
+
+### Ring evidence run
+
+`make verify-shell` on the reference profile, 2026-10-18, headless KWin
+6.8.0: all 19 cases passed, the eight ring cases among them. The readback
+measured, per side:
+
+| Variant | Width (px) | Contrast | Verdict |
+| :--- | :--- | :--- | :--- |
+| `min`, `unit`, `max` | 3.000 on all sides | 6.44:1 | pass |
+| `partly-covered` | 0.347 left, 3.000 on the other sides | 6.44:1 | pass |
+| `width-2-0` | 2.000 on all sides | 6.44:1 | pass |
+| `scaled-layer` | 1.501 on all sides | 3.86:1 | fails as expected |
+| `under-panel` | 0.347 on all sides | 1.00:1 | fails as expected |
+| `width-1-9` | 1.902 on all sides | 5.85:1 | fails as expected |
+
+Three probe runs of all eight variants before it gave the same figures. With
+the `width-1-9` variant changed to paint 2.0 px, the same gate failed
+`ring/width-1-9` with "readback unexpectedly passed for negative variant
+width-1-9".
+
 ## What is not claimed
 
 - That P04 serves `zwlr_layer_shell_v1`. The compositor here is KWin.
-- Anything about pixels or frame timing. Those join `make verify-shell` later.
+- Anything about frame timing.
+- That the pixel cases measure P04's painted output: they measure KWin's
+  composited workspace.
 - A run on any host but the reference profile, or on any KWin version but the
   one recorded above.
