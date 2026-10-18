@@ -387,6 +387,7 @@ def cosign_pin(**changes):
         "checksum-url": "https://example.invalid/SHA256SUMS",
         "bundle-file": "SHA256SUMS.bundle",
         "bundle-url": "https://example.invalid/SHA256SUMS.bundle",
+        "boot-evidence-url": "https://example.invalid/boot-evidence.json",
         "identity": (
             "https://github.com/cordanaLLM/Imago/.github/workflows/"
             "aegis-build.yml@refs/heads/main"
@@ -840,29 +841,31 @@ class CosignVerificationTests(unittest.TestCase):
     def test_sha256sums_record_does_not_take_a_longer_name(self):
         text = f"{PIN['sha256']}  {PIN['file']}.sig\n"
         with self.assertRaises(gate.Refused) as refused:
-            gate.sha256sums_record(text, PIN)
+            gate.sha256sums_record(text, PIN["file"])
         self.assertIn("names 0 lines", str(refused.exception))
 
     def test_sha256sums_record_reads_a_bounded_number_of_lines(self):
         """Boundary: the record on the last line read is taken, one line later is not."""
         filler = [f"{'0' * 64}  other-{n}.raw" for n in range(gate.MAX_SUMS_LINES - 1)]
         record = f"{PIN['sha256']}  {PIN['file']}"
-        self.assertEqual(gate.sha256sums_record("\n".join(filler + [record]), PIN), PIN["sha256"])
+        self.assertEqual(
+            gate.sha256sums_record("\n".join(filler + [record]), PIN["file"]), PIN["sha256"]
+        )
         with self.assertRaises(gate.Refused):
-            gate.sha256sums_record("\n".join(filler + ["x", record]), PIN)
+            gate.sha256sums_record("\n".join(filler + ["x", record]), PIN["file"])
 
     def test_sha256sums_record_two_space_form(self):
         text = f"{PIN['sha256']}  {PIN['file']}\n"
-        self.assertEqual(gate.sha256sums_record(text, PIN), PIN["sha256"])
+        self.assertEqual(gate.sha256sums_record(text, PIN["file"]), PIN["sha256"])
 
     def test_sha256sums_record_binary_mode_form(self):
         text = f"{PIN['sha256']} *{PIN['file']}\n"
-        self.assertEqual(gate.sha256sums_record(text, PIN), PIN["sha256"])
+        self.assertEqual(gate.sha256sums_record(text, PIN["file"]), PIN["sha256"])
 
     def test_sha256sums_record_two_lines_for_file_refused(self):
         text = f"{PIN['sha256']}  {PIN['file']}\n{PIN['sha256']}  {PIN['file']}\n"
         with self.assertRaises(gate.Refused) as refused:
-            gate.sha256sums_record(text, PIN)
+            gate.sha256sums_record(text, PIN["file"])
         self.assertEqual(refused.exception.stage, "checksum")
         expected = f"the signed SHA256SUMS names 2 lines for {PIN['file']}"
         self.assertIn(expected, str(refused.exception))
@@ -870,7 +873,7 @@ class CosignVerificationTests(unittest.TestCase):
     def test_sha256sums_record_63_hex_refused(self):
         text = f"{PIN['sha256'][:63]}  {PIN['file']}\n"
         with self.assertRaises(gate.Refused) as refused:
-            gate.sha256sums_record(text, PIN)
+            gate.sha256sums_record(text, PIN["file"])
         self.assertEqual(refused.exception.stage, "checksum")
         expected = f"the signed SHA256SUMS names 0 lines for {PIN['file']}"
         self.assertIn(expected, str(refused.exception))
@@ -878,7 +881,7 @@ class CosignVerificationTests(unittest.TestCase):
     def test_sha256sums_record_uppercase_hex_refused(self):
         text = f"{PIN['sha256'].upper()}  {PIN['file']}\n"
         with self.assertRaises(gate.Refused) as refused:
-            gate.sha256sums_record(text, PIN)
+            gate.sha256sums_record(text, PIN["file"])
         self.assertEqual(refused.exception.stage, "checksum")
         expected = f"the signed SHA256SUMS names 0 lines for {PIN['file']}"
         self.assertIn(expected, str(refused.exception))
@@ -886,10 +889,271 @@ class CosignVerificationTests(unittest.TestCase):
     def test_sha256sums_record_only_other_files_refused(self):
         text = f"{PIN['sha256']}  other-image.qcow2\n"
         with self.assertRaises(gate.Refused) as refused:
-            gate.sha256sums_record(text, PIN)
+            gate.sha256sums_record(text, PIN["file"])
         self.assertEqual(refused.exception.stage, "checksum")
         expected = f"the signed SHA256SUMS names 0 lines for {PIN['file']}"
         self.assertIn(expected, str(refused.exception))
+
+
+class CosignDispatchTests(unittest.TestCase):
+    """Cosign dispatch in fetch / cache / verify."""
+
+    def setup_verify_env(
+        self,
+        base,
+        pin=None,
+        artifact_bytes=b"raw-image-bytes",
+        evidence_data=None,
+        evidence_raw=None,
+        corrupt_artifact_digest=False,
+        corrupt_evidence_digest=False,
+    ):
+        if pin is None:
+            pin = cosign_pin()
+        store = Path(base) / "store"
+        run_dir = Path(base) / "run"
+        store.mkdir(parents=True, exist_ok=True)
+        run_dir.mkdir(parents=True, exist_ok=True)
+
+        artifact_digest = gate.hashlib.sha256(artifact_bytes).hexdigest()
+        pin["size"] = len(artifact_bytes)
+        pin["sha256"] = artifact_digest
+
+        if evidence_raw is not None:
+            evidence_bytes = evidence_raw
+        else:
+            if evidence_data is None:
+                evidence_data = {"correlation-id": pin["version"]}
+            evidence_bytes = json.dumps(evidence_data).encode("utf-8")
+
+        evidence_digest = gate.hashlib.sha256(evidence_bytes).hexdigest()
+
+        context = gate.Context(pin, store, run_dir)
+        context.artifact.write_bytes(artifact_bytes)
+        if context.bundle is not None:
+            context.bundle.write_bytes(b"dummy-bundle")
+        if context.evidence is not None:
+            context.evidence.write_bytes(evidence_bytes)
+
+        sums_art_digest = "0" * 64 if corrupt_artifact_digest else artifact_digest
+        sums_evi_digest = "0" * 64 if corrupt_evidence_digest else evidence_digest
+        evi_file = gate.BOOT_EVIDENCE_FILE
+        sums_text = f"{sums_art_digest}  {pin['file']}\n" f"{sums_evi_digest}  {evi_file}\n"
+        context.checksum.write_text(sums_text, encoding="utf-8")
+        return context, pin, sums_text
+
+    def test_positive_fetch_pinned_cosign_order(self):
+        pin = cosign_pin()
+        with tempfile.TemporaryDirectory() as base:
+            store = Path(base) / "store"
+            run_dir = Path(base) / "run"
+            context = gate.Context(pin, store, run_dir)
+            with mock.patch.object(gate, "fetch") as mock_fetch, mock.patch.object(
+                gate, "import_key"
+            ) as mock_import, mock.patch.object(gate, "file_digest", return_value=pin["sha256"]):
+                mock_fetch.side_effect = lambda url, target, timeout: target.touch()
+                gate.fetch_pinned(context)
+                mock_import.assert_not_called()
+                expected = [
+                    mock.call(
+                        pin["signature"]["checksum-url"], context.checksum, gate.FETCH_TIMEOUT
+                    ),
+                    mock.call(pin["signature"]["bundle-url"], context.bundle, gate.FETCH_TIMEOUT),
+                    mock.call(
+                        pin["signature"]["boot-evidence-url"], context.evidence, gate.FETCH_TIMEOUT
+                    ),
+                    mock.call(pin["url"], context.artifact, gate.FETCH_TIMEOUT),
+                ]
+                self.assertEqual(mock_fetch.call_args_list, expected)
+
+    def test_positive_check_cache_cosign_all_four_present(self):
+        pin = cosign_pin()
+        with tempfile.TemporaryDirectory() as base:
+            store = Path(base) / "store"
+            store.mkdir(parents=True, exist_ok=True)
+            run_dir = Path(base) / "run"
+            context = gate.Context(pin, store, run_dir)
+            context.artifact.touch()
+            context.checksum.touch()
+            context.bundle.touch()
+            context.evidence.touch()
+            self.assertEqual(gate.check_cache(context), [])
+
+    def test_positive_verify_artifact_cosign(self):
+        with tempfile.TemporaryDirectory() as base:
+            context, pin, _sums = self.setup_verify_env(base)
+            with mock.patch.object(gate, "run", return_value=(0, "Verified OK\n", "")):
+                result = gate.verify_artifact(context, context.artifact, context.checksum)
+            self.assertEqual(result["version"], pin["version"])
+            self.assertEqual(result["digest"], pin["sha256"])
+            self.assertEqual(result["good"], "cosign: Verified OK")
+
+    def test_negative_cosign_rc_1(self):
+        with tempfile.TemporaryDirectory() as base:
+            context, _pin, _sums = self.setup_verify_env(base)
+            with mock.patch.object(gate, "run", return_value=(1, "", "verification failed\n")):
+                with self.assertRaises(gate.Refused) as cm:
+                    gate.verify_artifact(context, context.artifact, context.checksum)
+            self.assertEqual(cm.exception.stage, "signature")
+
+    def test_negative_artifact_line_digest_differs(self):
+        with tempfile.TemporaryDirectory() as base:
+            context, _pin, _sums = self.setup_verify_env(base, corrupt_artifact_digest=True)
+            with mock.patch.object(gate, "run", return_value=(0, "Verified OK\n", "")):
+                with self.assertRaises(gate.Refused) as cm:
+                    gate.verify_artifact(context, context.artifact, context.checksum)
+            self.assertEqual(cm.exception.stage, "checksum")
+
+    def test_negative_evidence_file_bytes_differ_from_signed_line(self):
+        with tempfile.TemporaryDirectory() as base:
+            context, _pin, _sums = self.setup_verify_env(base, corrupt_evidence_digest=True)
+            with mock.patch.object(gate, "run", return_value=(0, "Verified OK\n", "")):
+                with self.assertRaises(gate.Refused) as cm:
+                    gate.verify_artifact(context, context.artifact, context.checksum)
+            self.assertEqual(cm.exception.stage, "checksum")
+            self.assertIn("boot-evidence.json hashes to", str(cm.exception))
+
+    def test_negative_evidence_correlation_id_differs_from_pin(self):
+        with tempfile.TemporaryDirectory() as base:
+            context, _pin, _sums = self.setup_verify_env(
+                base, evidence_data={"correlation-id": "aegis-m18-product-input-9999"}
+            )
+            with mock.patch.object(gate, "run", return_value=(0, "Verified OK\n", "")):
+                with self.assertRaises(gate.Refused) as cm:
+                    gate.verify_artifact(context, context.artifact, context.checksum)
+            self.assertEqual(cm.exception.stage, "version")
+            self.assertIn("signed correlation-id aegis-m18-product-input-9999", str(cm.exception))
+
+    def test_negative_evidence_not_json_or_no_correlation_id_or_oversized(self):
+        max_bytes = gate.MAX_EVIDENCE_BYTES
+        cases = (
+            ("not_json", b"not-json"),
+            ("json_array", b"[]"),
+            ("missing_correlation_id", b'{"other": "value"}'),
+            ("non_string_correlation_id", b'{"correlation-id": 1234}'),
+            ("oversized", b"{" + b"a" * (max_bytes + 1)),
+        )
+        for name, raw in cases:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as base:
+                context, _pin, _sums = self.setup_verify_env(base, evidence_raw=raw)
+                with mock.patch.object(gate, "run", return_value=(0, "Verified OK\n", "")):
+                    with self.assertRaises(gate.Refused) as cm:
+                        gate.verify_artifact(context, context.artifact, context.checksum)
+                self.assertEqual(cm.exception.stage, "version")
+
+    def test_negative_pin_missing_boot_evidence_url(self):
+        pin = cosign_pin()
+        del pin["signature"]["boot-evidence-url"]
+        with tempfile.TemporaryDirectory() as base:
+            with self.assertRaises(gate.GateError) as cm:
+                gate.load_pin(written_pin(pin, base))
+            self.assertIn("signature lacks boot-evidence-url", str(cm.exception))
+
+    def test_negative_boot_evidence_url_http(self):
+        pin = cosign_pin(**{"boot-evidence-url": "http://example.invalid/boot-evidence.json"})
+        with tempfile.TemporaryDirectory() as base:
+            with self.assertRaises(gate.GateError) as cm:
+                gate.load_pin(written_pin(pin, base))
+            self.assertIn("every URL must be https", str(cm.exception))
+
+    def test_negative_check_cache_cosign_missing_evidence(self):
+        pin = cosign_pin()
+        with tempfile.TemporaryDirectory() as base:
+            store = Path(base) / "store"
+            store.mkdir(parents=True, exist_ok=True)
+            run_dir = Path(base) / "run"
+            context = gate.Context(pin, store, run_dir)
+            context.artifact.touch()
+            context.checksum.touch()
+            context.bundle.touch()
+            problems = gate.check_cache(context)
+            self.assertTrue(problems)
+            self.assertIn("boot-evidence.json", problems[0])
+            self.assertNotIn("gnupg", problems[0])
+
+    def test_negative_check_cache_gpg_missing_keyring(self):
+        pin = gate.load_pin(gate.PIN)
+        with tempfile.TemporaryDirectory() as base:
+            store = Path(base) / "store"
+            store.mkdir(parents=True, exist_ok=True)
+            run_dir = Path(base) / "run"
+            context = gate.Context(pin, store, run_dir)
+            context.artifact.touch()
+            context.checksum.touch()
+            problems = gate.check_cache(context)
+            self.assertTrue(problems)
+            self.assertIn("gnupg", problems[0])
+
+    def test_boundary_version_equal_floor_admitted(self):
+        stem = "aegis-m18-product-input"
+        pin = cosign_pin(version=f"{stem}-0002", **{"version-floor": f"{stem}-0002"})
+        with tempfile.TemporaryDirectory() as base:
+            context, _pin, _sums = self.setup_verify_env(base, pin=pin)
+            with mock.patch.object(gate, "run", return_value=(0, "Verified OK\n", "")):
+                result = gate.verify_artifact(context, context.artifact, context.checksum)
+            self.assertEqual(result["version"], f"{stem}-0002")
+
+    def test_boundary_version_below_floor_refused_at_version(self):
+        stem = "aegis-m18-product-input"
+        pin = cosign_pin(version=f"{stem}-0001", **{"version-floor": f"{stem}-0002"})
+        with tempfile.TemporaryDirectory() as base:
+            context, _pin, _sums = self.setup_verify_env(base, pin=pin)
+            with mock.patch.object(gate, "run", return_value=(0, "Verified OK\n", "")):
+                with self.assertRaises(gate.Refused) as cm:
+                    gate.verify_artifact(context, context.artifact, context.checksum)
+            self.assertEqual(cm.exception.stage, "version")
+
+    def test_boundary_evidence_size_at_and_above_max_bytes(self):
+        max_bytes = gate.MAX_EVIDENCE_BYTES
+        prefix = b'{"correlation-id": "aegis-m18-product-input-0002", "pad": "'
+        suffix = b'"}'
+        pad_len = max_bytes - len(prefix) - len(suffix)
+        exact_bytes = prefix + (b"x" * pad_len) + suffix
+        self.assertEqual(len(exact_bytes), max_bytes)
+
+        with tempfile.TemporaryDirectory() as base:
+            context, _pin, _sums = self.setup_verify_env(base, evidence_raw=exact_bytes)
+            with mock.patch.object(gate, "run", return_value=(0, "Verified OK\n", "")):
+                result = gate.verify_artifact(context, context.artifact, context.checksum)
+            self.assertEqual(result["version"], "aegis-m18-product-input-0002")
+
+        with tempfile.TemporaryDirectory() as base:
+            over = prefix + (b"x" * (pad_len + 1)) + suffix
+            context, _pin, _sums = self.setup_verify_env(base, evidence_raw=over)
+            with mock.patch.object(gate, "run", return_value=(0, "Verified OK\n", "")):
+                with self.assertRaises(gate.Refused) as cm:
+                    gate.verify_artifact(context, context.artifact, context.checksum)
+            self.assertEqual(cm.exception.stage, "version")
+            self.assertIn(f"{max_bytes + 1} bytes, exceeds maximum", str(cm.exception))
+
+    def test_boundary_sha256sums_evidence_file_twice_refused(self):
+        with tempfile.TemporaryDirectory() as base:
+            context, pin, sums = self.setup_verify_env(base)
+            evi_file = gate.BOOT_EVIDENCE_FILE
+            double_sums = sums + f"{pin['sha256']}  {evi_file}\n"
+            context.checksum.write_text(double_sums, encoding="utf-8")
+            with mock.patch.object(gate, "run", return_value=(0, "Verified OK\n", "")):
+                with self.assertRaises(gate.Refused) as cm:
+                    gate.verify_artifact(context, context.artifact, context.checksum)
+            self.assertEqual(cm.exception.stage, "checksum")
+            self.assertIn("names 2 lines", str(cm.exception))
+
+    def test_boundary_context_bundle_evidence_none_for_gpg_pin(self):
+        pin = gate.load_pin(gate.PIN)
+        with tempfile.TemporaryDirectory() as base:
+            store = Path(base) / "store"
+            run_dir = Path(base) / "run"
+            ctx = gate.Context(pin, store, run_dir)
+            self.assertIsNone(ctx.bundle)
+            self.assertIsNone(ctx.evidence)
+
+    def test_boundary_unknown_scheme_raises_gate_error(self):
+        pin = cosign_pin(**{"signature.scheme": "unknown-scheme"})
+        with tempfile.TemporaryDirectory() as base:
+            store = Path(base) / "store"
+            run_dir = Path(base) / "run"
+            with self.assertRaises(gate.GateError):
+                gate.Context(pin, store, run_dir)
 
 
 class DigestTests(unittest.TestCase):

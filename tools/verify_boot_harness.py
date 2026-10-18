@@ -91,6 +91,8 @@ EFI_GLOBAL = "8be4df61-93ca-11d2-aa0d-00e098032b8c"
 ESP_TYPE = uuid.UUID("c12a7328-f81f-11d2-ba4b-00a0c93ec93b")
 DEFAULT_OVMF_DIR = "/usr/share/edk2/x64"
 KEY_FILE = "signing-keys.gpg"
+BOOT_EVIDENCE_FILE = "boot-evidence.json"
+MAX_EVIDENCE_BYTES = 65536
 PIN_SCHEMA = "aegis.m24.boot-artifact-pin.v1"
 COSIGN_SCHEME = "cosign-keyless-sha256sums"
 GPG_SCHEME = "gpg-clearsigned-checksum"
@@ -102,6 +104,7 @@ SIGNATURE_FIELDS = {
         "checksum-url",
         "bundle-file",
         "bundle-url",
+        "boot-evidence-url",
         "identity",
         "issuer",
         "workflow-sha",
@@ -551,7 +554,7 @@ def signature_urls(sig):
     if scheme == GPG_SCHEME:
         return (sig["checksum-url"], sig["key-url"])
     if scheme == COSIGN_SCHEME:
-        return (sig["checksum-url"], sig["bundle-url"])
+        return (sig["checksum-url"], sig["bundle-url"], sig["boot-evidence-url"])
     return ()
 
 
@@ -660,6 +663,15 @@ class Context:
         self.timeout = pin["boot"]["login-prompt-timeout-seconds"]
         self.spawned = []
         self.key = None
+        scheme = pin["signature"].get("scheme")
+        if scheme == GPG_SCHEME:
+            self.bundle = None
+            self.evidence = None
+        elif scheme == COSIGN_SCHEME:
+            self.bundle = store / pin["signature"]["bundle-file"]
+            self.evidence = store / BOOT_EVIDENCE_FILE
+        else:
+            raise GateError(f"signature scheme {scheme} is not built")
 
     def nonce(self):
         """Return a fresh per-boot nonce."""
@@ -738,13 +750,27 @@ def import_key(keyring, key_file, fingerprint):
         raise GateError(f"{key_file.name} does not carry the pinned key {fingerprint}")
 
 
+def fetch_signature_inputs(context):
+    """Download and prepare the signature inputs for the pin's scheme."""
+    pin, store = context.pin, context.store
+    scheme = pin["signature"].get("scheme")
+    if scheme == GPG_SCHEME:
+        fetch(pin["signature"]["checksum-url"], context.checksum, FETCH_TIMEOUT)
+        fetch(pin["signature"]["key-url"], store / KEY_FILE, FETCH_TIMEOUT)
+        import_key(context.keyring, store / KEY_FILE, pin["signature"]["fingerprint"])
+    elif scheme == COSIGN_SCHEME:
+        fetch(pin["signature"]["checksum-url"], context.checksum, FETCH_TIMEOUT)
+        fetch(pin["signature"]["bundle-url"], context.bundle, FETCH_TIMEOUT)
+        fetch(pin["signature"]["boot-evidence-url"], context.evidence, FETCH_TIMEOUT)
+    else:
+        raise GateError(f"signature scheme {scheme} is not built")
+
+
 def fetch_pinned(context):
     """Populate the cache: the signed CHECKSUM, the signing keys and the artifact."""
     pin, store = context.pin, context.store
     store.mkdir(parents=True, exist_ok=True)
-    fetch(pin["signature"]["checksum-url"], context.checksum, FETCH_TIMEOUT)
-    fetch(pin["signature"]["key-url"], store / KEY_FILE, FETCH_TIMEOUT)
-    import_key(context.keyring, store / KEY_FILE, pin["signature"]["fingerprint"])
+    fetch_signature_inputs(context)
     if context.artifact.exists():
         print(f"     cached artifact kept: {context.artifact}")
         return
@@ -759,7 +785,13 @@ def fetch_pinned(context):
 
 def check_cache(context):
     """Return why the cached inputs are not all present."""
-    wanted = (context.artifact, context.checksum, context.keyring)
+    scheme = context.pin["signature"].get("scheme")
+    if scheme == GPG_SCHEME:
+        wanted = (context.artifact, context.checksum, context.keyring)
+    elif scheme == COSIGN_SCHEME:
+        wanted = (context.artifact, context.checksum, context.bundle, context.evidence)
+    else:
+        raise GateError(f"signature scheme {scheme} is not built")
     missing = [str(path) for path in wanted if not path.exists()]
     if not missing:
         return []
@@ -821,15 +853,38 @@ def signed_record(text, pin):
     return digest, version
 
 
-def sha256sums_record(text, pin):
-    """Return the SHA-256 digest recorded for pin['file'] in coreutils SHA256SUMS format."""
-    file_name = pin["file"]
+def sha256sums_record(text, file_name):
+    """Return the SHA-256 digest recorded for `file_name` in coreutils SHA256SUMS format."""
     bounded_text = "\n".join(text.splitlines()[:MAX_SUMS_LINES])
     pattern = re.compile(rf"^([0-9a-f]{{64}}) [ *]{re.escape(file_name)}$", re.M)
     found = pattern.findall(bounded_text)
     if len(found) != 1:
         raise Refused("checksum", f"the signed SHA256SUMS names {len(found)} lines for {file_name}")
     return found[0]
+
+
+def evidence_version(path):
+    """Return the correlation-id recorded in boot evidence file at `path`."""
+    target = Path(path)
+    try:
+        size = target.stat().st_size
+    except OSError as error:
+        raise Refused("version", f"boot evidence {target.name} could not be read: {error}")
+    if size > MAX_EVIDENCE_BYTES:
+        raise Refused(
+            "version",
+            f"boot evidence {target.name} is {size} bytes, exceeds maximum {MAX_EVIDENCE_BYTES}",
+        )
+    try:
+        data = json.loads(target.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise Refused("version", f"boot evidence {target.name} is not valid JSON: {error}")
+    if not isinstance(data, dict):
+        raise Refused("version", f"boot evidence {target.name} is not a JSON object")
+    correlation_id = data.get("correlation-id")
+    if not isinstance(correlation_id, str):
+        raise Refused("version", f"boot evidence {target.name} lacks string correlation-id")
+    return correlation_id
 
 
 def require_pinned(pin, artifact):
@@ -843,8 +898,8 @@ def require_pinned(pin, artifact):
     return found
 
 
-def verify_artifact(context, artifact, checksum):
-    """E24-1: signature, signed digest, producer version and the bytes, before any boot."""
+def verify_artifact_gpg(context, artifact, checksum):
+    """Verify an upstream artifact clearsigned with GPG."""
     pin = context.pin
     plain = context.run_dir / f"{Path(checksum).name}.signed-text"
     text, good = signed_checksum(context, checksum, plain)
@@ -857,6 +912,41 @@ def verify_artifact(context, artifact, checksum):
         raise Refused("version", f"signed version {version} against pin {pin['version']}")
     found = require_pinned(pin, artifact)
     return {"good": good, "version": version, "digest": found}
+
+
+def verify_artifact_cosign(context, artifact, checksum):
+    """Verify an Imago artifact signed with cosign keyless signature."""
+    pin = context.pin
+    text, good = cosign_checksum(pin, checksum, context.bundle)
+    recorded = sha256sums_record(text, pin["file"])
+    if recorded != pin["sha256"]:
+        raise Refused("checksum", f"the signed digest {recorded} is not the pinned {pin['sha256']}")
+    evidence_line = sha256sums_record(text, BOOT_EVIDENCE_FILE)
+    evidence_digest = file_digest(context.evidence)
+    if evidence_digest != evidence_line:
+        raise Refused(
+            "checksum",
+            f"{BOOT_EVIDENCE_FILE} hashes to {evidence_digest}, not the signed {evidence_line}",
+        )
+    version = evidence_version(context.evidence)
+    if version != pin["version"]:
+        raise Refused("version", f"signed correlation-id {version} against pin {pin['version']}")
+    if not version_admitted(version, pin["version-floor"], scheme=COSIGN_SCHEME):
+        raise Refused(
+            "version", f"signed correlation-id {version} against pin floor {pin['version-floor']}"
+        )
+    found = require_pinned(pin, artifact)
+    return {"good": good, "version": version, "digest": found}
+
+
+def verify_artifact(context, artifact, checksum):
+    """E24-1: signature, signed digest, producer version and the bytes, before any boot."""
+    scheme = context.pin["signature"].get("scheme")
+    if scheme == GPG_SCHEME:
+        return verify_artifact_gpg(context, artifact, checksum)
+    if scheme == COSIGN_SCHEME:
+        return verify_artifact_cosign(context, artifact, checksum)
+    raise GateError(f"signature scheme {scheme} is not built")
 
 
 def report(name, problems, notes=()):
