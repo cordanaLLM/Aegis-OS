@@ -840,6 +840,75 @@ def milestone_line(row):
     return line
 
 
+# The release train runs its action once more after a failed first attempt
+# (HISS-02). On 2026-10-18 one GitHub GraphQL server error failed the train on
+# main, and the engine's workflow-run check then failed every pull request's
+# gate until the run was repeated by hand.
+RELEASE_WORKFLOW = ".github/workflows/release-please.yml"
+RELEASE_ACTION = "googleapis/release-please-action@"
+STEP_ITEM = re.compile(r"^(?P<indent> *)- ")
+RETRY_KEYS = ("name", "id", "if", "continue-on-error")
+
+
+def workflow_steps(text):
+    """Split a workflow into its list items, each ending at the first line indented
+    less than its dash."""
+    steps, current, indent = [], None, 0
+    for line in text.splitlines():
+        item = STEP_ITEM.match(line)
+        if item:
+            current, indent = [line], len(item["indent"])
+            steps.append(current)
+        elif current is not None and line.strip():
+            if len(line) - len(line.lstrip(" ")) <= indent:
+                current = None
+            else:
+                current.append(line)
+    return steps
+
+
+def step_field(step, key):
+    """The value of one top-level key of a step, or None when the step has none."""
+    pattern = re.compile(rf"^ *(- )?{re.escape(key)}: *(?P<value>.*?) *$")
+    values = [match["value"] for match in map(pattern.match, step) if match]
+    return values[0] if values else None
+
+
+def step_body(step):
+    """A step without the keys that tell its first attempt from its retry."""
+    pattern = re.compile(rf"^ *(- )?({'|'.join(RETRY_KEYS)}):")
+    return [line.lstrip(" -") for line in step if not pattern.match(line)]
+
+
+def verify_release_retry():
+    """The release train runs its action, and once more only when that failed."""
+    path = ROOT / RELEASE_WORKFLOW
+    if not path.is_file():
+        raise ValueError(f"{RELEASE_WORKFLOW}: missing; the release train is checked there")
+    text = path.read_text(encoding="utf-8")
+    steps = [step for step in workflow_steps(text) if any(RELEASE_ACTION in line for line in step)]
+    if len(steps) != 2:
+        raise ValueError(
+            f"{RELEASE_WORKFLOW}: {len(steps)} release-please step(s); the train runs "
+            "it once and retries it once"
+        )
+    first, retry = steps
+    ident = step_field(first, "id")
+    if not ident or step_field(first, "continue-on-error") != "true":
+        raise ValueError(
+            f"{RELEASE_WORKFLOW}: the first release-please step needs an id and "
+            "continue-on-error: true, so its failure reaches the retry"
+        )
+    if step_field(retry, "if") != f"steps.{ident}.outcome == 'failure'":
+        raise ValueError(
+            f"{RELEASE_WORKFLOW}: the retry runs only if steps.{ident}.outcome == 'failure'"
+        )
+    if step_field(retry, "continue-on-error") is not None:
+        raise ValueError(f"{RELEASE_WORKFLOW}: a failed retry must fail the run")
+    if step_body(first) != step_body(retry):
+        raise ValueError(f"{RELEASE_WORKFLOW}: the retry runs the same pin with the same inputs")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sources", action="store_true")
@@ -853,6 +922,7 @@ def main():
     verify_roadmap_document(milestones)
     verify_library_aborts()
     verify_job_timeouts()
+    verify_release_retry()
     verify_crate_citations()
     profile = verify_hardware_profile(milestones)
     verify_ranking(milestones)
@@ -880,7 +950,7 @@ def main():
             print(milestone_line(row))
     print(
         "PASS: the tracked register under planning/ - inventory, privacy, licence "
-        "digests, source citations, job timeouts, hardware profile, roadmap states "
+        "digests, source citations, job timeouts, release retry, hardware profile, roadmap states "
         "and ranking - "
         "and the roadmap document against it. No build, image, boot, hardware, "
         "accessibility or release evidence is checked here."
