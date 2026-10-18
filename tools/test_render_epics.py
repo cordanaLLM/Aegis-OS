@@ -227,11 +227,83 @@ class Main(unittest.TestCase):
         self.assertEqual(garbled[0], 1)
         self.assertIn("broken.json", garbled[2])
 
+    def test_apply_rewrites_then_checks_the_reread_issues(self):
+        stale = rendered_issues()
+        stale[0]["body"] = stale[0]["body"].replace("rank 4,", "rank 3,")
+        listed = []
+
+        def gh(arguments):
+            if arguments[1] == "list":
+                return json.dumps(listed.pop(0))
+            return ""
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            roadmap = self.write(root, "roadmap.json", ROADMAP)
+            issues = self.write(root, "issues.json", stale)
+            with mock.patch.object(re_, "gh", side_effect=gh) as called:
+                listed.extend([rendered_issues(), stale])
+                fixed = self.run_main("--apply", "--issues", issues, "--roadmap", roadmap)
+                still = self.run_main("--apply", "--issues", issues, "--roadmap", roadmap)
+        edits = [c.args[0][:3] for c in called.call_args_list if c.args[0][1] == "edit"]
+        self.assertEqual(edits, [["issue", "edit", "100"], ["issue", "edit", "100"]])
+        self.assertEqual(fixed[0], 0)
+        self.assertIn("rewrote 1 of 2 open epics: [100]", fixed[1])
+        self.assertEqual(still[0], 1)
+        self.assertIn("FAIL: #100 E07-1: body line 1:", still[2])
+
     def test_gh_failure_fails_loudly(self):
         with mock.patch.object(re_.subprocess, "run", side_effect=OSError("no gh")):
             code, _, err = self.run_main("--check")
         self.assertEqual(code, 1)
         self.assertIn("gh issue list failed", err)
+
+
+WORKFLOW = REPO / ".github" / "workflows" / "roadmap-epics.yml"
+
+
+def job_block(text, job):
+    """Return the lines of one job in the workflow, up to the next job."""
+    lines = text.splitlines()
+    start = lines.index(f"  {job}:")
+    end = next(
+        (n for n in range(start + 1, len(lines)) if lines[n][:3].strip() and lines[n][2] != " "),
+        len(lines),
+    )
+    return lines[start:end]
+
+
+def run_lines(block):
+    """Return the render_epics.py command of each run step in a job, in order."""
+    return [line.split("run:", 1)[1].strip() for line in block if "run: python3" in line]
+
+
+class Workflow(unittest.TestCase):
+    """The push job rewrites the epics before it checks them; only it may write."""
+
+    def test_push_job_applies_then_checks_with_job_scoped_write(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        block = job_block(text, "apply")
+        self.assertIn("    if: github.event_name == 'push'", block)
+        self.assertIn("      issues: write", block)
+        self.assertEqual(
+            run_lines(block),
+            ["python3 tools/render_epics.py --apply", "python3 tools/render_epics.py --check"],
+        )
+
+    def test_no_other_scope_may_write_issues(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        head = [line for line in text.split("\njobs:\n", 1)[0].splitlines() if line[:1] != "#"]
+        check = job_block(text, "check")
+        self.assertNotIn(": write", "\n".join(head))
+        self.assertNotIn(": write", "\n".join(check))
+        self.assertIn("    if: github.event_name != 'push'", check)
+        self.assertEqual(run_lines(check), ["python3 tools/render_epics.py --check"])
+
+    def test_job_block_stops_at_the_next_job(self):
+        text = "jobs:\n  apply:\n    a: 1\n  check:\n    b: 2\n"
+        self.assertEqual(job_block(text, "apply"), ["  apply:", "    a: 1"])
+        self.assertEqual(job_block(text, "check"), ["  check:", "    b: 2"])
 
 
 if __name__ == "__main__":
