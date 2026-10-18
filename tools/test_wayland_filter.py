@@ -276,6 +276,10 @@ class TestRelaySocket(unittest.TestCase):
             t.join(timeout=2.0)
 
 
+@unittest.skipUnless(
+    hasattr(socket, "AF_UNIX") and hasattr(socket, "SCM_RIGHTS"),
+    "AF_UNIX and SCM_RIGHTS are POSIX-only",
+)
 class TestRelayReads(unittest.TestCase):
     """A read that would block keeps the relay open; only a closed peer ends it."""
 

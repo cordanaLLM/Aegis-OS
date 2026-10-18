@@ -99,12 +99,17 @@ def run_command(argv, timeout, environ=None, cwd=None):
         raise GateError(f"{argv[0]} could not be run: {error}") from error
 
 
-def capability_reasons(platform=None, which=shutil.which):
+def has_unix_fd_passing():
+    """Reports whether this Python exposes AF_UNIX with SCM_RIGHTS."""
+    return hasattr(socket, "AF_UNIX") and hasattr(socket, "SCM_RIGHTS")
+
+
+def capability_reasons(platform=None, which=shutil.which, unix_fds=has_unix_fd_passing):
     """Returns missing host capabilities, or an empty list if capable."""
     platform = sys.platform if platform is None else platform
     if not platform.startswith("linux"):
         return [f"the native shell gate needs Linux and a Wayland runtime; this host is {platform}"]
-    if not (hasattr(socket, "AF_UNIX") and hasattr(socket, "SCM_RIGHTS")):
+    if not unix_fds():
         return ["AF_UNIX and SCM_RIGHTS are POSIX-only and missing on this host"]
     reasons = []
     for prog in ("kwin_wayland", "dbus-run-session", "wayland-info", "cargo"):

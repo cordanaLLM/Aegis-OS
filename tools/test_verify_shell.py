@@ -27,8 +27,14 @@ class TestVerifyShellPositive(unittest.TestCase):
 
     def test_capabilities_all_present(self):
         fake_which = lambda prog: f"/usr/bin/{prog}"  # noqa: E731
-        reasons = capability_reasons(platform="linux", which=fake_which)
+        reasons = capability_reasons(platform="linux", which=fake_which, unix_fds=lambda: True)
         self.assertEqual(reasons, [])
+
+    def test_capabilities_name_missing_fd_passing(self):
+        fake_which = lambda prog: f"/usr/bin/{prog}"  # noqa: E731
+        reasons = capability_reasons(platform="linux", which=fake_which, unix_fds=lambda: False)
+        self.assertEqual(len(reasons), 1)
+        self.assertIn("SCM_RIGHTS", reasons[0])
 
     def test_judge_first_configure_passes(self):
         passed, why = judge_first_configure(0, "OUTCOME configured 1280x48\n", 1280, 48)
