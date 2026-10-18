@@ -28,6 +28,7 @@ from unittest import mock
 import audit_strict
 import host
 import praetor_bump as bump
+import verify_public_host
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "tools" / "praetor_bump.py"
@@ -415,6 +416,25 @@ class MessageTests(unittest.TestCase):
         skips = bump.skip_lines(text)
         self.assertEqual(skips[0], "SKIP: b")
         self.assertEqual(len(skips), bump.MAX_SKIP_LINES)
+
+    def test_a_skip_line_names_no_home_folder(self):
+        # The Verification gate scans the pull request text for host
+        # identifiers; a skip reason that quotes a cache path under a home
+        # folder failed the gate on 2026-10-18.
+        line = "SKIP: the offline store under /home/someone/.cache/aegis-a11y was filled"
+        report = bump.Report([], [], (0, []), bump.skip_lines(line), "")
+        body = bump.pr_body(PLAN, report)
+        self.assertNotIn("/home/someone", body)
+        self.assertIn("- SKIP: the offline store under ~/.cache/aegis-a11y was filled", body)
+        self.assertEqual(verify_public_host.scan_text(body, []), [])
+
+    def test_a_skip_line_without_a_home_folder_is_unchanged(self):
+        line = "SKIP: perf not installed; allocation share not measured"
+        self.assertEqual(bump.skip_lines(line), [line])
+
+    def test_every_home_form_in_a_skip_line_is_replaced(self):
+        line = "SKIP: /home/user/x and /Users/runner/y and /home/builder"
+        self.assertEqual(bump.skip_lines(line), ["SKIP: ~/x and ~/y and ~"])
 
 
 class HookSnapshotTests(unittest.TestCase):
