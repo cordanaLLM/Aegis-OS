@@ -56,85 +56,85 @@ config_sha256=$1
 # Emit one retained verifier log, gzip-compressed and base64-encoded, so a
 # multi-megabyte rejection trace crosses the serial line intact.
 aegis_log() {
-	echo "${MARK}-LOG-BEGIN $1"
-	if [ -f "$2" ]; then
-		/bin/gzip -c "$2" | /bin/base64
-	else
-		echo "${MARK}-LOG-ABSENT"
-	fi
-	echo "${MARK}-LOG-END $1"
+    echo "${MARK}-LOG-BEGIN $1"
+    if [ -f "$2" ]; then
+        /bin/gzip -c "$2" | /bin/base64
+    else
+        echo "${MARK}-LOG-ABSENT"
+    fi
+    echo "${MARK}-LOG-END $1"
 }
 
 # aegis_case NAME LOG ARGV...: run one load and frame its output and its log.
 aegis_case() {
-	name=$1
-	log=$2
-	shift 2
-	echo "${MARK}-CASE-BEGIN ${name}"
-	if "$@" >"$STAGE/out" 2>&1; then status=0; else status=$?; fi
-	/bin/cat "$STAGE/out"
-	echo "${MARK}-CASE-STATUS ${name} ${status}"
-	aegis_log "$name" "$log"
-	echo "${MARK}-CASE-END ${name}"
+    name=$1
+    log=$2
+    shift 2
+    echo "${MARK}-CASE-BEGIN ${name}"
+    if "$@" >"$STAGE/out" 2>&1; then status=0; else status=$?; fi
+    /bin/cat "$STAGE/out"
+    echo "${MARK}-CASE-STATUS ${name} ${status}"
+    aegis_log "$name" "$log"
+    echo "${MARK}-CASE-END ${name}"
 }
 
 # aegis_idle_case NAME LOG ARGV...: the P13 idle interval. The loader attaches
 # and holds; once it has printed its attach, one task enters an otherwise
 # empty cgroup and sleeps through the interval the loader then reads twice.
 aegis_idle_case() {
-	name=$1
-	log=$2
-	shift 2
-	/bin/mkdir -p "$IDLE"
-	echo "${MARK}-IDLE-CGROUP ${name} $(/bin/stat -c %i "$IDLE")"
-	echo "${MARK}-CASE-BEGIN ${name}"
-	"$@" >"$STAGE/out" 2>&1 &
-	loader=$!
-	polls=0
-	while [ "$polls" -lt "$ATTACH_POLLS" ] && ! /bin/grep -q '^attached=' "$STAGE/out"; do
-		/bin/sleep 0.1
-		polls=$((polls + 1))
-	done
-	# The child moves itself: $$ inside the new shell is its own pid.
-	# shellcheck disable=SC2016 # expanded by that child, not here.
-	/bin/sh -c 'echo "$$" >"$1/cgroup.procs"; exec /bin/sleep 30' aegis-idle "$IDLE" &
-	idle=$!
-	if wait "$loader"; then status=0; else status=$?; fi
-	# A reading, not a cleanup detail: a task that had already left means the
-	# cgroup was empty for part of the interval, and an empty cgroup reads zero.
-	if kill "$idle" 2>/dev/null; then occupant=held; else occupant=gone; fi
-	/bin/cat "$STAGE/out"
-	echo "${MARK}-CASE-STATUS ${name} ${status}"
-	aegis_log "$name" "$log"
-	echo "${MARK}-CASE-END ${name}"
-	echo "${MARK}-IDLE-TASK ${name} ${occupant}"
+    name=$1
+    log=$2
+    shift 2
+    /bin/mkdir -p "$IDLE"
+    echo "${MARK}-IDLE-CGROUP ${name} $(/bin/stat -c %i "$IDLE")"
+    echo "${MARK}-CASE-BEGIN ${name}"
+    "$@" >"$STAGE/out" 2>&1 &
+    loader=$!
+    polls=0
+    while [ "$polls" -lt "$ATTACH_POLLS" ] && ! /bin/grep -q '^attached=' "$STAGE/out"; do
+        /bin/sleep 0.1
+        polls=$((polls + 1))
+    done
+    # The child moves itself: $$ inside the new shell is its own pid.
+    # shellcheck disable=SC2016 # expanded by that child, not here.
+    /bin/sh -c 'echo "$$" >"$1/cgroup.procs"; exec /bin/sleep 30' aegis-idle "$IDLE" &
+    idle=$!
+    if wait "$loader"; then status=0; else status=$?; fi
+    # A reading, not a cleanup detail: a task that had already left means the
+    # cgroup was empty for part of the interval, and an empty cgroup reads zero.
+    if kill "$idle" 2>/dev/null; then occupant=held; else occupant=gone; fi
+    /bin/cat "$STAGE/out"
+    echo "${MARK}-CASE-STATUS ${name} ${status}"
+    aegis_log "$name" "$log"
+    echo "${MARK}-CASE-END ${name}"
+    echo "${MARK}-IDLE-TASK ${name} ${occupant}"
 }
 
 {
-	echo "${MARK}-BEGIN"
-	echo "${MARK}-NONCE ${nonce#aegis.nonce=}"
-	echo "${MARK}-PHASE ${phase}"
-	echo "${MARK}-UNAME-R $(/bin/uname -r)"
-	echo "${MARK}-UNAME-V $(/bin/uname -v)"
-	echo "${MARK}-CONFIG-SHA256 ${config_sha256}"
+    echo "${MARK}-BEGIN"
+    echo "${MARK}-NONCE ${nonce#aegis.nonce=}"
+    echo "${MARK}-PHASE ${phase}"
+    echo "${MARK}-UNAME-R $(/bin/uname -r)"
+    echo "${MARK}-UNAME-V $(/bin/uname -v)"
+    echo "${MARK}-CONFIG-SHA256 ${config_sha256}"
 } >>"$REPORT"
 
 if [ "$phase" = readback ]; then
-	{
-		echo "${MARK}-PROBE-BEGIN"
-		if /bin/sh /aegis-nucleus-probe.sh 2>&1; then probe=0; else probe=$?; fi
-		echo "${MARK}-PROBE-END"
-		echo "${MARK}-PROBE-STATUS ${probe}"
-		echo "${MARK}-CONFIG-BEGIN"
-		/bin/gzip -dc /proc/config.gz
-		echo "${MARK}-CONFIG-END"
-	} >>"$REPORT"
+    {
+        echo "${MARK}-PROBE-BEGIN"
+        if /bin/sh /aegis-nucleus-probe.sh 2>&1; then probe=0; else probe=$?; fi
+        echo "${MARK}-PROBE-END"
+        echo "${MARK}-PROBE-STATUS ${probe}"
+        echo "${MARK}-CONFIG-BEGIN"
+        /bin/gzip -dc /proc/config.gz
+        echo "${MARK}-CONFIG-END"
+    } >>"$REPORT"
 elif [ "$config_sha256" = "$(/bin/cat "$STAGE/expected-config-sha256")" ]; then
-	echo "${MARK}-CONFIG-CHECK match" >>"$REPORT"
-	# shellcheck source=/dev/null # written by the gate into the initramfs.
-	{ . "$STAGE/cases.sh"; } >>"$REPORT" 2>&1
+    echo "${MARK}-CONFIG-CHECK match" >>"$REPORT"
+    # shellcheck source=/dev/null # written by the gate into the initramfs.
+    { . "$STAGE/cases.sh"; } >>"$REPORT" 2>&1
 else
-	echo "${MARK}-CONFIG-CHECK mismatch; no object was loaded" >>"$REPORT"
+    echo "${MARK}-CONFIG-CHECK mismatch; no object was loaded" >>"$REPORT"
 fi
 
 echo "${MARK}-END" >>"$REPORT"

@@ -57,6 +57,8 @@ verify-lints:
 	pipx run "black==$$(python3 tools/ci_lints.py pin BLACK_VERSION)" --check --line-length 100 \
 		tools .config/agent/hooks
 	git ls-files -z '*.sh' | xargs -0 -r shellcheck -x
+	python3 tools/shfmt_scope.py check -- \
+		pipx run --spec "shfmt-py==$$(python3 tools/ci_lints.py pin SHFMT_VERSION)" shfmt
 
 # The crate gate for every workspace member listed in Cargo.toml, including
 # crates whose component planning/components.json still records as a proposal,

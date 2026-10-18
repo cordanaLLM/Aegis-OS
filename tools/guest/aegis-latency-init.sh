@@ -44,37 +44,37 @@ REPORT=/dev/ttyS1
 nonce=$(/bin/grep -oE 'aegis\.nonce=[A-Za-z0-9._-]+' /proc/cmdline || echo 'aegis.nonce=absent')
 
 {
-	echo "${MARK}-BEGIN"
-	echo "${MARK}-NONCE ${nonce#aegis.nonce=}"
-	echo "${MARK}-UNAME-R $(/bin/uname -r)"
-	echo "${MARK}-UNAME-V $(/bin/uname -v)"
-	echo "${MARK}-PROBE-BEGIN"
+    echo "${MARK}-BEGIN"
+    echo "${MARK}-NONCE ${nonce#aegis.nonce=}"
+    echo "${MARK}-UNAME-R $(/bin/uname -r)"
+    echo "${MARK}-UNAME-V $(/bin/uname -v)"
+    echo "${MARK}-PROBE-BEGIN"
 } >>"$REPORT"
 
 if /bin/sh /aegis-preempt-probe.sh >>"$REPORT" 2>>"$REPORT"; then
-	probe=0
+    probe=0
 else
-	probe=$?
+    probe=$?
 fi
 
 {
-	echo "${MARK}-PROBE-END"
-	echo "${MARK}-PROBE-STATUS ${probe}"
+    echo "${MARK}-PROBE-END"
+    echo "${MARK}-PROBE-STATUS ${probe}"
 } >>"$REPORT"
 
 if /bin/sh /aegis-latency-run.sh >/dev/null 2>&1; then
-	measured=0
+    measured=0
 else
-	measured=$?
+    measured=$?
 fi
 
 {
-	echo "${MARK}-MEASURE-STATUS ${measured}"
-	echo "${MARK}-JSON-BEGIN"
-	/bin/cat /aegis-latency.json 2>/dev/null || echo '{}'
-	echo ""
-	echo "${MARK}-JSON-END"
-	echo "${MARK}-END"
+    echo "${MARK}-MEASURE-STATUS ${measured}"
+    echo "${MARK}-JSON-BEGIN"
+    /bin/cat /aegis-latency.json 2>/dev/null || echo '{}'
+    echo ""
+    echo "${MARK}-JSON-END"
+    echo "${MARK}-END"
 } >>"$REPORT"
 
 echo "${MARK}: reported $(/bin/uname -r) on ${REPORT}"

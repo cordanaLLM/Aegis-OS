@@ -23,6 +23,7 @@ WORKFLOW = "\n".join(
         '  YAMLLINT_VERSION: "1.38.0"',
         '  FLAKE8_VERSION: "7.3.0"',
         '  BLACK_VERSION: "26.5.1"',
+        '  SHFMT_VERSION: "4.2.0"',
         "",
     )
 )
@@ -43,6 +44,7 @@ class VersionTest(unittest.TestCase):
                 "YAMLLINT_VERSION": "1.38.0",
                 "FLAKE8_VERSION": "7.3.0",
                 "BLACK_VERSION": "26.5.1",
+                "SHFMT_VERSION": "4.2.0",
             },
         )
 

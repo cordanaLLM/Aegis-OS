@@ -37,3 +37,20 @@ trim_trailing_whitespace = false
 
 [Makefile]
 indent_style = tab
+
+# The two hook scripts Praetor manages keep the engine's two-space style,
+# which shfmt checks with the settings below (tools/shfmt_scope.py).
+[.config/lefthook/engine.sh]
+indent_size = 2
+switch_case_indent = true
+
+# A dated exception, not a tier: tools/shfmt_scope.py fails once it expires
+# or once shfmt finds the script clean.
+[.config/lefthook/python.sh]
+indent_size = 2
+switch_case_indent = true
+ignore = true
+aegis_exception_category = C
+aegis_exception_entered = 2026-10-18
+aegis_exception_expires = 2026-10-28
+aegis_exception_reason = Praetor-managed; adopt refreshes only unedited managed files, so the engine makes it shfmt-clean (order engine-shfmt-clean-hook-scripts-20261018)

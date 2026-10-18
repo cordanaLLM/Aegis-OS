@@ -38,24 +38,24 @@ GLOBAL=8be4df61-93ca-11d2-aa0d-00e098032b8c
 PCRS=/sys/class/tpm/tpm0/pcr-sha256
 
 efi_value() {
-	if [ -r "${EFIVARS}/$1-${GLOBAL}" ]; then
-		od -An -t u1 "${EFIVARS}/$1-${GLOBAL}" | tr -s ' ' | sed 's/^ //'
-	else
-		echo 'absent'
-	fi
+    if [ -r "${EFIVARS}/$1-${GLOBAL}" ]; then
+        od -An -t u1 "${EFIVARS}/$1-${GLOBAL}" | tr -s ' ' | sed 's/^ //'
+    else
+        echo 'absent'
+    fi
 }
 
 {
-	echo "${MARK}-BEGIN"
-	echo "${MARK}-NONCE ${NONCE}"
-	echo "${MARK}-UNAME-R $(uname -r)"
-	for index in 0 4 7 11; do
-		echo "${MARK}-PCR-${index} $(cat "${PCRS}/${index}" 2>/dev/null || echo absent)"
-	done
-	echo "${MARK}-SECUREBOOT $(efi_value SecureBoot)"
-	echo "${MARK}-SETUPMODE $(efi_value SetupMode)"
-	echo "${MARK}-TPM-MAJOR $(cat /sys/class/tpm/tpm0/tpm_version_major 2>/dev/null || echo absent)"
-	echo "${MARK}-TPM2-SETUP $(systemctl is-failed systemd-tpm2-setup.service 2>/dev/null)"
-	echo "${MARK}-CMDLINE $(cat /proc/cmdline)"
-	echo "${MARK}-END"
+    echo "${MARK}-BEGIN"
+    echo "${MARK}-NONCE ${NONCE}"
+    echo "${MARK}-UNAME-R $(uname -r)"
+    for index in 0 4 7 11; do
+        echo "${MARK}-PCR-${index} $(cat "${PCRS}/${index}" 2>/dev/null || echo absent)"
+    done
+    echo "${MARK}-SECUREBOOT $(efi_value SecureBoot)"
+    echo "${MARK}-SETUPMODE $(efi_value SetupMode)"
+    echo "${MARK}-TPM-MAJOR $(cat /sys/class/tpm/tpm0/tpm_version_major 2>/dev/null || echo absent)"
+    echo "${MARK}-TPM2-SETUP $(systemctl is-failed systemd-tpm2-setup.service 2>/dev/null)"
+    echo "${MARK}-CMDLINE $(cat /proc/cmdline)"
+    echo "${MARK}-END"
 } >"${REPORT}"

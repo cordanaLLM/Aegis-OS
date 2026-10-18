@@ -23,8 +23,8 @@
 set -eu
 
 if [ ! -r /proc/config.gz ]; then
-	echo "aegis-nucleus-probe: /proc/config.gz is not readable on this kernel" >&2
-	exit 2
+    echo "aegis-nucleus-probe: /proc/config.gz is not readable on this kernel" >&2
+    exit 2
 fi
 
 # FUNCTION_TRACER and DYNAMIC_FTRACE_WITH_DIRECT_CALLS are read beside the
@@ -35,27 +35,27 @@ fi
 # higher status is a failed read and ends the probe.
 matched=0
 gzip -dc /proc/config.gz |
-	grep -E '^(# )?CONFIG_(SCHED_CLASS_EXT|BPF_LSM|BPF_SYSCALL|DEBUG_INFO_BTF|FUNCTION_TRACER|DYNAMIC_FTRACE_WITH_DIRECT_CALLS)[ =]' ||
-	matched=$?
+    grep -E '^(# )?CONFIG_(SCHED_CLASS_EXT|BPF_LSM|BPF_SYSCALL|DEBUG_INFO_BTF|FUNCTION_TRACER|DYNAMIC_FTRACE_WITH_DIRECT_CALLS)[ =]' ||
+    matched=$?
 if [ "$matched" -gt 1 ]; then
-	echo "aegis-nucleus-probe: reading /proc/config.gz failed with status ${matched}" >&2
-	exit 2
+    echo "aegis-nucleus-probe: reading /proc/config.gz failed with status ${matched}" >&2
+    exit 2
 fi
 
 if [ -r /sys/kernel/security/lsm ]; then
-	echo "LSM $(cat /sys/kernel/security/lsm)"
+    echo "LSM $(cat /sys/kernel/security/lsm)"
 else
-	echo "LSM <unreadable>"
+    echo "LSM <unreadable>"
 fi
 
 if [ -f /sys/kernel/btf/vmlinux ]; then
-	echo "BTF-VMLINUX present"
+    echo "BTF-VMLINUX present"
 else
-	echo "BTF-VMLINUX absent"
+    echo "BTF-VMLINUX absent"
 fi
 
 if [ -r /sys/kernel/sched_ext/state ]; then
-	echo "SCHED-EXT-STATE $(cat /sys/kernel/sched_ext/state)"
+    echo "SCHED-EXT-STATE $(cat /sys/kernel/sched_ext/state)"
 else
-	echo "SCHED-EXT-STATE absent"
+    echo "SCHED-EXT-STATE absent"
 fi
