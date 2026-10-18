@@ -1,6 +1,6 @@
 # Toolchain admission matrix
 
-Status: recorded admissions, current as of 2026-10-18
+Status: recorded admissions, current as of 2026-10-19
 
 ## Purpose and limits
 
@@ -33,7 +33,7 @@ Two rules follow from the clause and are applied below:
 | Rust (`rustc`, `cargo`) | 1.99.1 | `rust-toolchain.toml`, `channel = "1.99.1"`, materialised by rustup | 1.99.0 until 2026-10-16; 1.98.1 until 2026-10-14; before it the distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.99 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | 0.1.98 until 2026-10-14; before it the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.10.0-stable | `rust-toolchain.toml`, same `components` list | 1.9.0-stable until 2026-10-14; before it the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
-| praetorctl | source commit `019b879ec69178570f53b97a113f67d62629e4c1` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `32a35c8fb947b449ff46ae0a3b32017b409dccad`; the pin follows Praetor's `main` (see below) | M00 |
+| praetorctl | source commit `452c74e3c2fc6353794d136cb777fc89e8e48155` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `019b879ec69178570f53b97a113f67d62629e4c1`; the pin follows Praetor's `main` (see below) | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; a build input for praetorctl and, since M09, for the imago `make contract-fetch` builds, held to imago's own floor below | M00; M09 for the imago build |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
 | reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, read by `tools/ci_lints.py`, run through `pipx run` by `make verify-lints`, a prerequisite of `make verify-all` | nothing | M00 |
