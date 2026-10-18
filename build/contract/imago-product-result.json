@@ -1,0 +1,7 @@
+{
+  "schema": "imago.p01.product-result.v1",
+  "correlation-id": "aegis-m18-product-input-0001",
+  "image-digest": "sha256:77841eb431a1cd57809f031b24d1ef5589454a69fd0fc54a504c3318aa7d108e",
+  "signature-ref": "https://github.com/cordanaLLM/imago/releases/download/aegis-aegis-m18-product-input-0001/SHA256SUMS.bundle",
+  "boot-evidence-ref": "https://github.com/cordanaLLM/imago/releases/download/aegis-aegis-m18-product-input-0001/boot-evidence.json"
+}
