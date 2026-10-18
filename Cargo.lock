@@ -144,10 +144,14 @@ version = "0.1.0"
 dependencies = [
  "aegis-forum-shell",
  "aegis-scaena",
+ "async-io",
+ "atspi",
+ "futures-lite",
  "gpui",
  "gpui_linux",
  "serde_json",
  "thiserror 2.0.21",
+ "zbus",
 ]
 
 [[package]]

@@ -1006,7 +1006,8 @@ API, from zed-industries/zed or from the reference profile's package manager.
 
 | Tool or crate | Reference version, read 2026-09-29 | Proposed pin or floor | Role |
 | :--- | :--- | :--- | :--- |
-| zbus, atspi | 5.19.0 and 0.30.0 (both Apache-2.0 OR MIT), the newest releases; accesskit_unix 0.24.0 requires zbus ^5.19 and atspi ^0.29 | as the pinned accesskit_unix resolves them; atspi also for the tests that read the tree back (M28) | pure-Rust D-Bus and AT-SPI below accesskit_unix |
+| zbus, atspi | 5.19.0 (MIT) and 0.29.0 (Apache-2.0 OR MIT), the versions accesskit_unix 0.22.1 resolves; the reader in `crates/aegis-forum-shell-gpui/src/readback.rs` uses atspi 0.29.0 (proxies only) and zbus 5.19.0 (async-io) | as the pinned accesskit_unix 0.22.1 resolves them, so the lock gains no package; atspi also for the tests that read the tree back (M28) | pure-Rust D-Bus and AT-SPI below accesskit_unix and for readback verification |
+| async-io, futures-lite | 2.6.0 and 2.6.1 (both Apache-2.0 OR MIT), resolved by zbus and accesskit_unix | as pinned in Cargo.lock, so the lock gains no package | asynchronous I/O and future combinators for readback with deadlines |
 | libxkbcommon | 1.13.2 (`libxkbcommon 1.13.2-1.1`) | the floor the pinned xkbcommon crate (0.8.0 at zed `main`) needs, read at admission (M28) | the C keymap library gpui links for Linux keyboard input |
 | libwayland-client | 1.26.0 (`wayland 1.26.0-1.1`) | read at admission (M28) | loaded by wayland-backend through `dlopen` |
 | at-spi2-core | 2.60.7 (`at-spi2-core 2.60.7-1.1`), with `dbus-run-session` from `dbus 1.16.2-1.1` | recorded and read back before the AT-SPI cases run (M28) | the bus launcher and registry of the private AT-SPI session M28's tests start |
