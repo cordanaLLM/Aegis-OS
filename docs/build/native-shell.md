@@ -323,9 +323,9 @@ width-1-9".
 ## The frame-time cases
 
 The shell measures frame durations and AccessKit tree-update times over an
-active 1,000-node accessibility tree (M28 E28-6, REQ-P05-11, ADR-0004, D115).
-Rows scrolled out of the 400-pixel list stay in the tree (REQ-P05-11), so
-every seeded row is a node in every update.
+active 1,000-node accessibility tree (M28 E28-6, REQ-P05-11, ADR-0001,
+ADR-0004, D115). Rows scrolled out of the 400-pixel list stay in the tree
+(REQ-P05-11), so every seeded row is a node in every update.
 
 ### What is measured
 
