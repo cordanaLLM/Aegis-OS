@@ -75,14 +75,26 @@ preflight() {
   [ "$g" = "$GROUP" ] && [ "$m" = "$ADDR" ] || { echo "REFUSE: group $g holds [$m], want $GROUP=[$ADDR]"; exit 2; }
   [ -z "$conn" ] || { echo "REFUSE: connected display output: $conn"; exit 2; }
   [ -x "$BIN" ] || { echo "REFUSE: $BIN not built"; exit 2; }
-  echo "  holders of the Arc DRM nodes (kept open across unbind; not signalled):"
-  local n held pids
-  for n in "$PCI"/drm/card* "$PCI"/drm/renderD*; do
-    [ -e "$n" ] || continue
+  holders
+}
+
+# Unbinding a device a compositor holds hangs the compositor: on 2026-10-18 KWin
+# used the Arc as a hotplug GPU and the session had to reboot. Refuse while any
+# process holds the Arc's card or render node, named by PCI path (cardN numbers
+# move between boots), and name each holder. fuser sees the caller's own
+# processes, which covers a desktop session of the same user.
+holders() {
+  command -v fuser >/dev/null || { echo "REFUSE: fuser not found; cannot check the DRM node holders"; exit 2; }
+  local s node held pids p who=""
+  for s in card render; do
+    node=$DEV/dri/by-path/pci-$ADDR-$s
+    [ -e "$node" ] || { echo "REFUSE: no $node; cannot check its holders"; exit 2; }
     # fuser exits 1 when no process holds the node: that is "none", not an error.
-    if ! held=$(fuser "$DEV/dri/$(basename "$n")" 2>/dev/null); then held=""; fi
+    if ! held=$(fuser "$node" 2>/dev/null); then held=""; fi
     read -ra pids <<< "$held"
-    echo "    /dev/dri/$(basename "$n"): ${pids[*]:-none}"
+    echo "  holders of $node -> $(readlink "$node"): ${pids[*]:-none}"
+    for p in "${pids[@]}"; do who="$who $p ($(cat "/proc/$p/comm" 2>/dev/null || echo gone))"; done
+    [ -z "$who" ] || { echo "REFUSE: pci-$ADDR-$s held by${who}; close it or move the session off this GPU first"; exit 2; }
   done
 }
 
