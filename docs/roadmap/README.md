@@ -6235,8 +6235,8 @@ against the decoder of `061bbde`.
   harness criterion and E11-2 allowed one change to the harness, the pin scheme
   D85 moves here (E11-1, cosign-keyless-sha256sums since PR #317). Imago's
   aegis-build workflow (commit 6fd9c170be9b2038b17b26751560b5e17dbb36f8) returns
-  a raw disk, aegis-os.raw, under a release tag `aegis-<correlation-id>`, with no
-  MAJOR-MINOR.RESPIN version and no cloud-init. The harness hard-codes all
+  a raw disk, aegis-os.raw, under a release tag `aegis-<correlation-id>`, with
+  no MAJOR-MINOR.RESPIN version and no cloud-init. The harness hard-codes all
   three: `prepare_guest` creates the overlay with `-F qcow2`,
   `pin_value_problems` requires the Fedora version form and file name, and
   `prompt_or_exit` waits for `LOGIN_PROMPT`, while the guest report reaches the
@@ -6244,16 +6244,21 @@ against the decoder of `061bbde`.
   Aegis-side qcow2 and cloud-init path for the Imago image; amend the bar so the
   harness branches by pin kind; or ask Imago to return the Fedora shape.
   **Decision (2026-10-18, controller id aegis-os-e11-2-amend-imago-shape,
-  paraphrased):** amend the bar. The harness branches by the pin's signature
-  scheme, and the gpg scheme keeps today's path, so the Fedora pin and its file
-  are unchanged. The cosign branch takes the backing format from the pin's
-  `format` (raw), a producer version that is the request's correlation-id with
-  its trailing ordinal compared against a floor of the same stem, the file name
-  `aegis-os.<format>`, and a success marker regex from the pin's boot section.
-  The guest report ships in the Aegis image as a systemd unit that prints the
-  same AEGIS-M24 fields to the console; it is a build input, not harness code,
-  and it takes the nonce as a system credential passed by SMBIOS type 11
-  (`io.systemd.credential:`). Changed paths: `tools/verify_boot_harness.py`
+  paraphrased):** amend the bar. The harness branches by pin kind for the
+  backing format, which comes from the pin's format (raw or qcow2), for the
+  producer version and file rule, and for a success marker regex from the pin's
+  boot section; the upstream pin M24 recorded keeps today's path and boots
+  unchanged. The guest report ships in the Aegis image as a systemd unit that
+  prints the same AEGIS-M24 fields to the console; it is a build input, not
+  harness code. **Derived refinements (2026-10-18, controller id
+  aegis-os-d114-refinements, not part of the answer above):** the pin kind is
+  read from the pin's signature scheme (gpg keeps the upstream path, cosign
+  takes the Imago path); the Imago version is the request's correlation-id,
+  whose trailing four-digit ordinal is compared against a floor of the same
+  stem; the file name is `aegis-os.<format>`; and the boot-report unit takes the
+  nonce as a system credential passed by SMBIOS type 11
+  (`io.systemd.credential:`). This record is amended if the Imago boot shows the
+  guest without that credential. Changed paths: `tools/verify_boot_harness.py`
   (`load_pin` and `pin_value_problems`, `fetch_pinned`, `check_cache`,
   `verify_artifact` with `cosign_checksum` and `sha256sums_record`,
   `prepare_guest`, `guest_argv`, `prompt_or_exit`),
