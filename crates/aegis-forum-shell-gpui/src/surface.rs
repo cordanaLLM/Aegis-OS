@@ -18,10 +18,11 @@ use gpui::layer_shell::LayerShellNotSupportedError;
 use gpui::{
     App, AppContext, Bounds, Context, IntoElement, Pixels, Render, Size, Styled, Window,
     WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions, div, point,
-    px, rgb,
+    px,
 };
 
 use crate::layer::{LayerMapError, layer_shell_options};
+use crate::theme;
 
 /// The deadline for the compositor to deliver the first configure event.
 pub const FIRST_CONFIGURE_DEADLINE: Duration = Duration::from_secs(5);
@@ -158,7 +159,7 @@ struct SurfaceView;
 
 impl Render for SurfaceView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        div().size_full().bg(rgb(0x0020_4060))
+        div().size_full().bg(theme::surface())
     }
 }
 
