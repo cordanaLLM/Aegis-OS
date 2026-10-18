@@ -517,13 +517,23 @@ group 17, with no connected output. With `--apply` it binds `vfio-pci`, gives
 the user `/dev/vfio/17`, runs `map-bar`, and from an exit trap unbinds,
 clears `driver_override`, reprobes and reads back the driver of the Arc and of
 the NVIDIA device at `0000:06:00.0`, which it never writes to. The log goes to
-`.workingdir/evidence/e25-1-vfio-<UTC time>.log`. Processes holding the Arc's
-DRM nodes (Xwayland holds `card0` on the reference profile) are listed, never
-signalled.
+`.workingdir/evidence/e25-1-vfio-<UTC time>.log`.
+
+It also refuses, in the preview as well, while any process holds the Arc's
+card or render node, read by PCI path under `/dev/dri/by-path/` because the
+`cardN` numbers move between boots, and it names each holder by pid and
+command. It signals no process. The run of 2026-10-18 13:33 listed a holder
+of `card2` and went on: the map passed and the Arc returned to `xe`, but KWin,
+which used the Arc as a hotplug GPU, logged `Failed to open drm node
+/dev/dri/renderD130` and hung the session until a reboot. On the reference
+profile after that reboot, the preview refuses with
+`REFUSE: pci-0000:03:00.0-card held by 5184 (Xwayland)`.
 
 `tools/test_e25_vfio_card.py` runs the script's stub test
 (`tools/operator/e25-1-vfio-run-stub-test.sh`) inside `make verify-all`: a
-fake sysfs and a fake sudo, 16 cases, nothing under `/sys` or `/dev` touched.
+fake sysfs and a fake sudo, 20 cases, nothing under `/sys` or `/dev` touched.
+A real process started by the test holds the stub card or render node, and
+the preview and `--apply` must refuse and name it without a write.
 
 ### Limits
 

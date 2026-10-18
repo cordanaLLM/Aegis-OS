@@ -20,6 +20,8 @@ mk() {
   ln -s "$p/drivers/xe" "$d/driver"; ln -s "$p/drivers/nvidia" "$n/driver"
   ln -s "$R/sys/kernel/iommu_groups/17" "$d/iommu_group"
   ln -s "$d" "$R/sys/kernel/iommu_groups/17/devices/0000:03:00.0"
+  mkdir -p "$R/dev/dri/by-path"; : > "$R/dev/dri/card0"; : > "$R/dev/dri/renderD129"
+  ln -s ../card0 "$R/dev/dri/by-path/pci-0000:03:00.0-card"; ln -s ../renderD129 "$R/dev/dri/by-path/pci-0000:03:00.0-render"
   cat > "$R/sudo" <<EOF
 #!/usr/bin/env bash
 R=$R
@@ -67,5 +69,16 @@ mk; ln -s x "$R/sys/kernel/iommu_groups/17/devices/0000:03:00.1"; rc=$(run --app
 mk; echo 0x10de > "$R/sys/bus/pci/devices/0000:03:00.0/vendor"; rc=$(run --apply); check refuse-wrong-device 2 "$rc" "not the Arc A380"
 mk; rm "$R/sys/bus/pci/devices/0000:03:00.0/driver"; ln -s "$R/sys/bus/pci/drivers/vfio-pci" "$R/sys/bus/pci/devices/0000:03:00.0/driver"; rc=$(run --apply); check refuse-not-on-xe 2 "$rc" "not on xe"
 mk; rc=$(run --bogus); check usage 64 "$rc" "usage"
+# A real process of this test holds a node open, as the desktop session held the Arc on 2026-10-18; the guard must name it and refuse.
+hold() { # by-path suffix; starts a holder, sets HOLDER
+  sleep 60 7< "$R/dev/dri/by-path/pci-0000:03:00.0-$1" &
+  HOLDER=$!
+  for _ in $(seq 1 40); do [ -e "/proc/$HOLDER/fd/7" ] && break; sleep 0.05; done
+}
+unhold() { local hrc=0; kill "$HOLDER"; wait "$HOLDER" 2>/dev/null || hrc=$?; [ "$hrc" != 0 ]; }
+mk; hold card; rc=$(run); unhold; check refuse-held-card-dry-run 2 "$rc" "REFUSE: pci-0000:03:00.0-card held by $HOLDER (sleep)"
+mk; hold render; rc=$(run --apply); unhold; check refuse-held-render 2 "$rc" "REFUSE: pci-0000:03:00.0-render held by $HOLDER (sleep)"
+[ ! -e "$R/sudo.log" ] && echo "ok   refuse-held-no-write" || { echo "FAIL held but wrote"; fails=$((fails+1)); }
+mk; rm "$R/dev/dri/by-path/pci-0000:03:00.0-render"; rc=$(run); check refuse-no-by-path 2 "$rc" "REFUSE: no $R/dev/dri/by-path/pci-0000:03:00.0-render"
 rm -rf "${STUBS[@]}"
 echo "fails=$fails"; [ "$fails" = 0 ]

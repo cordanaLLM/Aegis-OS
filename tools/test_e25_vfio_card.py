@@ -18,7 +18,7 @@ from pathlib import Path
 STUB_TEST = Path(__file__).resolve().parent / "operator" / "e25-1-vfio-run-stub-test.sh"
 
 # Cases the stub test reports as "ok"; raise with the test, never lower it.
-CASE_FLOOR = 16
+CASE_FLOOR = 20
 
 
 def skip_reason():
