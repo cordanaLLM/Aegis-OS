@@ -158,6 +158,7 @@ FIRMWARE_PCRS = (0, 4, 7)
 PCR_VALUE = re.compile(r"[0-9a-f]{64}")
 EFI_BYTES = re.compile(r"\d{1,3}(?: \d{1,3}){4}")
 VERSION = re.compile(r"(\d+)-(\d+)\.(\d+)")
+IMAGO_VERSION = re.compile(r"([A-Za-z0-9._:-]{1,123})-(\d{4})")
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,200}")
 HEX_40 = re.compile(r"[0-9a-f]{40}")
 WORKFLOW_REF = re.compile(r"refs/(heads|tags)/[A-Za-z0-9._/-]{1,200}")
@@ -445,22 +446,39 @@ def cache_dir():
     return root / "aegis-boot-harness"
 
 
-def version_key(text):
-    """Order a producer version such as 44-1.7 as (44, 1, 7)."""
-    match = VERSION.fullmatch(text)
-    if match is None:
-        raise GateError(f"{text!r} is not a producer version this harness can order")
-    return tuple(int(part) for part in match.groups())
+def version_key(text, scheme=GPG_SCHEME):
+    """Order a producer version according to its pin signature scheme."""
+    if scheme == GPG_SCHEME:
+        match = VERSION.fullmatch(text)
+        if match is None:
+            raise GateError(f"{text!r} is not a producer version this harness can order")
+        return tuple(int(part) for part in match.groups())
+    if scheme == COSIGN_SCHEME:
+        match = IMAGO_VERSION.fullmatch(text)
+        if match is None:
+            raise GateError(f"{text!r} is not an Imago producer version this harness can order")
+        stem, ordinal = match.groups()
+        return stem, int(ordinal)
+    raise GateError(f"signature scheme {scheme} has no version ordering")
 
 
-def version_admitted(version, floor):
+def version_admitted(version, floor, scheme=GPG_SCHEME):
     """Return True when `version` is at or above the pinned floor."""
-    return version_key(version) >= version_key(floor)
+    if scheme == COSIGN_SCHEME:
+        v_stem, v_ord = version_key(version, scheme=scheme)
+        f_stem, f_ord = version_key(floor, scheme=scheme)
+        return v_stem == f_stem and v_ord >= f_ord
+    return version_key(version, scheme=scheme) >= version_key(floor, scheme=scheme)
 
 
-def version_below(floor):
-    """Return the version one step below `floor` in its last component."""
-    major, minor, respin = version_key(floor)
+def version_below(floor, scheme=GPG_SCHEME):
+    """Return the version one step below `floor` in its last component or ordinal."""
+    if scheme == COSIGN_SCHEME:
+        stem, ordinal = version_key(floor, scheme=scheme)
+        if ordinal == 0:
+            raise GateError(f"the floor {floor} has no predecessor in its ordinal")
+        return f"{stem}-{ordinal - 1:04d}"
+    major, minor, respin = version_key(floor, scheme=scheme)
     if respin == 0:
         raise GateError(f"the floor {floor} has no predecessor in its last component")
     return f"{major}-{minor}.{respin - 1}"
@@ -481,7 +499,10 @@ def pin_shape_problems(pin):
     else:
         fields = SIGNATURE_FIELDS[scheme]
         problems += [f"signature lacks {key}" for key in fields if key not in sig]
-    problems += [f"boot lacks {key}" for key in boot + ("uki-path",) if key not in pin["boot"]]
+    extra_boot = ("uki-path",)
+    if scheme == COSIGN_SCHEME:
+        extra_boot += ("success-marker",)
+    problems += [f"boot lacks {key}" for key in boot + extra_boot if key not in pin["boot"]]
     return problems
 
 
@@ -534,18 +555,65 @@ def signature_urls(sig):
     return ()
 
 
+def upstream_value_problems(pin):
+    """Return why an upstream (GPG) pin cannot be acted on, or []."""
+    expected_file = f"{pin['name']}-{pin['version']}.{pin['architecture']}.{pin['format']}"
+    checks = (
+        (pin["format"] == "qcow2", "format must be qcow2"),
+        (VERSION.fullmatch(pin["version"]), "version is not MAJOR-MINOR.RESPIN"),
+        (VERSION.fullmatch(pin["version-floor"]), "version-floor is not MAJOR-MINOR.RESPIN"),
+        (pin["file"] == expected_file, f"file is not {expected_file}"),
+    )
+    return [message for passed, message in checks if not passed]
+
+
+def marker_problems(boot):
+    """Return why a boot success-marker is invalid, or []; shape checks its presence."""
+    marker = boot["success-marker"]
+    if not isinstance(marker, str) or not (1 <= len(marker) <= 200):
+        return ["success-marker must be 1..200 characters"]
+    try:
+        re.compile(marker)
+    except re.error as error:
+        return [f"success-marker is not a valid regex: {error}"]
+    return []
+
+
+def imago_version_problems(pin):
+    """Return why an Imago pin's version or version-floor is invalid, or []."""
+    v_match = IMAGO_VERSION.fullmatch(pin["version"])
+    f_match = IMAGO_VERSION.fullmatch(pin["version-floor"])
+    problems = []
+    if v_match is None:
+        problems.append("version is not correlation-id with 4-digit ordinal")
+    if f_match is None:
+        problems.append("version-floor is not correlation-id with 4-digit ordinal")
+    if v_match and f_match and v_match.group(1) != f_match.group(1):
+        problems.append("version-floor must share the same stem as version")
+    return problems
+
+
+def imago_value_problems(pin):
+    """Return why an Imago (cosign) pin cannot be acted on, or []."""
+    expected_file = f"aegis-os.{pin['format']}"
+    checks = (
+        (pin["format"] == "raw", "format must be raw"),
+        (pin["file"] == expected_file, f"file is not {expected_file}"),
+    )
+    problems = [message for passed, message in checks if not passed]
+    problems.extend(imago_version_problems(pin))
+    problems.extend(marker_problems(pin["boot"]))
+    return problems
+
+
 def pin_value_problems(pin):
     """Return the pin values this harness refuses to act on."""
     sig, boot = pin["signature"], pin["boot"]
     timeout = boot["login-prompt-timeout-seconds"]
-    expected_file = f"{pin['name']}-{pin['version']}.{pin['architecture']}.{pin['format']}"
     urls = (pin["url"],) + signature_urls(sig)
     checks = (
         (pin["schema"] == PIN_SCHEMA, f"schema is not {PIN_SCHEMA}"),
         (PCR_VALUE.fullmatch(pin["sha256"]), "sha256 is not 64 lower-case hex digits"),
-        (VERSION.fullmatch(pin["version"]), "version is not MAJOR-MINOR.RESPIN"),
-        (VERSION.fullmatch(pin["version-floor"]), "version-floor is not MAJOR-MINOR.RESPIN"),
-        (pin["file"] == expected_file, f"file is not {expected_file}"),
         (all(url.startswith("https://") for url in urls), "every URL must be https"),
         (isinstance(timeout, int) and 0 < timeout <= MAX_LOGIN_TIMEOUT, "timeout out of range"),
         (boot["guest-microsoft-db"] in MICROSOFT_DB, "guest-microsoft-db is not admitted"),
@@ -555,6 +623,11 @@ def pin_value_problems(pin):
     )
     problems = [message for passed, message in checks if not passed]
     problems.extend(signature_value_problems(sig))
+    scheme = sig.get("scheme")
+    if scheme == GPG_SCHEME:
+        problems.extend(upstream_value_problems(pin))
+    elif scheme == COSIGN_SCHEME:
+        problems.extend(imago_value_problems(pin))
     return problems
 
 
@@ -778,7 +851,9 @@ def verify_artifact(context, artifact, checksum):
     recorded, version = signed_record(text, pin)
     if recorded != pin["sha256"]:
         raise Refused("checksum", f"the signed digest {recorded} is not the pinned {pin['sha256']}")
-    if version != pin["version"] or not version_admitted(version, pin["version-floor"]):
+    if version != pin["version"] or not version_admitted(
+        version, pin["version-floor"], scheme=pin["signature"]["scheme"]
+    ):
         raise Refused("version", f"signed version {version} against pin {pin['version']}")
     found = require_pinned(pin, artifact)
     return {"good": good, "version": version, "digest": found}
@@ -939,8 +1014,12 @@ def bad_signature_case(context):
 def version_boundary_case(pin):
     """Boundary: a producer version exactly at the floor is admitted, one below is refused."""
     floor = pin["version-floor"]
-    below = version_below(floor)
-    decided = [(floor, version_admitted(floor, floor)), (below, version_admitted(below, floor))]
+    scheme = pin["signature"]["scheme"]
+    below = version_below(floor, scheme=scheme)
+    decided = [
+        (floor, version_admitted(floor, floor, scheme=scheme)),
+        (below, version_admitted(below, floor, scheme=scheme)),
+    ]
     problems = []
     if decided != [(floor, True), (below, False)]:
         problems.append(f"expected the floor admitted and {below} refused, got {decided}")
