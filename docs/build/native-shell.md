@@ -5,7 +5,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The P05 Forum shell on gpui: mapping the layer surface
 
-Status: recorded observations from milestone M28 epic E28-2, reference profile, 2026-10-18
+Status: recorded observations from M28 epic E28-2, reference profile,
+2026-10-18
 
 Milestone M28 puts the P05 Forum shell on gpui (ADR-0004). Epic E28-2 maps
 the shell's `zwlr_layer_shell_v1` surface from a `MOUNT_SHELL_CANVAS` request
@@ -97,9 +98,13 @@ CASE surface/filter-control pass
 CASE surface/layer-shell-missing pass
 CASE surface/first-configure-deadline pass
 CASE surface/refused-line pass
-NOTE D79: headless KWin kwin 6.8.0 (kwin_wayland --virtual); development evidence for the client half only, not evidence that P04 serves zwlr_layer_shell_v1
 RESULT pass
 ```
+
+Between the last `CASE` line and `RESULT pass`, the run printed its D79 note:
+`NOTE D79: headless KWin kwin 6.8.0 (kwin_wayland --virtual); development
+evidence for the client half only, not evidence that P04 serves
+zwlr_layer_shell_v1` (one line in the output).
 
 The first live runs failed, and each failure was a defect that is now fixed:
 
