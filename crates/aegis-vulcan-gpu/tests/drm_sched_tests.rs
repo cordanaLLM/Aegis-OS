@@ -12,8 +12,8 @@ use common::{Fallible, TempSysfs};
 fn test_amdgpu_holder_provider_vs_i915_not() -> Fallible {
     let fix = TempSysfs::new()?;
     fix.set_holders(&["amdgpu", "xe"])?;
-    fix.add_render_node("renderD129", "0000:03:00.0", "i915", None)?;
-    fix.add_render_node("renderD130", "0000:7d:00.0", "amdgpu", Some("-1"))?;
+    fix.add_render_node("renderD129", "0000:f3:00.0", "i915", None)?;
+    fix.add_render_node("renderD130", "0000:fd:00.0", "amdgpu", Some("-1"))?;
 
     let holders = inspect_holders(&fix.sysfs)?;
     assert!(holders.contains(&"amdgpu".to_string()));
@@ -29,15 +29,15 @@ fn test_xe_bound_intel_is_provider() -> Fallible {
     let fix = TempSysfs::new()?;
     fix.set_holders(&["amdgpu", "xe"])?;
     fix.add_gpu(
-        "0000:03:00.0",
+        "0000:f3:00.0",
         "0x8086",
         "0x56a5",
         "xe",
         "0",
-        "17",
-        &["0000:03:00.0"],
+        "917",
+        &["0000:f3:00.0"],
     )?;
-    fix.add_render_node("renderD130", "0000:03:00.0", "xe", None)?;
+    fix.add_render_node("renderD130", "0000:f3:00.0", "xe", None)?;
 
     let run = run_record(&fix.sysfs, &fix.dev)?;
     assert!(run.is_pass());
