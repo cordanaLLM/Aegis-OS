@@ -3820,9 +3820,12 @@ Exit criteria:
   preconditions, not image content
 - The A/B sysupdate transfer is exercised once between root-a and root-b, and
   observed transitions are compared with the M15 state machine
-- The M24 harness is reused unchanged except for the one pin scheme D85 moves
-  here, and the only new inputs are the Imago artifact and its pin; a criterion
-  states that no second boot apparatus is built here.
+- The M24 harness is reused with the changes D114 lists and no others: the pin
+  scheme D85 moves here, and branches keyed by the pin's signature scheme for
+  the overlay's backing format, the producer version and file rule, and the boot
+  success marker. The only new inputs are the Imago artifact, its pin and the
+  boot-report unit the Aegis image carries; a criterion states that no second
+  boot apparatus is built here.
 - The artifact's digest and signature are verified with the pinned cosign (2.6.3
   on the reference profile) before the boot runs, and a tampered-digest negative
   case is exercised.
@@ -3977,6 +3980,32 @@ Evidence:
   an Imago build whose boot passes. Nothing else in this milestone changed; it
   stays ready by the register rule while its external BLOCKED-until criterion
   holds, and this entry is not evidence that any criterion is met.
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, on 2026-10-18
+  under decision D114, the harness criterion and the title and acceptance of
+  E11-2 were rewritten. The criterion read 'The M24 harness is reused unchanged
+  except for the one pin scheme D85 moves here, and the only new inputs are the
+  Imago artifact and its pin; a criterion states that no second boot apparatus
+  is built here.', E11-2 was titled 'The Imago artifact runs through the M24
+  harness, changed only by the D85 pin scheme', and its acceptance read
+  'Positive: the Imago artifact is fed to the M24 harness with no change to the
+  harness except the pin scheme for its signature form that D85 moves here
+  (E11-1), and the harness reports the same evidence shape it reported for a
+  pinned upstream image. Negative: no second boot apparatus is built here -- any
+  other change to the harness fails this milestone rather than being absorbed
+  into it. Boundary: under decision D72 the real boot evidence is M24's epic and
+  the A/B transfer is E11-4's; what this milestone adds is the artifact, that
+  one pin scheme and the proof that the harness needed nothing else to accept
+  it.' This is a relaxation of the harness criterion and it is disclosed as one:
+  the harness may now change in the places D114 lists, which the old text
+  forbade, because the Imago artifact differs from the upstream image in format,
+  version, file name and console. What is not relaxed: the evidence shape is the
+  same (a nonce and PCR 0, 4, 7 and 11 read from inside the guest), any change
+  D114 does not list still fails the milestone, each new branch carries
+  positive, negative and boundary tests, and the upstream pin must still boot
+  unchanged. Nothing else in this milestone changed; it stays ready by the
+  register rule while its external BLOCKED-until criterion holds, and this entry
+  is not evidence that any criterion is met.
 
 Epics:
 
@@ -3996,16 +4025,20 @@ Epics:
   token.actions.githubusercontent.com), the GitHub workflow SHA and the workflow
   ref the pin records, and the artifact's digest is the one SHA256SUMS line
   naming its file.
-- **E11-2 The Imago artifact runs through the M24 harness, changed only by the
-  D85 pin scheme**. Requirements: REQ-P01-05, REQ-P01-01. Acceptance: Positive:
-  the Imago artifact is fed to the M24 harness with no change to the harness
-  except the pin scheme for its signature form that D85 moves here (E11-1), and
-  the harness reports the same evidence shape it reported for a pinned upstream
-  image. Negative: no second boot apparatus is built here -- any other change to
-  the harness fails this milestone rather than being absorbed into it. Boundary:
+- **E11-2 The Imago artifact runs through the M24 harness, changed only as D114
+  lists**. Requirements: REQ-P01-05, REQ-P01-01. Acceptance: Positive: the Imago
+  artifact is fed to the M24 harness changed only by the D85 pin scheme (E11-1)
+  and the D114 branches, and the harness reports the same evidence shape it
+  reported for a pinned upstream image: the nonce it handed the guest, and PCR
+  0, 4, 7 and 11, printed to the console by the boot-report unit in the Aegis
+  image. Negative: no second boot apparatus is built here -- any harness change
+  D114 does not list fails this milestone rather than being absorbed into it,
+  and each D114 branch refuses a pin that mixes the two kinds (an Imago pin with
+  a qcow2 format, a Fedora version or file name, and the reverse). Boundary:
   under decision D72 the real boot evidence is M24's epic and the A/B transfer
-  is E11-4's; what this milestone adds is the artifact, that one pin scheme and
-  the proof that the harness needed nothing else to accept it.
+  is E11-4's; the upstream pin M24 recorded boots unchanged through the same
+  harness; what this milestone adds is the artifact, that pin scheme, the D114
+  branches and the proof that the harness needed nothing else to accept it.
 - **E11-3 Analyzer gate without suppression in the image path**. Requirements:
   REQ-CI-01. Acceptance: Positive: the M03 gate passes on the image inputs.
   Negative: an ignored-key diagnostic fails the image acceptance. Boundary: no
@@ -6195,6 +6228,39 @@ against the decoder of `061bbde`.
   the crates.io release and the checksum the crates.io index records for it,
   with no override in the workspace manifest; the licence table in
   `docs/roadmap/toolchain-admission.md` lists each arm.
+
+### Decision on the Imago artifact shape (2026-10-18)
+
+- **D114** How does the Imago artifact boot through the M24 harness? M11's
+  harness criterion and E11-2 allowed one change to the harness, the pin scheme
+  D85 moves here (E11-1, cosign-keyless-sha256sums since PR #317). Imago's
+  aegis-build workflow (commit 6fd9c170be9b2038b17b26751560b5e17dbb36f8) returns
+  a raw disk, aegis-os.raw, under a release tag `aegis-<correlation-id>`, with no
+  MAJOR-MINOR.RESPIN version and no cloud-init. The harness hard-codes all
+  three: `prepare_guest` creates the overlay with `-F qcow2`,
+  `pin_value_problems` requires the Fedora version form and file name, and
+  `prompt_or_exit` waits for `LOGIN_PROMPT`, while the guest report reaches the
+  guest only through the NoCloud seed `write_seed` builds. Options: build an
+  Aegis-side qcow2 and cloud-init path for the Imago image; amend the bar so the
+  harness branches by pin kind; or ask Imago to return the Fedora shape.
+  **Decision (2026-10-18, controller id aegis-os-e11-2-amend-imago-shape,
+  paraphrased):** amend the bar. The harness branches by the pin's signature
+  scheme, and the gpg scheme keeps today's path, so the Fedora pin and its file
+  are unchanged. The cosign branch takes the backing format from the pin's
+  `format` (raw), a producer version that is the request's correlation-id with
+  its trailing ordinal compared against a floor of the same stem, the file name
+  `aegis-os.<format>`, and a success marker regex from the pin's boot section.
+  The guest report ships in the Aegis image as a systemd unit that prints the
+  same AEGIS-M24 fields to the console; it is a build input, not harness code,
+  and it takes the nonce as a system credential passed by SMBIOS type 11
+  (`io.systemd.credential:`). Changed paths: `tools/verify_boot_harness.py`
+  (`load_pin` and `pin_value_problems`, `fetch_pinned`, `check_cache`,
+  `verify_artifact` with `cosign_checksum` and `sha256sums_record`,
+  `prepare_guest`, `guest_argv`, `prompt_or_exit`),
+  `tools/test_boot_harness.py`, `docs/build/boot-harness.md`, and under
+  `build/mkosi.extra/` the boot-report unit and its script. Each branch carries
+  positive, negative and boundary tests. M11's harness criterion and E11-2 are
+  rewritten, with a disclosure entry; any other harness change still fails M11.
 
 ## Evidence
 
