@@ -262,7 +262,7 @@ are in `tools/test_workstation_slices.py` (`PassthroughLimitTests`).
 ## The recorded run
 
 Run r20260929T200422-2476 of `make verify-workstation`, on 2026-09-29, on the
-reference profile, the AMD Ryzen 9 9950X3D 16-Core Processor with kernel
+reference profile, an AMD x86_64 desktop CPU with RAPL and kernel
 7.2.8-1-cachyos; the readings, the enumeration and the child logs are kept
 under `~/.cache/aegis-workstation/runs/r20260929T200422-2476`. The host model
 and kernel were printed on that run's output and not kept in its directory;
@@ -341,8 +341,8 @@ sudo-rs's "interactive authentication is required" was a FAIL where it must
 be a SKIP, that the leftover sweep killed any process naming the run
 directory, and that a non-x86_64 host failed where it must skip. On the
 revision that fixed all five, run r20260929T205659-3afc passed every case once
-more and keeps `host.json`, whose record reads the AMD Ryzen 9 9950X3D
-16-Core Processor, kernel 7.2.8-1-cachyos and rustc 1.98.1 (48a229cea
+more and keeps `host.json`, whose record reads the CPU model, kernel
+7.2.8-1-cachyos and rustc 1.98.1 (48a229cea
 2026-09-01), beside `rapl-readings.json`, and `gate.log`, everything the gate
 printed, gate-side cases and the pinned Firecracker version line included:
 `energy_uj` 56916637446 then 57506260472, 5012254117 ns apart, 589623026 uJ,
@@ -505,41 +505,39 @@ and struct layouts.
 
 Binding a device to `vfio-pci` is the operator's act; the tool, the tests and
 the gates never do it. `tools/operator/e25-1-vfio-run.sh` is that act for the
-Arc A380 at `0000:03:00.0`:
+Arc A380, which it finds at run time as the one PCI device with id `8086:56a5`:
 
 ```sh
 bash tools/operator/e25-1-vfio-run.sh            # preview, writes nothing
 bash tools/operator/e25-1-vfio-run.sh --apply    # bind, map-bar, rebind xe
 ```
 
-It refuses unless the address is the Arc (`8086:56a5`) on `xe`, alone in IOMMU
-group 17, with no connected output. With `--apply` it binds `vfio-pci`, gives
-the user `/dev/vfio/17`, runs `map-bar`, and from an exit trap unbinds,
-clears `driver_override`, reprobes and reads back the driver of the Arc and of
-the NVIDIA device at `0000:06:00.0`, which it never writes to. The log goes to
-`.workingdir/evidence/e25-1-vfio-<UTC time>.log`.
+It refuses unless exactly one such device exists, on `xe`, alone in its IOMMU
+group read from sysfs, with no connected output. With `--apply` it binds
+`vfio-pci`, gives the user that group's `/dev/vfio/` node, runs `map-bar`, and
+from an exit trap unbinds, clears `driver_override`, reprobes and reads back
+the driver of the Arc and of every NVIDIA display device (vendor `10de`), which
+it never writes to. No PCI address or group number is pinned in the script.
+The log goes to `.workingdir/evidence/e25-1-vfio-<UTC time>.log`.
 
 It also refuses, in the preview as well, while any process holds the Arc's
 card or render node, read by PCI path under `/dev/dri/by-path/` because the
 `cardN` numbers move between boots, and it names each holder by pid and
-command. It signals no process. The run of 2026-10-18 13:33 listed a holder
-of `card2` and went on: the map passed and the Arc returned to `xe`, but KWin,
-which used the Arc as a hotplug GPU, logged `Failed to open drm node
-/dev/dri/renderD130` and hung the session until a reboot. On the reference
-profile after that reboot, the preview refuses with
-`REFUSE: pci-0000:03:00.0-card held by 5184 (Xwayland)`.
+command. It signals no process. A compositor that opened the Arc as a hotplug
+GPU loses its device when the Arc is unbound under it, so a held node is a
+refusal, never a warning: `REFUSE: pci-<Arc>-card held by <pid> (<command>)`.
 
 `tools/test_e25_vfio_card.py` runs the script's stub test
 (`tools/operator/e25-1-vfio-run-stub-test.sh`) inside `make verify-all`: a
-fake sysfs and a fake sudo, 20 cases, nothing under `/sys` or `/dev` touched.
+fake sysfs and a fake sudo, 23 cases, nothing under `/sys` or `/dev` touched.
 A real process started by the test holds the stub card or render node, and
 the preview and `--apply` must refuse and name it without a write.
 
 ### Limits
 
 Recorded on the reference profile on 2026-10-18 with the Arc still on `xe`:
-`map-bar --device 0000:03:00.0` prints
-`FAIL: candidate: refused: 0000:03:00.0 driver is xe, expected vfio-pci` and
+`map-bar --device <Arc>` prints
+`FAIL: candidate: refused: <Arc> driver is xe, expected vfio-pci` and
 exits 1. The positive run waits for the operator's `--apply`. It maps a BAR
 on the host through VFIO; it does not attach the device to a guest, so the
 milestone's guest-passthrough criterion stays open.

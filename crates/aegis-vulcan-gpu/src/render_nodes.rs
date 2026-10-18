@@ -20,7 +20,7 @@ pub const MAX_MODESET_BYTES: usize = 64;
 pub struct RenderNodeInfo {
     /// Render node identifier (e.g. "renderD128").
     pub node: String,
-    /// Bound PCI device address (e.g. "0000:06:00.0").
+    /// Bound PCI device address (e.g. "0000:f6:00.0").
     pub address: String,
     /// Bound kernel driver name (e.g. "nvidia").
     pub driver: String,

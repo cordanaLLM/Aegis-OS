@@ -1,15 +1,13 @@
 {
   "schema_version": 1,
-  "role": "reference development machine",
+  "role": "reference development profile: a hardware class, not one named machine",
   "recorded_on": "2026-09-13",
   "refreshed_on": "2026-09-28",
   "refresh_note": "Every read-only evidence command in this file was re-run unprivileged on 2026-09-28, and each toolchain row was re-read with the tool's own version command. One command was not repeated: the virt-fw-vars command of capabilities.secure_boot_enrolment writes a variable store and carries <guid> placeholders, so its guest_enrolment_proven reading stands from 2026-09-13 (D62) and that row's recorded_on covers its host-firmware text only. A row whose reading changed carries recorded_on 2026-09-28 and states what it read before; a row first recorded that day carries the same date; a row without its own recorded_on read the same on both dates. The kernel block is the one exception and says why.",
   "evidence_class": "Development evidence only. A check that passes on this profile does not qualify hardware, does not close a blocked gate, and is not release evidence. Hardware qualification needs more than one machine and the acceptance recorded in the milestone.",
   "cpu": {
-    "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+    "model": "AMD x86-64-v4 desktop CPU with RAPL package counters",
     "architecture": "x86-64",
-    "cores": 16,
-    "threads": 32,
     "isa_levels": [
       "x86-64-v2",
       "x86-64-v3",
@@ -18,9 +16,6 @@
     "evidence_command": "lscpu; uname -m; /lib/ld-linux-x86-64.so.2 --help | grep supported",
     "architecture_note": "architecture is recorded in the mkosi Architecture= spelling x86-64, which is what the product input manifest and the kernel requirement carry; uname -m prints the same machine as x86_64"
   },
-  "memory_bytes": 64946429952,
-  "memory_evidence_command": "free -b; grep MemTotal /proc/meminfo",
-  "memory_note": "MemTotal as the running kernel reports it, read 2026-09-28 under 7.2.8-1-cachyos; it read 64910954496 bytes under 7.2.4-1-cachyos on 2026-09-13",
   "kernel": {
     "release": "7.2.4-1-cachyos",
     "preemption": "PREEMPT_DYNAMIC",
@@ -69,9 +64,8 @@
     "tpm2_firmware_support": true,
     "evidence_command": "bootctl status; od -An -t u1 /sys/firmware/efi/efivars/SetupMode-8be4df61-93ca-11d2-aa0d-00e098032b8c; od -An -t u1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c; ls /sys/firmware/efi/efivars/ | grep -E '^(PK|KEK|db|dbx)(Default)?-'",
     "recorded_on": "2026-09-28",
-    "observed": "bootctl status prints 'Firmware: UEFI 2.90 (American Megatrends 5.26)', 'Secure Boot: disabled (setup)' and 'TPM2 Support: yes'; od prints 6 0 0 0 1 for SetupMode and 6 0 0 0 0 for SecureBoot (four attribute bytes, then the value); no PK, KEK, db or dbx variable exists, while the firmware's PKDefault, KEKDefault, dbDefault and dbxDefault do",
-    "previous": "on 2026-09-13 SetupMode and SecureBoot both read 6 0 0 0 0 and the vendor PK, KEK, db and dbx were enrolled (D62)",
-    "operator_action_reported": "The maintainer reports having cleared the Secure Boot keys before a firmware update; reported 2026-09-28, with no exact date. This file records the report, not an observation of the clearing or of the update."
+    "observed": "bootctl status prints the UEFI 2.90 firmware line, 'Secure Boot: disabled (setup)' and 'TPM2 Support: yes'; od prints 6 0 0 0 1 for SetupMode and 6 0 0 0 0 for SecureBoot (four attribute bytes, then the value); no PK, KEK, db or dbx variable exists, while the firmware's PKDefault, KEKDefault, dbDefault and dbxDefault do",
+    "previous": "on 2026-09-13 SetupMode and SecureBoot both read 6 0 0 0 0 and the firmware vendor's PK, KEK, db and dbx were enrolled (D62)"
   },
   "capabilities": {
     "kvm": {
@@ -135,34 +129,34 @@
     },
     "resizable_bar": {
       "present": true,
-      "evidence_command": "nvidia-smi -q | grep -A2 'BAR1 Memory Usage'; lspci -s 06:00.0 -vv | grep Region",
+      "evidence_command": "nvidia-smi -q | grep -A2 'BAR1 Memory Usage'; lspci -d 10de: -vv | grep Region",
       "note": "already enabled in firmware: 32 GiB BAR1 on the discrete NVIDIA card and an 8 GiB prefetchable region on the Intel card, which is the firmware prerequisite for peer DMA"
     },
     "gpu_dma_buf_and_peer_memory": {
       "present": true,
       "evidence_command": "modinfo nvidia | grep -E '^(version|license)'; modinfo -n nvidia_peermem",
       "recorded_on": "2026-09-28",
-      "note": "NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.4.2 present (13.3.1 on 2026-09-13); the Intel and AMD cards provide DMA-BUF through their in-tree drivers; the Arc A380 is bound to xe, the reference-profile binding (ledger aegis-os-m25-arc-xe): on 2026-10-17 /proc/cmdline carries i915.force_probe=!56a5 xe.force_probe=56a5, readlink /sys/bus/pci/devices/0000:03:00.0/driver resolves to xe and /sys/module/gpu_sched/holders lists amdgpu and xe; readings taken while it was bound to i915 (M27, M29) stay dated i915 and are measured again only when their gate is touched"
+      "note": "NVIDIA 615.71.09 open kernel modules (Dual MIT/GPL) with nvidia_drm modeset and the nvidia_peermem peer-memory module installed, CUDA 13.4.2 present (13.3.1 on 2026-09-13); the Intel and AMD cards provide DMA-BUF through their in-tree drivers; the Arc A380 is bound to xe, the reference-profile binding (ledger aegis-os-m25-arc-xe): on 2026-10-17 /proc/cmdline carries i915.force_probe=!56a5 xe.force_probe=56a5, the driver link of the PCI device with id 8086:56a5 resolves to xe and /sys/module/gpu_sched/holders lists amdgpu and xe; readings taken while it was bound to i915 (M27, M29) stay dated i915 and are measured again only when their gate is touched"
     },
     "vaapi_decode": {
       "present": true,
-      "evidence_command": "LIBVA_DRIVER_NAME=iHD vainfo --display drm --device /dev/dri/by-path/pci-0000:03:00.0-render; vainfo --display drm --device /dev/dri/by-path/pci-0000:03:00.0-render; env -u LIBVA_DRIVER_NAME vainfo --display drm --device /dev/dri/by-path/pci-0000:03:00.0-render; readlink -f /sys/bus/pci/devices/0000:03:00.0/driver; ls -l /dev/dri/by-path; cat /sys/bus/pci/devices/0000:03:00.0/vendor /sys/bus/pci/devices/0000:03:00.0/device; pacman -Q libva intel-media-driver",
+      "evidence_command": "LIBVA_DRIVER_NAME=iHD vainfo --display drm --device /dev/dri/by-path/pci-<Arc>-render; vainfo --display drm --device /dev/dri/by-path/pci-<Arc>-render; env -u LIBVA_DRIVER_NAME vainfo --display drm --device /dev/dri/by-path/pci-<Arc>-render; readlink -f /sys/bus/pci/devices/<Arc>/driver; ls -l /dev/dri/by-path; cat /sys/bus/pci/devices/<Arc>/vendor /sys/bus/pci/devices/<Arc>/device; pacman -Q libva intel-media-driver",
       "recorded_on": "2026-09-28",
-      "observed": "with LIBVA_DRIVER_NAME=iHD: 'Intel iHD driver for Intel(R) Gen Graphics - 26.2.4' on the Arc A380 (8086:56a5, i915, /dev/dri/by-path/pci-0000:03:00.0-render -> renderD129), listing VAEntrypointVLD for VAProfileMPEG2Main, VAProfileJPEGBaseline, VAProfileH264High, VAProfileHEVCMain, VAProfileVP9Profile0 and VAProfileAV1Profile0, and VAEntrypointVideoProc; banner 'VA-API version: 1.24 (libva 2.24.0)' from package libva 2.24.1-1.1. With the session's LIBVA_DRIVER_NAME=nvidia the same call on the same node reports 'VA-API NVDEC driver [direct backend]'; with the variable unset it reports the iHD driver 26.2.4. The sysfs vendor and device files read 0x8086 and 0x56a5, and pacman -Q reports libva 2.24.1-1.1 and intel-media-driver 26.2.4-1.1",
-      "note": "the driver must be pinned per run: /etc/environment.d/85-nvidia-vaapi.conf sets LIBVA_DRIVER_NAME=nvidia for the session, and the call above that inherits the session environment loads the NVIDIA driver even when the Intel render node is named. renderD numbers follow probe order, and the PCI path is the stable name. This row records what the driver advertises; no committed gate has decoded a frame (M27)"
+      "observed": "with LIBVA_DRIVER_NAME=iHD: 'Intel iHD driver for Intel(R) Gen Graphics - 26.2.4' on the Arc A380 (8086:56a5, i915, its by-path render node), listing VAEntrypointVLD for VAProfileMPEG2Main, VAProfileJPEGBaseline, VAProfileH264High, VAProfileHEVCMain, VAProfileVP9Profile0 and VAProfileAV1Profile0, and VAEntrypointVideoProc; banner 'VA-API version: 1.24 (libva 2.24.0)' from package libva 2.24.1-1.1. With the session's LIBVA_DRIVER_NAME=nvidia the same call on the same node reports 'VA-API NVDEC driver [direct backend]'; with the variable unset it reports the iHD driver 26.2.4. The sysfs vendor and device files read 0x8086 and 0x56a5, and pacman -Q reports libva 2.24.1-1.1 and intel-media-driver 26.2.4-1.1",
+      "note": "the driver must be pinned per run: the desktop session's environment sets LIBVA_DRIVER_NAME=nvidia, and the call above that inherits the session environment loads the NVIDIA driver even when the Intel render node is named. renderD numbers follow probe order, and the PCI path is the stable name. This row records what the driver advertises; no committed gate has decoded a frame (M27)"
     },
     "wayland_layer_shell": {
       "present": true,
       "evidence_command": "wayland-info -i zwlr_layer_shell_v1; kwin_wayland --version; pacman -Q kwin",
       "recorded_on": "2026-09-28",
       "observed": "interface zwlr_layer_shell_v1 version 5, advertised by the host session compositor, kwin 6.7.5 (package kwin 6.7.5-1.1)",
-      "note": "this is the host desktop session's compositor, not P04 aegis-compositor, which serves no Wayland protocol; a run against it is development evidence for the client half only (D79). kwin_wayland --version and pacman -Q report the installed kwin, not which process served the session socket; that the session compositor is that kwin is inferred. M27's gate (run r20260929T151938-0d35) read the session socket's peer with SO_PEERCRED: /usr/bin/kwin_wayland_wrapper (pid 3089, package kwin 6.7.5-1.1), which holds the listening socket for kwin_wayland"
+      "note": "this is the host desktop session's compositor, not P04 aegis-compositor, which serves no Wayland protocol; a run against it is development evidence for the client half only (D79). kwin_wayland --version and pacman -Q report the installed kwin, not which process served the session socket; that the session compositor is that kwin is inferred. M27's gate (run r20260929T151938-0d35) read the session socket's peer with SO_PEERCRED: /usr/bin/kwin_wayland_wrapper (package kwin 6.7.5-1.1), which holds the listening socket for kwin_wayland"
     },
     "compositor_dmabuf_import": {
       "present": true,
-      "evidence_command": "wayland-info -i zwp_linux_dmabuf_v1; wayland-info -i wp_presentation; stat -L -c '%t:%T' /dev/dri/by-path/pci-0000:03:00.0-render",
+      "evidence_command": "wayland-info -i zwp_linux_dmabuf_v1; wayland-info -i wp_presentation; stat -L -c '%t:%T' /dev/dri/by-path/pci-<Arc>-render",
       "recorded_on": "2026-09-28",
-      "observed": "interface zwp_linux_dmabuf_v1 version 5 with main device 0xE281 (device number e2:81, /dev/dri/renderD129, the Arc A380; wayland-info also names the same GPU's primary node /dev/dri/card2); its feedback lists NV12 (0x3231564e) and P010, each with LINEAR, INTEL_X_TILED, INTEL_4_TILED and DRM_FORMAT_MOD_INVALID (implicit modifier), and neither with INTEL_4_TILED_DG2_RC_CCS or INTEL_4_TILED_DG2_RC_CCS_CC; wp_presentation version 2 on CLOCK_MONOTONIC",
+      "observed": "interface zwp_linux_dmabuf_v1 version 5 with its main device on the Arc A380's render node; its feedback lists NV12 (0x3231564e) and P010, each with LINEAR, INTEL_X_TILED, INTEL_4_TILED and DRM_FORMAT_MOD_INVALID (implicit modifier), and neither with INTEL_4_TILED_DG2_RC_CCS or INTEL_4_TILED_DG2_RC_CCS_CC; wp_presentation version 2 on CLOCK_MONOTONIC",
       "note": "advertised by KDE KWin 6.7.5 and exercised by make verify-display run r20260929T151938-0d35 (M27, 2026-09-29): 60 NV12 frames with I915_FORMAT_MOD_4_TILED imported, each created and presented, client half only (D79). Decoding on the compositor's main device avoids a cross-device import, which nothing here has tested (D79)"
     }
   },
@@ -182,14 +176,9 @@
     },
     {
       "vendor": "AMD",
-      "model": "Granite Ridge integrated graphics",
-      "pci_id": "1002:13c0"
+      "model": "integrated graphics"
     }
   ],
-  "storage": {
-    "nvme_controllers": 3,
-    "evidence_command": "ls /sys/class/nvme/"
-  },
   "toolchain": {
     "qemu-system-x86_64": {
       "present": true,
@@ -346,7 +335,7 @@
   },
   "operator_actions": [
     {
-      "action": "Enrol Secure Boot keys (PK, KEK, db and dbx) on the host firmware and enable Secure Boot; as read on 2026-09-28 the firmware holds no PK, KEK, db or dbx (SetupMode=1), and the maintainer reports clearing them before a firmware update (no exact date)",
+      "action": "Enrol Secure Boot keys (PK, KEK, db and dbx) on the host firmware and enable Secure Boot; as read on 2026-09-28 the firmware holds no PK, KEK, db or dbx (SetupMode=1)",
       "unblocks": "signature verification on real firmware for P01 and P02",
       "kind": "firmware setting"
     },
@@ -365,5 +354,6 @@
       "unblocks": "every activation milestone, which must name a pinned toolchain before its gate runs",
       "kind": "governance"
     }
-  ]
+  ],
+  "class_note": "This file describes the class of machine the development evidence ran on: an x86-64-v4 AMD desktop CPU with RAPL package counters, an IOMMU, a discrete TPM 2.0, and an Intel Arc A380, an NVIDIA GeForce RTX 4090 and an AMD integrated GPU. It names no host, PCI address, process or session; those are discovered at run time and stay out of the public tree (tools/verify_public_host.py)."
 }

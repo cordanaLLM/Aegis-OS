@@ -253,7 +253,7 @@ reference profile; both children's output is kept under
 - rustc: rustc 1.98.1 (48a229cea 2026-09-01)
 - libva: 2.24.1 (VA-API 1.24.0), read back with pkg-config
 - VA vendor string: Intel iHD driver for Intel(R) Gen Graphics - 26.2.4 ()
-- compositor: /usr/bin/kwin_wayland_wrapper (pid 3089, package kwin 6.7.5-1.1);
+- compositor: /usr/bin/kwin_wayland_wrapper (package kwin 6.7.5-1.1);
   client half only (D79)
 - compositor main device 226:129, decode node /dev/dri/renderD129 (226:129,
   kernel driver i915)
@@ -308,12 +308,12 @@ at the same time to accept the regression pin's `NOTE` under another driver,
 to fail a case the binary skips with the binary's reason and to skip a host
 with one render node; on the reference profile the case lines read as before.
 
-Earlier on 2026-09-29 the session was locked. `make verify-display` then printed
-`SKIP: logind reports session 3 locked; its compositor presents no client
+When logind reports the session locked, `make verify-display` prints
+`SKIP: logind reports session <id> locked; its compositor presents no client
 surface while the lock screen is up; the display slice gate did not run.` and
-exited 0, and the binary run directly passed the first five cases and failed the
-first frame's presented wait at its 1 s deadline, naming the event: a locked
-session's compositor presents no client surface.
+exits 0. The binary run directly against such a compositor passes the first
+five cases and fails the first frame's presented wait at its 1 s deadline,
+naming the event: a locked session's compositor presents no client surface.
 
 ## The recorded subtitle run
 
@@ -340,7 +340,7 @@ The gate printed:
 - rustc: rustc 1.99.1 (58cf8f9c3 2026-10-13)
 - libva: 2.24.1 (VA-API 1.24.0), read back with pkg-config
 - VA vendor string: Intel iHD driver for Intel(R) Gen Graphics - 26.3.5 ()
-- compositor: pid 3215997, executable unreadable (Permission denied)
+- compositor: executable unreadable (Permission denied)
 - compositor main device 226:130, decode node /dev/dri/renderD130 (226:130,
   kernel driver xe)
 - modifier the driver chose: 0x0100000000000009 (I915_FORMAT_MOD_4_TILED)

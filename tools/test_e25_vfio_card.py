@@ -9,6 +9,7 @@ passing run from one that stopped executing cases. The script needs bash and
 GNU find, so the test skips with a reason anywhere else (HISS-21).
 """
 
+import re
 import shutil
 import subprocess
 import sys
@@ -18,7 +19,7 @@ from pathlib import Path
 STUB_TEST = Path(__file__).resolve().parent / "operator" / "e25-1-vfio-run-stub-test.sh"
 
 # Cases the stub test reports as "ok"; raise with the test, never lower it.
-CASE_FLOOR = 20
+CASE_FLOOR = 23
 
 
 def skip_reason():
@@ -82,6 +83,13 @@ class CardStubTests(unittest.TestCase):
             if "$NVIDIA" in line:
                 self.assertNotIn("wsys", line)
                 self.assertNotIn("$SUDO", line)
+
+    def test_the_card_pins_no_device_address(self):
+        """Negative: the script finds the Arc at run time and names no PCI address or group."""
+        script = (STUB_TEST.parent / "e25-1-vfio-run.sh").read_text(encoding="utf-8")
+        pci = re.compile(r"\b(?:[0-9a-f]{4}:)?[0-9a-f]{2}:[0-1][0-9a-f]\.[0-7]\b", re.IGNORECASE)
+        self.assertEqual(pci.findall(script), [])
+        self.assertNotRegex(script, r"(?m)^GROUP=\d")
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ pub use crate::vfio::sys::{
 /// Per-GPU facts required to evaluate VFIO candidate eligibility.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VfioCandidateInput {
-    /// PCI address of the candidate device (e.g. "0000:7d:00.0").
+    /// PCI address of the candidate device (e.g. "0000:fd:00.0").
     pub address: String,
     /// Currently bound kernel driver (e.g. "amdgpu").
     pub driver: String,
