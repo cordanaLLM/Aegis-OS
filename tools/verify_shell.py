@@ -2,15 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
 # SPDX-License-Identifier: EUPL-1.2
 
-"""Verify P05 Forum shell zwlr_layer_shell_v1 surface mapping, AT-SPI tree, and focus ring.
+"""Verify P05 Forum shell zwlr_layer_shell_v1 surface mapping, AT-SPI tree, focus ring, and timing.
 
-Milestone M28 E28-2, E28-3, and E28-4, decisions D79, D82 and ADR-0003. Starts a private
-headless KWin compositor (`kwin_wayland --virtual`) inside a private D-Bus session
-with at-spi2 infrastructure in a temporary `XDG_RUNTIME_DIR` (never the operator's
-display or session bus).
+Milestone M28 E28-2, E28-3, E28-4, and E28-6, decisions D79, D82, D115, and ADR-0003.
+Starts a private headless KWin compositor (`kwin_wayland --virtual`) inside a private
+D-Bus session with at-spi2 infrastructure in a temporary `XDG_RUNTIME_DIR` (never the
+operator's display or session bus).
+
 
 Drives the Rust binaries `aegis-forum-shell-gpui`, `aegis-atspi-readback`, and
-`aegis-ring-readback` through nineteen cases:
+`aegis-ring-readback` through twenty-two cases:
 1. surface/first-configure: direct connection maps layer shell and receives first configure;
 2. surface/filter-control: verify wayland-info sees layer shell filtered out or preserved;
 3. surface/layer-shell-missing: compositor lacking layer shell reports LayerShellNotSupportedError;
@@ -29,7 +30,10 @@ Drives the Rust binaries `aegis-forum-shell-gpui`, `aegis-atspi-readback`, and
 16. ring/width-2-0: boundary 2.0 px ring passes;
 17. ring/scaled-layer: ring drawn inside scaled layer (1.5 px) fails width floor;
 18. ring/under-panel: focused node fully under panel fails;
-19. ring/width-1-9: boundary 1.9 px ring fails.
+19. ring/width-1-9: boundary 1.9 px ring fails;
+20. timing/1000-nodes: 1000 seeded nodes measured over 600 frames with a11y active;
+21. timing/999-nodes: 994 seeded rows (998 tree nodes, < 1000) refused as TooFewNodes;
+22. timing/adapter-inactive: fixture run without active a11y adapter refused as AdapterInactive.
 
 Every pass is development evidence for the client half only (D79).
 """
@@ -101,7 +105,7 @@ REFERENCE_REQUEST = {
 }
 # The binary takes exactly one newline-terminated line, as the socket would carry it.
 REFERENCE_LINE = json.dumps(REFERENCE_REQUEST) + "\n"
-CASE_COUNT = 19
+CASE_COUNT = 22
 
 ATSPI_CASES = (
     ("atspi/sound", "sound", False, 0.0),
@@ -129,6 +133,39 @@ RING_NEGATIVE_WIDTH = {
     "under-panel": (0.0, 0.5),
     "width-1-9": (1.8, 1.95),
 }
+
+# Seconds the gate waits after DONE for the fixture (and a wrapping perf) to exit on its own.
+DONE_EXIT_WAIT = 30
+# perf report over ten seconds of samples took over 60 s at load 49 (2026-10-18).
+PERF_REPORT_TIMEOUT = 300
+
+TIMING_CASES = (
+    ("timing/1000-nodes", 1000, True),
+    ("timing/999-nodes", 994, False),
+    ("timing/adapter-inactive", 1000, False),
+)
+
+ALLOCATOR_SYMBOLS = (
+    "malloc",
+    "calloc",
+    "realloc",
+    "free",
+    "cfree",
+    "_int_malloc",
+    "_int_free",
+    "_int_realloc",
+    "malloc_consolidate",
+    "__libc_malloc",
+    "__libc_free",
+    "__libc_calloc",
+    "__libc_realloc",
+    "tcache_get",
+    "tcache_put",
+    "__rust_alloc",
+    "__rust_dealloc",
+    "__rust_realloc",
+    "alloc::alloc::",
+)
 
 NO_ACTIVATION_CONFIG = (
     '<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"\n'
@@ -311,6 +348,46 @@ def build_shell_binary(runner=run_command):
     """Builds the aegis-forum-shell-gpui binary with cargo (backward compatibility)."""
     shell_bin, _, _ = build_shell_binaries(runner=runner)
     return shell_bin
+
+
+def build_timing_shell_binary(runner=run_command):
+    """Builds aegis-forum-shell-gpui with the timing feature enabled."""
+    env = dict(os.environ)
+    if "CARGO_BUILD_JOBS" not in env:
+        env["CARGO_BUILD_JOBS"] = "2"
+    argv = [
+        "cargo",
+        "build",
+        "--locked",
+        "-p",
+        "aegis-forum-shell-gpui",
+        "--bin",
+        BINARY,
+        "--features",
+        "timing",
+        "--message-format=json-render-diagnostics",
+    ]
+    code, stdout, stderr = runner(argv, BUILD_TIMEOUT, environ=env, cwd=ROOT)
+    if code != 0:
+        tail = "\n".join(stderr.strip().splitlines()[-24:])
+        raise GateError(f"cargo build with timing feature failed ({code}):\n{tail}")
+    shell_bin = executable_from(stdout, BINARY)
+    if shell_bin is None or not shell_bin.is_file():
+        raise GateError(f"cargo reported no executable for {BINARY} with timing feature")
+    return shell_bin
+
+
+def read_zed_commit(cargo_toml_path=ROOT / "Cargo.toml"):
+    """Reads the pinned zed commit hash from root Cargo.toml."""
+    try:
+        text = cargo_toml_path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith("gpui") and 'rev = "' in line:
+            return line.split('rev = "')[1].split('"')[0]
+    return ""
 
 
 def read_versions(runner=run_command):
@@ -1025,6 +1102,461 @@ def run_ring_cases(
     return results
 
 
+def timing_argv(binary, seeded, perf_path_or_None, data_path=None):
+    """Builds the argv list for running the timing fixture, optionally under perf."""
+    inner = [str(binary), "timing", REFERENCE_LINE, str(seeded)]
+    if perf_path_or_None is not None:
+        perf_cmd = [str(perf_path_or_None), "record", "-F", "999"]
+        if data_path is not None:
+            perf_cmd.extend(["-o", str(data_path)])
+        perf_cmd.append("--")
+        return perf_cmd + inner
+    return inner
+
+
+def is_allocator_symbol(sym):
+    """Checks whether a symbol matches the allocator allow-list."""
+    for alloc_sym in ALLOCATOR_SYMBOLS:
+        if alloc_sym == "alloc::alloc::":
+            if "alloc::alloc::" in sym:
+                return True
+        elif sym == alloc_sym or sym.startswith(f"{alloc_sym}@"):
+            return True
+    return False
+
+
+def parse_report_line(line):
+    """Extracts (percentage, symbol) from a perf report stdio line."""
+    line = line.strip()
+    if not line or line.startswith("#"):
+        return None, None
+    parts = line.split()
+    if not parts:
+        return None, None
+    pct = None
+    if parts[0].endswith("%"):
+        try:
+            pct = float(parts[0].rstrip("%"))
+        except ValueError:
+            return None, None
+    elif len(parts) > 1 and parts[1] == "%":
+        try:
+            pct = float(parts[0])
+        except ValueError:
+            return None, None
+    if pct is None:
+        return None, None
+    if "[.]" in line:
+        sym = line.split("[.]", 1)[1].strip()
+    elif "[k]" in line:
+        sym = line.split("[k]", 1)[1].strip()
+    else:
+        sym = parts[-1]
+    return pct, sym
+
+
+def allocator_share(report_text):
+    """Parses perf report stdio output and sums percentage share of allocator symbols."""
+    if not report_text or not report_text.strip():
+        return None
+    total = 0.0
+    found_any = False
+    for line in report_text.splitlines():
+        pct, sym = parse_report_line(line)
+        if pct is None:
+            continue
+        found_any = True
+        if is_allocator_symbol(sym):
+            total += pct
+    if not found_any:
+        return None
+    return round(total, 2)
+
+
+def parse_gpu_line(line):
+    """Parses a 'GPU <device>\t<driver>\t<driver_info>\t<software>' line."""
+    line = line.strip()
+    if not line.startswith("GPU "):
+        return None
+    rest = line[4:].strip()
+    if rest == "-":
+        return {
+            "gpu": "",
+            "driver": "",
+            "driver_info": "",
+            "software": False,
+        }
+    parts = rest.split("\t")
+    if len(parts) < 4:
+        return None
+    return {
+        "gpu": parts[0],
+        "driver": parts[1],
+        "driver_info": parts[2],
+        "software": parts[3] in ("1", "true", "True"),
+    }
+
+
+def parse_frame_line(line):
+    """Parses a FRAME line: 'FRAME <draw_ns> <phases_ns> <nodes|->'."""
+    line = line.strip()
+    if not line.startswith("FRAME "):
+        return None
+    parts = line.split()
+    if len(parts) != 4:
+        return None
+    try:
+        draw_ns = int(parts[1])
+        phases_ns = int(parts[2])
+    except ValueError:
+        return None
+    nodes = None
+    if parts[3] != "-":
+        try:
+            nodes = int(parts[3])
+        except ValueError:
+            return None
+    residual_ns = max(0, draw_ns - phases_ns)
+    return {
+        "draw_ns": draw_ns,
+        "phases_ns": phases_ns,
+        "nodes": nodes,
+        "residual_ns": residual_ns,
+    }
+
+
+def nearest_rank(sorted_vals, percentile):
+    """Computes nearest-rank percentile value matching Rust timing.rs."""
+    n = len(sorted_vals)
+    if n == 0:
+        return None
+    rank = (percentile * n + 99) // 100
+    idx = max(0, min(rank - 1, n - 1))
+    return sorted_vals[idx]
+
+
+def compute_distribution(values):
+    """Computes min, p50, p95, p99, max, mean matching Rust timing.rs."""
+    if not values:
+        return None
+    sorted_vals = sorted(values)
+    return {
+        "min": sorted_vals[0],
+        "p50": nearest_rank(sorted_vals, 50),
+        "p95": nearest_rank(sorted_vals, 95),
+        "p99": nearest_rank(sorted_vals, 99),
+        "max": sorted_vals[-1],
+        "mean": sum(sorted_vals) // len(sorted_vals),
+    }
+
+
+def evaluate_timing(lines, info, frames=600, warmup=60, min_nodes=1000):
+    """Evaluates timing samples against acceptance invariants.
+
+    Returns (measurement_dict, None) on success or (None, refusal_str) on refusal.
+    """
+    if info.get("software", False):
+        return None, f"REFUSED software renderer emulated: {info.get('gpu', '')}"
+    for field in ("gpu", "driver", "compositor", "zed_commit"):
+        if not info.get(field, "").strip():
+            return None, f"REFUSED missing info field: {field}"
+
+    samples = []
+    for line in lines:
+        sample = parse_frame_line(line)
+        if sample is not None:
+            samples.append(sample)
+
+    kept = samples[warmup:]
+    if len(kept) < frames:
+        return None, f"REFUSED too few frames: got {len(kept)}, want {frames}"
+
+    eval_samples = kept[:frames]
+    frames_without_update = 0
+    min_seen = float("inf")
+    max_seen = 0
+
+    for s in eval_samples:
+        n = s["nodes"]
+        if n is None:
+            frames_without_update += 1
+        else:
+            if n < min_seen:
+                min_seen = n
+            if n > max_seen:
+                max_seen = n
+
+    if frames_without_update > 0:
+        return None, (
+            f"REFUSED accessibility adapter inactive: "
+            f"{frames_without_update} frames without tree update"
+        )
+
+    if min_seen < min_nodes:
+        reported = 0 if min_seen == float("inf") else min_seen
+        return None, f"REFUSED too few nodes: min seen {reported}, want {min_nodes}"
+
+    frame_dist = compute_distribution([s["draw_ns"] for s in eval_samples])
+    tree_dist = compute_distribution([s["residual_ns"] for s in eval_samples])
+
+    measurement = {
+        "frames": frames,
+        "nodes_min": min_seen,
+        "nodes_max": max_seen,
+        "frame": frame_dist,
+        "tree_update": tree_dist,
+    }
+    return measurement, None
+
+
+def judge_timing(lines, info, frames=600, warmup=60, min_nodes=1000):
+    """Judges timing lines against acceptance criteria. Returns (ok, reason_or_summary)."""
+    measurement, refusal = evaluate_timing(
+        lines, info, frames=frames, warmup=warmup, min_nodes=min_nodes
+    )
+    if refusal is not None:
+        return False, refusal
+    f_p50 = measurement["frame"]["p50"] / 1_000_000.0
+    f_p95 = measurement["frame"]["p95"] / 1_000_000.0
+    f_p99 = measurement["frame"]["p99"] / 1_000_000.0
+    t_p50 = measurement["tree_update"]["p50"] / 1_000_000.0
+    t_p95 = measurement["tree_update"]["p95"] / 1_000_000.0
+    t_p99 = measurement["tree_update"]["p99"] / 1_000_000.0
+    d_info = f" {info['driver_info']}" if info.get("driver_info") else ""
+    summary_text = (
+        f"frame p50={f_p50:.2f}ms p95={f_p95:.2f}ms p99={f_p99:.2f}ms | "
+        f"tree-update p50={t_p50:.2f}ms p95={t_p95:.2f}ms p99={t_p99:.2f}ms | "
+        f"gpu {info.get('gpu', '')} | driver {info.get('driver', '')}{d_info} | "
+        f"compositor {info.get('compositor', '')} | zed {info.get('zed_commit', '')}"
+    )
+    return True, summary_text
+
+
+def format_timing_lines(measurement, info):
+    """Formats TIMING summary lines matching Rust measurement_lines."""
+    d_info = f" {info['driver_info']}" if info.get("driver_info") else ""
+    frames = measurement["frames"]
+    n_min, n_max = measurement["nodes_min"], measurement["nodes_max"]
+    return [
+        f"TIMING frames {frames} nodes {n_min}..{n_max}",
+        (
+            f"TIMING frame_ns min {measurement['frame']['min']} "
+            f"p50 {measurement['frame']['p50']} "
+            f"p95 {measurement['frame']['p95']} "
+            f"p99 {measurement['frame']['p99']} "
+            f"max {measurement['frame']['max']} "
+            f"mean {measurement['frame']['mean']}"
+        ),
+        (
+            f"TIMING tree_update_ns min {measurement['tree_update']['min']} "
+            f"p50 {measurement['tree_update']['p50']} "
+            f"p95 {measurement['tree_update']['p95']} "
+            f"p99 {measurement['tree_update']['p99']} "
+            f"max {measurement['tree_update']['max']} "
+            f"mean {measurement['tree_update']['mean']}"
+        ),
+        (
+            f"TIMING gpu {info.get('gpu', '-')} | "
+            f"driver {info.get('driver', '-')}{d_info} | "
+            f"compositor {info.get('compositor', '-')} | "
+            f"zed {info.get('zed_commit', '-')}"
+        ),
+    ]
+
+
+def wait_child(proc, timeout):
+    """Waits up to `timeout` seconds for `proc` to exit; returns its code, or None if it did not."""
+    try:
+        return proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return None
+
+
+def run_timing_case(
+    binary,
+    env,
+    seeded,
+    timeout=120,
+    popen_fn=subprocess.Popen,
+    perf_bin=None,
+    perf_data=None,
+    select_fn=select.select,
+    read_fn=os.read,
+):
+    """Runs timing fixture for `seeded` count, collects GPU and FRAME lines until DONE."""
+    cmd = timing_argv(binary, seeded, perf_bin, perf_data)
+    proc = popen_fn(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        bufsize=0,
+        env=env,
+        start_new_session=True,
+    )
+    lines = []
+    deadline = time.monotonic() + timeout
+    line_buf = ""
+    try:
+        if proc.stdout:
+            fd = proc.stdout.fileno()
+            for _ in range(200000):
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    break
+                ready, _, _ = select_fn([proc.stdout], [], [], min(1.0, max(0.01, left)))
+                if ready:
+                    chunk = read_fn(fd, 4096)
+                    if not chunk:
+                        break
+                    line_buf += chunk.decode(errors="replace")
+                    while "\n" in line_buf:
+                        line, line_buf = line_buf.split("\n", 1)
+                        line = line.strip()
+                        if line.startswith("GPU ") or line.startswith("FRAME "):
+                            lines.append(line)
+                        elif line == "DONE":
+                            # The fixture quits on its own after DONE; waiting lets a wrapping
+                            # `perf record` finish writing its data before the group is killed.
+                            return wait_child(proc, DONE_EXIT_WAIT), lines
+                elif proc.poll() is not None:
+                    break
+        try:
+            code = proc.wait(timeout=2)
+        except Exception:
+            code = proc.poll()
+        return code, lines
+    finally:
+        teardown_process(proc)
+
+
+def judge_timing_case_result(name, is_positive, lines, gpu_info):
+    """Judges a timing case result for positive or negative expectation."""
+    ok, reason = judge_timing(lines, gpu_info)
+    if is_positive:
+        return ok, reason
+    if ok:
+        return False, f"unexpectedly accepted measurement for {name}"
+    if name == "timing/999-nodes":
+        if "too few nodes" in reason.lower():
+            return True, reason
+        return False, f"expected refusal 'too few nodes', got '{reason}'"
+    if name == "timing/adapter-inactive":
+        if "accessibility adapter inactive" in reason.lower():
+            return True, reason
+        return False, f"expected refusal 'accessibility adapter inactive', got '{reason}'"
+    return False, reason
+
+
+def write_timing_out(lines, gpu_info, timing_out):
+    """Writes FRAME lines and TIMING summary lines to timing_out destination."""
+    measurement, _ = evaluate_timing(lines, gpu_info)
+    if measurement is not None:
+        t_lines = format_timing_lines(measurement, gpu_info)
+        f_lines = [frame_line for frame_line in lines if frame_line.startswith("FRAME ")]
+        content = "\n".join(f_lines + t_lines) + "\n"
+        out_path = Path(timing_out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(content, encoding="utf-8")
+
+
+def handle_perf_report(perf_bin, perf_data, env, runner, perf_path):
+    """Processes perf report and prints allocation share note or skip note."""
+    if perf_bin is not None and perf_data is not None and perf_data.is_file():
+        rep_cmd = [
+            str(perf_bin),
+            "report",
+            "-i",
+            str(perf_data),
+            "--no-children",
+            "--sort",
+            "sym",
+            "--stdio",
+            "--percent-limit",
+            "0",
+        ]
+        code_rep, rep_out = runner(rep_cmd, env=env, timeout=PERF_REPORT_TIMEOUT)
+        share = allocator_share(rep_out) if code_rep == 0 else None
+        if share is not None:
+            sys.stdout.write(
+                f"NOTE timing/1000-nodes: allocator share {share:.1f} % "
+                "of sampled CPU in the fixture process (perf, all threads)\n"
+            )
+        else:
+            sys.stdout.write(
+                f"NOTE timing/1000-nodes: allocation share not measured: perf report exited "
+                f"{code_rep} or named no sampled symbol\n"
+            )
+    elif perf_path is None:
+        sys.stdout.write("SKIP: perf not installed; allocation share not measured\n")
+    else:
+        sys.stdout.write("NOTE timing/1000-nodes: allocation share not measured: no perf data\n")
+    sys.stdout.flush()
+
+
+def inactive_adapter_env(a11y_env, runtime_dir):
+    """Returns the a11y environment with the session bus pointed at a socket that does not exist.
+
+    An unset DBUS_SESSION_BUS_ADDRESS lets a D-Bus client fall back to a default address; a dead
+    path inside the gate's own runtime directory leaves AccessKit no bus to find, so the adapter
+    stays inactive and nothing reaches the operator's session.
+    """
+    env = dict(a11y_env)
+    env.pop("AT_SPI_BUS_ADDRESS", None)
+    base = Path(runtime_dir) if runtime_dir is not None else Path(env.get("XDG_RUNTIME_DIR", "."))
+    env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={host.target(base / 'no-session-bus')}"
+    return env
+
+
+def run_timing_cases(
+    shell_bin,
+    a11y_env,
+    kwin_ver,
+    zed_commit,
+    runner=run_child,
+    case_runner=run_timing_case,
+    perf_path=None,
+    runtime_dir=None,
+    timing_out=None,
+):
+    """Runs the 3 timing test cases and returns list of (name, passed, why)."""
+    results = []
+    for name, seeded, is_positive in TIMING_CASES:
+        if name == "timing/adapter-inactive":
+            env = inactive_adapter_env(a11y_env, runtime_dir)
+        else:
+            env = a11y_env
+
+        perf_bin = perf_path if (is_positive and perf_path and runtime_dir) else None
+        perf_data = (runtime_dir / "timing.perf.data") if perf_bin else None
+
+        _code, lines = case_runner(
+            shell_bin,
+            env,
+            seeded,
+            perf_bin=perf_bin,
+            perf_data=perf_data,
+        )
+
+        gpu_info = None
+        for line in lines:
+            if line.startswith("GPU "):
+                gpu_info = parse_gpu_line(line)
+                break
+        if gpu_info is None:
+            gpu_info = {"gpu": "", "driver": "", "driver_info": "", "software": False}
+        gpu_info["compositor"] = f"KWin {kwin_ver.removeprefix('kwin ')}"
+        gpu_info["zed_commit"] = zed_commit
+
+        passed, why = judge_timing_case_result(name, is_positive, lines, gpu_info)
+        results.append((name, passed, why))
+
+        if is_positive and passed:
+            if timing_out is not None:
+                write_timing_out(lines, gpu_info, timing_out)
+            handle_perf_report(perf_bin, perf_data, env, runner, perf_path)
+    return results
+
+
 def run_all_cases(
     binary,
     kwin_sock,
@@ -1037,8 +1569,15 @@ def run_all_cases(
     ring_readback_bin=None,
     ring_env=None,
     ring_case_runner=run_ring_case,
+    timing_bin=None,
+    timing_case_runner=run_timing_case,
+    kwin_ver=None,
+    zed_commit=None,
+    perf_path=None,
+    runtime_dir=None,
+    timing_out=None,
 ):
-    """Runs all test cases (5 surface + 6 AT-SPI + 8 focus-ring)."""
+    """Runs all test cases (5 surface + 6 AT-SPI + 8 focus-ring + 3 timing)."""
     results = run_surface_cases(binary, kwin_sock, hide_sock, drop_sock, runner=runner)
     if readback_bin is not None and a11y_env is not None:
         atspi_results = run_atspi_cases(
@@ -1058,6 +1597,20 @@ def run_all_cases(
             case_runner=ring_case_runner,
         )
         results.extend(ring_results)
+    t_bin = timing_bin if timing_bin is not None else binary
+    if a11y_env is not None:
+        timing_results = run_timing_cases(
+            t_bin,
+            a11y_env,
+            kwin_ver or "",
+            zed_commit or "",
+            runner=runner,
+            case_runner=timing_case_runner,
+            perf_path=perf_path,
+            runtime_dir=runtime_dir,
+            timing_out=timing_out,
+        )
+        results.extend(timing_results)
     return results
 
 
@@ -1106,8 +1659,48 @@ def report_run_summary(case_results, version, versions):
     return 0 if result == "RESULT pass" else 1
 
 
-def main():
+def parse_timing_out(argv):
+    """Returns (path or None, ok); ok is False when --timing-out lacks its path."""
+    if "--timing-out" not in argv:
+        return None, True
+    idx = argv.index("--timing-out")
+    if idx + 1 < len(argv):
+        return Path(argv[idx + 1]), True
+    return None, False
+
+
+def start_services(runtime_dir, procs):
+    """Starts the session bus, KWin, both filters and the a11y bus; appends each to procs."""
+    config_file = write_no_activation_config(runtime_dir)
+    daemon_proc, session_addr = start_dbus_daemon(runtime_dir, config_file=config_file)
+    procs.append(daemon_proc)
+
+    kwin_proc, kwin_sock = start_kwin(runtime_dir, config_file=config_file, dbus_addr=session_addr)
+    procs.append(kwin_proc)
+
+    hide_sock = runtime_dir / "wayland-filter-hide"
+    procs.append(start_filter(hide_sock, kwin_sock, "hide-layer-shell"))
+
+    drop_sock = runtime_dir / "wayland-filter-drop"
+    procs.append(start_filter(drop_sock, kwin_sock, "drop-layer-configure"))
+
+    a11y_procs, a11y_env = start_a11y_bus(
+        runtime_dir, config_file=config_file, session_bus=session_addr
+    )
+    procs.extend(a11y_procs)
+    a11y_env["WAYLAND_DISPLAY"] = str(kwin_sock)
+    return kwin_sock, hide_sock, drop_sock, a11y_env
+
+
+def main(argv=None):
     """Main verification harness driver."""
+    if argv is None:
+        argv = sys.argv[1:]
+    timing_out, ok = parse_timing_out(argv)
+    if not ok:
+        sys.stdout.write("RESULT error: --timing-out requires a path argument\n")
+        return 1
+
     reasons = capability_reasons()
     if reasons:
         sys.stdout.write(f"SKIP: {'; '.join(reasons)}; the native shell gate did not run.\n")
@@ -1120,34 +1713,18 @@ def main():
 
     try:
         shell_bin, readback_bin, ring_readback_bin = build_shell_binaries()
+        nontiming_bin = runtime_dir / f"{BINARY}-nontiming"
+        shutil.copy2(shell_bin, nontiming_bin)
+        timing_bin = build_timing_shell_binary()
         version = kwin_version()
         versions = read_versions()
+        zed_commit = read_zed_commit()
+        perf_path = shutil.which("perf")
 
-        config_file = write_no_activation_config(runtime_dir)
-        daemon_proc, session_addr = start_dbus_daemon(runtime_dir, config_file=config_file)
-        procs.append(daemon_proc)
-
-        kwin_proc, kwin_sock = start_kwin(
-            runtime_dir, config_file=config_file, dbus_addr=session_addr
-        )
-        procs.append(kwin_proc)
-
-        hide_sock = runtime_dir / "wayland-filter-hide"
-        hide_proc = start_filter(hide_sock, kwin_sock, "hide-layer-shell")
-        procs.append(hide_proc)
-
-        drop_sock = runtime_dir / "wayland-filter-drop"
-        drop_proc = start_filter(drop_sock, kwin_sock, "drop-layer-configure")
-        procs.append(drop_proc)
-
-        a11y_procs, a11y_env = start_a11y_bus(
-            runtime_dir, config_file=config_file, session_bus=session_addr
-        )
-        procs.extend(a11y_procs)
-        a11y_env["WAYLAND_DISPLAY"] = str(kwin_sock)
+        kwin_sock, hide_sock, drop_sock, a11y_env = start_services(runtime_dir, procs)
 
         case_results = run_all_cases(
-            shell_bin,
+            nontiming_bin,
             kwin_sock,
             hide_sock,
             drop_sock,
@@ -1155,6 +1732,12 @@ def main():
             a11y_env=a11y_env,
             ring_readback_bin=ring_readback_bin,
             ring_env=a11y_env,
+            timing_bin=timing_bin,
+            kwin_ver=version,
+            zed_commit=zed_commit,
+            perf_path=perf_path,
+            runtime_dir=runtime_dir,
+            timing_out=timing_out,
         )
         return report_run_summary(case_results, version, versions)
     except GateError as err:
