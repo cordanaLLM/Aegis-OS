@@ -455,9 +455,22 @@ input `build/definitions/toolchain.pin.json` pins exactly:
 | `mkosi` | `27.1-1` | `mkosi summary` for `make verify-mkosi` |
 | `python` | `3.14.7-1` | runs the two gate scripts |
 | `dosfstools` | `4.2-5` | `Format=vfat` in `build/repart.d/00-esp.conf` |
+| `mtools` | `1:4.0.49-1` | `mcopy`, which `systemd-repart` runs to copy `CopyFiles=` into the vfat ESP of `build/repart.d/00-esp.conf` |
 | `erofs-utils` | `1.9.4-1` | `Format=erofs` in `build/repart.d/10-root-a.conf` |
 | `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
 | `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
+
+Without `mtools`, `systemd-repart` formats the ESP and then stops with
+`Could not find mcopy binary.` as soon as the tree it copies holds a file. Before
+2026-10-18 neither image carried it, and the repart cases passed only because
+their scratch root had nothing under `/boot` or `/efi`, so an ESP with no UKI
+went unnoticed until Imago run 39090040772 booted one. The scratch root now
+holds a PE-headed `EFI/BOOT/BOOTX64.EFI`, and the repart gate reads each layout
+case's image with `build/mkosi.postoutput.d/image_layout.py`: `repart/positive`
+must hold the UKI and a root, and `repart/layout-planted-empty-esp`, the
+committed definitions without the two `CopyFiles=` lines that run lacked, must
+be refused as missing the UKI. `LayoutCaseTests` in
+`tools/test_systemd_definitions.py` covers the cases.
 
 `make definitions-fetch` is the one networked step. It pulls the base image,
 installs the packages from the snapshot, and removes the image again unless
@@ -530,6 +543,7 @@ release itself, inside a second local image that
 | `systemd` | `261.3-1` | `systemd-repart` and `systemd-sysupdate` at `SYSTEMD_FLOOR`, the reference profile's release |
 | `python` | `3.14.7-1` | runs the gate script |
 | `dosfstools` | `4.2-5` | `Format=vfat` in `build/repart.d/00-esp.conf` |
+| `mtools` | `1:4.0.49-1` | `mcopy`, which `systemd-repart` runs to copy `CopyFiles=` into the vfat ESP of `build/repart.d/00-esp.conf` |
 | `erofs-utils` | `1.9.4-1` | `Format=erofs` in `build/repart.d/10-root-a.conf` |
 | `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
 | `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
