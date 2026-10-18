@@ -35,7 +35,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS_DIR = Path(__file__).resolve().parent
@@ -165,12 +165,15 @@ def has_unix_fd_passing():
 
 
 def find_atspi_program(name, dirs=ATSPI_DIRS, exists=os.path.exists):
-    """Finds an at-spi program in system directories or PATH."""
+    """Finds an at-spi program on PATH or in the distributions' libexec directories.
+
+    The directories are Linux paths, so they are joined as POSIX on every host (HISS-21).
+    """
     w = shutil.which(name)
     if w is not None:
         return Path(w)
     for d in dirs:
-        candidate = Path(d) / name
+        candidate = PurePosixPath(d) / name
         if exists(str(candidate)):
             return candidate
     return None

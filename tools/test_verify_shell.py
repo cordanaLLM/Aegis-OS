@@ -216,7 +216,7 @@ class TestVerifyShellPositive(unittest.TestCase):
     def test_find_atspi_program_in_dirs(self):
         exists = lambda p: p == "/usr/lib/at-spi-bus-launcher"  # noqa: E731
         found = find_atspi_program("at-spi-bus-launcher", dirs=("/usr/lib",), exists=exists)
-        self.assertEqual(found, Path("/usr/lib/at-spi-bus-launcher"))
+        self.assertEqual(str(found), "/usr/lib/at-spi-bus-launcher")
 
     def test_read_versions_returns_versions(self):
         def fake_runner(argv, timeout):
