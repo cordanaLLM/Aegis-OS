@@ -17,9 +17,10 @@ Usage:
   from a ``gh issue list --json number,title,body`` dump instead.
 - ``python3 tools/render_epics.py --apply`` rewrites each differing issue.
 
-``.github/workflows/roadmap-epics.yml`` runs ``--check`` after the roadmap
-changes on main and once a day. ``tools/test_render_epics.py`` covers the
-render and each refusal, a planted stale rank among them.
+``.github/workflows/roadmap-epics.yml`` runs ``--apply`` and then ``--check``
+after the roadmap changes on main, and ``--check`` alone once a day.
+``tools/test_render_epics.py`` covers the render, each refusal (a planted stale
+rank among them), the apply path and the workflow's job split.
 """
 
 import argparse
