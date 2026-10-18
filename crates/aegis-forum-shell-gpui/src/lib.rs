@@ -15,11 +15,13 @@
 //! | [`layer`] | the P17 `MOUNT_SHELL_CANVAS` parameters mapped onto gpui's `LayerShellOptions` |
 //! | [`readback`] | live AT-SPI reader connecting over D-Bus to inspect and interact with the tree |
 //! | [`surface`] | maps the surface on a compositor and decides the first configure outcome |
+//! | [`theme`] | the generated Concordia token constants as gpui types, the crate's only colours |
 
 pub mod fixture;
 pub mod judge;
 pub mod layer;
 pub mod readback;
 pub mod surface;
+pub mod theme;
 
 pub use layer::{LayerMapError, layer_shell_options};

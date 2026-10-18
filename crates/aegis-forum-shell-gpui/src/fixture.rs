@@ -19,11 +19,11 @@ use gpui::{
     GlobalElementId, InspectorElementId, InteractiveElement, IntoElement, LayoutId, ParentElement,
     Pixels, Render, Role, Size, StatefulInteractiveElement, Style, Styled, Window,
     WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, accesskit, div, point, px,
-    rgb,
 };
 
 use crate::layer::{LayerMapError, layer_shell_options};
 use crate::surface::{Outcome, classify_open_error, viewport};
+use crate::theme;
 
 /// Total number of seeded items in the fixture list.
 pub const SEEDED_NODES: usize = 1000;
@@ -300,7 +300,7 @@ impl Render for FixtureView {
 
         div()
             .size_full()
-            .bg(rgb(0x0020_4060))
+            .bg(theme::surface())
             .child(button)
             .child(list)
             .child(shown_panel)

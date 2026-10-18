@@ -16,6 +16,7 @@ publish = false
 path = "src/lib.rs"
 
 [dependencies]
+aegis-concordia = { path = "../aegis-concordia" }
 aegis-forum-shell = { path = "../aegis-forum-shell" }
 aegis-scaena = { path = "../aegis-scaena" }
 async-io.workspace = true

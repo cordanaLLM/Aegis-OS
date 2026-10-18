@@ -189,6 +189,18 @@ window, the button, the list, 1,000 rows and the shown panel. The hidden
 subtree was absent. The `hidden-shown` variant read 1,008 nodes, three more:
 the panel and its two children. The `culled` variant read 15 nodes.
 
+## The theme
+
+The shell paints only with the Concordia tokens (E28-5, D05, D101).
+`tools/concordia_theme.py` generates `crates/aegis-concordia/src/tokens.rs`
+from `ui/concordia-tokens/concordia-tokens.css`. The shell's
+`src/theme.rs` turns those constants into gpui colours, and it is the only
+file in the crate that builds one. `tests/theme.rs` runs inside
+`make verify-all` and needs no display. It reads every source file of the
+crate and fails on a call to `rgb(`, `rgba(`, `hsl(` or `hsla(` anywhere
+outside `src/theme.rs`. Before this change, it named the two hard-coded
+backgrounds in `src/surface.rs` and `src/fixture.rs`.
+
 ## What is not claimed
 
 - That P04 serves `zwlr_layer_shell_v1`. The compositor here is KWin.
