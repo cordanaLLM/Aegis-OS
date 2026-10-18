@@ -11,6 +11,9 @@ and one locally tested request/result pair.
 | :--- | :--- |
 | `repart.d/` | the four build-time partition drop-ins: ESP, root slots A and B, and the dm-verity hash partition |
 | `mkosi.extra/usr/lib/repart.d/20-var.conf` | the TPM2-sealed `/var` partition drop-in shipped in the image for first boot |
+| `mkosi.extra/usr/libexec/aegis/aegis-boot-report.sh` | the in-guest read-back script shipped in the image for the M24 boot harness |
+| `mkosi.extra/usr/lib/systemd/system/aegis-boot-report.service` | the oneshot read-back unit conditioned on the harness nonce credential |
+| `mkosi.extra/usr/lib/systemd/system-preset/50-aegis-boot-report.preset` | the systemd preset enabling the boot-report service in the image |
 | `sysupdate.d/10-root.transfer` | the dual-slot A/B root transfer |
 
 Each file cites the private source it was derived from by export id and sha256

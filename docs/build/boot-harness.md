@@ -32,7 +32,11 @@ closes no image, boot, hardware or release gate, and it is not evidence for M11.
 | Path | Role |
 | :--- | :--- |
 | `build/boot/artifact.pin.json` | the pin: compose URL, sha256, size, producer version and floor, the signed CHECKSUM and its key fingerprint, the recorded timeout |
-| `tools/guest/aegis-boot-report.sh` | the in-guest read-back, handed to the guest as NoCloud user-data |
+| `tools/guest/aegis-boot-report.sh` | the in-guest read-back, handed to the upstream guest as NoCloud user-data |
+| `build/mkosi.extra/usr/lib/systemd/system/aegis-boot-report.service` | the same read-back in the Aegis image, run only when the harness passes the nonce credential (D114) |
+| `build/mkosi.extra/usr/libexec/aegis/aegis-boot-report.sh` | the script that unit runs; its report block is the one above, byte for byte |
+| `build/mkosi.extra/usr/lib/systemd/system-preset/50-aegis-boot-report.preset` | enables the unit when mkosi runs `systemctl preset-all` |
+| `tools/boot_report_unit.py` | checks the unit, the preset and the shared report block, inside `make verify-all` |
 | `tools/verify_boot_harness.py` | the gate, run as `make verify-boot` |
 | `tools/test_boot_harness.py` | the half of it that runs inside `make verify-all` |
 
@@ -372,9 +376,9 @@ return". This harness proves that for the upstream kind only:
   `SHA256SUMS` against the exact certificate identity, OIDC issuer, GitHub
   workflow SHA and workflow ref, and parses coreutils `SHA256SUMS` records.
   `load_pin` refuses any other scheme, and unit tests hold that refusal.
-  Wiring `cosign-keyless-sha256sums` into `verify_artifact` and `fetch_pinned`,
-  and the raw backing, version, file and boot shape, come with the record
-  that amends E11-2, not with this change.
+  Since D114, `fetch_pinned` and `verify_artifact` also run the cosign
+  scheme, and the boot path branches on it; the section
+  [The Imago path](#the-imago-path-d114) describes that branch.
 - The Imago return's signature form is not pinned. Imago's proposed result
   schema, `imago.p01.product-result.v1` (its ADR-0020), carries an
   `image-digest` and a `signature-ref` string. It was to be agreed in M09;
@@ -392,6 +396,46 @@ cases, and the `gpg-clearsigned-checksum` pin recorded here must keep verifying
 unchanged. Adding a scheme changes the harness, which M11's E11-2 and sixth
 criterion forbade; both now except that one scheme and still fail M11 on any
 other change. Both milestones disclose their edits in `planning/roadmap.json`.
+
+## The Imago path (D114)
+
+Imago's `aegis-build` workflow returns a raw disk, `aegis-os.raw`, with no
+`MAJOR-MINOR.RESPIN` version and no cloud-init. Decision D114 lets the harness
+branch on the pin's signature scheme: a `gpg-clearsigned-checksum` pin keeps
+the upstream path above, unchanged, and a `cosign-keyless-sha256sums` pin takes
+this one. Every step is in `tools/verify_boot_harness.py`, and the cases are in
+`tools/test_boot_harness.py`.
+
+1. **Version and file.** The producer version is the request's correlation-id;
+   its trailing four-digit ordinal is compared against a floor with the same
+   stem, and the file is `aegis-os.<format>` (`pin_value_problems`).
+2. **Verification.** `fetch_pinned` also fetches the cosign bundle and
+   `boot-evidence.json` from the pin's `boot-evidence-url`. `verify_artifact`
+   checks the bundle against `SHA256SUMS` and then refuses at three stages:
+   the artifact or evidence digest does not match its signed `SHA256SUMS`
+   line (checksum), the evidence's `correlation-id` is not the pin version
+   (version), or that version is below the floor (floor).
+3. **Backing.** The qcow2 overlay is laid over the pin's format, so a raw
+   disk is attached with `-F raw`. Any format other than `raw` or `qcow2`
+   fails.
+4. **Nonce.** No cloud-init seed is written. The nonce reaches the guest as the
+   system credential `aegis.boot-report.nonce` over SMBIOS type 11
+   (`-smbios type=11,value=io.systemd.credential:aegis.boot-report.nonce=<nonce>`,
+   the form systemd 262 documents in `docs/CREDENTIALS.md`).
+5. **Report.** In the image, `aegis-boot-report.service` carries
+   `ConditionCredential=` and `ImportCredential=` for that name, so it runs
+   only on a harness boot. Its script checks the nonce's shape and writes the
+   same AEGIS-M24 block to `/dev/ttyS1` that the upstream guest writes, and
+   the harness parses it the same way. `tools/boot_report_unit.py` fails the
+   gate when the two report blocks differ, when the unit names another
+   credential, or when the unit's `TimeoutStartSec=` exceeds the harness's
+   report deadline.
+6. **Success.** Boot success is the pin's `boot.success-marker` regex on the
+   console instead of the login prompt.
+
+No Imago artifact has booted through this path yet. Until one does, this
+section describes code and its unit tests, not boot evidence. If that boot
+shows the guest without the credential, D114 is amended.
 
 ## Scope, and what a pass here does not mean
 

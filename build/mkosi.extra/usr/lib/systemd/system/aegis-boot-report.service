@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+
+[Unit]
+Description=Aegis boot harness read-back
+ConditionCredential=aegis.boot-report.nonce
+After=systemd-tpm2-setup.service
+
+[Service]
+Type=oneshot
+ImportCredential=aegis.boot-report.nonce
+ExecStart=/bin/sh /usr/libexec/aegis/aegis-boot-report.sh
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target
