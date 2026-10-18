@@ -32,6 +32,7 @@ KEYS = (
     "YAMLLINT_VERSION",
     "FLAKE8_VERSION",
     "BLACK_VERSION",
+    "SHFMT_VERSION",
 )
 # Every program the verify-lints recipes start; shellcheck has no pin and
 # comes from the host (docs/roadmap/toolchain-admission.md, not yet admitted).
