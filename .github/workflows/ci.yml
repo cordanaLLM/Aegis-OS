@@ -66,11 +66,11 @@ jobs:
     # 2026-10-13. By 2026-10-18 the 40 latest successful runs on main took 494
     # to 821 s: the crate gate's cold cargo fetch, build, test and clippy took
     # 260 to 400 s of that, after the gpui toolkit (M28) joined the workspace.
-    # The engine audit wants 1.25 x the slowest of the three latest runs
-    # within this limit, so the job restores the cargo cache saved below
-    # instead of raising the limit; tools/verify_preparation.py holds every
-    # job to 15 minutes.
-    timeout-minutes: 15
+    # The engine audit wants this limit at 1.25 x the slowest of the three
+    # latest runs, and 1.25 x 821 s is 17.1 minutes, so the limit is 18, the
+    # measured ceiling tools/verify_preparation.py grants this workflow alone;
+    # every other job stays at 15. The cargo cache below shortens the run.
+    timeout-minutes: 18
     # A CI build is never rebuilt incrementally, and line tables keep test
     # backtraces readable at a fraction of full debug info's build time and
     # cache size.
