@@ -112,19 +112,19 @@ class DogfoodExportTests(unittest.TestCase):
             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         )
 
-    def test_planted_hostname_zeus_extra_key(self) -> None:
+    def test_planted_hostname_extra_key(self) -> None:
         """Negative: planted hostname in extra top-level key is refused."""
-        bad = dict(self.valid_full_record, zeus="planted")
+        bad = dict(self.valid_full_record, hostalpha="planted")
         with self.assertRaises(dogfood_export.Refused) as ctx:
-            dogfood_export.export(bad, self.root, frozenset({"zeus"}))
-        self.assertTrue(any("zeus" in r for r in ctx.exception.reasons))
+            dogfood_export.export(bad, self.root, frozenset({"hostalpha"}))
+        self.assertTrue(any("hostalpha" in r for r in ctx.exception.reasons))
 
-    def test_planted_hostname_zeus_measurements_key(self) -> None:
+    def test_planted_hostname_measurements_key(self) -> None:
         """Negative: planted hostname as measurements key is refused."""
-        bad = dict(self.valid_full_record, measurements={"zeus": 42.0})
+        bad = dict(self.valid_full_record, measurements={"hostalpha": 42.0})
         with self.assertRaises(dogfood_export.Refused) as ctx:
-            dogfood_export.export(bad, self.root, frozenset({"zeus"}))
-        self.assertTrue(any("zeus" in r for r in ctx.exception.reasons))
+            dogfood_export.export(bad, self.root, frozenset({"hostalpha"}))
+        self.assertTrue(any("hostalpha" in r for r in ctx.exception.reasons))
 
     def test_gethostname_as_kernel_suffix(self) -> None:
         """Negative: local hostname in kernel_release trips deny scan and allow-list."""
@@ -264,12 +264,12 @@ class DogfoodExportTests(unittest.TestCase):
 
     def test_denied_host_name_not_echoed(self) -> None:
         """Negative: a refusal names the rule, never the private deny-hosts entry."""
-        record = dict(self.valid_full_record, zeus="x")
+        record = dict(self.valid_full_record, hostalpha="x")
         with self.assertRaises(dogfood_export.Refused) as ctx:
-            dogfood_export.export(record, self.root, frozenset({"zeus"}))
+            dogfood_export.export(record, self.root, frozenset({"hostalpha"}))
         self.assertTrue(any("denied host" in r for r in ctx.exception.reasons))
         deny_reasons = [r for r in ctx.exception.reasons if r.startswith("deny_scan")]
-        self.assertFalse(any("zeus" in r.lower() for r in deny_reasons))
+        self.assertFalse(any("hostalpha" in r.lower() for r in deny_reasons))
 
     def test_unreadable_host_name_refuses(self) -> None:
         """Negative: without the host name the scan is incomplete, so the record is refused."""
@@ -300,11 +300,11 @@ class DogfoodExportTests(unittest.TestCase):
         """Boundary: deny-hosts loader ignores comments, inline comments and blanks."""
         deny_file = self.root / "deny.txt"
         deny_file.write_text(
-            "# Header comment\n\nzeus # main workstation\n   \n   apollo   \n# Trailer\n",
+            "# Header comment\n\nhostalpha # a planted entry\n   \n   apollo   \n# Trailer\n",
             encoding="utf-8",
         )
         hosts = dogfood_export.load_deny_hosts(deny_file)
-        self.assertEqual(hosts, frozenset({"zeus", "apollo"}))
+        self.assertEqual(hosts, frozenset({"hostalpha", "apollo"}))
 
     def test_boundary_leap_year_dates(self) -> None:
         """Boundary: non-leap 2026-02-29 is refused; leap 2028-02-29 is accepted."""

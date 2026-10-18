@@ -105,9 +105,9 @@ v2.6.3 only because `~/go/bin` comes first on the developer account's `PATH`.
 | P02 | Hardware watchdog timer | partial | ls /sys/class/watchdog -> empty and no /dev/watchdog; /proc/cmdline contains 'nowatchdog'; |
 | P02 | NVRAM variable support for A/B slot priority swap | satisfied | grep efivarfs /proc/mounts -> mounted rw; bootctl reports UEFI 2.90 firmware; BootOrder/Lo |
 | P03 | IOMMU (Intel VT-d / AMD-Vi) enabling VFIO group isolation and IOMMU do | satisfied | ls /sys/kernel/iommu_groups wc -l -> 38; AMD-Vi ivhd0; modinfo vfio_pci/vfio_iommu_type1 |
-| P03 | NVMe PCIe SSD controller as DMA source | partial | 3 controllers present (990 PRO 2TB, 960 EVO 1TB, 980 PRO 1TB) so ordinary DMA is fine, but |
+| P03 | NVMe PCIe SSD controller as DMA source | partial | NVMe controllers present, so ordinary DMA is fine, but |
 | P03 | GPU (NVIDIA/AMD) with P2P DMA / CUDA GPUDirect support as DMA target | missing | ls -d /sys/bus/pci/devices/*/p2pdma -> no matches (no p2pmem provider anywhere despite CON |
-| P03 | PCIe BAR mapping, page-aligned; Resizable BAR / SmartAccess Memory for | satisfied | sudo lspci -vvs 06:00.0 -> 'Physical Resizable BAR', BAR1 current size 32GB (supported 64M |
+| P03 | PCIe BAR mapping, page-aligned; Resizable BAR / SmartAccess Memory for | satisfied | sudo lspci -d 10de: -vv -> 'Physical Resizable BAR', BAR1 current size 32GB (supported 64M |
 | P03 | TPM2 | satisfied | /sys/class/tpm/tpm0 version 2 |
 | P04 | GPU (NVIDIA or AMD) for the wlroots rendering backend | satisfied | 3 DRM cards: i915 card0, nvidia card1, amdgpu card2 (lspci -nnk). Note D08/ADR-0001 supers |
 | P04 | cgroups v2 system.slice + Seccomp BPF isolation for the compositor pro | satisfied | stat -fc %T /sys/fs/cgroup -> cgroup2fs; cgroup.controllers -> cpuset cpu io memory hugetl |
@@ -127,7 +127,7 @@ v2.6.3 only because `~/go/bin` comes first on the developer account's `PATH`.
 | P08 | Memory locking capability (RLIMIT_MEMLOCK = infinity) so real-time aud | partial | ulimit -l -> 8192 (KB) for the current session. The capability exists (CAP_IPC_LOCK is in |
 | P09 | GPU with PCIe P2PDMA / CUDA GPUDirect support | missing | Same evidence as P03: no /sys/bus/pci/devices/*/p2pdma entries, nvidia_fs module not found |
 | P09 | NVMe PCIe SSD | satisfied | ls /sys/class/nvme -> nvme0/1/2 (Samsung 990 PRO 2TB, 960 EVO 1TB, 980 PRO 1TB) |
-| P09 | Sufficient VRAM/host-pinned DRAM to hold swapped SLM expert weights | satisfied | nvidia-smi -> 24564 MiB on the RTX 4090, plus 60.5 GiB system RAM; BAR1 resized to 32 GB e |
+| P09 | Sufficient VRAM/host-pinned DRAM to hold swapped SLM expert weights | satisfied | nvidia-smi -> 24564 MiB on the RTX 4090, plus host RAM recorded in the private profile; BAR1 resized to 32 GB e |
 | P09 | Power-metering capability to enforce/observe the 20.0W BIOMIMETIC_WATT | partial | RAPL package-0 and core zones are live (delta 241073516 uJ over 2 s), but scope is socket- |
 | P10 | KVM virtualization extensions on the host CPU for Firecracker microVMs | satisfied | /dev/kvm present mode 0666, kvm_amd loaded, nested=1. Firecracker itself is absent but is |
 | P10 | GPU/NPU accelerator when is_gpu_enabled is set on a MicroVmInstance | partial | Three GPUs present with clean IOMMU groups (17, 20, 31) and vfio-pci available, so passthr |
@@ -140,7 +140,7 @@ v2.6.3 only because `~/go/bin` comes first on the developer account's `PATH`.
 | P13 | ACPI power interfaces as a fallback/alternative to RAPL | missing | No ACPI power_meter (ACPI000D) device; hwmon names are amdgpu, asus, asusec, enp15s0, i915 |
 | P13 | cgroups v2 kernel support for per-slice attribution (system.slice/app. | satisfied | stat -fc %T /sys/fs/cgroup -> cgroup2fs; controllers include cpu, cpuset, memory, io for a |
 | P14 | (no hardware_requirements entries; needs_hardware false) | satisfied | jq '.components[] select(.id=="P14") .hardware_requirements' -> empty; z3 is present a |
-| P15 | NVMe SSD with PCIe BAR / memory-mapped DMA path (P03 Vulcan dependency | partial | 3 NVMe controllers present and BAR resources readable via /sys/bus/pci/devices/*/resource, |
+| P15 | NVMe SSD with PCIe BAR / memory-mapped DMA path (P03 Vulcan dependency | partial | NVMe controllers present and BAR resources readable via /sys/bus/pci/devices/*/resource, |
 | P15 | GPU with VA-API or NVDEC hardware decode support for the zero-copy vid | satisfied | Verified by running vainfo per render node: Intel iHD 26.2.4 on renderD129 with VLD for MP |
 | P15 | Wayland compositor with wlr-layer-shell protocol support for pinned Pi | satisfied (host compositor, D79) | wayland-info -i zwlr_layer_shell_v1 -> version 5 from the host session's KDE KWin 6.7.5 (2026-09-28); development evidence only, and P04 serves no Wayland protocol |
 | P15 | GPU scheduler exposing drm_sched priority tiers so Lictor can guarante | partial | Kernel 7.2.4 with amdgpu/i915/xe on drm_sched (DRM 3.64 reported by radeonsi) satisfies th |

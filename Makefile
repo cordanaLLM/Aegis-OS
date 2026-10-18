@@ -24,6 +24,7 @@ verify-all:
 	python3 tools/verify_unsafe_home.py
 	python3 tools/verify_crate_pins.py
 	python3 tools/verify_recursion.py
+	python3 tools/verify_public_host.py
 	$(MAKE) --no-print-directory verify-systemd
 	$(MAKE) --no-print-directory verify-mkosi
 	$(MAKE) --no-print-directory verify-a11y

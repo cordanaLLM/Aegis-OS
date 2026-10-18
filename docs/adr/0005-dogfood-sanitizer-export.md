@@ -3,7 +3,7 @@
 
 - **Status**: Accepted
 - **Date**: 2026-10-17
-- **Authors**: @lusoris (decision, paraphrased in the controller ledger as aegis-os-osbound-homezeus-changed-20261017-correction)
+- **Authors**: @lusoris (decision, paraphrased in the private controller ledger, 2026-10-17)
 
 ## Context
 
