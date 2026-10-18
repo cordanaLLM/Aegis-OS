@@ -20,9 +20,34 @@ name = "aegis-vulcan-gpu"
 path = "src/bin/aegis-vulcan-gpu.rs"
 
 [dependencies]
+rustix = { workspace = true, features = ["fs", "mm", "param"] }
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 
-[lints]
-workspace = true
+# aegis-os-m25-unsafe-home: the workspace lints restated with one change,
+# unsafe_code relaxed from forbid to deny; tools/verify_unsafe_home.py and
+# tests/manifest_hygiene.rs hold the tables equal to the root otherwise.
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "deny"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+arithmetic_side_effects = "deny"
+cognitive_complexity = "deny"
+dbg_macro = "deny"
+exit = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+panic = "deny"
+print_stderr = "deny"
+print_stdout = "deny"
+todo = "deny"
+too_many_lines = "deny"
+undocumented_unsafe_blocks = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+unwrap_in_result = "deny"
+unwrap_used = "deny"

@@ -233,7 +233,7 @@
         }
       ],
       "cut": {
-        "class": "standalone",
+        "class": "core-and-adapter",
         "parts": [
           {
             "path": "crates/aegis-vulcan",
@@ -241,7 +241,7 @@
           },
           {
             "path": "crates/aegis-vulcan-gpu",
-            "ties": "os-free"
+            "ties": "os-bound"
           }
         ]
       },

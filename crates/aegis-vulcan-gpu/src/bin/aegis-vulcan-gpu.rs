@@ -5,14 +5,16 @@
 //!
 //! Usage:
 //!   `aegis-vulcan-gpu record [--sysfs ROOT] [--dev ROOT] [--json PATH]`
+//!   `aegis-vulcan-gpu share [--sysfs ROOT] [--dev ROOT]`
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use aegis_vulcan_gpu::run_record;
+use aegis_vulcan_gpu::{run_record, run_share};
 
 struct CliConfig {
+    share: bool,
     sysfs: PathBuf,
     dev: PathBuf,
     json_out: Option<PathBuf>,
@@ -30,18 +32,22 @@ fn main() -> ExitCode {
         }
     };
 
-    execute_record(&config, &mut out)
+    if config.share {
+        execute_share(&config, &mut out)
+    } else {
+        execute_record(&config, &mut out)
+    }
 }
 
 fn parse_args() -> Result<CliConfig, String> {
     let mut args = std::env::args().skip(1);
-    let usage = "usage: aegis-vulcan-gpu record [--sysfs ROOT] [--dev ROOT] [--json PATH]";
-    let Some(cmd) = args.next() else {
-        return Err(usage.to_owned());
+    let usage = "usage: aegis-vulcan-gpu record [--sysfs ROOT] [--dev ROOT] [--json PATH]\n       \
+                 aegis-vulcan-gpu share [--sysfs ROOT] [--dev ROOT]";
+    let share = match args.next().as_deref() {
+        Some("record") => false,
+        Some("share") => true,
+        _ => return Err(usage.to_owned()),
     };
-    if cmd != "record" {
-        return Err(usage.to_owned());
-    }
 
     let mut sysfs = PathBuf::from("/sys");
     let mut dev = PathBuf::from("/dev");
@@ -61,7 +67,7 @@ fn parse_args() -> Result<CliConfig, String> {
                     .ok_or_else(|| "error: --dev requires a path argument".to_owned())?;
                 dev = PathBuf::from(val);
             }
-            "--json" => {
+            "--json" if !share => {
                 let val = args
                     .next()
                     .ok_or_else(|| "error: --json requires a path argument".to_owned())?;
@@ -72,6 +78,7 @@ fn parse_args() -> Result<CliConfig, String> {
     }
 
     Ok(CliConfig {
+        share,
         sysfs,
         dev,
         json_out,
@@ -95,6 +102,25 @@ fn execute_record(config: &CliConfig, out: &mut std::io::StdoutLock<'_>) -> Exit
                 ExitCode::SUCCESS
             } else {
                 ExitCode::from(1)
+            }
+        }
+        Err(err) => {
+            let _ = writeln!(out, "FAIL: {err}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+fn execute_share(config: &CliConfig, out: &mut std::io::StdoutLock<'_>) -> ExitCode {
+    match run_share(&config.sysfs, &config.dev) {
+        Ok(run) => {
+            for line in &run.lines {
+                let _ = writeln!(out, "{line}");
+            }
+            if run.failed {
+                ExitCode::from(1)
+            } else {
+                ExitCode::SUCCESS
             }
         }
         Err(err) => {

@@ -21,6 +21,7 @@ verify-all:
 	python3 tools/verify_counterparts.py
 	python3 tools/verify_cut_classes.py
 	python3 tools/verify_deviations.py
+	python3 tools/verify_unsafe_home.py
 	python3 tools/verify_crate_pins.py
 	python3 tools/verify_recursion.py
 	$(MAKE) --no-print-directory verify-systemd

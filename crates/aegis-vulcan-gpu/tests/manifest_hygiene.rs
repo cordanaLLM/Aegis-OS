@@ -2,24 +2,32 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 //! Manifest hygiene, workspace membership, and dependency closure verification
-//! for `aegis-vulcan-gpu` (M25 slice 1).
+//! for `aegis-vulcan-gpu` (M25: the record half and the DMA-BUF half).
 
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 /// This crate's package name, the start of its closure.
 const PACKAGE: &str = "aegis-vulcan-gpu";
 
 /// Crates this closure must not resolve.
-const FORBIDDEN: [&str; 8] = [
-    "aya", "zbus", "tokio", "nix", "procfs", "socket2", "rustix", "libc",
-];
+///
+/// rustix left this list with the DMA-BUF half (ledger
+/// `aegis-os-m25-unsafe-home`): it carries the ioctls and the mapping. The
+/// closure also lists libc because it is read for every target platform and
+/// rustix depends on libc off Linux.
+const FORBIDDEN: [&str; 6] = ["aya", "zbus", "tokio", "nix", "procfs", "socket2"];
+
+/// The one source file that may name `unsafe`: the DMA-BUF syscalls.
+const UNSAFE_SOURCE: &str = "sys.rs";
 
 /// Identifiers that would perform an effect this slice does not have.
-/// Slice 1 reads sysfs and stats /dev, but executes no child processes,
-/// opens no sockets, uses no sudo, and contains no unsafe code.
+/// The crate reads sysfs, stats /dev and opens `/dev/udmabuf` and render
+/// nodes, but executes no child processes, opens no sockets and uses no sudo;
+/// `unsafe` appears in [`UNSAFE_SOURCE`] only.
 const WATCHED: [&str; 5] = ["Command", "UnixStream", "TcpStream", "sudo", "unsafe"];
 
 /// Returns the crate directory.
@@ -71,6 +79,30 @@ fn hits(text: &str) -> Vec<&'static str> {
         .collect()
 }
 
+/// Parses key-value pairs of a simple TOML table.
+fn extract_table(content: &str, header: &str) -> BTreeMap<String, String> {
+    let mut in_table = false;
+    let mut table = BTreeMap::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('#') || trimmed.is_empty() {
+            continue;
+        }
+        if trimmed.starts_with('[') && trimmed.ends_with(']') {
+            if trimmed == header {
+                in_table = true;
+            } else if in_table {
+                break;
+            }
+            continue;
+        }
+        if in_table && let Some((k, v)) = trimmed.split_once('=') {
+            table.insert(k.trim().to_owned(), v.trim().to_owned());
+        }
+    }
+    table
+}
+
 // --- Positive -------------------------------------------------------------
 
 /// Positive: the crate is a written-out member with a lock entry.
@@ -102,6 +134,9 @@ fn the_sweep_reads_every_source() {
         "vfio.rs",
         "gpus.rs",
         "record.rs",
+        "dmabuf.rs",
+        "live.rs",
+        "sys.rs",
         "aegis-vulcan-gpu.rs",
     ] {
         assert!(
@@ -111,19 +146,41 @@ fn the_sweep_reads_every_source() {
     }
 }
 
-/// Boundary: the crate inherits the workspace lints rather than restating them.
-///
-/// Restating them would let one crate drift from the invariants the workspace
-/// root declares, `unsafe_code = "forbid"` among them.
+/// Positive: lints tables equal root workspace.lints except `unsafe_code` = "deny".
 #[test]
-fn the_crate_inherits_the_workspace_lints() {
-    let manifest = read("crates/aegis-vulcan-gpu/Cargo.toml");
-    assert!(manifest.contains("[lints]"));
-    assert!(manifest.contains("workspace = true"));
-    assert!(!manifest.contains("[lints.rust]"));
-    assert!(!manifest.contains("[lints.clippy]"));
+fn the_lints_match_workspace_except_unsafe_code() {
     let root = read("Cargo.toml");
-    assert!(root.contains("unsafe_code = \"forbid\""));
+    let manifest = read("crates/aegis-vulcan-gpu/Cargo.toml");
+
+    let mut root_rust = extract_table(&root, "[workspace.lints.rust]");
+    let mut crate_rust = extract_table(&manifest, "[lints.rust]");
+
+    assert_eq!(
+        crate_rust.remove("unsafe_code"),
+        Some("\"deny\"".to_owned()),
+        "crate must deny unsafe_code"
+    );
+    assert_eq!(
+        root_rust.remove("unsafe_code"),
+        Some("\"forbid\"".to_owned()),
+        "root workspace must forbid unsafe_code"
+    );
+    assert_eq!(
+        crate_rust, root_rust,
+        "remaining [lints.rust] entries must match workspace root"
+    );
+
+    let root_clippy = extract_table(&root, "[workspace.lints.clippy]");
+    let crate_clippy = extract_table(&manifest, "[lints.clippy]");
+
+    assert_eq!(
+        crate_clippy, root_clippy,
+        "[lints.clippy] must exactly match [workspace.lints.clippy]"
+    );
+    assert!(
+        crate_clippy.len() >= 15,
+        "expected clippy lint table to be populated"
+    );
 }
 
 // --- Negative -------------------------------------------------------------
@@ -140,16 +197,28 @@ fn the_closure_resolves_no_forbidden_crate() -> Result<(), String> {
     assert!(names.contains("serde"));
     assert!(names.contains("serde_json"));
     assert!(names.contains("thiserror"));
+    assert!(names.contains("rustix"));
+    assert!(names.contains("sha2"));
     Ok(())
 }
 
-/// Negative: no source in slice 1 names Command, sockets, sudo, or unsafe code.
+/// Negative: no source names Command, sockets or sudo, and none but the
+/// syscall module names `unsafe`.
 #[test]
 fn no_source_performs_banned_action_or_unsafe() {
+    let mut unsafe_home_seen = false;
     for (path, text) in sources() {
-        let found = hits(&text);
+        let mut found = hits(&text);
+        if path.file_name().is_some_and(|name| name == UNSAFE_SOURCE) {
+            unsafe_home_seen = found.contains(&"unsafe");
+            found.retain(|needle| *needle != "unsafe");
+        }
         assert!(found.is_empty(), "{} names {found:?}", path.display());
     }
+    assert!(
+        unsafe_home_seen,
+        "the sweep did not read the unsafe syscall module"
+    );
 }
 
 /// Negative: the sweep would notice a planted watched token.
@@ -168,6 +237,6 @@ fn there_is_exactly_one_binary() {
     let manifest = read("crates/aegis-vulcan-gpu/Cargo.toml");
     assert_eq!(manifest.matches("[[bin]]").count(), 1);
     assert!(manifest.contains("name = \"aegis-vulcan-gpu\""));
-    assert_eq!(FORBIDDEN.len(), 8);
+    assert_eq!(FORBIDDEN.len(), 6);
     assert_eq!(WATCHED.len(), 5);
 }
