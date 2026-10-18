@@ -11,11 +11,9 @@
 //! | Module | Holds |
 //! | :--- | :--- |
 //! | [`layer`] | the P17 `MOUNT_SHELL_CANVAS` parameters mapped onto gpui's `LayerShellOptions` |
-//!
-//! Mapping a surface on a compositor, the first-configure deadline and
-//! `LayerShellNotSupportedError` are not here yet; they need a running
-//! compositor and stay open in E28-2's acceptance.
+//! | [`surface`] | maps the surface on a compositor and decides the first configure outcome |
 
 pub mod layer;
+pub mod surface;
 
 pub use layer::{LayerMapError, layer_shell_options};

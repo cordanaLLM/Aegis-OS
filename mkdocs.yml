@@ -116,6 +116,7 @@ nav:
       - Accessibility harness over the P12 tokens: build/accessibility-harness.md
       - Contract pair against the pinned producers: build/contract-pair.md
       - P05 Forum shell model and tree check: build/forum-shell.md
+      - P05 Forum shell on gpui, layer surface live: build/native-shell.md
       - P17 display slice, VA-API to a layer surface: build/display.md
       - Nucleus kernel in a guest, M19 loads repeated: build/nucleus-kernel.md
       - Workstation slices, RAPL energy and KVM sandboxing: build/workstation.md

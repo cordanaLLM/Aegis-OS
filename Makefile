@@ -2,7 +2,7 @@ SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
 .PHONY: verify-all verify-rust verify-systemd verify-mkosi definitions-fetch definitions-fetch-floor verify-a11y a11y-fetch verify-contract \
-	contract-fetch verify-bpf verify-latency verify-boot verify-display verify-sources \
+	contract-fetch verify-bpf verify-latency verify-boot verify-display verify-shell verify-sources \
 	verify-nucleus-kernel nucleus-kernel-fetch verify-workstation workstation-fetch verify-reuse verify-lints \
 	readiness test build boot release install-praetor-bump uninstall-praetor-bump
 
@@ -385,6 +385,34 @@ verify-boot:
 # docs/build/display.md.
 verify-display:
 	python3 tools/verify_display.py
+
+# The P05 Forum shell surface gate (M28 E28-2, ADR-0003 decision 3, D79, D82):
+# the Rust binary aegis-forum-shell-gpui maps its zwlr_layer_shell_v1 surface
+# from a MOUNT_SHELL_CANVAS line against a private headless KWin compositor,
+# verifying first configure reception, layer-shell missing detection via
+# gpui's LayerShellNotSupportedError, deadline enforcement and line refusal.
+#
+# A host without the required capabilities -- not Linux, no kwin_wayland, no
+# dbus-run-session, no wayland-info, no cargo, or no AF_UNIX/SCM_RIGHTS --
+# prints 'SKIP: <reason>; the native shell gate did not run.' and exits 0. An
+# exit 0 from this target is therefore evidence only when the case lines are
+# above it. It never suppresses a failure.
+#
+# It is deliberately NOT part of verify-all, for the reasons verify-display is
+# not: it needs a Wayland compositor runtime (kwin_wayland, dbus-run-session)
+# which the headless CI verification runner does not provide, so wiring it
+# into verify-all would put a step into CI that can only skip. A gate that
+# always skips is not a gate. What CI and verify-all do re-run is the display-
+# free half: crates/aegis-forum-shell-gpui/tests/surface.rs,
+# tools/test_wayland_filter.py and tools/test_verify_shell.py hold the wire
+# framing, the proxy drop rules, the case judges and the capability checks.
+#
+# Each run starts its own private headless KWin child in an ephemeral directory
+# and destroys it; nothing is installed and no persistent state is altered.
+# A pass is development evidence for the client half only (D79): the compositor
+# is not P04, and the pass closes no release gate.
+verify-shell:
+	python3 tools/verify_shell.py
 
 # The Nucleus kernel gate (M10, D92, D94): the kernel cordanaLLM/nucleus built
 # and published, pinned by build/kernel/nucleus-artifact.pin.json, is verified
