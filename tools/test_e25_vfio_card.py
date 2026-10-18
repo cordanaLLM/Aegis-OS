@@ -18,7 +18,7 @@ from pathlib import Path
 STUB_TEST = Path(__file__).resolve().parent / "operator" / "e25-1-vfio-run-stub-test.sh"
 
 # Cases the stub test reports as "ok"; raise with the test, never lower it.
-CASE_FLOOR = 20
+CASE_FLOOR = 28
 
 
 def skip_reason():
@@ -71,7 +71,16 @@ class CardStubTests(unittest.TestCase):
     def test_the_card_line_sets_no_stub_override(self):
         """Negative: the stub overrides are read with defaults, never set in the script."""
         script = (STUB_TEST.parent / "e25-1-vfio-run.sh").read_text(encoding="utf-8")
-        for name in ("AEGIS_SYSFS", "AEGIS_DEV", "AEGIS_SUDO", "AEGIS_BIN", "AEGIS_EVID"):
+        for name in (
+            "AEGIS_SYSFS",
+            "AEGIS_DEV",
+            "AEGIS_SUDO",
+            "AEGIS_BIN",
+            "AEGIS_EVID",
+            "AEGIS_PROC",
+            "AEGIS_NVSMI",
+            "AEGIS_KWIN_PIN",
+        ):
             self.assertIn("${" + name + ":-", script)
             self.assertNotIn(name + "=", script.replace("${" + name + ":-", ""))
 

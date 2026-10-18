@@ -529,11 +529,24 @@ which used the Arc as a hotplug GPU, logged `Failed to open drm node
 profile after that reboot, the preview refuses with
 `REFUSE: pci-0000:03:00.0-card held by 5184 (Xwayland)`.
 
+Its first check, before any device check, is that the compositor runs under
+the home-zeus KWin DRM pin (`~/.config/environment.d/50-kwin-drm-devices.conf`),
+which keeps KWin on the 4090. The pin takes effect only at the next login, so
+the script refuses unless every `kwin_wayland` started strictly after the pin
+file's modification time, from `/proc/<pid>/stat` and the boot time, and
+`nvidia-smi` lists it. A missing pin file, no running `kwin_wayland` or a
+failing `nvidia-smi` also refuses. On the reference profile on 2026-10-18 the
+preview refuses with `REFUSE: kwin_wayland 4914 started 1792323764, not after
+the KWin DRM pin ... (1792327980)`: that session began at 13:42 and the pin
+was written at 14:53.
+
 `tools/test_e25_vfio_card.py` runs the script's stub test
 (`tools/operator/e25-1-vfio-run-stub-test.sh`) inside `make verify-all`: a
-fake sysfs and a fake sudo, 20 cases, nothing under `/sys` or `/dev` touched.
-A real process started by the test holds the stub card or render node, and
-the preview and `--apply` must refuse and name it without a write.
+fake sysfs, `/proc`, `nvidia-smi` and sudo, 28 cases, nothing under `/sys` or
+`/dev` touched. A real process started by the test holds the stub card or
+render node, and the preview and `--apply` must refuse and name it without a
+write. A `kwin_wayland` that started before the pin, or in the same second,
+must refuse; one second after must pass.
 
 ### Limits
 
