@@ -20,7 +20,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import verify_public_host as gate  # noqa: E402
 
 PLANTED_HOST = "host" + "alpha"
-REAL_BUS_ADDRESS = "0000" + ":03:00.0"
+REAL_BUS_ADDRESS = "0000:0" + "3:00.0"
 FIXTURE_BUS_ADDRESS = "0000" + ":f3:00.0"
 NAMED_HOME = "/home/" + "alice/.cache"
 CPU_MODEL = "Ryzen" + " 9 7950X"
