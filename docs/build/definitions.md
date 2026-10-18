@@ -32,6 +32,41 @@ Each file carries its export id and the sha256 of that export in its own header
 comment. No private path appears in any tracked file, and no file reproduces
 more than a fragment of its source.
 
+## What the built image holds
+
+The partitions are filled from the tree mkosi builds:
+
+- `00-esp.conf` copies both `/boot` and `/efi` into the ESP. These are the two
+  lines mkosi 27.1 writes into its own default ESP definition. With
+  `Bootloader=uki`, mkosi writes the UKI to `/efi/EFI/BOOT/BOOTX64.EFI`.
+- `10-root-a.conf` copies the whole tree. It leaves out the contents of `/boot`
+  and `/efi`, so both stay empty mount points and the UKI lives only on the
+  ESP.
+
+Imago run 39090040772 booted an image built before these lines existed. The
+ESP was empty and root-a was a 4K EROFS. The firmware answered "No bootable
+option or device was found", and the build had still exited 0.
+
+`build/mkosi.postoutput.d/image_layout.py` closes that gap. mkosi runs every
+file in that directory after it writes the image (`PostOutputScripts=`). The
+script fails the build when the image is missing any of these:
+
+- a GPT;
+- an ESP that is FAT32 and holds a PE image at `EFI/BOOT/BOOTX64.EFI`;
+- a partition labelled `root-a` whose EROFS has at least 1000 inodes and
+  64 MiB.
+
+It reads metadata only, with the Python standard library.
+
+`tools/test_image_layout.py` covers the check:
+
+- Synthetic images give positive, negative and boundary cases on every host.
+- Where `systemd-repart`, `mkfs.vfat`, `mkfs.erofs` and `mcopy` are on `PATH`,
+  two cases build real images and run the check with lower floors. One uses
+  `build/repart.d` as committed, which the check passes. The other drops the two
+  `CopyFiles=` lines that the run lacked, which the check refuses. Elsewhere
+  these cases print a `SKIP:` line.
+
 ## The two gates
 
 `make verify-all` runs `make verify-systemd`, which is
@@ -298,7 +333,10 @@ answers two questions and keeps them apart: `DefinitionError` for what systemd
 refuses, `Finding` for what systemd accepts while the recorded requirement does
 not. It is deliberately stricter in one direction -- an unknown key, a repeated
 section and a repeated key are refusals, not warnings -- and it reports the
-single-slot transfer that systemd silently bumps.
+single-slot transfer that systemd silently bumps. The keys repart.d(5) documents
+as usable more than once (`REPEATABLE_KEYS` in `src/unit.rs`, `CopyFiles=` among
+them) are the exception: each assignment adds an item, and the crate keeps them
+all, as systemd does.
 
 The two halves can disagree, which is the point: the gate runs the tool, the
 crate runs the rules, and a divergence is a failure in one of them rather than a

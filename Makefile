@@ -1,3 +1,4 @@
+-include .config/praetor/engine.mk
 SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 

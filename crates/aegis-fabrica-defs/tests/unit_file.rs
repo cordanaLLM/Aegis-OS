@@ -7,7 +7,7 @@ mod common;
 
 use aegis_fabrica_defs::{
     CONTRACT_VERSION, DefinitionError, Entry, MAX_ENTRIES, MAX_LINE_BYTES, MAX_LINES, MAX_SECTIONS,
-    UnitFile,
+    REPEATABLE_KEYS, UnitFile,
 };
 
 use common::Fallible;
@@ -133,6 +133,31 @@ fn a_repeated_key_is_refused() {
     );
 }
 
+/// Positive: a list-valued key repeats, and every assignment stays in file order.
+#[test]
+fn a_repeated_list_key_keeps_every_assignment() -> Fallible {
+    let text = "[Partition]\nCopyFiles=/boot:/\nCopyFiles=/efi:/\n";
+    let unit = UnitFile::parse("00-esp.conf", text)?;
+    let copies: Vec<(&str, usize)> = unit
+        .entries()
+        .iter()
+        .filter(|entry| entry.key == "CopyFiles")
+        .map(|entry| (entry.value.as_str(), entry.line))
+        .collect();
+    assert_eq!(copies, [("/boot:/", 2), ("/efi:/", 3)]);
+    Ok(())
+}
+
+/// Negative: a list-valued key repeats only within its own section.
+#[test]
+fn a_list_key_repeat_does_not_admit_a_section_repeat() {
+    let text = "[Partition]\nCopyFiles=/\n[Partition]\nCopyFiles=/\n";
+    assert!(matches!(
+        UnitFile::parse("x.conf", text).err(),
+        Some(DefinitionError::DuplicateSection { line: 3, .. })
+    ));
+}
+
 // --- Boundary -------------------------------------------------------------
 
 /// Boundary: a header must be bracketed and non-empty to open a section.
@@ -145,6 +170,39 @@ fn only_a_well_formed_header_opens_a_section() {
         ));
     }
     assert!(UnitFile::parse("x.conf", "[Partition]\n").is_ok());
+}
+
+/// Boundary: exactly the keys repart.d(5) documents as repeatable repeat.
+#[test]
+fn only_the_documented_list_keys_repeat() {
+    assert_eq!(
+        REPEATABLE_KEYS,
+        [
+            "CopyFiles",
+            "ExcludeFiles",
+            "ExcludeFilesTarget",
+            "MakeDirectories",
+            "MakeSymlinks",
+            "MountPoint",
+        ]
+    );
+    for key in REPEATABLE_KEYS {
+        let text = format!("[Partition]\n{key}=/a\n{key}=/b\n");
+        assert!(
+            UnitFile::parse("x.conf", &text).is_ok(),
+            "{key} must repeat"
+        );
+    }
+    for key in ["Type", "Label", "Subvolumes", "copyfiles"] {
+        let text = format!("[Partition]\n{key}=a\n{key}=b\n");
+        assert!(
+            matches!(
+                UnitFile::parse("x.conf", &text).err(),
+                Some(DefinitionError::DuplicateKey { line: 3, .. })
+            ),
+            "{key} must not repeat"
+        );
+    }
 }
 
 /// Boundary: a value may be empty, and whitespace on either side is trimmed.
