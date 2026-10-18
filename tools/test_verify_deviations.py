@@ -20,6 +20,7 @@ import verify_deviations as vd  # noqa: E402
 
 REPO = vd.ROOT
 D83 = vd.DEVIATIONS[0]
+D115 = vd.DEVIATIONS[1]
 
 
 class DeviationTree(unittest.TestCase):
@@ -75,7 +76,11 @@ class DeviationTests(DeviationTree):
         self.assertRefused("2 exceptions entries")
 
     def test_an_entry_without_a_category_is_refused(self):
-        self.replace(vd.MANIFEST, "    category: A\n", "")
+        self.replace(
+            vd.MANIFEST,
+            "re-pin of the decoder (category A, 90 days)'\n    category: A\n",
+            "re-pin of the decoder (category A, 90 days)'\n",
+        )
         self.assertRefused("no category")
 
     def test_a_reason_without_the_decision_is_refused(self):
@@ -113,12 +118,50 @@ class DeviationTests(DeviationTree):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             self.assertEqual(vd.main(["verify_deviations.py", str(REPO)]), 0)
-        self.assertIn("PASS: 1 scoped deviation(s)", out.getvalue())
+        self.assertIn("PASS: 2 scoped deviation(s)", out.getvalue())
+        self.assertIn("D83, D115", out.getvalue())
         self.replace(vd.MANIFEST, "'D83:", "'deviation:")
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
             self.assertEqual(vd.main(["verify_deviations.py", str(self.root)]), 1)
         self.assertIn("FAIL:", err.getvalue())
+
+
+class GpuiDeviationTests(DeviationTree):
+    """D115: gpui rebuilds its AccessKit tree every frame at the pinned zed commit."""
+
+    def test_d115_names_gpui_through_its_one_member(self):
+        self.assertEqual(D115["decision"], "D115")
+        self.assertEqual(D115["rule"], "HISS-03")
+        self.assertEqual(D115["package"], "gpui")
+        self.assertEqual(D115["path"], "crates/aegis-forum-shell-gpui/Cargo.toml")
+
+    def test_the_committed_entry_names_the_locked_zed_commit(self):
+        revision = vd.locked_revision((REPO / vd.LOCK).read_text(encoding="utf-8"), "gpui")
+        self.assertIsNotNone(revision)
+        entries = vd.exception_entries((REPO / vd.MANIFEST).read_text(encoding="utf-8"))
+        entry = next(
+            entry
+            for entry in entries
+            if entry.get("path") == D115["path"] and entry.get("rule") == "HISS-03"
+        )
+        self.assertIn(revision, entry["reason"])
+        self.assertIn("crates/gpui/src/window/a11y.rs", entry["reason"])
+        self.assertEqual(entry["category"], "A")
+
+    def test_a_repin_of_gpui_is_refused_until_the_entry_is_renewed(self):
+        revision = vd.locked_revision((REPO / vd.LOCK).read_text(encoding="utf-8"), "gpui")
+        path = self.root / vd.LOCK
+        path.write_text(path.read_text(encoding="utf-8").replace(revision, "f" * 40))
+        problems = self.problems()
+        self.assertTrue(
+            any(p.startswith("D115") and "renew the entry" in p for p in problems), problems
+        )
+        self.assertFalse(any(p.startswith("D83") for p in problems), problems)
+
+    def test_a_missing_d115_entry_is_refused(self):
+        self.replace(vd.MANIFEST, "'D115:", "'deviation:")
+        self.assertRefused("D115 (HISS-03, crates/aegis-forum-shell-gpui/Cargo.toml): the reason")
 
 
 if __name__ == "__main__":
