@@ -1,0 +1,62 @@
+---
+# Code scanning: CodeQL analyses the workflows, the Python gate tools, the
+# JavaScript and TypeScript figure tooling and the Rust workspace, and uploads
+# the results to the repository's code scanning alerts. Every language runs
+# with build-mode none, so no leg builds a crate, an image or a release, and a
+# green run is not evidence for any blocked gate. Pull requests, pushes to main
+# and a weekly run report; the weekly run catches new queries against
+# unchanged code. This check is advisory and not a required status check.
+name: CodeQL
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: ['main']
+  schedule:
+    - cron: '17 4 * * 1'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    # Advisory: the engine counts every pull-request job without
+    # continue-on-error as a required status context, and this check is not
+    # one. Findings reach the code scanning alerts either way.
+    continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      # Each language reports its own alerts; one failing leg must not hide
+      # the others.
+      fail-fast: false
+      matrix:
+        language: [actions, python, javascript-typescript, rust]
+    # No draft step: a failed draft step under continue-on-error would report
+    # success, so drafts run in full under the HISS-18 exception for this file
+    # in .standards.yaml.
+    steps:
+      - name: Check out the source
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Initialise CodeQL
+        # yamllint disable-line rule:line-length
+        uses: github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee  # v4.39.0
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - name: Analyse
+        # yamllint disable-line rule:line-length
+        uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee  # v4.39.0
+        with:
+          category: /language:${{ matrix.language }}
