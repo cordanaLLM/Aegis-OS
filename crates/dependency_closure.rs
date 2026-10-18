@@ -109,14 +109,25 @@ impl Invocation {
         })
     }
 
+    /// Runs the invocation and returns the parsed document.
+    ///
+    /// # Errors
+    ///
+    /// Returns why [`Self::run_text`] failed, or that the output is not JSON.
+    pub fn run(&self) -> Result<Value, String> {
+        let text = self.run_text()?;
+        serde_json::from_str(&text)
+            .map_err(|error| format!("cargo metadata output is not JSON: {error}"))
+    }
+
     /// Runs the invocation, output to files so no pipe can fill and stall
-    /// the child, and returns the parsed document.
+    /// the child, and returns its standard output.
     ///
     /// # Errors
     ///
     /// Fails closed on a spawn error, a non-zero exit (naming
-    /// `cargo fetch --locked`), a missed deadline and unparsable output.
-    pub fn run(&self) -> Result<Value, String> {
+    /// `cargo fetch --locked`), a missed deadline and unreadable output.
+    pub fn run_text(&self) -> Result<String, String> {
         let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
         let run = RUNS.fetch_add(1, Ordering::Relaxed);
         let stem = format!("{}-{}-{run}", env!("CARGO_PKG_NAME"), std::process::id());
@@ -143,9 +154,7 @@ impl Invocation {
                 "cargo metadata exited {status}; if offline, run `cargo fetch --locked`: {text}"
             ));
         }
-        let text = std::fs::read_to_string(&out).map_err(|error| error.to_string())?;
-        serde_json::from_str(&text)
-            .map_err(|error| format!("cargo metadata output is not JSON: {error}"))
+        std::fs::read_to_string(&out).map_err(|error| error.to_string())
     }
 }
 

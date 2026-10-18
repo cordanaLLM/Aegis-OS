@@ -166,6 +166,33 @@ fn button_without_click_fails() {
     assert!(res.why.contains("click"), "why was: {}", res.why);
 }
 
+/// Negative: a button that is not focused fails `atspi/focus-reported`.
+#[test]
+fn button_not_focused_fails() {
+    let mut tree = build_sound_tree(SEEDED_NODES);
+    if let Some(btn) = tree.iter_mut().find(|n| n.name == BUTTON_LABEL) {
+        btn.states.retain(|s| s != "focused");
+    }
+    let res = atspi_focus_reported(&tree);
+    assert!(!res.passed);
+    assert!(res.why.contains("focused"), "why was: {}", res.why);
+}
+
+/// Boundary: `focusable` alone is not `focused`, and a tree with no button
+/// fails `atspi/focus-reported` naming the missing node.
+#[test]
+fn focusable_is_not_focused_and_no_button_fails() {
+    let mut tree = build_sound_tree(SEEDED_NODES);
+    if let Some(btn) = tree.iter_mut().find(|n| n.name == BUTTON_LABEL) {
+        btn.states = vec!["showing".to_owned(), "focusable".to_owned()];
+    }
+    assert!(!atspi_focus_reported(&tree).passed);
+    tree.retain(|n| n.name != BUTTON_LABEL);
+    let res = atspi_focus_reported(&tree);
+    assert!(!res.passed);
+    assert!(res.why.contains("not found"), "why was: {}", res.why);
+}
+
 /// Negative: duplicate "Node 5" fails `atspi/seeded-reachable`.
 #[test]
 fn duplicate_node_5_fails_seeded_reachable() {
