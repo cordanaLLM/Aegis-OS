@@ -7,8 +7,9 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 Status: recorded observations from milestone M09, reference profile,
 2026-09-28; nucleus's verifier added under D106 on 2026-09-29, nucleus
-re-pinned to `82aa6b7` the same day, and both producers re-pinned for D107 that
-evening, imago to `987b95a` and nucleus to `852be74`
+re-pinned to `82aa6b7` the same day, both producers re-pinned for D107 that
+evening, imago to `987b95a` and nucleus to `852be74`, and imago re-pinned to
+`9394202` on 2026-10-18 for E11-7
 
 Milestone M09 pins the cross-repository contract as far as the producers can
 prove it today. Decision D92 scopes it to consumption: `cordanaLLM/imago`, built
@@ -44,19 +45,24 @@ those legs run `tools/test_contract_pair.py` alone.
 rest on the runs recorded below and on `tools/test_contract_pair.py`, which runs
 inside `make verify-all` on every platform of the matrix.
 
-**No result came back, and none was expected to.** Nothing produces imago's
-`imago.p01.product-result.v1` yet (its ADR-0020; `cordanaLLM/imago` issue 46),
-and no Nucleus kernel comes back through this gate: since `82aa6b7` nucleus's
-build matrix compiles and gates every leg (issues 18 and 31, closed by its pull
-request 37), and its first kernel release, `v7.2.8-realtime-lusoris1` of
-2026-09-29, is M10's to verify (E10-4, E10-5). nucleus's verdict here is at
-evidence level `declared`, the kconfig fragments as its merge script merges
-them, and `make olddefconfig` can still drop a declared symbol. Under
-D92 the Imago product result is M11's (a criterion and epic E11-7) and the
-Nucleus kernel result is M10's (its first criterion and epic E10-4). Under D94,
-M10 also rejects a requirement feature the built kernel's config does not
-satisfy (epic E10-5), the check imago cannot run without a kernel. The imago
-binary the gate runs is a decoder built from source, not a release artifact.
+**A product result came back for M11 (epic E11-7).** Imago pre-release
+`aegis-aegis-m18-product-input-0001` (cordanaLLM/imago Actions run 39094218423)
+returned `imago.p01.product-result.v1`, vendored at
+`build/contract/imago-product-result.json`. The gate validates its syntax,
+digest format, correlation-id match against `build/product-input.json`, and
+reference bounds (512 accepted, 513 refused). This is contract evidence only:
+no image or kernel build or boot is claimed here (boot evidence is verified in
+E11-2 and milestone M24). No Nucleus kernel comes back through this gate:
+since `82aa6b7` nucleus's build matrix compiles and gates every leg (issues 18
+and 31, closed by its pull request 37), and its kernel releases are M10's to
+verify (E10-4, E10-5). nucleus's verdict here is at evidence level `declared`,
+the kconfig fragments as its merge script merges them, and `make olddefconfig`
+can still drop a declared symbol. Under D92 the Imago product result is M11's
+(a criterion and epic E11-7, satisfied here) and the Nucleus kernel result is
+M10's (its first criterion and epic E10-4). Under D94, M10 also rejects a
+requirement feature the built kernel's config does not satisfy (epic E10-5), the
+check imago cannot run without a kernel. The imago binary the gate runs is
+built from source at pinned commit `9394202595effca3b34a0dfd0299adb7bdac406a`.
 
 ## What is tracked, and what is not
 
@@ -79,7 +85,7 @@ Nothing is written into the repository, and nothing is sent to either producer.
 
 | Producer | Repository | Commit | Role in M09 |
 | --- | --- | --- | --- |
-| imago | `https://github.com/cordanaLLM/imago.git` | `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311` | consumes both payloads: `imago aegis validate` (`pkg/aegis`, ADR-0020) and `imago kernel requirement validate` (`pkg/kernel`, ADR-0021) |
+| imago | `https://github.com/cordanaLLM/imago.git` | `9394202595effca3b34a0dfd0299adb7bdac406a` | consumes both payloads and validates product result: `imago aegis validate` (`pkg/aegis`, ADR-0020), `imago aegis result validate` (E11-7), and `imago kernel requirement validate` (`pkg/kernel`, ADR-0021) |
 | nucleus | `https://github.com/cordanaLLM/nucleus.git` | `677dd401b68363b9ac3a1f2e891e6c1a1e9a0d9a` | verifies `build/kernel-requirement.json`: `scripts/verify_kernel_requirement.py` under the `versions.json` label `aegis-os`, bound to the `realtime` stream, report `nucleus.kernel-requirement-report.v1` at evidence level `declared` (D106); also publishes the `imago.nucleus.kernel-artifact.v1` manifest imago verifies |
 
 nucleus moved from `852be74` to `677dd40`, its `main` on 2026-10-17 after

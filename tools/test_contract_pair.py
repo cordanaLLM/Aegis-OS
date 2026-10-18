@@ -54,19 +54,19 @@ BRANCHES = (ast.If, ast.For, ast.While, ast.IfExp, ast.ExceptHandler, ast.With, 
 ALLOWED_PROGRAMS = {"git", "go", "python3", "<binary>"}
 # The only functions that may reach the network, and the commands that do.
 NETWORK_FUNCTIONS = {"fetch_identity", "fetch_checkout", "fetch_build"}
-PIN_COMMIT = "987b95a432e5c9aac1b4885b97fa2d3ff1b9d311"
+PIN_COMMIT = "9394202595effca3b34a0dfd0299adb7bdac406a"
 NUCLEUS_COMMIT = "677dd401b68363b9ac3a1f2e891e6c1a1e9a0d9a"
 # The pinned commit's committer time as go writes vcs.time, and as `git log
 # --format=%ct` prints it.
-COMMITTED = "2026-09-29T21:02:08Z"
-COMMITTED_SECONDS = "1790715728"
-PSEUDO_VERSION = "v0.0.0-20260929210208-987b95a432e5"
+COMMITTED = "2026-10-18T09:12:57Z"
+COMMITTED_SECONDS = "1792314777"
+PSEUDO_VERSION = "v0.0.0-20261018091257-9394202595ef"
 
 # `go version -m` of the pinned build, abridged to three of its dep rows.
 BUILDINFO = (
-    "/cache/bin/imago: go1.27.1-X:nodwarf5\n"
+    "/cache/bin/imago: go1.27.2-X:nodwarf5\n"
     "\tpath\tgithub.com/cordanaLLM/imago/cmd/imago\n"
-    "\tmod\tgithub.com/cordanaLLM/imago\tv0.0.0-20260929210208-987b95a432e5\t\n"
+    f"\tmod\tgithub.com/cordanaLLM/imago\t{PSEUDO_VERSION}\t\n"
     "\tdep\tgithub.com/spf13/cobra\tv1.10.2\th1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU=\n"
     "\tdep\tgo.uber.org/fx\tv1.24.0\th1:wE8mruvpg2kiiL1Vqd0CC+tr0/24XIB10Iwp2lLWzkg=\n"
     "\tdep\tgolang.org/x/sys\tv0.48.0\th1:bbX/i/6MgT9BVLM9RT1thmxL04yeTAhbEz4SyadbXoo=\n"
@@ -78,7 +78,7 @@ BUILDINFO = (
     "\tbuild\tGOOS=linux\n"
     "\tbuild\tvcs=git\n"
     f"\tbuild\tvcs.revision={PIN_COMMIT}\n"
-    "\tbuild\tvcs.time=2026-09-29T21:02:08Z\n"
+    f"\tbuild\tvcs.time={COMMITTED}\n"
     "\tbuild\tvcs.modified=false\n"
 )
 # What `imago aegis validate build/product-input.json --json` printed.
@@ -256,7 +256,7 @@ class PinTests(unittest.TestCase):
         self.assertEqual(pin["nucleus"]["label"], "aegis-os")
         self.assertEqual(pin["nucleus"]["bound-streams"], ["realtime"])
         self.assertEqual(pin["nucleus"]["evidence-level"], "declared")
-        self.assertEqual(pin["imago"]["go"], "1.27.1")
+        self.assertEqual(pin["imago"]["go"], "1.27.2")
         self.assertEqual(len(pin["imago"]["fixtures"]), 3)
 
     def test_this_repositorys_payloads_hash_to_the_pin(self):
@@ -270,6 +270,11 @@ class PinTests(unittest.TestCase):
                 target = Path(base) / row["aegis"]
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes((ROOT / row["aegis"]).read_bytes())
+            res = committed_pin()["imago"].get("result")
+            if res:
+                target = Path(base) / res["path"]
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes((ROOT / res["path"]).read_bytes())
             (Path(base) / "build" / "product-input.json").write_bytes(b"{}\n")
             problems = gate.payload_problems(gate.load_pin(), root=base)
         self.assertEqual(len(problems), 1)
@@ -400,25 +405,25 @@ class ProvenanceTests(unittest.TestCase):
                 )
 
     def test_the_go_floor_is_inclusive(self):
-        """Boundary: go1.27.1 is admitted, go1.27.0 and go1.27 are refused, go1.28 admitted."""
+        """Boundary: go1.27.2 is admitted, go1.27.1 and go1.27 are refused, go1.28 admitted."""
         for version, admitted in (
-            ("go1.27.1", True),
-            ("go1.27.1-X:nodwarf5", True),
+            ("go1.27.2", True),
+            ("go1.27.2-X:nodwarf5", True),
             ("go1.28", True),
-            ("go1.27.0", False),
+            ("go1.27.1", False),
             ("go1.27", False),
             ("devel +abc", False),
         ):
             with self.subTest(version=version):
-                info = gate.parse_buildinfo(BUILDINFO.replace("go1.27.1-X:nodwarf5", version))
+                info = gate.parse_buildinfo(BUILDINFO.replace("go1.27.2-X:nodwarf5", version))
                 problems = gate.provenance_problems(info, self.pin, COMMITTED)
                 self.assertEqual(not any("built by" in line for line in problems), admitted)
 
     def test_go_releases_are_read_with_and_without_a_patch(self):
-        self.assertEqual(gate.go_release("go1.27.1-X:nodwarf5"), (1, 27, 1))
+        self.assertEqual(gate.go_release("go1.27.2-X:nodwarf5"), (1, 27, 2))
         self.assertEqual(gate.go_release("go1.27"), (1, 27, 0))
         self.assertIsNone(gate.go_release("devel go1.28-abc"))
-        self.assertEqual(gate.floor_tuple("1.27.1"), (1, 27, 1))
+        self.assertEqual(gate.floor_tuple("1.27.2"), (1, 27, 2))
 
 
 class RequestTests(unittest.TestCase):
@@ -577,6 +582,83 @@ class PayloadTests(unittest.TestCase):
         source = "const (\n\tMaxRetryAttempts = 10\n\t// x\n\tMaxPackages = 256\n)\n"
         found = gate.go_constants(source, ("MaxRetryAttempts", "MaxPackages", "Absent"))
         self.assertEqual(found, {"MaxRetryAttempts": 10, "MaxPackages": 256, "Absent": None})
+
+
+class ProductResultTests(unittest.TestCase):
+    """Product-result pure helpers: correlation adapter, digest/ref rows, and pin parsing."""
+
+    result_fixture = {
+        "schema": "imago.p01.product-result.v1",
+        "correlation-id": "aegis-m18-product-input-0001",
+        "image-digest": "sha256:77841eb431a1cd57809f031b24d1ef5589454a69fd0fc54a504c3318aa7d108e",
+        "signature-ref": (
+            "https://github.com/cordanaLLM/imago/releases/download/"
+            "aegis-aegis-m18-product-input-0001/SHA256SUMS.bundle"
+        ),
+        "boot-evidence-ref": (
+            "https://github.com/cordanaLLM/imago/releases/download/"
+            "aegis-aegis-m18-product-input-0001/boot-evidence.json"
+        ),
+    }
+
+    def test_result_correlation_adapter(self):
+        request = {"correlation-id": "aegis-m18-product-input-0001"}
+        matching = {"correlation-id": "aegis-m18-product-input-0001"}
+        self.assertEqual(gate.adapt_product_result(request, matching), [])
+
+        mismatched = {"correlation-id": "aegis-m18-product-input-9999"}
+        problems = gate.adapt_product_result(request, mismatched)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("aegis-m18-product-input-0001", problems[0])
+        self.assertIn("aegis-m18-product-input-9999", problems[0])
+
+    def test_result_digest_rows(self):
+        rows = gate.result_digest_rows(self.result_fixture)
+        self.assertEqual(len(rows), 4)
+        labels = [r[0] for r in rows]
+        self.assertEqual(labels, ["uppercase-hex", "63-hex", "missing-prefix", "sha512-prefix"])
+        for _, doc, reason in rows:
+            self.assertEqual(
+                reason, 'image-digest: must be "sha256:" followed by 64 lowercase hex characters'
+            )
+            self.assertEqual(doc["correlation-id"], self.result_fixture["correlation-id"])
+
+    def test_result_reference_rows(self):
+        rows = gate.result_reference_rows(self.result_fixture)
+        self.assertEqual(len(rows), 4)
+        labels = [r[0] for r in rows]
+        self.assertEqual(
+            labels,
+            [
+                "signature-ref-512",
+                "signature-ref-513",
+                "boot-evidence-ref-512",
+                "boot-evidence-ref-513",
+            ],
+        )
+        self.assertEqual(len(rows[0][1]["signature-ref"]), 512)
+        self.assertIsNone(rows[0][2])
+        self.assertEqual(len(rows[1][1]["signature-ref"]), 513)
+        self.assertEqual(rows[1][2], "signature-ref: exceeds 512 characters")
+        self.assertEqual(len(rows[2][1]["boot-evidence-ref"]), 512)
+        self.assertIsNone(rows[2][2])
+        self.assertEqual(len(rows[3][1]["boot-evidence-ref"]), 513)
+        self.assertEqual(rows[3][2], "boot-evidence-ref: exceeds 512 characters")
+
+    def test_result_pin_problems(self):
+        valid_row = {
+            "path": "build/contract/imago-product-result.json",
+            "sha256": "1e7e3556c5248239ec258234885118a73418c596b488a9b42b2013ad2e1ef086",
+            "release-tag": "aegis-aegis-m18-product-input-0001",
+            "run-id": 39094218423,
+        }
+        self.assertEqual(gate.result_pin_problems(valid_row), [])
+        self.assertTrue(gate.result_pin_problems(None))
+        self.assertTrue(gate.result_pin_problems(dict(valid_row, path="../outside.json")))
+        self.assertTrue(gate.result_pin_problems(dict(valid_row, sha256="bad-sha")))
+        self.assertTrue(gate.result_pin_problems(dict(valid_row, **{"release-tag": ""})))
+        self.assertTrue(gate.result_pin_problems(dict(valid_row, **{"run-id": -1})))
+        self.assertTrue(gate.result_pin_problems(dict(valid_row, **{"run-id": "not-int"})))
 
 
 class StandinTests(unittest.TestCase):
@@ -869,7 +951,7 @@ class GuardTests(unittest.TestCase):
         ), mock.patch.object(gate, "run", side_effect=lambda argv, *a, **k: answers[argv[0]]):
             code, printed = quiet(gate.main, ["--fetch"])
         self.assertEqual(code, 1)
-        self.assertIn("below go 1.27.1", printed)
+        self.assertIn("below go 1.27.2", printed)
 
     def test_an_invalid_pin_fails(self):
         with tempfile.TemporaryDirectory() as base:
