@@ -373,7 +373,14 @@ class PinTests(unittest.TestCase):
 
 
 def cosign_pin(**changes):
-    """Return a pin_copy() carrying a valid cosign signature section with changes applied."""
+    """Return an Imago pin carrying a valid cosign signature section with changes applied."""
+    pin = pin_copy()
+    pin["format"] = "raw"
+    pin["file"] = "aegis-os.raw"
+    pin["version"] = "aegis-m18-product-input-0002"
+    pin["version-floor"] = "aegis-m18-product-input-0001"
+    pin["url"] = "https://example.invalid/aegis-os.raw"
+    pin["boot"]["success-marker"] = r"Startup finished in"
     sig = {
         "scheme": gate.COSIGN_SCHEME,
         "checksum-file": "SHA256SUMS",
@@ -388,9 +395,13 @@ def cosign_pin(**changes):
         "workflow-sha": "0123456789abcdef0123456789abcdef01234567",
         "workflow-ref": "refs/heads/main",
     }
-    sig.update(changes)
-    pin = pin_copy()
     pin["signature"] = sig
+    for dotted, value in changes.items():
+        if dotted in sig:
+            pin["signature"][dotted] = value
+        else:
+            section, _dot, key = dotted.rpartition(".")
+            (pin[section] if section else pin)[key] = value
     return pin
 
 
@@ -506,6 +517,144 @@ class CosignPinTests(unittest.TestCase):
                 else:
                     with self.assertRaises(gate.GateError):
                         gate.load_pin(written_pin(pin, base))
+
+
+class PinKindTests(unittest.TestCase):
+    """Pin kind admission: upstream (gpg) vs Imago (cosign) shapes, values and boundaries."""
+
+    def test_positive_imago_pin_loads(self):
+        with tempfile.TemporaryDirectory() as base:
+            pin = cosign_pin()
+            loaded = gate.load_pin(written_pin(pin, base))
+            self.assertEqual(loaded["signature"]["scheme"], gate.COSIGN_SCHEME)
+            self.assertEqual(loaded["format"], "raw")
+            self.assertEqual(loaded["file"], "aegis-os.raw")
+
+    def test_positive_committed_fedora_pin_loads_unchanged(self):
+        loaded = gate.load_pin(gate.PIN)
+        self.assertEqual(loaded["signature"]["scheme"], gate.GPG_SCHEME)
+        self.assertEqual(loaded["format"], "qcow2")
+
+    def assert_refused(self, cases):
+        for name, pin, message in cases:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as base:
+                with self.assertRaises(gate.GateError) as cm:
+                    gate.load_pin(written_pin(pin, base))
+                self.assertIn(message, str(cm.exception))
+
+    def test_negative_cosign_cases_are_refused(self):
+        pin_missing_marker = cosign_pin()
+        del pin_missing_marker["boot"]["success-marker"]
+        cases = (
+            (
+                "cosign_with_qcow2",
+                cosign_pin(format="qcow2", file="aegis-os.qcow2"),
+                "format must be raw",
+            ),
+            (
+                "cosign_with_fedora_version",
+                cosign_pin(version="44-1.7"),
+                "version is not correlation-id with 4-digit ordinal",
+            ),
+            (
+                "cosign_with_fedora_file_name",
+                cosign_pin(file="Fedora-Cloud-Base-UEFI-UKI-44-1.7.x86_64.raw"),
+                "file is not aegis-os.raw",
+            ),
+            (
+                "cosign_without_success_marker",
+                pin_missing_marker,
+                "boot lacks success-marker",
+            ),
+            (
+                "cosign_with_bad_regex_marker",
+                cosign_pin(**{"boot.success-marker": "("}),
+                "success-marker is not a valid regex",
+            ),
+            (
+                "cosign_with_marker_201_chars",
+                cosign_pin(**{"boot.success-marker": "a" * 201}),
+                "success-marker must be 1..200 characters",
+            ),
+            (
+                "cosign_floor_with_other_stem",
+                cosign_pin(
+                    version="aegis-m18-product-input-0002",
+                    **{"version-floor": "other-stem-0001"},
+                ),
+                "version-floor must share the same stem as version",
+            ),
+        )
+        self.assert_refused(cases)
+
+    def test_negative_gpg_cases_are_refused(self):
+        cases = (
+            (
+                "gpg_with_raw",
+                pin_copy(format="raw", file="Fedora-Cloud-Base-UEFI-UKI-44-1.7.x86_64.raw"),
+                "format must be qcow2",
+            ),
+            (
+                "gpg_with_imago_version",
+                pin_copy(version="aegis-m18-product-input-0001"),
+                "version is not MAJOR-MINOR.RESPIN",
+            ),
+            (
+                "gpg_with_imago_file_name",
+                pin_copy(file="aegis-os.qcow2"),
+                f"file is not {PIN['name']}-{PIN['version']}.{PIN['architecture']}.{PIN['format']}",
+            ),
+        )
+        self.assert_refused(cases)
+
+    def test_boundary_success_marker_length(self):
+        """Marker of 200 characters is accepted; 201 is refused."""
+        with tempfile.TemporaryDirectory() as base:
+            pin = cosign_pin(**{"boot.success-marker": "a" * 200})
+            loaded = gate.load_pin(written_pin(pin, base))
+            self.assertEqual(loaded["boot"]["success-marker"], "a" * 200)
+        with tempfile.TemporaryDirectory() as base:
+            pin = cosign_pin(**{"boot.success-marker": "a" * 201})
+            with self.assertRaises(gate.GateError) as cm:
+                gate.load_pin(written_pin(pin, base))
+            self.assertIn("success-marker must be 1..200 characters", str(cm.exception))
+
+    def test_boundary_version_total_length(self):
+        """Version of 128 characters total is accepted; 129 is refused."""
+        v128 = "a" * 123 + "-0001"
+        v129 = "a" * 124 + "-0001"
+        with tempfile.TemporaryDirectory() as base:
+            pin = cosign_pin(version=v128, **{"version-floor": v128})
+            loaded = gate.load_pin(written_pin(pin, base))
+            self.assertEqual(loaded["version"], v128)
+        with tempfile.TemporaryDirectory() as base:
+            pin = cosign_pin(version=v129, **{"version-floor": v128})
+            with self.assertRaises(gate.GateError) as cm:
+                gate.load_pin(written_pin(pin, base))
+            self.assertIn("version is not correlation-id with 4-digit ordinal", str(cm.exception))
+
+    def test_boundary_ordinal_floor_admission(self):
+        """Floor equal is admitted; floor - 1 is refused."""
+        stem = "aegis-m18-product-input"
+        floor = f"{stem}-0002"
+        self.assertTrue(gate.version_admitted(floor, floor, scheme=gate.COSIGN_SCHEME))
+        below = gate.version_below(floor, scheme=gate.COSIGN_SCHEME)
+        self.assertEqual(below, f"{stem}-0001")
+        self.assertFalse(gate.version_admitted(below, floor, scheme=gate.COSIGN_SCHEME))
+        other = "aegis-m19-product-input-0009"
+        self.assertFalse(gate.version_admitted(other, floor, scheme=gate.COSIGN_SCHEME))
+        with self.assertRaises(gate.GateError):
+            gate.version_admitted(floor, floor, scheme="unknown-scheme")
+
+    def test_boundary_version_below_ordinal(self):
+        """Version below ordinal 0001 is 0000; ordinal 0000 has no predecessor."""
+        stem = "aegis-m18-product-input"
+        self.assertEqual(
+            gate.version_below(f"{stem}-0001", scheme=gate.COSIGN_SCHEME),
+            f"{stem}-0000",
+        )
+        with self.assertRaises(gate.GateError):
+            gate.version_below(f"{stem}-0000", scheme=gate.COSIGN_SCHEME)
 
 
 class VersionFloorTests(unittest.TestCase):
