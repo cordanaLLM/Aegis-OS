@@ -652,5 +652,70 @@ class RequiredGateTests(unittest.TestCase):
         self.assertIn("SKIP", printed)
 
 
+class LayoutCaseTests(unittest.TestCase):
+    """The repart gate reads what its images hold, not only how repart exited (M11)."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.base = Path(self.temp.name)
+        self.addCleanup(self.temp.cleanup)
+
+    def test_the_scratch_root_holds_a_pe_uki_and_a_payload(self):
+        """Positive: the ESP and root-a copies have something real to copy."""
+        root = gate.scratch_root(self.base)
+        uki = root / "efi" / "EFI" / "BOOT" / "BOOTX64.EFI"
+        self.assertEqual(uki.read_bytes()[:2], b"MZ")
+        self.assertGreater((root / "usr" / "bin" / "payload").stat().st_size, 4096)
+
+    def test_the_planted_layout_drops_both_copies_of_run_39090040772(self):
+        """Negative: the staged copy lacks the two CopyFiles= lines the fix added."""
+        planted = gate.stage_planted_layout(self.base)
+        esp = (planted / "00-esp.conf").read_text(encoding="utf-8")
+        root = (planted / "10-root-a.conf").read_text(encoding="utf-8")
+        self.assertNotIn("\nCopyFiles=/efi:/\n", esp)
+        self.assertIn("\nCopyFiles=/boot:/\n", esp)
+        self.assertNotIn("\nCopyFiles=/\n", root)
+        self.assertEqual(
+            sorted(p.name for p in planted.glob("*.conf")),
+            sorted(p.name for p in (gate.ROOT / "build" / "repart.d").glob("*.conf")),
+        )
+
+    def test_a_definition_without_the_line_cannot_be_planted(self):
+        """Boundary: a source that no longer carries the line is a gate error, not a pass."""
+        source = self.base / "src"
+        source.mkdir()
+        (source / "00-esp.conf").write_text("[Partition]\nType=esp\n")
+        (source / "10-root-a.conf").write_text("[Partition]\nCopyFiles=/\n")
+        with self.assertRaises(gate.GateError):
+            gate.stage_planted_layout(self.base, source)
+
+    def test_both_layout_cases_are_run(self):
+        """Positive: the committed layout must be clean, the planted one refused."""
+        root = gate.scratch_root(self.base)
+        cases = {c["name"]: c for c in gate.repart_cases(self.base, root, self.base / "p.raw")}
+        self.assertEqual(cases["repart/positive"]["layout"], [])
+        self.assertIn(
+            "ESP: EFI/BOOT/BOOTX64.EFI is missing",
+            cases["repart/layout-planted-empty-esp"]["layout"],
+        )
+        self.assertIsNone(cases["repart/negative-missing-type"]["layout"])
+
+    def test_layout_problems_compare_the_image_to_its_expectation(self):
+        """Positive, negative, boundary: clean wanted, refusal wanted, nothing asked."""
+        image = self.base / "x.raw"
+        image.write_bytes(b"")
+        clean = {"layout": [], "target": image}
+        refused = {"layout": ["ESP: EFI/BOOT/BOOTX64.EFI is missing"], "target": image}
+        missing = ["ESP: EFI/BOOT/BOOTX64.EFI is missing", "root-a: near-empty EROFS"]
+        with patch.object(gate.image_layout, "problems", return_value=[]):
+            self.assertEqual(gate.layout_problems(clean), [])
+            self.assertTrue(gate.layout_problems(refused))
+        with patch.object(gate.image_layout, "problems", return_value=missing):
+            found = gate.layout_problems(clean)
+            self.assertTrue(any("EFI/BOOT/BOOTX64.EFI is missing" in line for line in found))
+            self.assertEqual(gate.layout_problems(refused), [])
+        self.assertEqual(gate.layout_problems({"target": image}), [])
+
+
 if __name__ == "__main__":
     unittest.main()

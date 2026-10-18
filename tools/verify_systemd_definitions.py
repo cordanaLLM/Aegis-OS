@@ -20,6 +20,7 @@ boot, hardware or release gate.
 """
 
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -76,10 +77,64 @@ IMAGE_NAME = "positive.raw"
 UNEXPANDED = "Failed to expand specifiers"
 # The cases whose exit 0 must list both root slots rather than merely parse.
 LISTING_CASES = ("sysupdate/positive", "sysupdate/root-tree")
+# The layout check mkosi runs after it writes the image (M11). The repart gate
+# reads each layout case's image with it, at floors the small scratch root
+# passes, so definitions that exit 0 and copy nothing are a failed case.
+LAYOUT_CHECK = ROOT / "build" / "mkosi.postoutput.d" / "image_layout.py"
+LAYOUT_FLOORS = {"min_inodes": 4, "min_bytes": 4096}
+# Imago run 39090040772 booted an image built from definitions without these
+# two lines: an ESP without the UKI and a root-a holding nothing.
+PLANTED_DROPS = (
+    ("00-esp.conf", "CopyFiles=/efi:/\n"),
+    ("10-root-a.conf", "CopyFiles=/\n"),
+)
+UKI_STUB = b"MZ" + bytes(4094)
+# What the check must report per layout case: [] for a clean image.
+LAYOUT_CASES = {
+    "repart/positive": [],
+    "repart/layout-planted-empty-esp": ["ESP: EFI/BOOT/BOOTX64.EFI is missing"],
+}
 
 
 class GateError(Exception):
     """A gate could not be run at all, as opposed to a case that failed."""
+
+
+def load_layout_check(path=LAYOUT_CHECK):
+    """Import the post-output layout check from its file, writing no bytecode beside it."""
+    spec = importlib.util.spec_from_file_location("image_layout", path)
+    module = importlib.util.module_from_spec(spec)
+    previous, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
+    return module
+
+
+image_layout = load_layout_check()
+
+
+def layout_problems(case):
+    """Return why the case's image does not hold the layout it expects, or [].
+
+    `layout` is None for a case that does not read its image, [] for one whose
+    image must pass the check, and the problems the check must report otherwise.
+    """
+    expected = case.get("layout")
+    if expected is None:
+        return []
+    try:
+        found = image_layout.problems(case["target"], **LAYOUT_FLOORS)
+    except OSError as error:
+        return [f"the image could not be read for its layout: {error}"]
+    if not expected:
+        return [f"layout: {problem}" for problem in found]
+    return [
+        f"layout: expected {want!r}, the check reported {found}"
+        for want in expected
+        if want not in found
+    ]
 
 
 def build_time_encrypt_problems(directory):
@@ -287,10 +342,27 @@ def repart_argv(definitions, image, root, binary="systemd-repart", defer=None):
 def scratch_root(base):
     """Create the scratch root tree repart copies from and reads identity from."""
     root = base / "root"
-    (root / "boot").mkdir(parents=True, exist_ok=True)
-    (root / "etc").mkdir(parents=True, exist_ok=True)
+    for sub in ("boot", "etc", "efi/EFI/BOOT", "usr/bin"):
+        (root / sub).mkdir(parents=True, exist_ok=True)
     (root / "etc" / "machine-id").write_text("ffffffffffffffffffffffffffffffff\n")
+    # A PE header is all the layout check reads of the UKI; populating the FAT
+    # ESP with it needs mcopy, which the definitions container pins.
+    (root / "efi" / "EFI" / "BOOT" / "BOOTX64.EFI").write_bytes(UKI_STUB)
+    (root / "usr" / "bin" / "payload").write_bytes(bytes(range(256)) * 64)
     return root
+
+
+def stage_planted_layout(base, source=None):
+    """Copy build/repart.d without the two CopyFiles= lines run 39090040772 lacked."""
+    source = ROOT / "build" / "repart.d" if source is None else source
+    planted = base / "planted-empty-esp"
+    shutil.copytree(source, planted)
+    for name, line in PLANTED_DROPS:
+        text = (planted / name).read_text(encoding="utf-8")
+        if f"\n{line}" not in text:
+            raise GateError(f"{name} carries no {line.strip()!r} line to plant the failed layout")
+        (planted / name).write_text(text.replace(f"\n{line}", "\n"), encoding="utf-8")
+    return planted
 
 
 def os_release(base):
@@ -330,14 +402,12 @@ def repart_cases(base, root, positive_image, binary="systemd-repart"):
     """
     fixtures = ROOT / "tests" / "systemd"
     first_boot_dir = stage_first_boot_layout(base)
+    planted_dir = stage_planted_layout(base)
+    clean = [outcome(0, forbids=[UNKNOWN_KEY])]
     rows = [
-        ("repart/positive", ROOT / "build" / "repart.d", [outcome(0, forbids=[UNKNOWN_KEY])], None),
-        (
-            "repart/first-boot-layout",
-            first_boot_dir,
-            [outcome(0, forbids=[UNKNOWN_KEY])],
-            DEFER_TYPES,
-        ),
+        ("repart/positive", ROOT / "build" / "repart.d", clean, None),
+        ("repart/layout-planted-empty-esp", planted_dir, clean, None),
+        ("repart/first-boot-layout", first_boot_dir, clean, DEFER_TYPES),
         (
             "repart/negative-missing-type",
             fixtures / "repart-missing-type",
@@ -356,12 +426,7 @@ def repart_cases(base, root, positive_image, binary="systemd-repart"):
             [outcome(0, requires=[UNKNOWN_KEY, "'Subsystem'"])],
             None,
         ),
-        (
-            "repart/boundary-equal-size",
-            fixtures / "repart-equal-size",
-            [outcome(0, forbids=[UNKNOWN_KEY])],
-            None,
-        ),
+        ("repart/boundary-equal-size", fixtures / "repart-equal-size", clean, None),
     ]
     cases = []
     for index, (name, definitions, accepted, defer) in enumerate(rows[:MAX_CASES]):
@@ -374,6 +439,8 @@ def repart_cases(base, root, positive_image, binary="systemd-repart"):
                 "accepted": accepted,
                 "env": None,
                 "image": None if keep else image,
+                "target": image,
+                "layout": LAYOUT_CASES.get(name),
             }
         )
     return cases
@@ -531,6 +598,7 @@ def execute(case):
     problems = [] if passed else [f"expected {' | '.join(explain(a) for a in case['accepted'])}"]
     if code == 0:
         problems.extend(positive_listing(case, stdout))
+        problems.extend(layout_problems(case))
     if case["image"] is not None and case["image"].exists():
         case["image"].unlink()
     return (not problems), code, problems, diagnostics
