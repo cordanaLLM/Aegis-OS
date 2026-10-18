@@ -127,7 +127,7 @@ v2.6.3 only because `~/go/bin` comes first on the developer account's `PATH`.
 | P08 | Memory locking capability (RLIMIT_MEMLOCK = infinity) so real-time aud | partial | ulimit -l -> 8192 (KB) for the current session. The capability exists (CAP_IPC_LOCK is in |
 | P09 | GPU with PCIe P2PDMA / CUDA GPUDirect support | missing | Same evidence as P03: no /sys/bus/pci/devices/*/p2pdma entries, nvidia_fs module not found |
 | P09 | NVMe PCIe SSD | satisfied | ls /sys/class/nvme -> nvme0/1/2 (Samsung 990 PRO 2TB, 960 EVO 1TB, 980 PRO 1TB) |
-| P09 | Sufficient VRAM/host-pinned DRAM to hold swapped SLM expert weights | satisfied | nvidia-smi -> 24564 MiB on the RTX 4090, plus 60.5 GiB system RAM; BAR1 resized to 32 GB e |
+| P09 | Sufficient VRAM/host-pinned DRAM to hold swapped SLM expert weights | satisfied | nvidia-smi -> 24564 MiB on the RTX 4090, plus host RAM recorded in the private profile; BAR1 resized to 32 GB e |
 | P09 | Power-metering capability to enforce/observe the 20.0W BIOMIMETIC_WATT | partial | RAPL package-0 and core zones are live (delta 241073516 uJ over 2 s), but scope is socket- |
 | P10 | KVM virtualization extensions on the host CPU for Firecracker microVMs | satisfied | /dev/kvm present mode 0666, kvm_amd loaded, nested=1. Firecracker itself is absent but is |
 | P10 | GPU/NPU accelerator when is_gpu_enabled is set on a MicroVmInstance | partial | Three GPUs present with clean IOMMU groups (17, 20, 31) and vfio-pci available, so passthr |

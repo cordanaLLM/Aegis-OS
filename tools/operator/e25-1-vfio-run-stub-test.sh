@@ -46,10 +46,22 @@ EOF
   # shellcheck disable=SC2016  # $3 expands in the fake binary, not here
   printf '#!/bin/sh\necho "FAIL: open: EACCES"; exit 1\n' > "$R/bin-fail"
   chmod +x "$R/bin-ok" "$R/bin-fail"
+  # A fresh session: boot at 1000, the KWin pin written at 1010, kwin_wayland 4242 started at 1000 + 9000/CLK_TCK.
+  mkdir -p "$R/proc/4242"; echo "btime 1000" > "$R/proc/stat"; echo kwin_wayland > "$R/proc/4242/comm"
+  kwin_stat 9000
+  mkdir -p "$R/envd"; echo "KWIN_DRM_DEVICES=/dev/dri/card1" > "$R/envd/60-kwin.conf"; touch -d @1010 "$R/envd/60-kwin.conf"
+  echo "EDITOR=vi" > "$R/envd/10-editor.conf"; touch -d @5000 "$R/envd/10-editor.conf"
+  printf '#!/bin/sh\necho "4242, /usr/bin/kwin_wayland"\n' > "$R/nvsmi"; chmod +x "$R/nvsmi"
+}
+kwin_stat() { # start time of the fake kwin_wayland in clock ticks after boot
+  local zeros # fields 4 to 21
+  zeros=$(printf '0 %.0s' $(seq 4 21))
+  echo "4242 (kwin_wayland) S ${zeros}$1 0 0" > "$R/proc/4242/stat"
 }
 run() {
   local rc=0
-  AEGIS_SYSFS=$R/sys AEGIS_DEV=$R/dev AEGIS_SUDO=$R/sudo AEGIS_BIN=$R/${BINNAME:-bin-ok} AEGIS_EVID=$R/evid bash "$S" "$@" > "$R/out" 2>&1 || rc=$?
+  AEGIS_SYSFS=$R/sys AEGIS_DEV=$R/dev AEGIS_SUDO=$R/sudo AEGIS_BIN=$R/${BINNAME:-bin-ok} AEGIS_EVID=$R/evid \
+    AEGIS_PROC=$R/proc AEGIS_NVSMI=$R/nvsmi AEGIS_ENVD=$R/envd bash "$S" "$@" > "$R/out" 2>&1 || rc=$?
   echo "$rc"
 }
 check() { # name expected-rc actual-rc grep-pattern
@@ -85,5 +97,16 @@ mk; hold card; rc=$(run); unhold; check refuse-held-card-dry-run 2 "$rc" "REFUSE
 mk; hold render; rc=$(run --apply); unhold; check refuse-held-render 2 "$rc" "REFUSE: pci-0000:f3:00.0-render held by $HOLDER (sleep)"
 [ ! -e "$R/sudo.log" ] && echo "ok   refuse-held-no-write" || { echo "FAIL held but wrote"; fails=$((fails+1)); }
 mk; rm "$R/dev/dri/by-path/pci-0000:f3:00.0-render"; rc=$(run); check refuse-no-by-path 2 "$rc" "REFUSE: no $R/dev/dri/by-path/pci-0000:f3:00.0-render"
+# The KWin DRM pin takes effect only at the next login: a kwin_wayland older than the pin may still open the Arc.
+mk; kwin_stat 500; rc=$(run --apply); check refuse-stale-kwin 2 "$rc" "REFUSE: kwin_wayland 4242 started 1005, not after the KWin DRM pin"
+[ ! -e "$R/sudo.log" ] && echo "ok   refuse-stale-kwin-no-write" || { echo "FAIL stale kwin but wrote"; fails=$((fails+1)); }
+mk; kwin_stat 1000; rc=$(run); check refuse-kwin-same-second-as-pin 2 "$rc" "REFUSE: kwin_wayland 4242 started 1010, not after"
+mk; kwin_stat 1100; rc=$(run); check kwin-one-second-after-pin 0 "$rc" "kwin_wayland 4242 started 1011, after the KWin DRM pin"
+mk; printf '#!/bin/sh\necho "77, /usr/bin/python"\n' > "$R/nvsmi"; rc=$(run --apply); check refuse-kwin-not-on-nvidia 2 "$rc" "REFUSE: nvidia-smi does not list kwin_wayland 4242"
+mk; printf '#!/bin/sh\nexit 6\n' > "$R/nvsmi"; rc=$(run); check refuse-nvsmi-fails 2 "$rc" "REFUSE: nvidia-smi failed"
+mk; rm -r "$R/proc/4242"; rc=$(run); check refuse-no-kwin 2 "$rc" "REFUSE: no kwin_wayland running"
+mk; rm "$R/envd/60-kwin.conf"; rc=$(run --apply); check refuse-no-pin 2 "$rc" "REFUSE: no file in $R/envd sets KWIN_DRM_DEVICES"
+mk; sed -i "s/^/# /" "$R/envd/60-kwin.conf"; rc=$(run); check refuse-commented-pin 2 "$rc" "REFUSE: no file in $R/envd sets KWIN_DRM_DEVICES"
+mk; echo "KWIN_DRM_DEVICES=/dev/dri/card2" > "$R/envd/70-kwin.conf"; rc=$(run); check refuse-two-pins 2 "$rc" "REFUSE: 2 files in $R/envd set KWIN_DRM_DEVICES"
 rm -rf "${STUBS[@]}"
 echo "fails=$fails"; [ "$fails" = 0 ]

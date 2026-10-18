@@ -527,11 +527,22 @@ command. It signals no process. A compositor that opened the Arc as a hotplug
 GPU loses its device when the Arc is unbound under it, so a held node is a
 refusal, never a warning: `REFUSE: pci-<Arc>-card held by <pid> (<command>)`.
 
+Its first check, before any device check, is that the compositor runs under
+a KWin DRM pin: exactly one file in the user's `environment.d` sets
+`KWIN_DRM_DEVICES`, which keeps KWin on the NVIDIA GPU. The script finds that
+file by its content, not by a file name. KWin reads the variable only when it
+starts, so the script refuses unless every `kwin_wayland` started strictly
+after the pin file's modification time, from `/proc/<pid>/stat` and the boot
+time, and `nvidia-smi` lists it. No pin file, more than one, no running
+`kwin_wayland` or a failing `nvidia-smi` also refuses.
+
 `tools/test_e25_vfio_card.py` runs the script's stub test
 (`tools/operator/e25-1-vfio-run-stub-test.sh`) inside `make verify-all`: a
-fake sysfs and a fake sudo, 23 cases, nothing under `/sys` or `/dev` touched.
-A real process started by the test holds the stub card or render node, and
-the preview and `--apply` must refuse and name it without a write.
+fake sysfs, `/proc`, `environment.d`, `nvidia-smi` and sudo, 33 cases, nothing
+under `/sys` or `/dev` touched. A real process started by the test holds the
+stub card or render node, and the preview and `--apply` must refuse and name
+it without a write. A `kwin_wayland` that started before the pin, or in the
+same second, must refuse; one second after must pass.
 
 ### Limits
 
