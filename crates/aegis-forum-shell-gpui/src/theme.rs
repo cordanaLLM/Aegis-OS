@@ -24,3 +24,15 @@ pub fn color(token: Rgb) -> Rgba {
 pub fn surface() -> Rgba {
     color(tokens::COLOR_SURFACE)
 }
+
+/// The focus ring colour: `--concordia-color-focus-ring`.
+#[must_use]
+pub fn focus_ring() -> Rgba {
+    color(tokens::COLOR_FOCUS_RING)
+}
+
+/// The raised surface colour: `--concordia-color-surface-raised`.
+#[must_use]
+pub fn surface_raised() -> Rgba {
+    color(tokens::COLOR_SURFACE_RAISED)
+}

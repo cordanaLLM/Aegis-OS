@@ -28,9 +28,12 @@ from verify_shell import (  # noqa: E402
     judge_first_configure,
     judge_layer_shell_missing,
     judge_refused_line,
+    judge_ring_negative,
+    judge_ring_positive,
     main,
     read_until,
     read_versions,
+    write_no_activation_config,
 )
 
 
@@ -396,24 +399,27 @@ class TestVerifyShellBoundary(unittest.TestCase):
 
     def test_summary_with_one_fail(self):
         results = [("surface/first-configure", False, "exited 1")] + [
-            (f"case-{n}", True, "") for n in range(10)
+            (f"case-{n}", True, "") for n in range(18)
         ]
         self.assertEqual(verify_shell.summary(results), "RESULT fail: 1 case(s) failed")
 
     def test_summary_of_zero_cases_fails(self):
-        self.assertEqual(verify_shell.summary([]), "RESULT fail: 0 of 11 cases ran")
+        self.assertEqual(verify_shell.summary([]), "RESULT fail: 0 of 19 cases ran")
 
-    def test_summary_of_eleven_passes(self):
-        results = [(f"case-{n}", True, "") for n in range(11)]
+    def test_summary_of_nineteen_passes(self):
+        results = [(f"case-{n}", True, "") for n in range(19)]
         self.assertEqual(verify_shell.summary(results), "RESULT pass")
 
-    def test_run_all_cases_runs_11_cases(self):
+    def test_run_all_cases_runs_19_cases(self):
         def fake_runner(argv, env):
             return 0, "OUTCOME configured 1280x48\n"
 
         def fake_atspi_runner(
             shell_bin, readback_bin, variant, env, read_only=False, delay=0.0, runner=None
         ):
+            return True, ""
+
+        def fake_ring_runner(shell_bin, ring_readback_bin, variant, is_positive, env, runner=None):
             return True, ""
 
         results = verify_shell.run_all_cases(
@@ -425,8 +431,245 @@ class TestVerifyShellBoundary(unittest.TestCase):
             readback_bin="/bin/readback",
             a11y_env={},
             atspi_case_runner=fake_atspi_runner,
+            ring_readback_bin="/bin/ring-readback",
+            ring_env={},
+            ring_case_runner=fake_ring_runner,
         )
-        self.assertEqual(len(results), 11)
+        self.assertEqual(len(results), 19)
+
+
+class TestNoActivationConfig(unittest.TestCase):
+    """write_no_activation_config creates a minimal session bus configuration."""
+
+    def test_omits_standard_session_servicedirs(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = write_no_activation_config(Path(tmp))
+            self.assertTrue(cfg.is_file())
+            content = cfg.read_text(encoding="utf-8")
+            self.assertIn("<type>session</type>", content)
+            self.assertIn("<listen>", content)
+            self.assertNotIn("standard_session_servicedirs", content)
+            self.assertNotIn("<includedir>", content)
+
+
+class TestRingJudges(unittest.TestCase):
+    """Positive, negative, and boundary tests for focus ring judgements."""
+
+    def test_positive_pass_on_exit_0_with_case_pass(self):
+        stdout = "MEASURE Left 3.000 6.40\nCASE ring/unit pass\n"
+        passed, why = judge_ring_positive("unit", 0, stdout)
+        self.assertTrue(passed)
+        self.assertEqual(why, "best Left 3.000 px, 6.40:1")
+
+    def test_positive_fails_on_nonzero_exit(self):
+        stdout = "ERROR D-Bus call failed\n"
+        passed, why = judge_ring_positive("unit", 2, stdout)
+        self.assertFalse(passed)
+        self.assertIn("exited 2", why)
+
+    def test_positive_fails_when_pass_line_missing(self):
+        stdout = "MEASURE Left 3.000 6.40\n"
+        passed, why = judge_ring_positive("unit", 0, stdout)
+        self.assertFalse(passed)
+        self.assertIn("missing pass line", why)
+
+    def test_negative_pass_on_exit_1_with_case_fail(self):
+        stdout = (
+            "MEASURE Left 1.500 6.40\n"
+            "CASE ring/scaled-layer fail: "
+            "best side Left 1.500 px, 6.40:1; want >= 2 px and >= 3:1\n"
+        )
+        passed, why = judge_ring_negative("scaled-layer", 1, stdout)
+        self.assertTrue(passed)
+        self.assertEqual(why, "best Left 1.500 px, 6.40:1")
+
+    def test_negative_fails_when_readback_exits_0(self):
+        stdout = "CASE ring/scaled-layer pass\n"
+        passed, why = judge_ring_negative("scaled-layer", 0, stdout)
+        self.assertFalse(passed)
+        self.assertIn("unexpectedly passed", why)
+
+    def test_negative_fails_on_setup_error_exit(self):
+        stdout = "ERROR D-Bus setup\n"
+        passed, why = judge_ring_negative("scaled-layer", 2, stdout)
+        self.assertFalse(passed)
+        self.assertIn("want 1", why)
+
+    def test_negative_fails_when_fail_reason_empty(self):
+        stdout = "CASE ring/scaled-layer fail:\n"
+        passed, why = judge_ring_negative("scaled-layer", 1, stdout)
+        self.assertFalse(passed)
+        self.assertIn("missing fail line", why)
+
+    def test_boundary_width_2_0_positive(self):
+        stdout = "CASE ring/width-2-0 pass\n"
+        self.assertTrue(judge_ring_positive("width-2-0", 0, stdout)[0])
+
+    def test_positive_pass_reports_best_side(self):
+        stdout = "MEASURE left 2.000 6.44\nMEASURE top 3.000 6.44\nCASE ring/unit pass\n"
+        self.assertEqual(
+            judge_ring_positive("unit", 0, stdout), (True, "best top 3.000 px, 6.44:1")
+        )
+
+    def test_negative_pass_reports_best_side(self):
+        stdout = "MEASURE left 1.902 5.85\nCASE ring/width-1-9 fail: narrow\n"
+        self.assertEqual(
+            judge_ring_negative("width-1-9", 1, stdout), (True, "best left 1.902 px, 5.85:1")
+        )
+
+    def test_measure_summary_without_measure_is_empty(self):
+        self.assertEqual(verify_shell.measure_summary("CASE ring/under-panel fail: x\n"), "")
+
+    def test_boundary_width_1_9_negative(self):
+        stdout = (
+            "MEASURE left 1.900 6.40\n"
+            "CASE ring/width-1-9 fail: best side Left 1.900 px, 6.40:1; want >= 2 px and >= 3:1\n"
+        )
+        self.assertTrue(judge_ring_negative("width-1-9", 1, stdout)[0])
+
+    def test_width_1_9_failing_at_2_0_is_wrong_reason(self):
+        stdout = (
+            "MEASURE left 2.000 1.20\n"
+            "CASE ring/width-1-9 fail: best side Left 2.000 px, 1.20:1; want >= 2 px and >= 3:1\n"
+        )
+        passed, why = judge_ring_negative("width-1-9", 1, stdout)
+        self.assertFalse(passed)
+        self.assertIn("best measured width 2.0", why)
+
+    def test_width_1_9_upper_edge_accepted(self):
+        stdout = "MEASURE top 1.950 6.40\nCASE ring/width-1-9 fail: narrow\n"
+        self.assertTrue(judge_ring_negative("width-1-9", 1, stdout)[0])
+
+    def test_scaled_layer_at_1_5_accepted(self):
+        stdout = (
+            "MEASURE left 1.500 6.40\nMEASURE top 1.480 6.40\nCASE ring/scaled-layer fail: narrow\n"
+        )
+        self.assertTrue(judge_ring_negative("scaled-layer", 1, stdout)[0])
+
+    def test_scaled_layer_reporting_2_9_fails(self):
+        stdout = "MEASURE left 2.900 1.10\nCASE ring/scaled-layer fail: low contrast\n"
+        passed, why = judge_ring_negative("scaled-layer", 1, stdout)
+        self.assertFalse(passed)
+        self.assertIn("want 1.4..1.6", why)
+
+    def test_scaled_layer_without_measure_fails(self):
+        stdout = "CASE ring/scaled-layer fail: no sides\n"
+        self.assertFalse(judge_ring_negative("scaled-layer", 1, stdout)[0])
+
+    def test_under_panel_with_visible_ring_fails(self):
+        stdout = "MEASURE left 2.000 1.00\nCASE ring/under-panel fail: low contrast\n"
+        passed, why = judge_ring_negative("under-panel", 1, stdout)
+        self.assertFalse(passed)
+        self.assertIn("want 0.0..0.5", why)
+
+    def test_under_panel_with_zero_width_sides_accepted(self):
+        stdout = (
+            "MEASURE left 0.000 1.00\nMEASURE top 0.000 1.00\nCASE ring/under-panel fail: none\n"
+        )
+        self.assertTrue(judge_ring_negative("under-panel", 1, stdout)[0])
+
+    def test_best_measured_width_ignores_malformed_lines(self):
+        stdout = "MEASURE left x 1.0\nMEASURE top\nMEASURE right 1.250 3.00\n"
+        self.assertEqual(verify_shell.best_measured_width(stdout), 1.25)
+
+    def test_boundary_partly_covered_positive(self):
+        stdout = "CASE ring/partly-covered pass\n"
+        self.assertTrue(judge_ring_positive("partly-covered", 0, stdout)[0])
+
+    def test_negative_under_panel(self):
+        stdout = "CASE ring/under-panel fail: ring not found on any side\n"
+        self.assertTrue(judge_ring_negative("under-panel", 1, stdout)[0])
+
+
+class TestRunRingCase(unittest.TestCase):
+    """run_ring_case executes fixture and readback with proper error handling."""
+
+    def test_fixture_not_ready_fails(self):
+        class FakeProc:
+            def __init__(self):
+                self.stdout = FakePipe([b"ERROR\n"])
+                self.pid = 12345
+
+            def poll(self):
+                return 1
+
+        def fake_popen(cmd, **kwargs):
+            return FakeProc()
+
+        with patch.object(verify_shell, "read_until", return_value=(False, "ERROR\n")):
+            with patch.object(verify_shell, "teardown_process"):
+                passed, why = verify_shell.run_ring_case(
+                    "/bin/shell",
+                    "/bin/readback",
+                    "unit",
+                    True,
+                    {},
+                    popen_fn=fake_popen,
+                )
+                self.assertFalse(passed)
+                self.assertIn("failed to announce READY", why)
+
+    def test_fixture_missing_ring_line_fails(self):
+        class FakeProc:
+            def __init__(self):
+                self.stdout = FakePipe([b"READY\n"])
+                self.pid = 12345
+
+            def poll(self):
+                return None
+
+        def fake_popen(cmd, **kwargs):
+            return FakeProc()
+
+        with patch.object(verify_shell, "read_until", return_value=(True, "READY\n")):
+            with patch.object(verify_shell, "teardown_process"):
+                passed, why = verify_shell.run_ring_case(
+                    "/bin/shell",
+                    "/bin/readback",
+                    "unit",
+                    True,
+                    {},
+                    popen_fn=fake_popen,
+                )
+                self.assertFalse(passed)
+                self.assertIn("did not emit RING line", why)
+
+    def test_happy_path_runs_readback_with_ring_line(self):
+        class FakeProc:
+            def __init__(self):
+                self.stdout = FakePipe([b"RING 590 310 690 410 3 2\nREADY\n"])
+                self.pid = 12345
+
+            def poll(self):
+                return None
+
+        def fake_popen(cmd, **kwargs):
+            return FakeProc()
+
+        rb_calls = []
+
+        def fake_runner(cmd, env):
+            rb_calls.append(cmd)
+            return 0, "CASE ring/unit pass\n"
+
+        ready_out = "RING 590 310 690 410 3 2\nREADY\n"
+        with patch.object(verify_shell, "read_until", return_value=(True, ready_out)):
+            with patch.object(verify_shell, "teardown_process"):
+                passed, why = verify_shell.run_ring_case(
+                    "/bin/shell",
+                    "/bin/readback",
+                    "unit",
+                    True,
+                    {},
+                    popen_fn=fake_popen,
+                    runner=fake_runner,
+                )
+                self.assertTrue(passed)
+                self.assertEqual(why, "")
+                self.assertEqual(len(rb_calls), 1)
+                self.assertEqual(rb_calls[0], ["/bin/readback", "unit", "RING 590 310 690 410 3 2"])
 
 
 class TestStartKwin(unittest.TestCase):
@@ -450,6 +693,84 @@ class TestStartKwin(unittest.TestCase):
             with self.assertRaises(verify_shell.GateError):
                 verify_shell.start_kwin(P(tmp), popen_fn=fake_popen)
         self.assertTrue(seen["log"].closed)
+
+
+class ReportNoteTests(unittest.TestCase):
+    """A passing case with a reason prints it as a NOTE; the CASE line keeps its form."""
+
+    def run_report(self, results):
+        import io
+
+        out = io.StringIO()
+        with patch.object(verify_shell.sys, "stdout", out):
+            verify_shell.report_run_summary(results, "kwin 6.8.0", {"atspi-2": "x", "dbus": "y"})
+        return out.getvalue().splitlines()
+
+    def test_pass_with_reason_prints_note(self):
+        lines = self.run_report([("ring/unit", True, "best top 3.000 px, 6.44:1")])
+        self.assertIn("CASE ring/unit pass", lines)
+        self.assertIn("NOTE ring/unit: best top 3.000 px, 6.44:1", lines)
+
+    def test_pass_without_reason_prints_no_note(self):
+        lines = self.run_report([("atspi/sound", True, "")])
+        self.assertIn("CASE atspi/sound pass", lines)
+        self.assertFalse(any(line.startswith("NOTE atspi/sound") for line in lines))
+
+    def test_fail_prints_reason_on_case_line_only(self):
+        lines = self.run_report([("ring/min", False, "narrow")])
+        self.assertIn("CASE ring/min fail: narrow", lines)
+        self.assertFalse(any(line.startswith("NOTE ring/min") for line in lines))
+
+
+class KwinConfigTests(unittest.TestCase):
+    """start_kwin reads a gate-owned configuration with animations off, never the host's."""
+
+    def launch(self, tmp, environ):
+        from pathlib import Path as P
+
+        seen = {}
+
+        class Exited:
+            def poll(self):
+                return 1
+
+        def fake_popen(cmd, **kwargs):
+            seen["env"] = kwargs["env"]
+            kwargs["stdout"].close()
+            return Exited()
+
+        with patch.dict(verify_shell.os.environ, environ, clear=False):
+            with self.assertRaises(verify_shell.GateError):
+                verify_shell.start_kwin(P(tmp), popen_fn=fake_popen)
+        return seen["env"]
+
+    def test_animations_off_in_gate_config(self):
+        import tempfile
+        from pathlib import Path as P
+
+        with tempfile.TemporaryDirectory() as tmp:
+            env = self.launch(tmp, {})
+            config = P(env["XDG_CONFIG_HOME"])
+            self.assertEqual(config.parent, P(tmp))
+            for name in ("kdeglobals", "kwinrc"):
+                text = (config / name).read_text(encoding="utf-8")
+                self.assertIn("[KDE]\nAnimationDurationFactor=0\n", text)
+
+    def test_host_config_home_replaced(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            env = self.launch(tmp, {"XDG_CONFIG_HOME": "/home/someone/.config"})
+            self.assertNotEqual(env["XDG_CONFIG_HOME"], "/home/someone/.config")
+
+    def test_existing_config_dir_reused(self):
+        import tempfile
+        from pathlib import Path as P
+
+        with tempfile.TemporaryDirectory() as tmp:
+            (P(tmp) / "config").mkdir()
+            env = self.launch(tmp, {})
+            self.assertTrue((P(env["XDG_CONFIG_HOME"]) / "kwinrc").is_file())
 
 
 if __name__ == "__main__":
