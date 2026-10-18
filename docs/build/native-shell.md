@@ -47,12 +47,13 @@ release gate.
    unless `CARGO_BUILD_JOBS` says otherwise.
 3. It starts KWin at 1280x720 and two `wayland_filter.py` proxies in front of
    it, one per mode.
-4. It runs the five cases below. Every child has a 30 s timeout, and the
-   binary waits at most `FIRST_CONFIGURE_DEADLINE` (5 s) for the first
-   configure.
+4. It runs the eight surface cases below. Every child has a 30 s timeout,
+   and the binary waits at most `FIRST_CONFIGURE_DEADLINE` (5 s) for the
+   first configure. `surface/parameters-read-back` starts a second KWin of
+   its own, described below, and stops it when the case ends.
 5. It prints one `CASE` line per case, then the D79 note, then
-   `RESULT pass` only when all five cases ran and passed (`summary()` in
-   `tools/verify_shell.py`).
+   `RESULT pass` only when every one of `CASE_COUNT` cases ran and passed
+   (`summary()` in `tools/verify_shell.py`).
 
 The binary takes exactly one newline-terminated line, as the socket would
 carry it. Its exit status names the outcome: 0 configured, 3 open or write
@@ -68,9 +69,60 @@ failure, 4 layer shell missing, 5 configure deadline, 6 request refused,
 | `surface/layer-shell-missing` | hide proxy | exit 4 and an `OUTCOME layer-shell-missing:` line naming `LayerShellNotSupportedError` |
 | `surface/first-configure-deadline` | drop proxy | exit 5 and an `OUTCOME deadline:` line naming `zwlr_layer_surface_v1.configure` |
 | `surface/refused-line` | none | exit 6 and an `OUTCOME refused:` line naming `jsonrpc`, for a request whose `jsonrpc` member is `"1.0"` |
+| `surface/unknown-schema` | none | exit 6 and an `OUTCOME refused:` line carrying `the mount request names a schema this build does not admit`, for the reference request with schema `aegis.p05-p17.mount-shell-canvas.v2` |
+| `surface/unknown-layer` | none | exit 6 and an `OUTCOME refused:` line carrying `the layer is not background, bottom, top or overlay`, for the reference request with layer `middle` |
+| `surface/parameters-read-back` | debug KWin directly | exit 0 and `OUTCOME configured 1280x48`, and KWin's own request log holds each parameter once with the reference value (table below) |
 
-The refused case must name `jsonrpc`. A refusal for any other reason, such as
-a missing newline, fails the case.
+Each refused case must name its own reason. A refusal for any other reason,
+such as a missing newline or the other changed member, fails the case.
+
+### Reading the parameters back from KWin
+
+`OUTCOME configured` shows only that a configure arrived. To show what the
+shell asked for, `run_read_back_case()` starts a second KWin on the socket
+`kwin-debug-0` with `WAYLAND_DEBUG=server`, inside its own
+`dbus-run-session` under the gate's no-activation configuration. libwayland
+then logs every request the compositor receives to `kwin-debug.log` in the
+gate's runtime directory. The main KWin runs without the debug log, so the
+timing cases do not pay for it.
+
+The judge (`judge_parameters_read_back()`) reads the request lines of
+`zwlr_layer_shell_v1` and `zwlr_layer_surface_v1` and skips events (lines
+with `->`). It requires each request below exactly once with the wire value
+of the reference request, as `wlr-layer-shell-unstable-v1` encodes it. A
+missing request or a second, different one fails the case.
+
+| Request | Logged arguments | Reference parameter |
+| :--- | :--- | :--- |
+| `get_layer_surface` | layer `2`, namespace `aegis-forum` | `layer: top`, `namespace: aegis-forum` |
+| `set_anchor` | `13` (top 1 + left 4 + right 8) | `anchor: [top, left, right]` |
+| `set_exclusive_zone` | `48` | `exclusive_zone: 48` |
+| `set_exclusive_edge` | `1` (top) | `exclusive_edge: top` |
+| `set_keyboard_interactivity` | `2` | `keyboard_interactivity: on_demand` |
+
+KWin 6.8.0 logged these lines for the reference request (2026-10-18), without
+the timestamps; the first line is wrapped after its first argument:
+
+```text
+zwlr_layer_shell_v1#16.get_layer_surface(new id zwlr_layer_surface_v1#28,
+    wl_surface#27, nil, 2, "aegis-forum")
+zwlr_layer_surface_v1#28.set_size(0, 48)
+zwlr_layer_surface_v1#28.set_anchor(13)
+zwlr_layer_surface_v1#28.set_keyboard_interactivity(2)
+zwlr_layer_surface_v1#28.set_exclusive_zone(48)
+zwlr_layer_surface_v1#28.set_exclusive_edge(1)
+```
+
+`set_size` is not judged: the shell sends `0, 48` and then the configured
+`1280, 48`, and `surface/first-configure` already checks the size.
+
+Recorded on 2026-10-18T12:02+02:00 with `make verify-shell` (kernel
+7.2.10-1-cachyos, KWin 6.8.0, Intel Arc A380): all 25 cases passed, among
+them `surface/unknown-schema`, `surface/unknown-layer` and
+`surface/parameters-read-back`. The unit tests in `tools/test_verify_shell.py`
+were run once each against a planted defect, then restored: a judge that
+skipped `set_exclusive_edge` failed two tests, and one that took any refusal
+failed both reason tests.
 
 ## The filter proxy
 

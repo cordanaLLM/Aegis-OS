@@ -11,35 +11,41 @@ operator's display or session bus).
 
 
 Drives the Rust binaries `aegis-forum-shell-gpui`, `aegis-atspi-readback`, and
-`aegis-ring-readback` through twenty-two cases:
+`aegis-ring-readback` through twenty-five cases:
 1. surface/first-configure: direct connection maps layer shell and receives first configure;
 2. surface/filter-control: verify wayland-info sees layer shell filtered out or preserved;
 3. surface/layer-shell-missing: compositor lacking layer shell reports LayerShellNotSupportedError;
 4. surface/first-configure-deadline: configure that never arrives terminates at deadline;
 5. surface/refused-line: invalid request line is refused before touching display;
-6. atspi/sound: fixture exposes button, focus, 1000 nodes, hidden subtree; click updates label;
-7. atspi/late-client: client started after surface maps receives full tree;
-8. atspi/negative-button-as-container: button exposed as container fails;
-9. atspi/negative-unlabelled: planted unlabelled node fails and is named;
-10. atspi/negative-culled: culling that removes nodes fails 1000-node check;
-11. atspi/negative-hidden-shown: unhidden hidden subtree fails;
-12. ring/min: minimum camera scale focus ring >= 2.0 px and >= 3:1 contrast;
-13. ring/unit: unit camera scale focus ring >= 2.0 px and >= 3:1 contrast;
-14. ring/max: maximum camera scale focus ring >= 2.0 px and >= 3:1 contrast;
-15. ring/partly-covered: partly covered focused node passes;
-16. ring/width-2-0: boundary 2.0 px ring passes;
-17. ring/scaled-layer: ring drawn inside scaled layer (1.5 px) fails width floor;
-18. ring/under-panel: focused node fully under panel fails;
-19. ring/width-1-9: boundary 1.9 px ring fails;
-20. timing/1000-nodes: 1000 seeded nodes measured over 600 frames with a11y active;
-21. timing/999-nodes: 994 seeded rows (998 tree nodes, < 1000) refused as TooFewNodes;
-22. timing/adapter-inactive: fixture run without active a11y adapter refused as AdapterInactive.
+6. surface/unknown-schema: a request naming another schema is refused for the schema;
+7. surface/unknown-layer: a request naming layer "middle" is refused for the layer;
+8. surface/parameters-read-back: a second KWin under WAYLAND_DEBUG=server logs the
+   get_layer_surface layer and namespace, anchor, exclusive zone and edge and keyboard
+   interactivity the shell sent, each once and equal to the reference request;
+9. atspi/sound: fixture exposes button, focus, 1000 nodes, hidden subtree; click updates label;
+10. atspi/late-client: client started after surface maps receives full tree;
+11. atspi/negative-button-as-container: button exposed as container fails;
+12. atspi/negative-unlabelled: planted unlabelled node fails and is named;
+13. atspi/negative-culled: culling that removes nodes fails 1000-node check;
+14. atspi/negative-hidden-shown: unhidden hidden subtree fails;
+15. ring/min: minimum camera scale focus ring >= 2.0 px and >= 3:1 contrast;
+16. ring/unit: unit camera scale focus ring >= 2.0 px and >= 3:1 contrast;
+17. ring/max: maximum camera scale focus ring >= 2.0 px and >= 3:1 contrast;
+18. ring/partly-covered: partly covered focused node passes;
+19. ring/width-2-0: boundary 2.0 px ring passes;
+20. ring/scaled-layer: ring drawn inside scaled layer (1.5 px) fails width floor;
+21. ring/under-panel: focused node fully under panel fails;
+22. ring/width-1-9: boundary 1.9 px ring fails;
+23. timing/1000-nodes: 1000 seeded nodes measured over 600 frames with a11y active;
+24. timing/999-nodes: 994 seeded rows (998 tree nodes, < 1000) refused as TooFewNodes;
+25. timing/adapter-inactive: fixture run without active a11y adapter refused as AdapterInactive.
 
 Every pass is development evidence for the client half only (D79).
 """
 
 import json
 import os
+import re
 import select
 import shutil
 import socket
@@ -105,7 +111,22 @@ REFERENCE_REQUEST = {
 }
 # The binary takes exactly one newline-terminated line, as the socket would carry it.
 REFERENCE_LINE = json.dumps(REFERENCE_REQUEST) + "\n"
-CASE_COUNT = 22
+CASE_COUNT = 25
+
+# The read-back compositor: its own socket, log and dbus-run-session, so the debug log
+# never slows the timing cases on the main KWin.
+DEBUG_SOCKET = "kwin-debug-0"
+DEBUG_LOG = "kwin-debug.log"
+# Wire values from wlr-layer-shell-unstable-v1 (layer, anchor bits, keyboard_interactivity).
+LAYER_WIRE = {"background": 0, "bottom": 1, "top": 2, "overlay": 3}
+ANCHOR_WIRE = {"top": 1, "bottom": 2, "left": 4, "right": 8}
+KEYBOARD_WIRE = {"none": 0, "exclusive": 1, "on_demand": 2}
+# One WAYLAND_DEBUG=server request line, `[time] interface#id.request(args)`; events
+# carry ` -> ` and never match.
+REQUEST_RE = re.compile(r"^\[[0-9:.]+\] zwlr_layer_(?:shell|surface)_v1#[0-9]+\.([a-z_]+)\((.*)\)$")
+UNKNOWN_SCHEMA = "aegis.p05-p17.mount-shell-canvas.v2"
+REFUSED_SCHEMA = "the mount request names a schema this build does not admit"
+REFUSED_LAYER = "the layer is not background, bottom, top or overlay"
 
 ATSPI_CASES = (
     ("atspi/sound", "sound", False, 0.0),
@@ -469,12 +490,14 @@ def start_kwin(
     config_file=None,
     dbus_addr=None,
     popen_fn=subprocess.Popen,
+    log_name="kwin.log",
+    extra_env=None,
 ):
     """Launches private headless KWin instance."""
     socket_path = runtime_dir / socket_name
-    log_file_path = runtime_dir / "kwin.log"
+    log_file_path = runtime_dir / log_name
     log_file = open(log_file_path, "w", encoding="utf-8")
-    env = kwin_env(runtime_dir, dbus_addr)
+    env = dict(kwin_env(runtime_dir, dbus_addr), **(extra_env or {}))
     cmd = kwin_command(socket_name, config_file, dbus_addr)
     # The child holds its own copy of the descriptor; the parent's is not needed past Popen.
     with log_file:
@@ -745,6 +768,67 @@ def judge_refused_line(code, stdout):
     return False, f"missing OUTCOME refused line naming jsonrpc: {stdout.strip()[:100]}"
 
 
+def judge_refused_for(code, stdout, reason, label):
+    """Judges a refusal: exit 6 and an `OUTCOME refused:` line carrying `reason`."""
+    if code != 6:
+        return False, f"exited {code}, expected 6"
+    for line in stdout.splitlines():
+        if "OUTCOME refused:" in line and reason in line:
+            return True, ""
+    return False, f"missing OUTCOME refused line naming the {label}: {stdout.strip()[:100]}"
+
+
+def judge_refused_schema(code, stdout):
+    """Judges case 6: surface/unknown-schema, refused for its schema only."""
+    return judge_refused_for(code, stdout, REFUSED_SCHEMA, "schema")
+
+
+def judge_refused_layer(code, stdout):
+    """Judges case 7: surface/unknown-layer, refused for its layer only."""
+    return judge_refused_for(code, stdout, REFUSED_LAYER, "layer")
+
+
+def layer_requests(log_text):
+    """Maps each layer-shell request name in a server debug log to its argument strings."""
+    requests = {}
+    for line in log_text.splitlines():
+        match = REQUEST_RE.match(line.strip())
+        if match is None:
+            continue
+        name, args = match.groups()
+        if name == "get_layer_surface":
+            # new id, wl_surface, output, layer, namespace: keep layer and namespace.
+            fields = args.split(", ")
+            args = ", ".join(fields[3:]).replace('"', "")
+        requests.setdefault(name, []).append(args)
+    return requests
+
+
+def expected_layer_requests(params):
+    """Returns the request arguments KWin must log for mount `params`."""
+    anchor = sum(ANCHOR_WIRE[edge] for edge in params["anchor"])
+    return {
+        "get_layer_surface": [f"{LAYER_WIRE[params['layer']]}, {params['namespace']}"],
+        "set_anchor": [str(anchor)],
+        "set_exclusive_zone": [str(params["exclusive_zone"])],
+        "set_exclusive_edge": [str(ANCHOR_WIRE[params["exclusive_edge"]])],
+        "set_keyboard_interactivity": [str(KEYBOARD_WIRE[params["keyboard_interactivity"]])],
+    }
+
+
+def judge_parameters_read_back(code, stdout, log_text, params=REFERENCE_PARAMS):
+    """Judges case 8: every mount parameter reached KWin once, with its reference value."""
+    passed, why = judge_first_configure(code, stdout)
+    if not passed:
+        return False, why
+    seen = layer_requests(log_text)
+    for name, want in expected_layer_requests(params).items():
+        got = seen.get(name, [])
+        if got != want:
+            return False, f"KWin logged {name} {got}, expected {want}"
+    return True, ""
+
+
 def case_verdicts(stdout):
     """Maps each `CASE <name> pass|fail...` line of the readback to (passed, line)."""
     verdicts = {}
@@ -868,7 +952,7 @@ def run_child(argv, env, timeout=RUN_TIMEOUT):
 
 
 def run_surface_cases(binary, kwin_sock, hide_sock, drop_sock, runner=run_child):
-    """Runs the 5 surface test cases and reports results."""
+    """Runs the 7 surface cases that need no debug compositor and reports results."""
     results = []
     base_env = dict(os.environ)
     base_env.pop("WAYLAND_DISPLAY", None)
@@ -900,7 +984,45 @@ def run_surface_cases(binary, kwin_sock, hide_sock, drop_sock, runner=run_child)
     c5, out5 = runner([str(binary), "surface", bad_line], base_env)
     results.append(("surface/refused-line", *judge_refused_line(c5, out5)))
 
+    # 6. surface/unknown-schema and 7. surface/unknown-layer: one member changed each.
+    for name, key, value, judge in (
+        ("surface/unknown-schema", "schema", UNKNOWN_SCHEMA, judge_refused_schema),
+        ("surface/unknown-layer", "layer", "middle", judge_refused_layer),
+    ):
+        changed = dict(REFERENCE_REQUEST, params=dict(REFERENCE_PARAMS, **{key: value}))
+        code, out = runner([str(binary), "surface", json.dumps(changed) + "\n"], base_env)
+        results.append((name, *judge(code, out)))
+
     return results
+
+
+def run_read_back_case(
+    binary,
+    runtime_dir,
+    runner=run_child,
+    start_fn=start_kwin,
+    teardown_fn=None,
+):
+    """Runs case 8 against its own KWin, which logs every request it receives."""
+    teardown_fn = teardown_fn or teardown_process
+    config_file = write_no_activation_config(runtime_dir)
+    proc, sock = start_fn(
+        runtime_dir,
+        socket_name=DEBUG_SOCKET,
+        config_file=config_file,
+        dbus_addr=None,
+        log_name=DEBUG_LOG,
+        extra_env={"WAYLAND_DEBUG": "server"},
+    )
+    try:
+        env = dict(os.environ, WAYLAND_DISPLAY=str(sock))
+        env.pop("DISPLAY", None)
+        env.pop("DBUS_SESSION_BUS_ADDRESS", None)
+        code, out = runner([str(binary), "surface", REFERENCE_LINE], env)
+    finally:
+        teardown_fn(proc)
+    log_text = (runtime_dir / DEBUG_LOG).read_text(encoding="utf-8", errors="replace")
+    return ("surface/parameters-read-back", *judge_parameters_read_back(code, out, log_text))
 
 
 def run_atspi_case(
@@ -1576,9 +1698,11 @@ def run_all_cases(
     perf_path=None,
     runtime_dir=None,
     timing_out=None,
+    read_back_runner=run_read_back_case,
 ):
-    """Runs all test cases (5 surface + 6 AT-SPI + 8 focus-ring + 3 timing)."""
+    """Runs all test cases (8 surface + 6 AT-SPI + 8 focus-ring + 3 timing)."""
     results = run_surface_cases(binary, kwin_sock, hide_sock, drop_sock, runner=runner)
+    results.append(read_back_runner(binary, runtime_dir, runner))
     if readback_bin is not None and a11y_env is not None:
         atspi_results = run_atspi_cases(
             binary,
