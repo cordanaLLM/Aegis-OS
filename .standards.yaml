@@ -44,6 +44,12 @@ exceptions:
     path: .github/workflows/release.yml
     reason: 'nothing is released: no artefact is built or published and the release gate stays blocked'
     expires: "2027-01-09"
+  - rule: HISS-18
+    path: .github/workflows/codeql.yml
+    reason: 'CodeQL is advisory, not a required check: the engine counts every pull_request job without continue-on-error as a required context, and HISS-18 refuses a draft step under continue-on-error, so the job runs on drafts too; held until the engine resolves the conflict (engine order engine-hiss18-optional-pr-job-20261018; category A, 90 days, the HISS-18 cap, where D would allow 120)'
+    category: A
+    entered: "2026-10-18"
+    expires: "2027-01-16"
   - rule: declared-linters
     tool: codespell
     reason: 'codespell 2.4.3 reported 158 words on 2026-10-13, Rust identifiers such as statics and ser among them; a reviewed ignore list comes first, then a CI step that fails on new words'
