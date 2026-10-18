@@ -399,7 +399,7 @@ class TestVerifyShellBoundary(unittest.TestCase):
 
         verify_shell.run_surface_cases("/bin/shell", "/k", "/h", "/d", runner=fake_runner)
         lines = [argv[-1] for argv in calls if argv[0] == "/bin/shell"]
-        self.assertEqual(len(lines), 4)
+        self.assertEqual(len(lines), 6)
         for line in lines:
             self.assertTrue(line.endswith("\n"), line)
             self.assertEqual(line.count("\n"), 1, line)
@@ -412,18 +412,18 @@ class TestVerifyShellBoundary(unittest.TestCase):
 
     def test_summary_with_one_fail(self):
         results = [("surface/first-configure", False, "exited 1")] + [
-            (f"case-{n}", True, "") for n in range(21)
+            (f"case-{n}", True, "") for n in range(24)
         ]
         self.assertEqual(verify_shell.summary(results), "RESULT fail: 1 case(s) failed")
 
     def test_summary_of_zero_cases_fails(self):
-        self.assertEqual(verify_shell.summary([]), "RESULT fail: 0 of 22 cases ran")
+        self.assertEqual(verify_shell.summary([]), "RESULT fail: 0 of 25 cases ran")
 
-    def test_summary_of_twenty_two_passes(self):
-        results = [(f"case-{n}", True, "") for n in range(22)]
+    def test_summary_of_twenty_five_passes(self):
+        results = [(f"case-{n}", True, "") for n in range(25)]
         self.assertEqual(verify_shell.summary(results), "RESULT pass")
 
-    def test_run_all_cases_runs_22_cases(self):
+    def test_run_all_cases_runs_25_cases(self):
         def fake_runner(argv, env):
             return 0, "OUTCOME configured 1280x48\n"
 
@@ -434,6 +434,9 @@ class TestVerifyShellBoundary(unittest.TestCase):
 
         def fake_ring_runner(shell_bin, ring_readback_bin, variant, is_positive, env, runner=None):
             return True, ""
+
+        def fake_read_back_runner(binary, runtime_dir, runner):
+            return "surface/parameters-read-back", True, ""
 
         def fake_timing_runner(shell_bin, env, seeded, **kwargs):
             return 0, ["GPU mock\tdrv\tinfo\t0"]
@@ -451,8 +454,9 @@ class TestVerifyShellBoundary(unittest.TestCase):
             ring_env={},
             ring_case_runner=fake_ring_runner,
             timing_case_runner=fake_timing_runner,
+            read_back_runner=fake_read_back_runner,
         )
-        self.assertEqual(len(results), 22)
+        self.assertEqual(len(results), 25)
 
 
 class TestNoActivationConfig(unittest.TestCase):
@@ -1031,7 +1035,7 @@ class TestTimingCases(unittest.TestCase):
     """Tests for timing cases execution and judgements."""
 
     def test_case_count_and_timing_cases_structure(self):
-        self.assertEqual(verify_shell.CASE_COUNT, 22)
+        self.assertEqual(verify_shell.CASE_COUNT, 25)
         self.assertEqual(len(TIMING_CASES), 3)
         names = [c[0] for c in TIMING_CASES]
         self.assertIn("timing/1000-nodes", names)
@@ -1102,6 +1106,189 @@ class TestTimingProcessHelpers(unittest.TestCase):
                 raise verify_shell.subprocess.TimeoutExpired("fixture", timeout)
 
         self.assertIsNone(verify_shell.wait_child(Hung(), 0))
+
+
+# The layer-shell requests a WAYLAND_DEBUG=server KWin 6.8.0 logged for the reference
+# request (measured 2026-10-18), with one registry event to show events are skipped.
+SERVER_LOG = """\
+[09:54:22.901369] wl_registry#2.bind(63, "zwlr_layer_shell_v1", 5, new id [unknown]#16)
+[09:54:23.019174] zwlr_layer_shell_v1#16.get_layer_surface(new id zwlr_layer_surface_v1#28, \
+wl_surface#27, nil, 2, "aegis-forum")
+[09:54:23.019232] zwlr_layer_surface_v1#28.set_size(0, 48)
+[09:54:23.019234] zwlr_layer_surface_v1#28.set_anchor(13)
+[09:54:23.019235] zwlr_layer_surface_v1#28.set_keyboard_interactivity(2)
+[09:54:23.019236] zwlr_layer_surface_v1#28.set_exclusive_zone(48)
+[09:54:23.019237] zwlr_layer_surface_v1#28.set_exclusive_edge(1)
+[09:54:23.183092]  -> zwlr_layer_surface_v1#28.configure(1, 1280, 48)
+[09:54:23.188899] zwlr_layer_surface_v1#28.ack_configure(1)
+[09:54:23.188900] zwlr_layer_surface_v1#28.set_size(1280, 48)
+"""
+CONFIGURED = "OUTCOME configured 1280x48\n"
+
+
+class TestParametersReadBack(unittest.TestCase):
+    """KWin's own request log must carry every mount parameter on the wire (E28-2)."""
+
+    def judge(self, log, code=0, stdout=CONFIGURED):
+        return verify_shell.judge_parameters_read_back(code, stdout, log)
+
+    def test_expected_wire_values_of_the_reference(self):
+        self.assertEqual(
+            verify_shell.expected_layer_requests(verify_shell.REFERENCE_PARAMS),
+            {
+                "get_layer_surface": ["2, aegis-forum"],
+                "set_anchor": ["13"],
+                "set_exclusive_zone": ["48"],
+                "set_exclusive_edge": ["1"],
+                "set_keyboard_interactivity": ["2"],
+            },
+        )
+
+    def test_the_measured_log_passes(self):
+        self.assertEqual(self.judge(SERVER_LOG), (True, ""))
+
+    def test_events_and_other_interfaces_are_not_requests(self):
+        requests = verify_shell.layer_requests(SERVER_LOG)
+        self.assertNotIn("configure", requests)
+        self.assertNotIn("bind", requests)
+        self.assertEqual(requests["set_size"], ["0, 48", "1280, 48"])
+
+    def test_a_wrong_layer_fails(self):
+        log = SERVER_LOG.replace('nil, 2, "aegis-forum"', 'nil, 3, "aegis-forum"')
+        passed, why = self.judge(log)
+        self.assertFalse(passed)
+        self.assertIn("get_layer_surface", why)
+
+    def test_a_wrong_namespace_fails(self):
+        passed, why = self.judge(SERVER_LOG.replace('"aegis-forum"', '"aegis"'))
+        self.assertFalse(passed)
+        self.assertIn("get_layer_surface", why)
+
+    def test_an_anchor_without_right_fails(self):
+        passed, why = self.judge(SERVER_LOG.replace("set_anchor(13)", "set_anchor(5)"))
+        self.assertFalse(passed)
+        self.assertIn("set_anchor", why)
+
+    def test_a_missing_exclusive_edge_fails(self):
+        log = "\n".join(
+            line for line in SERVER_LOG.splitlines() if "set_exclusive_edge" not in line
+        )
+        passed, why = self.judge(log)
+        self.assertFalse(passed)
+        self.assertIn("set_exclusive_edge", why)
+
+    def test_a_second_contradicting_request_fails(self):
+        log = SERVER_LOG + (
+            "[09:54:23.200000] zwlr_layer_surface_v1#28.set_keyboard_interactivity(0)\n"
+        )
+        passed, why = self.judge(log)
+        self.assertFalse(passed)
+        self.assertIn("set_keyboard_interactivity", why)
+
+    def test_an_exclusive_zone_off_by_one_fails(self):
+        log = SERVER_LOG.replace("set_exclusive_zone(48)", "set_exclusive_zone(47)")
+        passed, why = self.judge(log)
+        self.assertFalse(passed)
+        self.assertIn("set_exclusive_zone", why)
+
+    def test_an_empty_log_fails(self):
+        passed, why = self.judge("")
+        self.assertFalse(passed)
+        self.assertIn("get_layer_surface", why)
+
+    def test_a_shell_that_did_not_configure_fails(self):
+        passed, why = self.judge(SERVER_LOG, code=5, stdout="OUTCOME deadline: x\n")
+        self.assertFalse(passed)
+        self.assertIn("exited 5", why)
+
+    def test_the_case_runs_against_a_debug_compositor_and_tears_it_down(self):
+        calls = {}
+
+        class Proc:
+            def poll(self):
+                return None
+
+        def fake_start(runtime_dir, **kwargs):
+            calls["start"] = kwargs
+            (runtime_dir / kwargs["log_name"]).write_text(SERVER_LOG, encoding="utf-8")
+            return Proc(), runtime_dir / kwargs["socket_name"]
+
+        def fake_runner(argv, env):
+            calls["env"] = env
+            return 0, CONFIGURED
+
+        def fake_teardown(proc):
+            calls["teardown"] = True
+
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            result = verify_shell.run_read_back_case(
+                "/bin/shell",
+                Path(tmp),
+                runner=fake_runner,
+                start_fn=fake_start,
+                teardown_fn=fake_teardown,
+            )
+            self.assertEqual(result, ("surface/parameters-read-back", True, ""))
+            self.assertEqual(calls["start"]["extra_env"], {"WAYLAND_DEBUG": "server"})
+            self.assertIsNone(calls["start"]["dbus_addr"])
+            self.assertNotEqual(calls["start"]["socket_name"], "kwin-wayland-0")
+            self.assertNotEqual(calls["start"]["log_name"], "kwin.log")
+            self.assertEqual(calls["env"]["WAYLAND_DISPLAY"], str(Path(tmp) / "kwin-debug-0"))
+            self.assertTrue(calls["teardown"])
+
+
+class TestRefusedParameters(unittest.TestCase):
+    """An unknown schema or layer is refused live, for that reason only (E28-2)."""
+
+    # Measured 2026-10-18 from the shell binary.
+    SCHEMA_OUT = (
+        "OUTCOME refused: the mount parameters were refused: "
+        "the mount request names a schema this build does not admit\n"
+    )
+    LAYER_OUT = (
+        "OUTCOME refused: the mount parameters were refused: "
+        "the layer is not background, bottom, top or overlay\n"
+    )
+
+    def test_schema_refusal_passes(self):
+        self.assertEqual(verify_shell.judge_refused_schema(6, self.SCHEMA_OUT), (True, ""))
+
+    def test_layer_refusal_passes(self):
+        self.assertEqual(verify_shell.judge_refused_layer(6, self.LAYER_OUT), (True, ""))
+
+    def test_schema_case_refused_for_the_layer_fails(self):
+        passed, why = verify_shell.judge_refused_schema(6, self.LAYER_OUT)
+        self.assertFalse(passed)
+        self.assertIn("schema", why)
+
+    def test_layer_case_refused_for_the_schema_fails(self):
+        passed, why = verify_shell.judge_refused_layer(6, self.SCHEMA_OUT)
+        self.assertFalse(passed)
+        self.assertIn("layer", why)
+
+    def test_a_mapped_surface_fails(self):
+        passed, why = verify_shell.judge_refused_layer(0, CONFIGURED)
+        self.assertFalse(passed)
+        self.assertIn("exited 0", why)
+
+    def test_the_cases_send_exactly_one_changed_member(self):
+        sent = []
+
+        def fake_runner(argv, env):
+            if argv[0] == "/bin/shell":
+                sent.append(json.loads(argv[-1]))
+            return 6, ""
+
+        verify_shell.run_surface_cases("/bin/shell", "/k", "/h", "/d", runner=fake_runner)
+        params = [r["params"] for r in sent if r["params"] != verify_shell.REFERENCE_PARAMS]
+        self.assertEqual(len(params), 2)
+        for changed, (key, value) in zip(
+            params,
+            (("schema", "aegis.p05-p17.mount-shell-canvas.v2"), ("layer", "middle")),
+        ):
+            self.assertEqual(changed, dict(verify_shell.REFERENCE_PARAMS, **{key: value}))
 
 
 if __name__ == "__main__":
