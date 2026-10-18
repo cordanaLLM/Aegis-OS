@@ -33,7 +33,7 @@ Two rules follow from the clause and are applied below:
 | Rust (`rustc`, `cargo`) | 1.99.1 | `rust-toolchain.toml`, `channel = "1.99.1"`, materialised by rustup | 1.99.0 until 2026-10-16; 1.98.1 until 2026-10-14; before it the distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.99 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | 0.1.98 until 2026-10-14; before it the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.10.0-stable | `rust-toolchain.toml`, same `components` list | 1.9.0-stable until 2026-10-14; before it the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
-| praetorctl | source commit `32a35c8fb947b449ff46ae0a3b32017b409dccad` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `963e6ee6494c82e072c2a7ffe8c9c1909d9a923e`; the pin follows Praetor's `main` (see below) | M00 |
+| praetorctl | source commit `019b879ec69178570f53b97a113f67d62629e4c1` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `32a35c8fb947b449ff46ae0a3b32017b409dccad`; the pin follows Praetor's `main` (see below) | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; a build input for praetorctl and, since M09, for the imago `make contract-fetch` builds, held to imago's own floor below | M00; M09 for the imago build |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
 | reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, read by `tools/ci_lints.py`, run through `pipx run` by `make verify-lints`, a prerequisite of `make verify-all` | nothing | M00 |
@@ -111,7 +111,7 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | serde_json | 1.0.151 | `[workspace.dependencies]`, optional, behind the `jsonl` feature | JSON Lines rendering, off the hashing path | M02 |
 | schemars | 1.2.2 | `[workspace.dependencies]`, `default-features = false`, `features = ["derive"]`; used by `crates/aegis-fabrica-defs` only | generates the JSON Schemas of both M18 contracts from their Rust types, committed under `build/` (D105) | D105, 2026-09-29 |
 | accesskit | 0.25.1 (MIT OR Apache-2.0), crate checksum `ad442f58ee04714aaa0ba0a2768c1ea1935b29507bb22ddece8cbbc76db02932` | `[workspace.dependencies]`, `default-features = false`, used only by `crates/aegis-forum-shell` | the accessibility tree's data model: the P05 canvas model is exported as an `accesskit::TreeUpdate`; no platform adapter | M16 (D101) |
-| gpui | git revision `322cd509dcccaee1f6bc44725d270598ae8171ad` of zed-industries/zed (package 0.2.2, Apache-2.0), the head of `main` read on 2026-10-17, committed 2026-10-16 | `[workspace.dependencies]`, `git` with `rev =`, `default-features = false`, `features = ["wayland"]`; locked as `git+https://github.com/zed-industries/zed?rev=322cd509...#322cd509...`; used only by `crates/aegis-forum-shell-gpui` | the toolkit: the layer-shell surface, canvas painting and the AccessKit integration (ADR-0004) | M28 (D102); licences admitted by D113, table below |
+| gpui | git revision `56934ec0560bce8929025497411de7f5322fb6ca` of zed-industries/zed (package 0.2.2, Apache-2.0), the head of `main` read on 2026-10-18, committed 2026-10-17 | `[workspace.dependencies]`, `git` with `rev =`, `default-features = false`, `features = ["wayland"]`; locked as `git+https://github.com/zed-industries/zed?rev=56934ec0...#56934ec0...`; used only by `crates/aegis-forum-shell-gpui` | the toolkit: the layer-shell surface, canvas painting and the AccessKit integration (ADR-0004) | M28 (D102); licences admitted by D113, table below |
 | gpui_linux | the same revision (package 0.1.0, Apache-2.0) | as gpui, `features = ["wayland"]`, no X11 | the Linux platform gpui runs on, a crate of its own at this revision | M28 (D102) |
 | cros-libva | git revision `59384456ac2ae78c0c3e5515f41ef1efd9b802cf` of chromeos/cros-libva (package 0.0.13, BSD-3-Clause), the merge of #37 on 2026-09-01 and the head of `main` on 2026-09-29 | `[workspace.dependencies]`, `git` with `rev =`; locked as `git+https://github.com/chromeos/cros-libva?rev=59384456...#59384456...`; used only by `crates/aegis-scaena` | VA-API decode and DMA-BUF export through `Surface::export_prime` (D80) | M27 (D80) |
 | smithay-client-toolkit | 0.21.1 (MIT), crate checksum `74dc9ee14b0fdcb535f9556141bacac070c994a977d2240ee455d7438a617f00` | `[workspace.dependencies]`, `default-features = false`; used only by `crates/aegis-scaena` | the layer surface and the `zwp_linux_dmabuf_v1` client over wayland-client's pure-Rust backend; libwayland is neither linked nor loaded | M27 (D75) |
@@ -160,7 +160,11 @@ tokio.
 
 gpui and gpui_linux were admitted for M28 on 2026-10-17 at the zed commit
 `322cd509dcccaee1f6bc44725d270598ae8171ad`, the head of `main` that day
-(read with the forge API).
+(read with the forge API), and moved together on 2026-10-18 to
+`56934ec0560bce8929025497411de7f5322fb6ca`, the head of `main` that day.
+The two commits between them add an optional `hot-reload` feature to gpui,
+which the workspace does not enable, and change zed's agent crates, which it
+does not take; the lock gained no package.
 Both are declared once, with `rev =` and Wayland only, and are used only by
 `crates/aegis-forum-shell-gpui`, the member gpui enters through, so
 `aegis-forum-shell` keeps its toolkit-free closure.
@@ -333,8 +337,8 @@ reason is re-read when it moves.
 | `saeptum-capsule` | `https://github.com/plurano/saeptum` | `997a1b34f0a2912de8bf67231846b3af512ff041` | cut from `aegis-vesta` into a plurano repository (CUT-1632-03) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-microvm` |
 | `saeptum-microvm` | `https://github.com/plurano/saeptum` | `997a1b34f0a2912de8bf67231846b3af512ff041` | cut from `aegis-vesta-sandbox` into a plurano repository (CUT-1632-04) and not published on crates.io | a crates.io release, or a saeptum revision Aegis needs; moves together with `saeptum-capsule` |
 | `tornus-geometry` | `https://github.com/plurano/tornus` | `df214e113701297d995cd3d14ffd877bd0cf8d27` | cut from `aegis-hephaestus` into a plurano repository (CUT-1632-01) and not published on crates.io | a crates.io release, or a tornus revision Aegis needs |
-| `gpui` | `https://github.com/zed-industries/zed` | `322cd509dcccaee1f6bc44725d270598ae8171ad` | M28 toolkit; D102 takes it from one zed commit, and `gpui_linux`, which it runs on, has no crates.io release (index checked 2026-10-17) | a gpui crates.io release, or a zed revision M28 needs; moves together with `gpui_linux` |
-| `gpui_linux` | `https://github.com/zed-industries/zed` | `322cd509dcccaee1f6bc44725d270598ae8171ad` | the Linux platform of `gpui` (D102), built with the `wayland` feature alone; no crates.io release (index checked 2026-10-17) | moves together with `gpui` |
+| `gpui` | `https://github.com/zed-industries/zed` | `56934ec0560bce8929025497411de7f5322fb6ca` | M28 toolkit; D102 takes it from one zed commit, and `gpui_linux`, which it runs on, has no crates.io release (index checked 2026-10-17) | a gpui crates.io release, or a zed revision M28 needs; moves together with `gpui_linux` |
+| `gpui_linux` | `https://github.com/zed-industries/zed` | `56934ec0560bce8929025497411de7f5322fb6ca` | the Linux platform of `gpui` (D102), built with the `wayland` feature alone; no crates.io release (index checked 2026-10-17) | moves together with `gpui` |
 
 ## Git sources a pinned crate brings in
 
@@ -349,7 +353,7 @@ git package in the lock is covered by neither table.
 
 | Source | Commit | Carried by | Packages | Review trigger |
 | :--- | :--- | :--- | :--- | :--- |
-| `https://github.com/zed-industries/zed` | `322cd509dcccaee1f6bc44725d270598ae8171ad` | `gpui` | `collections`, `derive_refineable`, `gpui_macros`, `gpui_shared_string`, `gpui_util`, `gpui_wgpu`, `http_client`, `refineable`, `scheduler`, `sum_tree`, `ztracing`, `ztracing_macro` | moves with the `gpui` row |
+| `https://github.com/zed-industries/zed` | `56934ec0560bce8929025497411de7f5322fb6ca` | `gpui` | `collections`, `derive_refineable`, `gpui_macros`, `gpui_shared_string`, `gpui_util`, `gpui_wgpu`, `http_client`, `refineable`, `scheduler`, `sum_tree`, `ztracing`, `ztracing_macro` | moves with the `gpui` row |
 | `https://github.com/gfx-rs/wgpu` | `3b3506ea31154edc04de64debda0e780cba2639c` | `gpui` | `naga`, `naga-types`, `wgpu`, `wgpu-core`, `wgpu-core-deps-apple`, `wgpu-core-deps-emscripten`, `wgpu-core-deps-linux-android-bsd`, `wgpu-core-deps-wasm`, `wgpu-core-deps-windows`, `wgpu-hal`, `wgpu-naga-bridge`, `wgpu-sync`, `wgpu-types` | a `gpui` revision that moves the wgpu commit zed's workspace names |
 | `https://github.com/zed-industries/font-kit` | `94b0f28166665e8fd2f53ff6d268a14955c82269` | `gpui` | `zed-font-kit` | a `gpui` revision that moves the font-kit commit; licence terms recorded in D113 |
 
