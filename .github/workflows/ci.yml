@@ -63,9 +63,20 @@ jobs:
     name: Verification gate
     runs-on: ubuntu-26.04
     # The job took at most 397 s over its 40 latest successful runs on
-    # 2026-10-13, the accessibility gate's 912 MiB image fetch (about 70 s)
-    # included; tools/verify_preparation.py holds every job to 15 minutes.
-    timeout-minutes: 15
+    # 2026-10-13. By 2026-10-18 the 40 latest successful runs on main took 494
+    # to 821 s: the crate gate's cold cargo fetch, build, test and clippy took
+    # 260 to 400 s of that, after the gpui toolkit (M28) joined the workspace.
+    # The engine audit wants this limit at 1.25 x the slowest of the three
+    # latest runs, and 1.25 x 821 s is 17.1 minutes, so the limit is 18, the
+    # measured ceiling tools/verify_preparation.py grants this workflow alone;
+    # every other job stays at 15. The cargo cache below shortens the run.
+    timeout-minutes: 18
+    # A CI build is never rebuilt incrementally, and line tables keep test
+    # backtraces readable at a fraction of full debug info's build time and
+    # cache size.
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
       # HISS-18: a draft stops here, before any work, and fails, so a
       # required check never reports a skipped draft as a pass. Marking the
@@ -331,6 +342,25 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
+      # The crate gate's downloads and its compiled dependencies. The key names
+      # the runner image, the toolchain pin, the libva pin and the lockfile, so
+      # a change to any of them starts from an empty cache; the workspace's own
+      # crates recompile on every run either way. Only a push to main saves,
+      # once per key, so a pull request never fills the repository's cache
+      # with a copy only its own merge ref could read.
+      - name: Restore the crate gate's cargo cache
+        id: cargo-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: "cargo-${{ steps.runner-image.outputs.image }}\
+            -libva-${{ env.LIBVA_VERSION }}\
+            -${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}"
+
       # make verify-all runs the crate gate itself once a workspace manifest is
       # present, so the cargo evidence sits inside this one job. That is
       # deliberate: the branch ruleset requires exactly the "Verification gate"
@@ -348,6 +378,19 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           AEGIS_REQUIRED_GATES: systemd,mkosi
         run: make verify-all
+
+      - name: Save the crate gate's cargo cache for later runs
+        if: >-
+          steps.cargo-cache.outputs.cache-hit != 'true'
+          && github.event_name == 'push'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
 
       # The systemd gate admits every release from SYSTEMD_FLOOR up; the image
       # above holds a newer one. This reruns it on the floor release itself,
