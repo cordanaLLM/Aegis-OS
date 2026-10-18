@@ -90,7 +90,9 @@ SUDO_READ = ("sudo", "-n", "cat", "/sys/class/powercap/intel-rapl:0/energy_uj")
 RECORDED_ZONES = {"intel-rapl": None, "intel-rapl:0": "package-0", "intel-rapl:0:0": "core"}
 RECORDED_RANGE_UJ = 65532610987
 ENERGY_MODE = 0o400
-REFERENCE_CPU = "AMD Ryzen 9 9950X3D 16-Core Processor"
+# The reference profile is a hardware class, not one machine: an AMD CPU, whose
+# package energy the kernel exposes through the intel-rapl powercap zone.
+REFERENCE_CPU_VENDOR = "AMD "
 READINGS_SCHEMA = "aegis.m21.rapl-readings.v1"
 HOST_SCHEMA = "aegis.m21.host.v1"
 # What sudo prints when `sudo -n` would have to ask: classic sudo, then sudo-rs
@@ -313,8 +315,8 @@ def rapl_reasons(platform=None, which=shutil.which, powercap=POWERCAP, cpu=None,
     if value == 0:
         reasons.append("the gate runs as root, so its unprivileged read would not be unprivileged")
     model = cpu_model() if cpu is None else cpu
-    if model != REFERENCE_CPU:
-        reasons.append(f"the CPU is {model!r}, not the reference profile's {REFERENCE_CPU!r}")
+    if model is None or not model.startswith(REFERENCE_CPU_VENDOR):
+        reasons.append(f"the CPU is {model!r}, not an AMD CPU of the reference profile's class")
     return reasons
 
 

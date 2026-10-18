@@ -36,7 +36,7 @@ SKIP_SUFFIX = "; the display slice gate did not run."
 MAX_SOURCE_LINES = 4000
 
 RUN_OUTPUT = """Display slice (M27, D79): development evidence, client half only.
-info compositor pid: 3089
+info compositor pid: 4321
 PASS display/attach-before-ack-refused
      refused before the first ack_configure
 info VA vendor string: Intel iHD driver for Intel(R) Gen Graphics - 26.2.4 ()
@@ -276,7 +276,7 @@ class ChildReportTests(unittest.TestCase):
     def test_facts_cases_and_result_are_read(self):
         """Positive: info lines, case lines and the result line."""
         info, cases, result, _notes = gate.parse_child(RUN_OUTPUT)
-        self.assertEqual(info["compositor pid"], "3089")
+        self.assertEqual(info["compositor pid"], "4321")
         self.assertEqual(info["modifier the driver chose"], "0x0100000000000009")
         self.assertTrue(cases["display/driver-is-ihd"])
         self.assertFalse(cases["display/mpeg2-reference-crc"])
@@ -464,8 +464,8 @@ class ProgramTests(unittest.TestCase):
             return_value=(0, "/usr/bin/kwin_wayland_wrapper is owned by kwin 6.7.5-1.1\n", "")
         )
         with mock.patch.object(gate.os, "readlink", return_value="/usr/bin/kwin_wayland_wrapper"):
-            named = gate.compositor("3089", runner, lambda _: "/usr/bin/pacman")
-        self.assertEqual(named, "/usr/bin/kwin_wayland_wrapper (pid 3089, package kwin 6.7.5-1.1)")
+            named = gate.compositor("4321", runner, lambda _: "/usr/bin/pacman")
+        self.assertEqual(named, "/usr/bin/kwin_wayland_wrapper (pid 4321, package kwin 6.7.5-1.1)")
         self.assertEqual(runner.call_args[0][0], ["pacman", "-Qo", "/usr/bin/kwin_wayland_wrapper"])
 
     def test_an_unreported_peer_is_unidentified(self):
@@ -485,12 +485,12 @@ class ProgramTests(unittest.TestCase):
     def test_a_session_compositor_keeps_the_host_session_label(self):
         """Negative: no nested backend flag leaves the host session's label."""
         reader = mock.Mock(return_value=b"/usr/bin/kwin_wayland\0--xwayland\0")
-        self.assertEqual(gate.compositor_origin("3089", reader), "the host session's")
+        self.assertEqual(gate.compositor_origin("4321", reader), "the host session's")
 
     def test_an_unread_compositor_claims_no_origin(self):
         """Boundary: no pid or an unreadable command line claims neither origin."""
         unreadable = mock.Mock(side_effect=OSError(13, "Permission denied"))
-        self.assertEqual(gate.compositor_origin("3089", unreadable), "unidentified")
+        self.assertEqual(gate.compositor_origin("4321", unreadable), "unidentified")
         reader = mock.Mock()
         self.assertEqual(gate.compositor_origin(None, reader), "unidentified")
         self.assertEqual(gate.compositor_origin("unreported", reader), "unidentified")

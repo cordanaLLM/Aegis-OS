@@ -53,13 +53,13 @@ fn test_render_nodes_exactly_at_bound_ok() -> Fallible {
 #[test]
 fn test_render_nodes_discovered_positive() -> Fallible {
     let fix = TempSysfs::new()?;
-    fix.add_render_node("renderD128", "0000:06:00.0", "nvidia", Some("1"))?;
+    fix.add_render_node("renderD128", "0000:f6:00.0", "nvidia", Some("1"))?;
 
     let nodes = inspect_render_nodes(&fix.sysfs)?;
     assert_eq!(nodes.len(), 1);
     let first = nodes.first().ok_or("missing node")?;
     assert_eq!(first.node, "renderD128");
-    assert_eq!(first.address, "0000:06:00.0");
+    assert_eq!(first.address, "0000:f6:00.0");
     assert_eq!(first.driver, "nvidia");
     assert!(first.modeset_status.contains("nvidia_drm modeset '1'"));
     Ok(())

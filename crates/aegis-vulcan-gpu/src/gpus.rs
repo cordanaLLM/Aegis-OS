@@ -26,7 +26,7 @@ pub const MAX_CARD_ENTRIES: usize = 32;
 /// Serializable record of a single GPU device.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GpuRecord {
-    /// PCI slot address (e.g. "0000:03:00.0").
+    /// PCI slot address (e.g. "0000:f3:00.0").
     pub address: String,
     /// PCI vendor ID string (e.g. "0x8086").
     pub vendor: String,
