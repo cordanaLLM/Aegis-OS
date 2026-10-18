@@ -1021,7 +1021,7 @@ class TestZedCommit(unittest.TestCase):
 
     def test_read_real_zed_commit(self):
         commit = read_zed_commit()
-        self.assertEqual(commit, "322cd509dcccaee1f6bc44725d270598ae8171ad")
+        self.assertEqual(commit, "56934ec0560bce8929025497411de7f5322fb6ca")
 
     def test_read_missing_cargo_toml_returns_empty(self):
         import tempfile
