@@ -25,8 +25,8 @@
 set -eu
 
 if [ ! -r /proc/config.gz ]; then
-	echo "aegis-preempt-probe: /proc/config.gz is not readable on this kernel" >&2
-	exit 2
+    echo "aegis-preempt-probe: /proc/config.gz is not readable on this kernel" >&2
+    exit 2
 fi
 
 gzip -dc /proc/config.gz | grep -E '^(# )?CONFIG_PREEMPT_RT[ =]'
