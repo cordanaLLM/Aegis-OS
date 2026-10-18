@@ -1430,7 +1430,7 @@ class ArgumentVectorTests(unittest.TestCase):
         self.assertTrue(any(part.endswith("OVMF_CODE.4m.fd") for part in plain))
 
     def test_the_guest_sees_swtpm_the_overlay_and_a_read_only_seed(self):
-        argv = " ".join(gate.guest_argv("secure", self.boot()))
+        argv = " ".join(gate.guest_argv("secure", self.boot(), PIN, NONCE))
         self.assertIn("-device tpm-crb,tpmdev=tpm0", argv)
         self.assertIn("format=qcow2,file=", argv)
         self.assertIn("overlay.qcow2", argv)
@@ -1478,6 +1478,196 @@ class ArgumentVectorTests(unittest.TestCase):
         self.assertEqual(custom.count("k.crt"), 3)
         self.assertFalse(any("microsoft" in option for option in custom))
         self.assertNotIn("--secure-boot", plain)
+
+
+class FakeQemu:
+    """Mock QEMU process providing poll() without running a subprocess."""
+
+    def __init__(self, exit_status=None):
+        self._exit_status = exit_status
+
+    def poll(self):
+        return self._exit_status
+
+
+class BootPathByKindTests(unittest.TestCase):
+    """Positive, negative and boundary tests for the boot path partitioned by pin scheme."""
+
+    def boot(self, base):
+        return gate.Boot(Path(base) / "boot")
+
+    def test_cosign_prepare_guest_uses_raw_backing_format_and_skips_write_seed(self):
+        with tempfile.TemporaryDirectory() as base:
+            pin = cosign_pin()
+            context = gate.Context(pin, Path(base) / "cache", Path(base) / "run")
+            artifact = Path(base) / "aegis-os.raw"
+            artifact.touch()
+            boot = self.boot(base)
+            with mock.patch.object(gate, "require_pinned", return_value="a" * 64):
+                with mock.patch.object(gate, "guest_store", return_value=["enrolled"]):
+                    with mock.patch.object(gate, "write_seed") as write_seed_mock:
+                        with mock.patch.object(gate, "run", return_value=(0, "", "")) as run_mock:
+                            result = gate.prepare_guest(context, boot, "secure", artifact, NONCE)
+            write_seed_mock.assert_not_called()
+            qemu_calls = [c.args[0] for c in run_mock.call_args_list if c.args[0][0] == "qemu-img"]
+            self.assertEqual(len(qemu_calls), 1)
+            argv = qemu_calls[0]
+            self.assertIn("-F", argv)
+            self.assertEqual(argv[argv.index("-F") + 1], "raw")
+            self.assertEqual(result["digest"], "a" * 64)
+
+    def test_gpg_prepare_guest_uses_qcow2_backing_format_and_calls_write_seed(self):
+        with tempfile.TemporaryDirectory() as base:
+            context = gate.Context(PIN, Path(base) / "cache", Path(base) / "run")
+            artifact = Path(base) / PIN["file"]
+            artifact.touch()
+            boot = self.boot(base)
+            with mock.patch.object(gate, "require_pinned", return_value="b" * 64):
+                with mock.patch.object(gate, "guest_store", return_value=["enrolled"]):
+                    with mock.patch.object(gate, "write_seed") as write_seed_mock:
+                        with mock.patch.object(gate, "run", return_value=(0, "", "")) as run_mock:
+                            result = gate.prepare_guest(context, boot, "secure", artifact, NONCE)
+            write_seed_mock.assert_called_once_with(boot, NONCE)
+            qemu_calls = [c.args[0] for c in run_mock.call_args_list if c.args[0][0] == "qemu-img"]
+            self.assertEqual(len(qemu_calls), 1)
+            argv = qemu_calls[0]
+            self.assertIn("-F", argv)
+            self.assertEqual(argv[argv.index("-F") + 1], "qcow2")
+            self.assertEqual(result["digest"], "b" * 64)
+
+    def test_cosign_guest_argv_carries_smbios_credential_and_omits_seed_drive(self):
+        with tempfile.TemporaryDirectory() as base:
+            boot = self.boot(base)
+            pin = cosign_pin()
+            argv = gate.guest_argv("secure", boot, pin, NONCE)
+            self.assertIn("-smbios", argv)
+            credential_arg = argv[argv.index("-smbios") + 1]
+            expected_credential = (
+                f"type=11,value=io.systemd.credential:{gate.NONCE_CREDENTIAL}={NONCE}"
+            )
+            self.assertEqual(credential_arg, expected_credential)
+            self.assertEqual(gate.NONCE_CREDENTIAL, "aegis.boot-report.nonce")
+            joined = " ".join(argv)
+            self.assertNotIn(gate.option_path(boot.seed), joined)
+
+    def test_gpg_guest_argv_equals_previous_argv_exactly(self):
+        with tempfile.TemporaryDirectory() as base:
+            boot = self.boot(base)
+            argv = gate.guest_argv("secure", boot, PIN, NONCE)
+            self.assertNotIn("-smbios", argv)
+            seed_drive = f"if=virtio,format=raw,readonly=on,file={gate.option_path(boot.seed)}"
+            self.assertIn(seed_drive, argv)
+            expected = gate.machine_argv("secure", boot)
+            expected += ["-chardev", f"socket,id=chrtpm,path={gate.socket_path(boot.tpm_socket)}"]
+            expected += [
+                "-tpmdev",
+                "emulator,id=tpm0,chardev=chrtpm",
+                "-device",
+                "tpm-crb,tpmdev=tpm0",
+            ]
+            expected += ["-drive", f"if=virtio,format=qcow2,file={gate.option_path(boot.overlay)}"]
+            expected += ["-drive", seed_drive]
+            expected += ["-qmp", f"unix:{gate.socket_path(boot.qmp)},server=on,wait=off"]
+            expected += ["-serial", f"file:{gate.option_path(boot.console)}"]
+            expected += ["-serial", f"file:{gate.option_path(boot.report)}"]
+            self.assertEqual(argv, expected)
+
+    def test_success_marker_for_cosign_and_gpg_pins(self):
+        cosign = cosign_pin()
+        cosign_marker = gate.success_marker(cosign)
+        self.assertIsNotNone(cosign_marker.search("Startup finished in 3.2s"))
+        gpg_marker = gate.success_marker(PIN)
+        self.assertIs(gpg_marker, gate.LOGIN_PROMPT)
+
+    def test_prompt_or_exit_returns_prompt_when_marker_matches(self):
+        with tempfile.TemporaryDirectory() as base:
+            console = Path(base) / "console.log"
+            console.write_text("systemd: Startup finished in 3.2s\n", encoding="utf-8")
+            marker = re.compile(r"Startup finished in")
+            qemu = FakeQemu(exit_status=None)
+            self.assertEqual(gate.prompt_or_exit(qemu, console, marker), "prompt")
+
+    def test_prompt_or_exit_with_unmatched_console_text(self):
+        with tempfile.TemporaryDirectory() as base:
+            console = Path(base) / "console.log"
+            console.write_text("fedora login: ", encoding="utf-8")
+            marker = re.compile(r"Startup finished in")
+            running = FakeQemu(exit_status=None)
+            self.assertIsNone(gate.prompt_or_exit(running, console, marker))
+            exited = FakeQemu(exit_status=0)
+            self.assertEqual(gate.prompt_or_exit(exited, console, marker), "exited")
+
+    def test_guest_argv_cosign_refuses_invalid_nonce(self):
+        with tempfile.TemporaryDirectory() as base:
+            boot = self.boot(base)
+            with self.assertRaises(gate.GateError):
+                gate.guest_argv("secure", boot, cosign_pin(), "aegis-m24-XYZ")
+
+    def test_prepare_guest_refuses_unsupported_pin_format(self):
+        with tempfile.TemporaryDirectory() as base:
+            pin = cosign_pin(format="vmdk", file="aegis-os.vmdk")
+            context = gate.Context(pin, Path(base) / "cache", Path(base) / "run")
+            artifact = Path(base) / "aegis-os.vmdk"
+            artifact.touch()
+            boot = self.boot(base)
+            with mock.patch.object(gate, "require_pinned", return_value="a" * 64):
+                with self.assertRaises(gate.GateError):
+                    gate.prepare_guest(context, boot, "secure", artifact, NONCE)
+
+    def test_unknown_scheme_refused_in_success_marker_and_guest_argv(self):
+        bad_pin = cosign_pin(**{"signature.scheme": "unknown-scheme"})
+        with tempfile.TemporaryDirectory() as base:
+            boot = self.boot(base)
+            with self.assertRaises(gate.GateError):
+                gate.success_marker(bad_pin)
+            with self.assertRaises(gate.GateError):
+                gate.guest_argv("secure", boot, bad_pin, NONCE)
+
+    def test_guest_argv_nonce_length_boundaries(self):
+        with tempfile.TemporaryDirectory() as base:
+            boot = self.boot(base)
+            pin = cosign_pin()
+            exact_32 = "aegis-m24-" + "a" * 32
+            short_31 = "aegis-m24-" + "a" * 31
+            long_33 = "aegis-m24-" + "a" * 33
+            argv = gate.guest_argv("secure", boot, pin, exact_32)
+            self.assertIn(
+                f"type=11,value=io.systemd.credential:{gate.NONCE_CREDENTIAL}={exact_32}", argv
+            )
+            with self.assertRaises(gate.GateError):
+                gate.guest_argv("secure", boot, pin, short_31)
+            with self.assertRaises(gate.GateError):
+                gate.guest_argv("secure", boot, pin, long_33)
+
+    def test_cosign_pin_with_qcow2_format_backing_and_no_seed(self):
+        with tempfile.TemporaryDirectory() as base:
+            pin = cosign_pin(format="qcow2", file="aegis-os.qcow2")
+            context = gate.Context(pin, Path(base) / "cache", Path(base) / "run")
+            artifact = Path(base) / "aegis-os.qcow2"
+            artifact.touch()
+            boot = self.boot(base)
+            with mock.patch.object(gate, "require_pinned", return_value="c" * 64):
+                with mock.patch.object(gate, "guest_store", return_value=["enrolled"]):
+                    with mock.patch.object(gate, "write_seed") as write_seed_mock:
+                        with mock.patch.object(gate, "run", return_value=(0, "", "")) as run_mock:
+                            result = gate.prepare_guest(context, boot, "secure", artifact, NONCE)
+            write_seed_mock.assert_not_called()
+            qemu_calls = [c.args[0] for c in run_mock.call_args_list if c.args[0][0] == "qemu-img"]
+            self.assertEqual(len(qemu_calls), 1)
+            argv = qemu_calls[0]
+            self.assertIn("-F", argv)
+            self.assertEqual(argv[argv.index("-F") + 1], "qcow2")
+            self.assertEqual(result["digest"], "c" * 64)
+            guest_cmd = gate.guest_argv("secure", boot, pin, NONCE)
+            self.assertNotIn(gate.option_path(boot.seed), " ".join(guest_cmd))
+
+    def test_prompt_or_exit_matches_marker_at_last_console_byte(self):
+        with tempfile.TemporaryDirectory() as base:
+            console = Path(base) / "console.log"
+            console.write_text("early banner... Startup finished in", encoding="utf-8")
+            marker = re.compile(r"Startup finished in")
+            running = FakeQemu(exit_status=None)
+            self.assertEqual(gate.prompt_or_exit(running, console, marker), "prompt")
 
 
 class FirmwareSigningTests(unittest.TestCase):

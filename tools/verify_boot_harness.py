@@ -156,6 +156,7 @@ GUEST_MEMORY = "2048"
 GUEST_CPUS = "2"
 NONCE_BYTES = 16
 NONCE_SHAPE = re.compile(r"aegis-m24-[0-9a-f]{32}")
+NONCE_CREDENTIAL = "aegis.boot-report.nonce"
 PCR_INDICES = (0, 4, 7, 11)
 FIRMWARE_PCRS = (0, 4, 7)
 PCR_VALUE = re.compile(r"[0-9a-f]{64}")
@@ -1219,13 +1220,27 @@ def machine_argv(profile, boot):
     return argv
 
 
-def guest_argv(profile, boot):
-    """Return the full argv of a guest booted from the overlay with swtpm and the seed."""
+def pin_scheme(pin):
+    """Return the pin's signature scheme, refusing one this harness has no path for."""
+    scheme = pin["signature"].get("scheme")
+    if scheme not in (GPG_SCHEME, COSIGN_SCHEME):
+        raise GateError(f"signature scheme {scheme} is not built")
+    return scheme
+
+
+def guest_argv(profile, boot, pin, nonce):
+    """Return the full argv of a guest booted from the overlay with swtpm and seed/nonce."""
+    if NONCE_SHAPE.fullmatch(nonce) is None:
+        raise GateError(f"{nonce!r} is not a nonce this harness generated")
+    scheme = pin_scheme(pin)
     argv = machine_argv(profile, boot)
     argv += ["-chardev", f"socket,id=chrtpm,path={socket_path(boot.tpm_socket)}"]
     argv += ["-tpmdev", "emulator,id=tpm0,chardev=chrtpm", "-device", "tpm-crb,tpmdev=tpm0"]
     argv += ["-drive", f"if=virtio,format=qcow2,file={option_path(boot.overlay)}"]
-    argv += ["-drive", f"if=virtio,format=raw,readonly=on,file={option_path(boot.seed)}"]
+    if scheme == GPG_SCHEME:
+        argv += ["-drive", f"if=virtio,format=raw,readonly=on,file={option_path(boot.seed)}"]
+    else:
+        argv += ["-smbios", f"type=11,value=io.systemd.credential:{NONCE_CREDENTIAL}={nonce}"]
     argv += ["-qmp", f"unix:{socket_path(boot.qmp)},server=on,wait=off"]
     argv += ["-serial", f"file:{option_path(boot.console)}"]
     argv += ["-serial", f"file:{option_path(boot.report)}"]
@@ -1255,9 +1270,14 @@ def prepare_guest(context, boot, profile, artifact, nonce):
     sits immediately before the boot.
     """
     require_pinned(context.pin, artifact)
+    format_name = context.pin["format"]
+    if format_name not in ("raw", "qcow2"):
+        raise GateError(f"{format_name!r} is not a supported backing format")
+    scheme = pin_scheme(context.pin)
     for path in (boot.console, boot.report, boot.overlay, boot.tpm_socket, boot.qmp):
         path.unlink(missing_ok=True)
-    write_seed(boot, nonce)
+    if scheme == GPG_SCHEME:
+        write_seed(boot, nonce)
     enrolled = guest_store(context, boot, profile)
     shutil.rmtree(boot.tpm_state, ignore_errors=True)
     boot.tpm_state.mkdir(parents=True)
@@ -1266,7 +1286,8 @@ def prepare_guest(context, boot, profile, artifact, nonce):
     if code != 0:
         raise GateError(f"swtpm_setup could not manufacture the TPM: {stderr.strip()[-300:]}")
     digest = require_pinned(context.pin, artifact)
-    argv = ["qemu-img", "create", "-q", "-f", "qcow2", "-F", "qcow2", "-b", option_path(artifact)]
+    argv = ["qemu-img", "create", "-q", "-f", "qcow2", "-F", format_name]
+    argv += ["-b", option_path(artifact)]
     code, _stdout, stderr = run(argv + [str(boot.overlay)], TOOL_TIMEOUT)
     if code != 0:
         raise GateError(f"qemu-img could not create the overlay: {stderr.strip()}")
@@ -1288,9 +1309,16 @@ def console_text(path):
     return clean(raw.decode("utf-8", errors="replace"))
 
 
-def prompt_or_exit(qemu, console):
-    """Return 'prompt' once the console shows a login prompt, 'exited' if QEMU ended first."""
-    if LOGIN_PROMPT.search(console_text(console)):
+def success_marker(pin):
+    """Return the compiled regular expression marking a successful boot."""
+    if pin_scheme(pin) == GPG_SCHEME:
+        return LOGIN_PROMPT
+    return re.compile(pin["boot"]["success-marker"])
+
+
+def prompt_or_exit(qemu, console, marker):
+    """Return 'prompt' once the console shows the success marker, 'exited' if QEMU ended first."""
+    if marker.search(console_text(console)):
         return "prompt"
     if qemu.poll() is not None:
         return "exited"
@@ -1356,10 +1384,10 @@ def shut_down(qemu, boot, observed):
         observed["exit_status"] = None
 
 
-def observe(qemu, boot, timeout):
+def observe(qemu, boot, timeout, marker):
     """Watch one running guest: the login prompt against the timeout, then the report."""
     started = time.monotonic()
-    seen, elapsed = wait_for(lambda: prompt_or_exit(qemu, boot.console), timeout, started)
+    seen, elapsed = wait_for(lambda: prompt_or_exit(qemu, boot.console, marker), timeout, started)
     elapsed = elapsed if seen == "prompt" else None
     observed = {"outcome": login_outcome(elapsed, timeout), "elapsed": elapsed, "timeout": timeout}
     observed.update({"seen": seen, "report": "", "kvm": None, "exit_status": qemu.poll()})
@@ -1379,11 +1407,12 @@ def boot_guest(context, boot, profile, artifact, timeout=None):
     timeout = context.timeout if timeout is None else timeout
     nonce = context.nonce()
     prepared = prepare_guest(context, boot, profile, artifact, nonce)
-    argv = guest_argv(profile, boot)
+    argv = guest_argv(profile, boot, context.pin, nonce)
+    marker = success_marker(context.pin)
     with session(swtpm_argv(boot), boot.dir / "swtpm.log", context.spawned):
         wait_for_path(boot.tpm_socket, SOCKET_TIMEOUT)
         with session(argv, boot.dir / "qemu.log", context.spawned) as qemu:
-            observed = observe(qemu, boot, timeout)
+            observed = observe(qemu, boot, timeout, marker)
     if observed["exit_status"] is None:
         observed["exit_status"] = qemu.returncode
     observed.update({"nonce": nonce, "argv": argv, "profile": profile, **prepared})
