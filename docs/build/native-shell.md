@@ -115,10 +115,83 @@ The first live runs failed, and each failure was a defect that is now fixed:
 | drop case exit 101, a wgpu EGL panic | the proxy dropped the connection on a reused id | `wl_display.delete_id` handling |
 | hide case timed out (124) | gpui runs the launch callback before calloop's `EventLoop::run`, which clears an earlier stop request | `quit_from_loop` in `surface.rs` quits from inside the running loop |
 
+## The AT-SPI cases
+
+Milestone M28 epic E28-3 verifies that the shell's AccessKit tree reaches
+AT-SPI live and a reader built on `atspi` and `zbus` reads it back on a
+private D-Bus session.
+
+### The private bus recipe
+
+The gate never connects to the host session bus or operator compositor. It
+provisions an isolated AT-SPI environment in `XDG_RUNTIME_DIR`:
+
+1. Starts `dbus-daemon --session --nofork --print-address=1` with address
+   `unix:path=<rt>/a11y-session-bus` and records `DBUS_SESSION_BUS_ADDRESS`.
+2. Starts `at-spi-bus-launcher` with `GSETTINGS_BACKEND=memory`.
+3. Sets accessibility status via `gdbus call --session -d org.a11y.Bus`
+   `-o /org/a11y/bus -m org.freedesktop.DBus.Properties.Set`
+   `org.a11y.Status IsEnabled '<true>'`.
+4. Starts `at-spi2-registryd` directly in the same environment, because D-Bus
+   service activation for the registry fails on a private non-systemd bus.
+5. Queries the a11y bus address with `gdbus call --session -d org.a11y.Bus`
+   `-o /org/a11y/bus -m org.a11y.Bus.GetAddress` and polls
+   `Accessible.GetChildren` on `/org/a11y/atspi/accessible/root` until the
+   registry responds.
+
+### Cases and variants
+
+The verification binary `aegis-atspi-readback` and fixture binary
+`aegis-forum-shell-gpui a11y <request-line> <variant>` run across six cases:
+
+| Case | Variant | Passes when |
+| :--- | :--- | :--- |
+| `atspi/sound` | `sound` | The fixture button has role button, name, and click action; focus is on the button; all 1,000 seeded nodes are reachable and named; hidden subtree is hidden; clicking the button mutates its name to "Forum opened" and emits `EVENT click`. |
+| `atspi/late-client` | `sound` | A client started 0.5 s after the surface maps still receives the complete 1,000-node accessibility tree. |
+| `atspi/negative-button-as-container` | `button-as-container` | Readback exits 1, fails only `atspi/button-exposed`, and names role "panel". |
+| `atspi/negative-unlabelled` | `unlabelled` | Readback exits 1, fails only `atspi/every-node-named` (naming path index 517) and `atspi/seeded-reachable` (the row lost its "Node 517" name). |
+| `atspi/negative-culled` | `culled` | Readback exits 1 and fails only `atspi/seeded-reachable` with "10 of 1000". |
+| `atspi/negative-hidden-shown` | `hidden-shown` | Readback exits 1 and fails only `atspi/hidden-subtree-hidden`, naming "Hidden panel". |
+
+`NEGATIVE_EXPECT` in `tools/verify_shell.py` holds the failing set per variant.
+A negative that fails for any other reason, a read error (exit 3) included,
+fails its gate case.
+
+### AccessKit filtering and tree structure
+
+- **Hidden subtree semantics**: `accesskit_consumer` (0.38.0 `src/filters.rs:22`)
+  excludes hidden subtrees entirely from the exported AT-SPI tree. "Reported
+  hidden" means no reachable node with a hidden label reports `State::Showing`.
+  The fixture renders a visible sibling ("Shown panel") so the check proves
+  the reader traversed that section of the tree.
+- **Clips children finding**: `accesskit_consumer` (`src/filters.rs:54-90`) only
+  culls off-screen list items when the parent element sets `clips_children()`.
+  Because gpui never sets this property, all 1,000 seeded list items remain
+  reachable in the AT-SPI hierarchy even though only 10 rows fit the viewport.
+  The planted `culled` variant simulates incorrect culling by rendering only
+  `0..IN_VIEW` rows.
+- **Deadline unit fixture**: Subprocess calls against a hanging D-Bus interface
+  risk blocking or destabilizing the live test harness. In accordance with
+  HISS-02, `crates/aegis-forum-shell-gpui/tests/readback_deadline.rs` verifies
+  `with_deadline` behavior against a mock `Silent` peer on a peer-to-peer
+  `UnixStream`, ensuring zero-deadline, hanging calls, and responsive calls
+  are tested deterministically without touching the live bus.
+- **D79 note**: Live execution outputs
+  `NOTE versions: at-spi2-core <v>, dbus <v>` and the D79 note verifying
+  development evidence for the client half only.
+
+### Evidence run
+
+`make verify-shell` on the reference profile, 2026-10-18: all 11 cases passed,
+with `NOTE versions: at-spi2-core 2.62.1, dbus 1.16.2` and headless KWin 6.8.0.
+The readback read 1,005 nodes from the sound fixture: the application, the
+window, the button, the list, 1,000 rows and the shown panel. The hidden
+subtree was absent. The `hidden-shown` variant read 1,008 nodes, three more:
+the panel and its two children. The `culled` variant read 15 nodes.
+
 ## What is not claimed
 
 - That P04 serves `zwlr_layer_shell_v1`. The compositor here is KWin.
-- Anything about pixels, AT-SPI or frame timing. Those M28 cases join
-  `make verify-shell` later.
+- Anything about pixels or frame timing. Those join `make verify-shell` later.
 - A run on any host but the reference profile, or on any KWin version but the
   one recorded above.

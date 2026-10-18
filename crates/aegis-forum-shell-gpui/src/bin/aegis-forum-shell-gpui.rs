@@ -1,42 +1,32 @@
 // SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
 // SPDX-License-Identifier: EUPL-1.2
 
-//! `aegis-forum-shell-gpui`: the P05 Forum shell's surface mapping entry point on gpui (M28 E28-2).
+//! `aegis-forum-shell-gpui`: surface mapping and accessibility fixture entry point on gpui (M28 E28-2, E28-3).
 //!
-//! Started by `make verify-shell` through `tools/verify_shell.py`. Decodes a
-//! `MOUNT_SHELL_CANVAS` request line, connects to the compositor via gpui, maps
-//! a `zwlr_layer_shell_v1` surface, and awaits the first configure event.
+//! Subcommands:
+//! - `surface <request-line>`: decodes a `MOUNT_SHELL_CANVAS` request line, connects to the
+//!   compositor via gpui, maps a `zwlr_layer_shell_v1` surface, and awaits the first configure event.
+//! - `a11y <request-line> <variant>`: decodes the canvas, validates the test variant, and hosts
+//!   the AT-SPI fixture surface exposing the accessible button, seeded list, and panels.
 //!
-//! The exit status is 0 when the surface was configured, 4 when the compositor
-//! lacks `zwlr_layer_shell_v1`, 5 when the first configure timed out at its
-//! deadline, 6 when the request line was refused, 3 when window creation failed
-//! or an output write error occurred, and 64 on invalid arguments. Every pass is
-//! development evidence for the client half only (D79).
+//! Exit codes:
+//! - 0: surface configured / fixture completed cleanly
+//! - 3: window open failed or stdout write error
+//! - 4: compositor lacks `zwlr_layer_shell_v1`
+//! - 5: configure event did not arrive before deadline
+//! - 6: request line was refused before touching the display
+//! - 64: invalid command-line arguments or unknown variant
+//!
+//! Every pass is development evidence for the client half only (D79).
 
 use std::io::Write;
 use std::process::ExitCode;
+use std::str::FromStr;
 
+use aegis_forum_shell_gpui::fixture::{Variant, run_fixture};
 use aegis_forum_shell_gpui::surface::{decode_canvas, exit_code, outcome_line, run_surface};
 
-fn main() -> ExitCode {
-    let mut args = std::env::args();
-    let _binary = args.next();
-    let subcmd = args.next();
-    let line = args.next();
-    let extra = args.next();
-
-    let stdout = std::io::stdout();
-    let mut out = stdout.lock();
-
-    if subcmd.as_deref() != Some("surface") || line.is_none() || extra.is_some() {
-        let _ = writeln!(out, "usage: aegis-forum-shell-gpui surface <request-line>");
-        return ExitCode::from(64);
-    }
-
-    let Some(request_line) = line else {
-        return ExitCode::from(64);
-    };
-
+fn handle_surface(request_line: &str, mut out: impl Write) -> ExitCode {
     let outcome = match decode_canvas(request_line.as_bytes()) {
         Ok(canvas) => run_surface(&canvas),
         Err(refused_outcome) => refused_outcome,
@@ -49,4 +39,56 @@ fn main() -> ExitCode {
     }
 
     ExitCode::from(exit_code(&outcome))
+}
+
+fn handle_a11y(request_line: &str, variant_str: &str, mut out: impl Write) -> ExitCode {
+    let canvas = match decode_canvas(request_line.as_bytes()) {
+        Ok(canvas) => canvas,
+        Err(refused) => {
+            let formatted = outcome_line(&refused);
+            let _ = writeln!(out, "{formatted}").and_then(|()| out.flush());
+            return ExitCode::from(exit_code(&refused));
+        }
+    };
+
+    let Ok(variant) = Variant::from_str(variant_str) else {
+        let _ = writeln!(
+            out,
+            "usage: aegis-forum-shell-gpui a11y <request-line> <variant>"
+        );
+        return ExitCode::from(64);
+    };
+
+    let outcome = run_fixture(&canvas, variant, std::io::stdout());
+    let formatted = outcome_line(&outcome);
+    let written = writeln!(out, "{formatted}").and_then(|()| out.flush());
+    if written.is_err() {
+        return ExitCode::from(3);
+    }
+
+    ExitCode::from(exit_code(&outcome))
+}
+
+fn main() -> ExitCode {
+    let mut cli_args = std::env::args();
+    let _binary = cli_args.next();
+    let subcmd = cli_args.next();
+    let first = cli_args.next();
+    let second = cli_args.next();
+    let extra = cli_args.next();
+
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+
+    match (subcmd.as_deref(), first, second, extra) {
+        (Some("surface"), Some(line), None, None) => handle_surface(&line, out),
+        (Some("a11y"), Some(line), Some(variant), None) => handle_a11y(&line, &variant, out),
+        _ => {
+            let _ = writeln!(
+                out,
+                "usage: aegis-forum-shell-gpui surface <request-line> | aegis-forum-shell-gpui a11y <request-line> <variant>"
+            );
+            ExitCode::from(64)
+        }
+    }
 }

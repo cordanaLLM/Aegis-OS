@@ -10,10 +10,16 @@
 //!
 //! | Module | Holds |
 //! | :--- | :--- |
+//! | [`fixture`] | accessibility test surface, defect variants, and seeded node tree |
+//! | [`judge`] | pure rules evaluating AT-SPI accessibility trees against acceptance criteria |
 //! | [`layer`] | the P17 `MOUNT_SHELL_CANVAS` parameters mapped onto gpui's `LayerShellOptions` |
+//! | [`readback`] | live AT-SPI reader connecting over D-Bus to inspect and interact with the tree |
 //! | [`surface`] | maps the surface on a compositor and decides the first configure outcome |
 
+pub mod fixture;
+pub mod judge;
 pub mod layer;
+pub mod readback;
 pub mod surface;
 
 pub use layer::{LayerMapError, layer_shell_options};
