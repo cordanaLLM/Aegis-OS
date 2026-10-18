@@ -36,6 +36,7 @@ env:
   BLACK_VERSION: "26.5.1"
   # shfmt-py on PyPI ships the shfmt release binary; 4.2.0 carries shfmt 3.14.1.
   SHFMT_VERSION: "4.2.0"
+  CODESPELL_VERSION: "2.4.3"
   # Security scanners .standards.yaml declares, each a release binary checked
   # against the sha256 its release publishes, or a PyPI pin. Trivy is the
   # binary, not aquasecurity/trivy-action: the action's tags were rewritten in

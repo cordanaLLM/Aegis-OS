@@ -24,6 +24,7 @@ WORKFLOW = "\n".join(
         '  FLAKE8_VERSION: "7.3.0"',
         '  BLACK_VERSION: "26.5.1"',
         '  SHFMT_VERSION: "4.2.0"',
+        '  CODESPELL_VERSION: "2.4.3"',
         "",
     )
 )
@@ -45,6 +46,7 @@ class VersionTest(unittest.TestCase):
                 "FLAKE8_VERSION": "7.3.0",
                 "BLACK_VERSION": "26.5.1",
                 "SHFMT_VERSION": "4.2.0",
+                "CODESPELL_VERSION": "2.4.3",
             },
         )
 

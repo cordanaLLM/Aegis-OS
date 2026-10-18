@@ -1,0 +1,22 @@
+# codespell over every tracked file, run by `make verify-lints` at the pin in
+# .github/workflows/ci.yml (CODESPELL_VERSION). Each entry below was reviewed
+# on 2026-10-19 against the 171 reports of codespell 2.4.3; a new word fails
+# the gate until it is fixed or reviewed here.
+[codespell]
+# Cargo.lock carries upstream crate names (inout); the figure player is a
+# vendored minified bundle (REUSE.toml) whose short identifiers are not prose.
+# The engine emits tools/markdownlint/package-lock.json, so it stays scanned
+# and its package name is listed below instead of skipped.
+skip = Cargo.lock,tools/figures/player/*.js
+# Identifiers and terms, not misspellings:
+#   statics      Rust static items (public surface tests)
+#   ser          the serde::ser module
+#   caf          the "caf\u{e9}" escape in identifier tests
+#   renderd      the DRM renderD device node prefix
+#   requestin    the RequestIn type in aegis-scaena
+#   wit          the WebAssembly Interface Type format (WIT)
+#   re-declared  English: declared again
+#   retuned      English: tuned again
+#   unparseable  English: cannot be parsed
+#   devlop       the devlop npm package in tools/markdownlint/package-lock.json
+ignore-words-list = statics,ser,caf,renderd,requestin,wit,re-declared,retuned,unparseable,devlop

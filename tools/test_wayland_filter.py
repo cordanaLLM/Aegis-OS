@@ -242,14 +242,14 @@ class TestRelaySocket(unittest.TestCase):
             burst = make_global(2, 1, "wl_compositor", 4) + make_global(
                 2, 2, "zwlr_layer_shell_v1", 4
             )
-            anc = [
+            ancillary = [
                 (
                     socket.SOL_SOCKET,
                     socket.SCM_RIGHTS,
                     struct.pack("<i", pipe_r),
                 )
             ]
-            s_sock.sendmsg([burst], anc)
+            s_sock.sendmsg([burst], ancillary)
 
             # Client receives transformed bytes and the fd
             cmsg_space = socket.CMSG_SPACE(struct.calcsize("i"))
