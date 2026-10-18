@@ -97,6 +97,47 @@ pub fn discover_gpus(sysfs: &Path) -> Result<BTreeMap<String, GpuRecord>, GpuErr
     Ok(gpus)
 }
 
+/// Reads the VFIO candidate input facts for a specific PCI device from sysfs.
+///
+/// # Errors
+///
+/// Returns [`GpuError`] if the device directory does not exist or sysfs attributes cannot be read.
+pub fn read_candidate_input(
+    sysfs: &Path,
+    device: &str,
+) -> Result<crate::vfio::VfioCandidateInput, GpuError> {
+    let dev_dir = sysfs.join("bus").join("pci").join("devices").join(device);
+    if !dev_dir.is_dir() {
+        return Err(GpuError::io(
+            dev_dir,
+            std::io::Error::new(std::io::ErrorKind::NotFound, "PCI device not found"),
+        ));
+    }
+
+    let driver = match std::fs::read_link(dev_dir.join("driver")) {
+        Ok(target) => target
+            .file_name()
+            .map_or_else(|| "none".to_owned(), |s| s.to_string_lossy().into_owned()),
+        Err(_) => "none".to_owned(),
+    };
+
+    let boot_vga_str = read_line_or_default(&dev_dir, "boot_vga", "0");
+    let boot_vga = boot_vga_str == "1" || boot_vga_str.eq_ignore_ascii_case("true");
+
+    let (iommu_group, group_members) = parse_iommu_group(&dev_dir, device)?;
+    let drm = parse_drm_nodes(&dev_dir)?;
+    let connectors = discover_connectors(sysfs, &drm)?;
+
+    Ok(crate::vfio::VfioCandidateInput {
+        address: device.to_owned(),
+        driver,
+        iommu_group,
+        group_members,
+        connectors,
+        boot_vga,
+    })
+}
+
 fn parse_gpu_record(
     sysfs: &Path,
     dev_dir: &Path,

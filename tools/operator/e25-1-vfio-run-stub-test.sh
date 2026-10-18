@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: EUPL-1.2
+# shellcheck disable=SC2015  # A && ok || fail: echo cannot fail, so C never runs after a true A
+# Stub test for e25-1-vfio-run.sh, run by tools/test_e25_vfio_card.py: a fake sysfs tree and a fake sudo that
+# applies driver bind effects. Never touches /sys or /dev.
+set -euo pipefail
+S=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/e25-1-vfio-run.sh
+STUBS=()
+fails=0
+mk() {
+  R=$(mktemp -d "${TMPDIR:-/tmp}/e25stub.XXXXXX")
+  STUBS+=("$R")
+  local p=$R/sys/bus/pci
+  mkdir -p "$p/drivers/xe" "$p/drivers/vfio-pci" "$p/drivers/nvidia" "$R/sys/kernel/iommu_groups/17/devices" "$R/dev/vfio" "$R/dev/dri" "$R/evid"
+  local d=$p/devices/0000:03:00.0 n=$p/devices/0000:06:00.0
+  mkdir -p "$d/drm/card0/card0-DP-4" "$d/drm/card0/card0-Writeback-1" "$d/drm/renderD129" "$n"
+  echo 0x8086 > "$d/vendor"; echo 0x56a5 > "$d/device"; : > "$d/driver_override"
+  echo disconnected > "$d/drm/card0/card0-DP-4/status"; echo unknown > "$d/drm/card0/card0-Writeback-1/status"
+  ln -s "$p/drivers/xe" "$d/driver"; ln -s "$p/drivers/nvidia" "$n/driver"
+  ln -s "$R/sys/kernel/iommu_groups/17" "$d/iommu_group"
+  ln -s "$d" "$R/sys/kernel/iommu_groups/17/devices/0000:03:00.0"
+  cat > "$R/sudo" <<EOF
+#!/usr/bin/env bash
+R=$R
+d=\$R/sys/bus/pci/devices/0000:03:00.0
+echo "SUDO \$*" >> \$R/sudo.log
+case "\$1" in
+  modprobe|chown) exit 0 ;;
+  tee) v=\$(cat); printf '%s\n' "\$v" > "\$2"
+    case "\$2" in
+      */drivers/xe/unbind|*/drivers/vfio-pci/unbind) rm -f "\$d/driver"; rm -f "\$R/dev/vfio/17" ;;
+      */drivers_probe) o=\$(cat "\$d/driver_override"); [ -n "\$o" ] || o=xe
+        [ -n "\${STUB_NO_REBIND:-}" ] && [ "\$o" = xe ] && exit 0
+        ln -s "\$R/sys/bus/pci/drivers/\$o" "\$d/driver"; [ "\$o" = vfio-pci ] && : > "\$R/dev/vfio/17" ;;
+    esac ;;
+  *) echo "unexpected sudo \$*" >&2; exit 9 ;;
+esac
+EOF
+  chmod +x "$R/sudo"
+  # shellcheck disable=SC2016  # $3 expands in the fake binary, not here
+  printf '#!/bin/sh\necho "PASS: BAR2 of $3 mapped through VFIO group 17"\n' > "$R/bin-ok"
+  # shellcheck disable=SC2016  # $3 expands in the fake binary, not here
+  printf '#!/bin/sh\necho "FAIL: open: EACCES"; exit 1\n' > "$R/bin-fail"
+  chmod +x "$R/bin-ok" "$R/bin-fail"
+}
+run() {
+  local rc=0
+  AEGIS_SYSFS=$R/sys AEGIS_DEV=$R/dev AEGIS_SUDO=$R/sudo AEGIS_BIN=$R/${BINNAME:-bin-ok} AEGIS_EVID=$R/evid bash "$S" "$@" > "$R/out" 2>&1 || rc=$?
+  echo "$rc"
+}
+check() { # name expected-rc actual-rc grep-pattern
+  if [ "$2" = "$3" ] && grep -q -- "$4" "$R/out"; then echo "ok   $1"; else echo "FAIL $1 (rc $3, want $2; no '$4')"; sed 's/^/     /' "$R/out"; fails=$((fails+1)); fi
+}
+mk; rc=$(run); check dry-run 0 "$rc" "DRY RUN"; [ ! -e "$R/sudo.log" ] && echo "ok   dry-run-no-sudo" || { echo "FAIL dry-run wrote"; fails=$((fails+1)); }
+mk; rc=$(run --apply); check apply-pass 0 "$rc" "RESTORED: 0000:03:00.0 back on xe"
+grep -q "MAP-BAR rc=0" "$R/out" && grep -q "BOUND 0000:03:00.0 driver=vfio-pci" "$R/out" && grep -q "^RESULT pass" "$R/out" && echo "ok   apply-bound" || { echo "FAIL apply-bound"; fails=$((fails+1)); }
+grep -q "nvidia\|06:00.0" "$R/sudo.log" && { echo "FAIL nvidia written"; fails=$((fails+1)); } || echo "ok   nvidia-never-written"
+[ "$(cat "$R/sys/bus/pci/devices/0000:03:00.0/driver_override")" = "" ] && echo "ok   override-cleared" || { echo "FAIL override"; fails=$((fails+1)); }
+ls "$R/evid"/e25-1-vfio-*.log >/dev/null 2>&1 && echo "ok   evidence-log" || { echo "FAIL evidence"; fails=$((fails+1)); }
+mk; BINNAME=bin-fail; rc=$(run --apply); BINNAME=; check map-fail-still-restores 1 "$rc" "RESTORED: 0000:03:00.0 back on xe"
+grep -q "RESULT pass" "$R/out" && { echo "FAIL map-fail claimed a pass"; fails=$((fails+1)); } || echo "ok   map-fail-no-result-pass"
+mk; rc=$(STUB_NO_REBIND=1 run --apply); check rebind-fail-says-not-restored 3 "$rc" "NOT RESTORED"
+mk; echo connected > "$R/sys/bus/pci/devices/0000:03:00.0/drm/card0/card0-DP-4/status"; rc=$(run --apply); check refuse-connected 2 "$rc" "REFUSE: connected display output: card0-DP-4"
+[ ! -e "$R/sudo.log" ] && echo "ok   refuse-connected-no-write" || { echo "FAIL refused but wrote"; fails=$((fails+1)); }
+mk; ln -s x "$R/sys/kernel/iommu_groups/17/devices/0000:03:00.1"; rc=$(run --apply); check refuse-shared-group 2 "$rc" "REFUSE: group 17 holds"
+mk; echo 0x10de > "$R/sys/bus/pci/devices/0000:03:00.0/vendor"; rc=$(run --apply); check refuse-wrong-device 2 "$rc" "not the Arc A380"
+mk; rm "$R/sys/bus/pci/devices/0000:03:00.0/driver"; ln -s "$R/sys/bus/pci/drivers/vfio-pci" "$R/sys/bus/pci/devices/0000:03:00.0/driver"; rc=$(run --apply); check refuse-not-on-xe 2 "$rc" "not on xe"
+mk; rc=$(run --bogus); check usage 64 "$rc" "usage"
+rm -rf "${STUBS[@]}"
+echo "fails=$fails"; [ "$fails" = 0 ]
