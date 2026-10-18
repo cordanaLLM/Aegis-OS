@@ -141,6 +141,17 @@ while the caller binds that name as a value, and fails on any cycle (issue #219)
 its delegation, forwarding and shadowing negatives; the check retires once the
 engine catches the same forms.
 
+The public tree and the pull request text describe a hardware class, never the
+reference workstation. `tools/verify_public_host.py` runs inside `make
+verify-all` over every tracked file, and the Verification gate in
+`.github/workflows/ci.yml` runs it over the pull request title and body, again
+whenever they are edited. It refuses host names (the
+running host and a private deny-hosts file, as in ADR-0005), PCI addresses,
+named home folders and one machine's CPU, firmware and storage everywhere, and
+IOMMU groups, process ids, process start times and desktop session state in
+prose. Fixtures use the `f` PCI bus and groups from 900 upward;
+`tools/test_verify_public_host.py` plants one defect per rule.
+
 Cost scale:
 
 - trivial: hours, no new toolchain.
@@ -1265,7 +1276,7 @@ Exit criteria:
 - Measured RAPL energy deltas from the sysfs energy counter replace the
   simulated wattage constant in the M05 engine: at least two reads of
   /sys/class/powercap/intel-rapl:0/energy_uj separated by a recorded interval,
-  with the host model (AMD Ryzen 9 9950X3D) and kernel (7.2.4-1-cachyos)
+  with the host CPU model and kernel (7.2.4-1-cachyos)
   recorded beside them.
 - The reader handles counter rollover explicitly, with a boundary test against
   the measured max_energy_range_uj of 65532610987 uJ; a wrap must produce a
@@ -4973,7 +4984,7 @@ Open decisions:
   Leaving the criteria phrased as GPUDirect invites a future reader to assume a
   4090 covers them. Saying so plainly also lets the two paths that DO work —
   DMA-BUF across three vendors, and VFIO BAR mapping with the Arc A380 alone in
-  IOMMU group 17 — proceed at rank 17 instead of waiting behind an impossible
+  its IOMMU group — proceed at rank 17 instead of waiting behind an impossible
   sibling.
 - **D60** What energy scope does P13 accept, given that the reference profile
   exposes only package-0 and core RAPL zones with no dram and no psys zone,
