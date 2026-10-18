@@ -14,8 +14,8 @@
 # The rebind runs from an EXIT trap, so a failed map still returns the device
 # to xe. Evidence goes to the checkout's .workingdir/evidence/.
 #
-# AEGIS_SYSFS, AEGIS_DEV, AEGIS_SUDO, AEGIS_BIN and AEGIS_EVID exist only for the stub test; the card
-# line sets none of them.
+# AEGIS_SYSFS, AEGIS_DEV, AEGIS_SUDO, AEGIS_BIN, AEGIS_EVID, AEGIS_PROC, AEGIS_NVSMI and
+# AEGIS_KWIN_PIN exist only for the stub test; the card line sets none of them.
 set -euo pipefail
 
 ADDR=0000:03:00.0
@@ -31,6 +31,9 @@ DEV=${AEGIS_DEV:-/dev}
 SUDO=${AEGIS_SUDO:-sudo}
 PCI=$SYS/bus/pci/devices/$ADDR
 EVID=${AEGIS_EVID:-$WT/.workingdir/evidence}
+PROC=${AEGIS_PROC:-/proc}
+NVSMI=${AEGIS_NVSMI:-nvidia-smi}
+KWIN_PIN=${AEGIS_KWIN_PIN:-$HOME/.config/environment.d/50-kwin-drm-devices.conf}
 APPLY=0
 [ "${1:-}" = --apply ] && APPLY=1
 if [ $# -gt 1 ] || { [ $# = 1 ] && [ "$1" != --apply ]; }; then echo "usage: bash $0 [--apply]" >&2; exit 64; fi
@@ -64,6 +67,7 @@ wsys() { echo "$1" | $SUDO tee "$2" >/dev/null; }
 
 preflight() {
   echo "PREFLIGHT $(date -Is) host=$(uname -n) kernel=$(uname -r)"
+  kwin_fresh
   [ -d "$PCI" ] || { echo "REFUSE: $ADDR absent"; exit 2; }
   local v d g m conn
   v=$(cat "$PCI/vendor"); d=$(cat "$PCI/device")
@@ -96,6 +100,34 @@ holders() {
     for p in "${pids[@]}"; do who="$who $p ($(cat "/proc/$p/comm" 2>/dev/null || echo gone))"; done
     [ -z "$who" ] || { echo "REFUSE: pci-$ADDR-$s held by${who}; close it or move the session off this GPU first"; exit 2; }
   done
+}
+
+# The home-zeus KWin DRM pin keeps the compositor on the 4090, but only for a
+# kwin_wayland started after the pin file was written: the session running on
+# 2026-10-18 predated it and could still open the Arc as a hotplug GPU. Refuse
+# unless every kwin_wayland started strictly after the pin's mtime and
+# nvidia-smi lists it, so the bind never races a compositor on the old setting.
+kwin_fresh() {
+  [ -f "$KWIN_PIN" ] || { echo "REFUSE: KWin DRM pin $KWIN_PIN absent"; exit 2; }
+  local pin btime tck c pid line f start apps n=0
+  pin=$(stat -c %Y "$KWIN_PIN")
+  btime=$(sed -n 's/^btime //p' "$PROC/stat")
+  tck=$(getconf CLK_TCK)
+  if ! apps=$(timeout 30 "$NVSMI" --query-compute-apps=pid,process_name --format=csv,noheader 2>&1); then
+    echo "REFUSE: nvidia-smi failed: $apps"; exit 2
+  fi
+  for c in "$PROC"/[0-9]*/comm; do
+    [ "$(cat "$c" 2>/dev/null)" = kwin_wayland ] || continue
+    pid=$(basename "$(dirname "$c")")
+    line=$(cat "$PROC/$pid/stat")
+    read -ra f <<< "${line##*) }"
+    start=$((btime + f[19] / tck))
+    [ "$start" -gt "$pin" ] || { echo "REFUSE: kwin_wayland $pid started $start, not after the KWin DRM pin $KWIN_PIN ($pin); log out and back in first"; exit 2; }
+    grep -q "^$pid, " <<< "$apps" || { echo "REFUSE: nvidia-smi does not list kwin_wayland $pid; the compositor is not on the 4090"; exit 2; }
+    echo "  kwin_wayland $pid started $start, after the KWin DRM pin ($pin); nvidia-smi lists it"
+    n=$((n + 1))
+  done
+  [ "$n" -gt 0 ] || { echo "REFUSE: no kwin_wayland running; log in to the desktop session first"; exit 2; }
 }
 
 on_exit() {
