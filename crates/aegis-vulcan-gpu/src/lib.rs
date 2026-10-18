@@ -8,12 +8,21 @@
 //! GPU topology and capabilities through read-only sysfs inspection and unprivileged
 //! `/dev` device node stat calls.
 //!
-//! It opens, binds, unbinds and writes no hardware device.
+//! The record half opens, binds, unbinds and writes no hardware device. The
+//! [`dmabuf`] half (E25-2) opens `/dev/udmabuf` and the render nodes to share
+//! one buffer between drivers; it binds and unbinds nothing.
 //!
 //! # Unsafe Code
 //!
-//! This crate contains zero unsafe code and inherits the workspace `forbid` on unsafe code.
+//! This crate is the workspace's one unsafe home (ledger
+//! `aegis-os-m25-unsafe-home`). Its manifest restates the workspace lints with
+//! `unsafe_code = "deny"` in place of `forbid`, so `unsafe` compiles only inside
+//! a function that carries `#[allow(unsafe_code)]`, and every `unsafe` block
+//! carries a `// SAFETY:` proof. `tools/verify_unsafe_home.py` holds that, holds
+//! every other member at `forbid`, and holds the dated category C exception in
+//! `.standards.yaml`.
 
+pub mod dmabuf;
 pub mod drm_sched;
 pub mod error;
 pub mod gpus;
@@ -24,6 +33,9 @@ pub mod record;
 pub mod render_nodes;
 pub mod vfio;
 
+pub use crate::dmabuf::{
+    ShareBounds, ShareRefusal, ShareRun, check_modifier, read_share_bounds, run_share,
+};
 pub use crate::drm_sched::{DrmSchedRecord, MAX_HOLDERS, inspect_holders, is_provider};
 pub use crate::error::GpuError;
 pub use crate::gpus::{
