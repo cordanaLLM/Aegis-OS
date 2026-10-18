@@ -1,10 +1,12 @@
 ---
-# Roadmap epic check (issue #220): fails when an open issue labelled roadmap
-# carries a title or body other than the one tools/render_epics.py writes from
-# planning/roadmap.json on main. It reads issues and writes nothing; a red run
-# is fixed with `python3 tools/render_epics.py --apply` from a main checkout.
-# It runs on main only, not on pull requests: the issues follow main, so a pull
-# request that moves a rank would fail before the change it carries had landed.
+# Roadmap epics (issue #220): keeps each open issue labelled roadmap at the
+# title and body tools/render_epics.py writes from planning/roadmap.json on
+# main. A push to main that changes the roadmap or the renderer rewrites the
+# stale epics with `--apply` and then checks them with `--check`; only that job
+# holds `issues: write`. The daily and manual runs only check, so an issue edited
+# by hand turns them red until `--apply` restores it. It runs on main only, not
+# on pull requests: the issues follow main, so a pull request that moves a rank
+# would fail before the change it carries had landed.
 name: Roadmap epics
 
 'on':
@@ -20,17 +22,51 @@ name: Roadmap epics
 
 permissions:
   contents: read
-  issues: read
 
 concurrency:
   group: roadmap-epics
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  check:
-    name: Roadmap epics match the roadmap
+  apply:
+    name: Roadmap epics follow the roadmap
+    if: github.event_name == 'push'
     runs-on: ubuntu-26.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up the pinned Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Rewrite the stale open epics
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/render_epics.py --apply
+
+      - name: Compare the open epics with the render
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/render_epics.py --check
+
+  check:
+    name: Roadmap epics match the roadmap
+    if: github.event_name != 'push'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
