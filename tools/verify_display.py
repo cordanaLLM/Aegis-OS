@@ -25,8 +25,10 @@ each time with ``LIBVA_DRIVER_NAME`` set in that child's environment only:
 
 The gate prints rustc, libva, the VA vendor string, the compositor it ran
 against and the modifier the driver chose, and labels every pass development
-evidence for the client half only (D79): the compositor is the host session's,
-not P04, and nothing here is evidence that P04 serves either protocol.
+evidence for the client half only (D79): the compositor is not P04, and the
+label says whose it is, read from its command line (the host session's, or a
+nested instance started with a backend flag such as KWin's ``--virtual``);
+nothing here is evidence that P04 serves either protocol.
 
 Without the reference profile's capabilities -- not Linux, no Wayland session,
 fewer than two DRM render nodes (negative (b) needs a node that is not the
@@ -57,6 +59,7 @@ import time
 from pathlib import Path
 
 import display_toolchain
+import subtitle_fixture
 
 ROOT = Path(__file__).resolve().parent.parent
 CRATE = "aegis-scaena"
@@ -155,6 +158,12 @@ RUN_CASES = (
     "display/unadvertised-pair-refused",
     "display/frame-crc-regression-pin",
     "display/presented-deadline",
+)
+SUBTITLE_CASES = (
+    "subtitle/cue-1-within-100ms",
+    "subtitle/cue-2-within-100ms",
+    "subtitle/cue-3-within-100ms",
+    "subtitle/planted-150ms-late-refused",
 )
 PROBE_CASES = ("display/driver-not-ihd-refused",)
 # The case a child may report with a NOTE line instead of PASS or FAIL: the
@@ -492,6 +501,32 @@ def compositor(pid, runner=run, which=shutil.which):
     return f"{executable} (pid {pid}, {package})"
 
 
+# Backend flags a compositor takes when it runs nested or headless rather than
+# as the session's own: KWin's --virtual, --wayland-display and --x11-display.
+NESTED_FLAGS = ("--virtual", "--wayland-display", "--x11-display")
+MAX_CMDLINE_BYTES = 65536
+
+
+def read_cmdline(path):
+    """Return at most MAX_CMDLINE_BYTES of a process's command line."""
+    with open(path, "rb") as handle:
+        return handle.read(MAX_CMDLINE_BYTES)
+
+
+def compositor_origin(pid, reader=read_cmdline):
+    """Say whose compositor `pid` is, from its own command line, never assumed."""
+    if not pid or not pid.isdigit():
+        return "unidentified"
+    try:
+        arguments = reader(f"/proc/{pid}/cmdline").split(b"\0")
+    except OSError:
+        return "unidentified"
+    for flag in NESTED_FLAGS:
+        if flag.encode() in arguments:
+            return f"a nested instance ({flag}), not the host session's"
+    return "the host session's"
+
+
 def modifier_name(text):
     """Return a modifier's hexadecimal value with its DRM name, when known."""
     try:
@@ -516,7 +551,8 @@ def summary(run_info, toolchain):
             f"     {name}: reported, not held; the pins were recorded under another "
             "driver and are re-measured and recorded with this one (D73)"
         )
-    print("     label: client half only (D79); the compositor is the host session's, not P04")
+    origin = compositor_origin(run_info.get("compositor pid"))
+    print(f"     label: client half only (D79); the compositor is {origin}, not P04")
 
 
 def prepare():
@@ -525,6 +561,7 @@ def prepare():
         display_toolchain.read_lock()
     )
     reasons += fixture_problems()
+    reasons += subtitle_fixture.fixture_problems()
     if reasons:
         raise GateError("; ".join(reasons[:MAX_PROBLEM_LINES]))
     toolchain = (rustc_version(), libva_version())
@@ -533,7 +570,7 @@ def prepare():
 
 
 def run_cases(binary, retain=None):
-    """Start both children; return (skip reason or None, failures, run info)."""
+    """Start the children; return (skip reason or None, failures, run info)."""
     code, stdout = run_child(binary, "run", POSITIVE_DRIVER, retain)
     info, cases, result, notes = parse_child(stdout)
     if code == EXIT_SKIP and result and result.startswith("skip: "):
@@ -542,12 +579,20 @@ def run_cases(binary, retain=None):
     info["not held"] = not_held(cases, notes)
     if code != 0 and not failures:
         failures.append(f"{BINARY} run exited {code}: {result}")
+    sub_code, sub_stdout = run_child(binary, "subtitles", POSITIVE_DRIVER, retain)
+    sub_info, sub_cases, sub_result, sub_notes = parse_child(sub_stdout)
+    if sub_code == EXIT_SKIP and sub_result and sub_result.startswith("skip: "):
+        return sub_result[len("skip: ") :], [], info
+    sub_failures = case_problems(sub_cases, SUBTITLE_CASES, sub_notes)
+    if sub_code != 0 and not sub_failures:
+        sub_failures.append(f"{BINARY} subtitles exited {sub_code}: {sub_result}")
+    info.update(sub_info)
     probe_code, probe_stdout = run_child(binary, "driver-probe", NEGATIVE_DRIVER, retain)
     _probe_info, probe_cases, probe_result, probe_notes = parse_child(probe_stdout)
     probe_failures = case_problems(probe_cases, PROBE_CASES, probe_notes)
     if probe_code != 0 and not probe_failures:
         probe_failures.append(f"{BINARY} driver-probe exited {probe_code}: {probe_result}")
-    return None, failures + probe_failures, info
+    return None, failures + sub_failures + probe_failures, info
 
 
 def skip(reasons):
@@ -588,8 +633,8 @@ def main():
         "PASS: display slice on the reference profile (M27): VA-API frames decoded on the "
         "compositor's main device under iHD, checked against content, exported and passed "
         "over SCM_RIGHTS, and presented on a zwlr_layer_shell_v1 surface. Client half only "
-        "(D79): the compositor is the host session's, not P04; development evidence that "
-        "closes no hardware, accessibility or release gate."
+        f"(D79): the compositor is {compositor_origin(info.get('compositor pid'))}, not P04; "
+        "development evidence that closes no hardware, accessibility or release gate."
     )
     return 0
 

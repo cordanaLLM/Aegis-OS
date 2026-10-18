@@ -25,12 +25,47 @@ or release gate.
 | `build/repart.d/10-root-a.conf` | root slot A: EROFS with dm-verity data | export-054 | REQ-P01-02, REQ-P02-07 |
 | `build/repart.d/10-root-b.conf` | root slot B: the empty alternate slot | export-063 (the A/B target) | REQ-P01-04, REQ-P02-04 |
 | `build/repart.d/11-root-verity.conf` | dm-verity hash partition for slot A | export-054 (its `Verity=data` pair) | REQ-P01-02, REQ-P02-07 |
-| `build/repart.d/20-var.conf` | TPM2-sealed Btrfs `/var` | export-055 | REQ-P01-03, REQ-P02-03 |
+| `build/mkosi.extra/usr/lib/repart.d/20-var.conf` | TPM2-sealed Btrfs `/var` | export-055 | REQ-P01-03, REQ-P02-03 |
 | `build/sysupdate.d/10-root.transfer` | dual-slot A/B root transfer | export-063 | REQ-P01-04, REQ-P02-04 |
 
 Each file carries its export id and the sha256 of that export in its own header
 comment. No private path appears in any tracked file, and no file reproduces
 more than a fragment of its source.
+
+## What the built image holds
+
+The partitions are filled from the tree mkosi builds:
+
+- `00-esp.conf` copies both `/boot` and `/efi` into the ESP. These are the two
+  lines mkosi 27.1 writes into its own default ESP definition. With
+  `Bootloader=uki`, mkosi writes the UKI to `/efi/EFI/BOOT/BOOTX64.EFI`.
+- `10-root-a.conf` copies the whole tree. It leaves out the contents of `/boot`
+  and `/efi`, so both stay empty mount points and the UKI lives only on the
+  ESP.
+
+Imago run 39090040772 booted an image built before these lines existed. The
+ESP was empty and root-a was a 4K EROFS. The firmware answered "No bootable
+option or device was found", and the build had still exited 0.
+
+`build/mkosi.postoutput.d/image_layout.py` closes that gap. mkosi runs every
+file in that directory after it writes the image (`PostOutputScripts=`). The
+script fails the build when the image is missing any of these:
+
+- a GPT;
+- an ESP that is FAT32 and holds a PE image at `EFI/BOOT/BOOTX64.EFI`;
+- a partition labelled `root-a` whose EROFS has at least 1000 inodes and
+  64 MiB.
+
+It reads metadata only, with the Python standard library.
+
+`tools/test_image_layout.py` covers the check:
+
+- Synthetic images give positive, negative and boundary cases on every host.
+- Where `systemd-repart`, `mkfs.vfat`, `mkfs.erofs` and `mcopy` are on `PATH`,
+  two cases build real images and run the check with lower floors. One uses
+  `build/repart.d` as committed, which the check passes. The other drops the two
+  `CopyFiles=` lines that the run lacked, which the check refuses. Elsewhere
+  these cases print a `SKIP:` line.
 
 ## The two gates
 
@@ -208,6 +243,23 @@ longer holds on the reference profile. The un-deferred run was not repeated, and
 the deferral stays: it rests on the first-boot sequence, which does not depend
 on group membership.
 
+Since then `20-var.conf` lives in `build/mkosi.extra/usr/lib/repart.d/`, which
+mkosi copies into the image as an extra tree. `systemd-repart.service` reads
+`/usr/lib/repart.d` at first boot on the target, leaves the four existing
+partitions as they are and creates and enrols `/var` there. The build-time set
+in `build/repart.d/` therefore carries no `Encrypt=tpm2` and runs without
+`--defer-partitions`; `build_time_encrypt_problems()` in
+`tools/verify_systemd_definitions.py` fails the gate if one comes back. The case
+`repart/first-boot-layout` stages both sets together with
+`--defer-partitions=var`, so the full layout is still checked.
+
+Without the 10 GiB `/var` minimum the raw image shrinks. Measured on 2026-10-17
+with systemd-repart 262, `--empty=create --size=auto --offline=yes`, the gate's
+seed and an empty scratch root: 548430336 bytes (523 MiB; ESP 512 MiB, root slot
+A 4 KiB, root slot B 10 MiB, verity 4 KiB). A real image adds its EROFS root and
+verity content, so this is the floor of the table, not the size of a built
+image.
+
 ### `systemd-sysupdate --root=` reads no transfer on systemd 261
 
 M03's exit criterion 5 first named `systemd-sysupdate --root=<tree> --offline
@@ -281,7 +333,10 @@ answers two questions and keeps them apart: `DefinitionError` for what systemd
 refuses, `Finding` for what systemd accepts while the recorded requirement does
 not. It is deliberately stricter in one direction -- an unknown key, a repeated
 section and a repeated key are refusals, not warnings -- and it reports the
-single-slot transfer that systemd silently bumps.
+single-slot transfer that systemd silently bumps. The keys repart.d(5) documents
+as usable more than once (`REPEATABLE_KEYS` in `src/unit.rs`, `CopyFiles=` among
+them) are the exception: each assignment adds an item, and the crate keeps them
+all, as systemd does.
 
 The two halves can disagree, which is the point: the gate runs the tool, the
 crate runs the rules, and a divergence is a failure in one of them rather than a

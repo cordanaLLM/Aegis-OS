@@ -9,7 +9,7 @@ mod common;
 
 use aegis_fabrica_defs::{
     DefinitionError, ESP_MAX_BYTES, ESP_MIN_BYTES, ESP_TYPE, Finding, KNOWN_KEYS, MAX_DEFINITIONS,
-    MAX_FINDINGS, PARTITION_SECTION, ROOT_TYPE, RepartDefinition, VAR_TYPE, check_repart_set,
+    MAX_FINDINGS, PARTITION_SECTION, ROOT_TYPE, RepartDefinition, check_repart_set,
 };
 
 use common::Fallible;
@@ -24,14 +24,13 @@ VerityMatchKey=root\nMinimize=yes\nPriority=90\n";
 const VAR: &str = "[Partition]\nType=var\nFormat=btrfs\nLabel=var\n\
 Encrypt=tpm2\nSizeMinBytes=10G\nWeight=2000\n";
 
-/// Parses the five-drop-in set the milestone ships in `build/repart.d`.
+/// Parses the four-drop-in set the milestone ships in `build/repart.d`.
 fn reviewed_set() -> Result<Vec<RepartDefinition>, DefinitionError> {
     [
         ("00-esp.conf", ESP),
         ("10-root-a.conf", ROOT_A),
         ("10-root-b.conf", ROOT_B),
         ("11-root-verity.conf", VERITY),
-        ("20-var.conf", VAR),
     ]
     .into_iter()
     .map(|(name, text)| RepartDefinition::parse(name, text))
@@ -60,15 +59,16 @@ fn the_esp_drop_in_is_read_field_by_field() -> Fallible {
 #[test]
 fn the_reviewed_set_reports_no_findings() -> Fallible {
     let set = reviewed_set()?;
-    assert_eq!(set.len(), 5);
+    assert_eq!(set.len(), 4);
     assert_eq!(check_repart_set(&set), Vec::new());
     let roots = set
         .iter()
         .filter(|row| row.partition_type() == ROOT_TYPE)
         .count();
     assert_eq!(roots, 2);
-    let var = set.iter().find(|row| row.partition_type() == VAR_TYPE);
-    assert!(var.is_some_and(RepartDefinition::is_tpm2_encrypted));
+    let var = RepartDefinition::parse("20-var.conf", VAR)?;
+    assert!(var.is_tpm2_encrypted());
+    assert_eq!(var.findings(), Vec::new());
     Ok(())
 }
 

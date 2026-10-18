@@ -91,13 +91,33 @@ EFI_GLOBAL = "8be4df61-93ca-11d2-aa0d-00e098032b8c"
 ESP_TYPE = uuid.UUID("c12a7328-f81f-11d2-ba4b-00a0c93ec93b")
 DEFAULT_OVMF_DIR = "/usr/share/edk2/x64"
 KEY_FILE = "signing-keys.gpg"
+BOOT_EVIDENCE_FILE = "boot-evidence.json"
+MAX_EVIDENCE_BYTES = 65536
 PIN_SCHEMA = "aegis.m24.boot-artifact-pin.v1"
+COSIGN_SCHEME = "cosign-keyless-sha256sums"
+GPG_SCHEME = "gpg-clearsigned-checksum"
+SIGNATURE_FIELDS = {
+    GPG_SCHEME: ("scheme", "checksum-file", "checksum-url", "key-url", "fingerprint"),
+    COSIGN_SCHEME: (
+        "scheme",
+        "checksum-file",
+        "checksum-url",
+        "bundle-file",
+        "bundle-url",
+        "boot-evidence-url",
+        "identity",
+        "issuer",
+        "workflow-sha",
+        "workflow-ref",
+    ),
+}
 
 # Deadlines. Every external command carries one, and every process the harness
 # starts in the background is ended with its whole session on every way out.
 VERSION_TIMEOUT = 30
 TOOL_TIMEOUT = 120
 GPG_TIMEOUT = 120
+COSIGN_TIMEOUT = 120
 FETCH_TIMEOUT = 1800
 SOCKET_TIMEOUT = 30
 REPORT_TIMEOUT = 120
@@ -117,6 +137,7 @@ MAX_LOGIN_TIMEOUT = 1800
 MAX_DIGEST_CHUNKS = 4096
 MAX_CONSOLE_BYTES = 32 << 20
 MAX_REPORT_LINES = 400
+MAX_SUMS_LINES = 64
 MAX_PROBLEM_LINES = 24
 MAX_QMP_LINES = 64
 MAX_QMP_BYTES = 65536
@@ -135,12 +156,21 @@ GUEST_MEMORY = "2048"
 GUEST_CPUS = "2"
 NONCE_BYTES = 16
 NONCE_SHAPE = re.compile(r"aegis-m24-[0-9a-f]{32}")
+NONCE_CREDENTIAL = "aegis.boot-report.nonce"
 PCR_INDICES = (0, 4, 7, 11)
 FIRMWARE_PCRS = (0, 4, 7)
 PCR_VALUE = re.compile(r"[0-9a-f]{64}")
 EFI_BYTES = re.compile(r"\d{1,3}(?: \d{1,3}){4}")
 VERSION = re.compile(r"(\d+)-(\d+)\.(\d+)")
+IMAGO_VERSION = re.compile(r"([A-Za-z0-9._:-]{1,123})-(\d{4})")
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,200}")
+HEX_40 = re.compile(r"[0-9a-f]{40}")
+WORKFLOW_REF = re.compile(r"refs/(heads|tags)/[A-Za-z0-9._/-]{1,200}")
+IDENTITY = re.compile(
+    r"https://github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+/\.github/workflows/"
+    r"[A-Za-z0-9._-]+\.ya?ml@refs/(heads|tags)/[A-Za-z0-9._/-]+"
+)
+GITHUB_ISSUER = "https://token.actions.githubusercontent.com"
 UKI_PATH = re.compile(r"(?:[A-Za-z0-9][A-Za-z0-9._-]*/){1,4}[A-Za-z0-9][A-Za-z0-9._-]*\.efi")
 MICROSOFT_DB = ("none", "uefi11", "uefi23")
 LOGIN_PROMPT = re.compile(r"(?m)^[A-Za-z0-9][A-Za-z0-9.-]{0,62} login: ")
@@ -420,22 +450,39 @@ def cache_dir():
     return root / "aegis-boot-harness"
 
 
-def version_key(text):
-    """Order a producer version such as 44-1.7 as (44, 1, 7)."""
-    match = VERSION.fullmatch(text)
-    if match is None:
-        raise GateError(f"{text!r} is not a producer version this harness can order")
-    return tuple(int(part) for part in match.groups())
+def version_key(text, scheme=GPG_SCHEME):
+    """Order a producer version according to its pin signature scheme."""
+    if scheme == GPG_SCHEME:
+        match = VERSION.fullmatch(text)
+        if match is None:
+            raise GateError(f"{text!r} is not a producer version this harness can order")
+        return tuple(int(part) for part in match.groups())
+    if scheme == COSIGN_SCHEME:
+        match = IMAGO_VERSION.fullmatch(text)
+        if match is None:
+            raise GateError(f"{text!r} is not an Imago producer version this harness can order")
+        stem, ordinal = match.groups()
+        return stem, int(ordinal)
+    raise GateError(f"signature scheme {scheme} has no version ordering")
 
 
-def version_admitted(version, floor):
+def version_admitted(version, floor, scheme=GPG_SCHEME):
     """Return True when `version` is at or above the pinned floor."""
-    return version_key(version) >= version_key(floor)
+    if scheme == COSIGN_SCHEME:
+        v_stem, v_ord = version_key(version, scheme=scheme)
+        f_stem, f_ord = version_key(floor, scheme=scheme)
+        return v_stem == f_stem and v_ord >= f_ord
+    return version_key(version, scheme=scheme) >= version_key(floor, scheme=scheme)
 
 
-def version_below(floor):
-    """Return the version one step below `floor` in its last component."""
-    major, minor, respin = version_key(floor)
+def version_below(floor, scheme=GPG_SCHEME):
+    """Return the version one step below `floor` in its last component or ordinal."""
+    if scheme == COSIGN_SCHEME:
+        stem, ordinal = version_key(floor, scheme=scheme)
+        if ordinal == 0:
+            raise GateError(f"the floor {floor} has no predecessor in its ordinal")
+        return f"{stem}-{ordinal - 1:04d}"
+    major, minor, respin = version_key(floor, scheme=scheme)
     if respin == 0:
         raise GateError(f"the floor {floor} has no predecessor in its last component")
     return f"{major}-{minor}.{respin - 1}"
@@ -445,13 +492,121 @@ def pin_shape_problems(pin):
     """Return the fields a pin lacks, section by section."""
     top = ("schema", "name", "version", "version-floor", "architecture", "format", "file")
     top += ("url", "sha256", "size", "signature", "boot")
-    signature = ("scheme", "checksum-file", "checksum-url", "key-url", "fingerprint")
     boot = ("login-prompt-timeout-seconds", "guest-microsoft-db", "shim-fallback-no-reboot")
     problems = [f"missing {key}" for key in top if key not in pin]
     if problems:
         return problems
-    problems += [f"signature lacks {key}" for key in signature if key not in pin["signature"]]
-    problems += [f"boot lacks {key}" for key in boot + ("uki-path",) if key not in pin["boot"]]
+    sig = pin["signature"]
+    scheme = sig.get("scheme")
+    if scheme not in SIGNATURE_FIELDS:
+        problems.append(f"signature scheme {scheme} is not built")
+    else:
+        fields = SIGNATURE_FIELDS[scheme]
+        problems += [f"signature lacks {key}" for key in fields if key not in sig]
+    extra_boot = ("uki-path",)
+    if scheme == COSIGN_SCHEME:
+        extra_boot += ("success-marker",)
+    problems += [f"boot lacks {key}" for key in boot + extra_boot if key not in pin["boot"]]
+    return problems
+
+
+def gpg_signature_problems(sig):
+    """Return why a GPG signature section cannot be acted on, or []."""
+    checks = (
+        (re.fullmatch(r"[0-9A-F]{40}", sig["fingerprint"]), "fingerprint is not 40 hex digits"),
+        (SAFE_NAME.fullmatch(sig["checksum-file"]), "checksum-file is not a plain file name"),
+    )
+    return [message for passed, message in checks if not passed]
+
+
+def cosign_signature_problems(sig):
+    """Return why a cosign signature section cannot be acted on, or []."""
+    checksum_file = sig["checksum-file"]
+    bundle_file = sig["bundle-file"]
+    identity = sig["identity"]
+    workflow_ref = sig["workflow-ref"]
+    identity_ok = bool(IDENTITY.fullmatch(identity) and identity.endswith("@" + workflow_ref))
+    files_differ = checksum_file != bundle_file
+    checks = (
+        (sig["issuer"] == GITHUB_ISSUER, f"issuer is not {GITHUB_ISSUER}"),
+        (HEX_40.fullmatch(sig["workflow-sha"]), "workflow-sha is not 40 hex digits"),
+        (WORKFLOW_REF.fullmatch(workflow_ref), "workflow-ref is not refs/heads or refs/tags"),
+        (identity_ok, "identity does not match workflow-ref or repository workflow shape"),
+        (SAFE_NAME.fullmatch(checksum_file), "checksum-file is not a plain file name"),
+        (SAFE_NAME.fullmatch(bundle_file), "bundle-file is not a plain file name"),
+        (files_differ, "checksum-file and bundle-file must differ"),
+    )
+    return [message for passed, message in checks if not passed]
+
+
+def signature_value_problems(sig):
+    """Return problems in `sig` according to its declared scheme."""
+    scheme = sig.get("scheme")
+    if scheme == GPG_SCHEME:
+        return gpg_signature_problems(sig)
+    if scheme == COSIGN_SCHEME:
+        return cosign_signature_problems(sig)
+    return [f"signature scheme {scheme} is not built"]
+
+
+def signature_urls(sig):
+    """Return the URLs declared in `sig` for its scheme."""
+    scheme = sig.get("scheme")
+    if scheme == GPG_SCHEME:
+        return (sig["checksum-url"], sig["key-url"])
+    if scheme == COSIGN_SCHEME:
+        return (sig["checksum-url"], sig["bundle-url"], sig["boot-evidence-url"])
+    return ()
+
+
+def upstream_value_problems(pin):
+    """Return why an upstream (GPG) pin cannot be acted on, or []."""
+    expected_file = f"{pin['name']}-{pin['version']}.{pin['architecture']}.{pin['format']}"
+    checks = (
+        (pin["format"] == "qcow2", "format must be qcow2"),
+        (VERSION.fullmatch(pin["version"]), "version is not MAJOR-MINOR.RESPIN"),
+        (VERSION.fullmatch(pin["version-floor"]), "version-floor is not MAJOR-MINOR.RESPIN"),
+        (pin["file"] == expected_file, f"file is not {expected_file}"),
+    )
+    return [message for passed, message in checks if not passed]
+
+
+def marker_problems(boot):
+    """Return why a boot success-marker is invalid, or []; shape checks its presence."""
+    marker = boot["success-marker"]
+    if not isinstance(marker, str) or not (1 <= len(marker) <= 200):
+        return ["success-marker must be 1..200 characters"]
+    try:
+        re.compile(marker)
+    except re.error as error:
+        return [f"success-marker is not a valid regex: {error}"]
+    return []
+
+
+def imago_version_problems(pin):
+    """Return why an Imago pin's version or version-floor is invalid, or []."""
+    v_match = IMAGO_VERSION.fullmatch(pin["version"])
+    f_match = IMAGO_VERSION.fullmatch(pin["version-floor"])
+    problems = []
+    if v_match is None:
+        problems.append("version is not correlation-id with 4-digit ordinal")
+    if f_match is None:
+        problems.append("version-floor is not correlation-id with 4-digit ordinal")
+    if v_match and f_match and v_match.group(1) != f_match.group(1):
+        problems.append("version-floor must share the same stem as version")
+    return problems
+
+
+def imago_value_problems(pin):
+    """Return why an Imago (cosign) pin cannot be acted on, or []."""
+    expected_file = f"aegis-os.{pin['format']}"
+    checks = (
+        (pin["format"] == "raw", "format must be raw"),
+        (pin["file"] == expected_file, f"file is not {expected_file}"),
+    )
+    problems = [message for passed, message in checks if not passed]
+    problems.extend(imago_version_problems(pin))
+    problems.extend(marker_problems(pin["boot"]))
     return problems
 
 
@@ -459,17 +614,10 @@ def pin_value_problems(pin):
     """Return the pin values this harness refuses to act on."""
     sig, boot = pin["signature"], pin["boot"]
     timeout = boot["login-prompt-timeout-seconds"]
-    expected_file = f"{pin['name']}-{pin['version']}.{pin['architecture']}.{pin['format']}"
-    urls = (pin["url"], sig["checksum-url"], sig["key-url"])
+    urls = (pin["url"],) + signature_urls(sig)
     checks = (
         (pin["schema"] == PIN_SCHEMA, f"schema is not {PIN_SCHEMA}"),
         (PCR_VALUE.fullmatch(pin["sha256"]), "sha256 is not 64 lower-case hex digits"),
-        (re.fullmatch(r"[0-9A-F]{40}", sig["fingerprint"]), "fingerprint is not 40 hex digits"),
-        (sig["scheme"] == "gpg-clearsigned-checksum", "only gpg-clearsigned-checksum is built"),
-        (VERSION.fullmatch(pin["version"]), "version is not MAJOR-MINOR.RESPIN"),
-        (VERSION.fullmatch(pin["version-floor"]), "version-floor is not MAJOR-MINOR.RESPIN"),
-        (pin["file"] == expected_file, f"file is not {expected_file}"),
-        (SAFE_NAME.fullmatch(sig["checksum-file"]), "checksum-file is not a plain file name"),
         (all(url.startswith("https://") for url in urls), "every URL must be https"),
         (isinstance(timeout, int) and 0 < timeout <= MAX_LOGIN_TIMEOUT, "timeout out of range"),
         (boot["guest-microsoft-db"] in MICROSOFT_DB, "guest-microsoft-db is not admitted"),
@@ -477,7 +625,14 @@ def pin_value_problems(pin):
         (UKI_PATH.fullmatch(boot["uki-path"]), "uki-path is not a relative .efi path"),
         (isinstance(pin["size"], int) and pin["size"] > 0, "size is not a positive integer"),
     )
-    return [message for passed, message in checks if not passed]
+    problems = [message for passed, message in checks if not passed]
+    problems.extend(signature_value_problems(sig))
+    scheme = sig.get("scheme")
+    if scheme == GPG_SCHEME:
+        problems.extend(upstream_value_problems(pin))
+    elif scheme == COSIGN_SCHEME:
+        problems.extend(imago_value_problems(pin))
+    return problems
 
 
 def load_pin(path):
@@ -509,6 +664,15 @@ class Context:
         self.timeout = pin["boot"]["login-prompt-timeout-seconds"]
         self.spawned = []
         self.key = None
+        scheme = pin["signature"].get("scheme")
+        if scheme == GPG_SCHEME:
+            self.bundle = None
+            self.evidence = None
+        elif scheme == COSIGN_SCHEME:
+            self.bundle = store / pin["signature"]["bundle-file"]
+            self.evidence = store / BOOT_EVIDENCE_FILE
+        else:
+            raise GateError(f"signature scheme {scheme} is not built")
 
     def nonce(self):
         """Return a fresh per-boot nonce."""
@@ -553,6 +717,27 @@ def gpg_argv(keyring):
     return ["gpg", "--homedir", str(keyring), "--batch", "--no-autostart"]
 
 
+def cosign_argv(pin, checksum, bundle):
+    """Return the cosign verify-blob argument vector for `checksum` with `bundle`."""
+    sig = pin["signature"]
+    return [
+        "cosign",
+        "verify-blob",
+        "--offline",
+        "--bundle",
+        str(bundle),
+        "--certificate-identity",
+        sig["identity"],
+        "--certificate-oidc-issuer",
+        sig["issuer"],
+        "--certificate-github-workflow-sha",
+        sig["workflow-sha"],
+        "--certificate-github-workflow-ref",
+        sig["workflow-ref"],
+        str(checksum),
+    ]
+
+
 def import_key(keyring, key_file, fingerprint):
     """Import the published keys into the gate's own keyring and require the pinned one."""
     keyring.mkdir(parents=True, exist_ok=True)
@@ -566,13 +751,27 @@ def import_key(keyring, key_file, fingerprint):
         raise GateError(f"{key_file.name} does not carry the pinned key {fingerprint}")
 
 
+def fetch_signature_inputs(context):
+    """Download and prepare the signature inputs for the pin's scheme."""
+    pin, store = context.pin, context.store
+    scheme = pin["signature"].get("scheme")
+    if scheme == GPG_SCHEME:
+        fetch(pin["signature"]["checksum-url"], context.checksum, FETCH_TIMEOUT)
+        fetch(pin["signature"]["key-url"], store / KEY_FILE, FETCH_TIMEOUT)
+        import_key(context.keyring, store / KEY_FILE, pin["signature"]["fingerprint"])
+    elif scheme == COSIGN_SCHEME:
+        fetch(pin["signature"]["checksum-url"], context.checksum, FETCH_TIMEOUT)
+        fetch(pin["signature"]["bundle-url"], context.bundle, FETCH_TIMEOUT)
+        fetch(pin["signature"]["boot-evidence-url"], context.evidence, FETCH_TIMEOUT)
+    else:
+        raise GateError(f"signature scheme {scheme} is not built")
+
+
 def fetch_pinned(context):
     """Populate the cache: the signed CHECKSUM, the signing keys and the artifact."""
     pin, store = context.pin, context.store
     store.mkdir(parents=True, exist_ok=True)
-    fetch(pin["signature"]["checksum-url"], context.checksum, FETCH_TIMEOUT)
-    fetch(pin["signature"]["key-url"], store / KEY_FILE, FETCH_TIMEOUT)
-    import_key(context.keyring, store / KEY_FILE, pin["signature"]["fingerprint"])
+    fetch_signature_inputs(context)
     if context.artifact.exists():
         print(f"     cached artifact kept: {context.artifact}")
         return
@@ -587,7 +786,13 @@ def fetch_pinned(context):
 
 def check_cache(context):
     """Return why the cached inputs are not all present."""
-    wanted = (context.artifact, context.checksum, context.keyring)
+    scheme = context.pin["signature"].get("scheme")
+    if scheme == GPG_SCHEME:
+        wanted = (context.artifact, context.checksum, context.keyring)
+    elif scheme == COSIGN_SCHEME:
+        wanted = (context.artifact, context.checksum, context.bundle, context.evidence)
+    else:
+        raise GateError(f"signature scheme {scheme} is not built")
     missing = [str(path) for path in wanted if not path.exists()]
     if not missing:
         return []
@@ -617,6 +822,16 @@ def signed_checksum(context, checksum, plain):
     return plain.read_text(encoding="utf-8"), f"GOODSIG {status.get('GOODSIG', '')}"
 
 
+def cosign_checksum(pin, checksum, bundle):
+    """Verify `checksum` offline against `bundle` using cosign; return (text, good)."""
+    code, stdout, stderr = run(cosign_argv(pin, checksum, bundle), COSIGN_TIMEOUT)
+    output = stdout + stderr
+    if code != 0 or "Verified OK" not in output:
+        detail = output.strip()[-200:]
+        raise Refused("signature", f"the SHA256SUMS signature did not verify: {detail}")
+    return Path(checksum).read_text(encoding="utf-8"), "cosign: Verified OK"
+
+
 def gpg_status(stdout):
     """Return gpg's machine-readable status lines as {keyword: rest}, first occurrence kept."""
     status = {"BADSIG": "", "ERRSIG": "", "NO_PUBKEY": ""}
@@ -639,6 +854,40 @@ def signed_record(text, pin):
     return digest, version
 
 
+def sha256sums_record(text, file_name):
+    """Return the SHA-256 digest recorded for `file_name` in coreutils SHA256SUMS format."""
+    bounded_text = "\n".join(text.splitlines()[:MAX_SUMS_LINES])
+    pattern = re.compile(rf"^([0-9a-f]{{64}}) [ *]{re.escape(file_name)}$", re.M)
+    found = pattern.findall(bounded_text)
+    if len(found) != 1:
+        raise Refused("checksum", f"the signed SHA256SUMS names {len(found)} lines for {file_name}")
+    return found[0]
+
+
+def evidence_version(path):
+    """Return the correlation-id recorded in boot evidence file at `path`."""
+    target = Path(path)
+    try:
+        size = target.stat().st_size
+    except OSError as error:
+        raise Refused("version", f"boot evidence {target.name} could not be read: {error}")
+    if size > MAX_EVIDENCE_BYTES:
+        raise Refused(
+            "version",
+            f"boot evidence {target.name} is {size} bytes, exceeds maximum {MAX_EVIDENCE_BYTES}",
+        )
+    try:
+        data = json.loads(target.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise Refused("version", f"boot evidence {target.name} is not valid JSON: {error}")
+    if not isinstance(data, dict):
+        raise Refused("version", f"boot evidence {target.name} is not a JSON object")
+    correlation_id = data.get("correlation-id")
+    if not isinstance(correlation_id, str):
+        raise Refused("version", f"boot evidence {target.name} lacks string correlation-id")
+    return correlation_id
+
+
 def require_pinned(pin, artifact):
     """Refuse `artifact` unless its size and SHA-256 are the pinned ones; return the digest."""
     size = Path(artifact).stat().st_size
@@ -650,18 +899,55 @@ def require_pinned(pin, artifact):
     return found
 
 
-def verify_artifact(context, artifact, checksum):
-    """E24-1: signature, signed digest, producer version and the bytes, before any boot."""
+def verify_artifact_gpg(context, artifact, checksum):
+    """Verify an upstream artifact clearsigned with GPG."""
     pin = context.pin
     plain = context.run_dir / f"{Path(checksum).name}.signed-text"
     text, good = signed_checksum(context, checksum, plain)
     recorded, version = signed_record(text, pin)
     if recorded != pin["sha256"]:
         raise Refused("checksum", f"the signed digest {recorded} is not the pinned {pin['sha256']}")
-    if version != pin["version"] or not version_admitted(version, pin["version-floor"]):
+    if version != pin["version"] or not version_admitted(
+        version, pin["version-floor"], scheme=pin["signature"]["scheme"]
+    ):
         raise Refused("version", f"signed version {version} against pin {pin['version']}")
     found = require_pinned(pin, artifact)
     return {"good": good, "version": version, "digest": found}
+
+
+def verify_artifact_cosign(context, artifact, checksum):
+    """Verify an Imago artifact signed with cosign keyless signature."""
+    pin = context.pin
+    text, good = cosign_checksum(pin, checksum, context.bundle)
+    recorded = sha256sums_record(text, pin["file"])
+    if recorded != pin["sha256"]:
+        raise Refused("checksum", f"the signed digest {recorded} is not the pinned {pin['sha256']}")
+    evidence_line = sha256sums_record(text, BOOT_EVIDENCE_FILE)
+    evidence_digest = file_digest(context.evidence)
+    if evidence_digest != evidence_line:
+        raise Refused(
+            "checksum",
+            f"{BOOT_EVIDENCE_FILE} hashes to {evidence_digest}, not the signed {evidence_line}",
+        )
+    version = evidence_version(context.evidence)
+    if version != pin["version"]:
+        raise Refused("version", f"signed correlation-id {version} against pin {pin['version']}")
+    if not version_admitted(version, pin["version-floor"], scheme=COSIGN_SCHEME):
+        raise Refused(
+            "version", f"signed correlation-id {version} against pin floor {pin['version-floor']}"
+        )
+    found = require_pinned(pin, artifact)
+    return {"good": good, "version": version, "digest": found}
+
+
+def verify_artifact(context, artifact, checksum):
+    """E24-1: signature, signed digest, producer version and the bytes, before any boot."""
+    scheme = context.pin["signature"].get("scheme")
+    if scheme == GPG_SCHEME:
+        return verify_artifact_gpg(context, artifact, checksum)
+    if scheme == COSIGN_SCHEME:
+        return verify_artifact_cosign(context, artifact, checksum)
+    raise GateError(f"signature scheme {scheme} is not built")
 
 
 def report(name, problems, notes=()):
@@ -819,8 +1105,12 @@ def bad_signature_case(context):
 def version_boundary_case(pin):
     """Boundary: a producer version exactly at the floor is admitted, one below is refused."""
     floor = pin["version-floor"]
-    below = version_below(floor)
-    decided = [(floor, version_admitted(floor, floor)), (below, version_admitted(below, floor))]
+    scheme = pin["signature"]["scheme"]
+    below = version_below(floor, scheme=scheme)
+    decided = [
+        (floor, version_admitted(floor, floor, scheme=scheme)),
+        (below, version_admitted(below, floor, scheme=scheme)),
+    ]
     problems = []
     if decided != [(floor, True), (below, False)]:
         problems.append(f"expected the floor admitted and {below} refused, got {decided}")
@@ -930,13 +1220,27 @@ def machine_argv(profile, boot):
     return argv
 
 
-def guest_argv(profile, boot):
-    """Return the full argv of a guest booted from the overlay with swtpm and the seed."""
+def pin_scheme(pin):
+    """Return the pin's signature scheme, refusing one this harness has no path for."""
+    scheme = pin["signature"].get("scheme")
+    if scheme not in (GPG_SCHEME, COSIGN_SCHEME):
+        raise GateError(f"signature scheme {scheme} is not built")
+    return scheme
+
+
+def guest_argv(profile, boot, pin, nonce):
+    """Return the full argv of a guest booted from the overlay with swtpm and seed/nonce."""
+    if NONCE_SHAPE.fullmatch(nonce) is None:
+        raise GateError(f"{nonce!r} is not a nonce this harness generated")
+    scheme = pin_scheme(pin)
     argv = machine_argv(profile, boot)
     argv += ["-chardev", f"socket,id=chrtpm,path={socket_path(boot.tpm_socket)}"]
     argv += ["-tpmdev", "emulator,id=tpm0,chardev=chrtpm", "-device", "tpm-crb,tpmdev=tpm0"]
     argv += ["-drive", f"if=virtio,format=qcow2,file={option_path(boot.overlay)}"]
-    argv += ["-drive", f"if=virtio,format=raw,readonly=on,file={option_path(boot.seed)}"]
+    if scheme == GPG_SCHEME:
+        argv += ["-drive", f"if=virtio,format=raw,readonly=on,file={option_path(boot.seed)}"]
+    else:
+        argv += ["-smbios", f"type=11,value=io.systemd.credential:{NONCE_CREDENTIAL}={nonce}"]
     argv += ["-qmp", f"unix:{socket_path(boot.qmp)},server=on,wait=off"]
     argv += ["-serial", f"file:{option_path(boot.console)}"]
     argv += ["-serial", f"file:{option_path(boot.report)}"]
@@ -966,9 +1270,14 @@ def prepare_guest(context, boot, profile, artifact, nonce):
     sits immediately before the boot.
     """
     require_pinned(context.pin, artifact)
+    format_name = context.pin["format"]
+    if format_name not in ("raw", "qcow2"):
+        raise GateError(f"{format_name!r} is not a supported backing format")
+    scheme = pin_scheme(context.pin)
     for path in (boot.console, boot.report, boot.overlay, boot.tpm_socket, boot.qmp):
         path.unlink(missing_ok=True)
-    write_seed(boot, nonce)
+    if scheme == GPG_SCHEME:
+        write_seed(boot, nonce)
     enrolled = guest_store(context, boot, profile)
     shutil.rmtree(boot.tpm_state, ignore_errors=True)
     boot.tpm_state.mkdir(parents=True)
@@ -977,7 +1286,8 @@ def prepare_guest(context, boot, profile, artifact, nonce):
     if code != 0:
         raise GateError(f"swtpm_setup could not manufacture the TPM: {stderr.strip()[-300:]}")
     digest = require_pinned(context.pin, artifact)
-    argv = ["qemu-img", "create", "-q", "-f", "qcow2", "-F", "qcow2", "-b", option_path(artifact)]
+    argv = ["qemu-img", "create", "-q", "-f", "qcow2", "-F", format_name]
+    argv += ["-b", option_path(artifact)]
     code, _stdout, stderr = run(argv + [str(boot.overlay)], TOOL_TIMEOUT)
     if code != 0:
         raise GateError(f"qemu-img could not create the overlay: {stderr.strip()}")
@@ -999,9 +1309,16 @@ def console_text(path):
     return clean(raw.decode("utf-8", errors="replace"))
 
 
-def prompt_or_exit(qemu, console):
-    """Return 'prompt' once the console shows a login prompt, 'exited' if QEMU ended first."""
-    if LOGIN_PROMPT.search(console_text(console)):
+def success_marker(pin):
+    """Return the compiled regular expression marking a successful boot."""
+    if pin_scheme(pin) == GPG_SCHEME:
+        return LOGIN_PROMPT
+    return re.compile(pin["boot"]["success-marker"])
+
+
+def prompt_or_exit(qemu, console, marker):
+    """Return 'prompt' once the console shows the success marker, 'exited' if QEMU ended first."""
+    if marker.search(console_text(console)):
         return "prompt"
     if qemu.poll() is not None:
         return "exited"
@@ -1067,10 +1384,10 @@ def shut_down(qemu, boot, observed):
         observed["exit_status"] = None
 
 
-def observe(qemu, boot, timeout):
+def observe(qemu, boot, timeout, marker):
     """Watch one running guest: the login prompt against the timeout, then the report."""
     started = time.monotonic()
-    seen, elapsed = wait_for(lambda: prompt_or_exit(qemu, boot.console), timeout, started)
+    seen, elapsed = wait_for(lambda: prompt_or_exit(qemu, boot.console, marker), timeout, started)
     elapsed = elapsed if seen == "prompt" else None
     observed = {"outcome": login_outcome(elapsed, timeout), "elapsed": elapsed, "timeout": timeout}
     observed.update({"seen": seen, "report": "", "kvm": None, "exit_status": qemu.poll()})
@@ -1090,11 +1407,12 @@ def boot_guest(context, boot, profile, artifact, timeout=None):
     timeout = context.timeout if timeout is None else timeout
     nonce = context.nonce()
     prepared = prepare_guest(context, boot, profile, artifact, nonce)
-    argv = guest_argv(profile, boot)
+    argv = guest_argv(profile, boot, context.pin, nonce)
+    marker = success_marker(context.pin)
     with session(swtpm_argv(boot), boot.dir / "swtpm.log", context.spawned):
         wait_for_path(boot.tpm_socket, SOCKET_TIMEOUT)
         with session(argv, boot.dir / "qemu.log", context.spawned) as qemu:
-            observed = observe(qemu, boot, timeout)
+            observed = observe(qemu, boot, timeout, marker)
     if observed["exit_status"] is None:
         observed["exit_status"] = qemu.returncode
     observed.update({"nonce": nonce, "argv": argv, "profile": profile, **prepared})

@@ -22,11 +22,11 @@ import verify_counterparts as vc  # noqa: E402
 
 REPO = vc.ROOT
 LEAVES = {
-    "aegis-concordia",
     "aegis-fabrica-defs",
     "aegis-hestia",
     "aegis-janus-lifecycle",
     "aegis-vulcan",
+    "aegis-vulcan-gpu",
 }
 
 
@@ -83,10 +83,17 @@ class Positive(CounterpartTree):
         problems, leaves, entries = vc.check(self.root)
         self.assertEqual(problems, [])
         self.assertEqual(leaves, len(LEAVES))
-        self.assertEqual(entries, 14)
+        self.assertEqual(entries, 13)
 
     def test_the_leaf_set_is_the_five_recorded_crates(self):
         self.assertEqual(vc.leaf_crates(vc.workspace_graph(self.root)), LEAVES)
+
+    def test_the_shell_pairs_the_token_crate(self):
+        # M28 E28-5: the gpui shell compiles the Concordia constants, so
+        # aegis-concordia has its P05 counterpart and is no leaf.
+        graph = vc.workspace_graph(self.root)
+        self.assertIn("aegis-concordia", graph["aegis-forum-shell-gpui"])
+        self.assertNotIn("aegis-concordia", vc.leaf_crates(graph))
 
     def test_main_passes_on_the_repository(self):
         out = io.StringIO()
@@ -98,15 +105,20 @@ class Positive(CounterpartTree):
 class Negative(CounterpartTree):
     def test_a_missing_edge_entry_fails(self):
         data = self.components()
-        self.row(data, "P03")[vc.FIELD].pop()
+        entries = self.row(data, "P03")[vc.FIELD]
+        self.row(data, "P03")[vc.FIELD] = [
+            e
+            for e in entries
+            if not (e["crate"] == "aegis-vulcan" and e["relation"] == "ZERO_COPY_MEDIA_INGEST")
+        ]
         self.write_components(data)
         self.assert_refused("aegis-vulcan: P03 edge ZERO_COPY_MEDIA_INGEST with P15 has no entry")
 
     def test_a_leaf_crate_without_entries_fails(self):
         data = self.components()
-        del self.row(data, "P12")[vc.FIELD]
+        del self.row(data, "P15")[vc.FIELD]
         self.write_components(data)
-        self.assert_refused("aegis-concordia: leaf crate needs its counterpart_gaps")
+        self.assert_refused("aegis-hestia: leaf crate needs its counterpart_gaps")
 
     def test_an_entry_for_a_paired_crate_is_stale(self):
         self.append_manifest(
@@ -170,11 +182,11 @@ class Negative(CounterpartTree):
         self.assertIn("FAIL:", err.getvalue())
 
     def test_main_reports_each_problem(self):
-        self.edit_entry("P12", 0, reason="")
+        self.edit_entry("P15", 0, reason="")
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
             self.assertEqual(vc.main(["verify_counterparts.py", str(self.root)]), 1)
-        self.assertIn("FAIL: P12 counterpart_gaps[0]: the reason is empty", err.getvalue())
+        self.assertIn("FAIL: P15 counterpart_gaps[0]: the reason is empty", err.getvalue())
 
 
 class Boundary(CounterpartTree):
@@ -196,13 +208,11 @@ class Boundary(CounterpartTree):
 
     def test_a_target_specific_dependency_still_pairs_the_crates(self):
         self.append_manifest(
-            "aegis-concordia",
+            "aegis-vulcan",
             "\n[target.'cfg(unix)'.dependencies]\n"
             'aegis-forum-shell = { path = "../aegis-forum-shell" }\n',
         )
-        self.assert_refused(
-            "aegis-concordia: has counterpart_gaps entries but is not a leaf any more"
-        )
+        self.assert_refused("aegis-vulcan: has counterpart_gaps entries but is not a leaf any more")
 
     def test_a_dependency_outside_the_workspace_keeps_a_leaf(self):
         self.append_manifest("aegis-vulcan", '\n[dev-dependencies]\nserde_json = "1"\n')

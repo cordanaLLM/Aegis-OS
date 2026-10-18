@@ -132,7 +132,11 @@ class InvocationTests(unittest.TestCase):
         for flag in ("--empty=create", "--dry-run=yes", "--offline=yes", "--definitions=/defs"):
             self.assertIn(flag, argv)
         self.assertEqual(argv[-1], "/img.raw")
-        self.assertIn(f"--defer-partitions={gate.DEFER_TYPES}", argv)
+        self.assertFalse(any(flag.startswith("--defer-partitions") for flag in argv))
+        first_boot_argv = gate.repart_argv(
+            Path("/defs"), Path("/img.raw"), Path("/root"), defer=gate.DEFER_TYPES
+        )
+        self.assertIn(f"--defer-partitions={gate.DEFER_TYPES}", first_boot_argv)
 
     def test_the_transfer_invocation_selects_one_source_of_definitions(self):
         """Negative: --root and --definitions are alternatives, never both."""
@@ -487,15 +491,15 @@ class ShippedDefinitionTests(unittest.TestCase):
         """Negative: the keys systemd 261 ignores must not come back."""
         for relative, rejected in (
             ("repart.d/00-esp.conf", "Subsystem="),
-            ("repart.d/20-var.conf", "BtrfsSubvolumes="),
+            ("mkosi.extra/usr/lib/repart.d/20-var.conf", "BtrfsSubvolumes="),
             ("sysupdate.d/10-root.transfer", "Partitions="),
         ):
             body = (gate.ROOT / "build" / relative).read_text()
             declarations = [line for line in body.splitlines() if not line.startswith("#")]
             self.assertFalse([line for line in declarations if line.startswith(rejected)], relative)
 
-    def test_the_definition_set_is_exactly_the_five_partitions(self):
-        """Boundary: the milestone ships five repart drop-ins and one transfer."""
+    def test_the_definition_set_is_exactly_the_four_build_time_partitions(self):
+        """Boundary: the milestone ships four build-time repart drop-ins and one transfer."""
         repart = sorted(p.name for p in (gate.ROOT / "build" / "repart.d").iterdir())
         self.assertEqual(
             repart,
@@ -504,11 +508,101 @@ class ShippedDefinitionTests(unittest.TestCase):
                 "10-root-a.conf",
                 "10-root-b.conf",
                 "11-root-verity.conf",
-                "20-var.conf",
             ],
         )
         transfers = sorted(p.name for p in (gate.ROOT / "build" / "sysupdate.d").iterdir())
         self.assertEqual(transfers, ["10-root.transfer"])
+
+    def test_the_first_boot_repart_set_holds_tpm2_var(self):
+        """Positive: the first-boot dir holds exactly 20-var.conf and it carries Encrypt=tpm2."""
+        files = sorted(p.name for p in gate.FIRST_BOOT_REPART.iterdir())
+        self.assertEqual(files, ["20-var.conf"])
+        text = (gate.FIRST_BOOT_REPART / "20-var.conf").read_text()
+        self.assertIn("Encrypt=tpm2", text)
+
+
+class BuildTimeEncryptTests(unittest.TestCase):
+    """build_time_encrypt_problems flags TPM2 encryption declarations in build-time repart sets."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.base = Path(self.temp.name)
+        self.addCleanup(self.temp.cleanup)
+
+    def test_real_build_repart_directory_has_no_encrypt_problems(self):
+        """Positive: real build/repart.d -> build_time_encrypt_problems == []."""
+        problems = gate.build_time_encrypt_problems(gate.ROOT / "build" / "repart.d")
+        self.assertEqual(problems, [])
+
+    def test_planted_tpm2_encryption_is_refused(self):
+        """Negative planted: tmp dir conf Encrypt=tpm2, Encrypt = TPM2, Encrypt=key-file+tpm2."""
+        conf = self.base / "20-var.conf"
+        conf.write_text("[Partition]\nType=var\nEncrypt=tpm2\n")
+        problems = gate.build_time_encrypt_problems(self.base)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("20-var.conf", problems[0])
+        self.assertIn("tpm2", problems[0])
+
+        conf.write_text("[Partition]\nType=var\nEncrypt = TPM2\n")
+        problems = gate.build_time_encrypt_problems(self.base)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("20-var.conf", problems[0])
+        self.assertIn("TPM2", problems[0])
+
+        conf.write_text("[Partition]\nType=var\nEncrypt=key-file+tpm2\n")
+        problems = gate.build_time_encrypt_problems(self.base)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("20-var.conf", problems[0])
+        self.assertIn("key-file+tpm2", problems[0])
+
+    def test_boundary_comments_non_tpm_missing_and_invalid_utf8(self):
+        """Boundary: comments and non-tpm are allowed; missing or invalid utf-8 fail."""
+        conf = self.base / "test.conf"
+        for content in (
+            "[Partition]\n#Encrypt=tpm2\n",
+            "[Partition]\n;Encrypt=tpm2\n",
+            "[Partition]\nEncrypt=off\n",
+            "[Partition]\nEncrypt=key-file\n",
+        ):
+            conf.write_text(content)
+            self.assertEqual(gate.build_time_encrypt_problems(self.base), [])
+
+        missing = self.base / "does_not_exist"
+        problems = gate.build_time_encrypt_problems(missing)
+        self.assertTrue(len(problems) >= 1)
+
+        conf.write_bytes(b"[Partition]\n\xff\xfe\n")
+        problems = gate.build_time_encrypt_problems(self.base)
+        self.assertTrue(len(problems) >= 1)
+
+    def test_the_first_boot_layout_holds_both_sets(self):
+        """Positive: the staged layout is the four build-time drop-ins plus 20-var.conf."""
+        layout = gate.stage_first_boot_layout(self.base)
+        self.assertEqual(
+            sorted(p.name for p in layout.iterdir()),
+            [
+                "00-esp.conf",
+                "10-root-a.conf",
+                "10-root-b.conf",
+                "11-root-verity.conf",
+                "20-var.conf",
+            ],
+        )
+
+    def test_a_drop_in_in_both_sets_is_refused(self):
+        """Negative: a name in both sets would silently shadow one; staging refuses it."""
+        first_boot = self.base / "first-boot"
+        first_boot.mkdir()
+        (first_boot / "00-esp.conf").write_text("[Partition]\nType=esp\n", encoding="utf-8")
+        with patch.object(gate, "FIRST_BOOT_REPART", first_boot):
+            with self.assertRaises(gate.GateError):
+                gate.stage_first_boot_layout(self.base / "stage")
+
+    def test_a_missing_first_boot_set_is_refused(self):
+        """Boundary: an absent set is a gate error, not a smaller layout."""
+        with patch.object(gate, "FIRST_BOOT_REPART", self.base / "absent"):
+            with self.assertRaises(gate.GateError):
+                gate.stage_first_boot_layout(self.base / "stage")
 
 
 class RequiredGateTests(unittest.TestCase):
@@ -556,6 +650,71 @@ class RequiredGateTests(unittest.TestCase):
         code, printed = self._main("mkosi")
         self.assertEqual(code, 0)
         self.assertIn("SKIP", printed)
+
+
+class LayoutCaseTests(unittest.TestCase):
+    """The repart gate reads what its images hold, not only how repart exited (M11)."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.base = Path(self.temp.name)
+        self.addCleanup(self.temp.cleanup)
+
+    def test_the_scratch_root_holds_a_pe_uki_and_a_payload(self):
+        """Positive: the ESP and root-a copies have something real to copy."""
+        root = gate.scratch_root(self.base)
+        uki = root / "efi" / "EFI" / "BOOT" / "BOOTX64.EFI"
+        self.assertEqual(uki.read_bytes()[:2], b"MZ")
+        self.assertGreater((root / "usr" / "bin" / "payload").stat().st_size, 4096)
+
+    def test_the_planted_layout_drops_both_copies_of_run_39090040772(self):
+        """Negative: the staged copy lacks the two CopyFiles= lines the fix added."""
+        planted = gate.stage_planted_layout(self.base)
+        esp = (planted / "00-esp.conf").read_text(encoding="utf-8")
+        root = (planted / "10-root-a.conf").read_text(encoding="utf-8")
+        self.assertNotIn("\nCopyFiles=/efi:/\n", esp)
+        self.assertIn("\nCopyFiles=/boot:/\n", esp)
+        self.assertNotIn("\nCopyFiles=/\n", root)
+        self.assertEqual(
+            sorted(p.name for p in planted.glob("*.conf")),
+            sorted(p.name for p in (gate.ROOT / "build" / "repart.d").glob("*.conf")),
+        )
+
+    def test_a_definition_without_the_line_cannot_be_planted(self):
+        """Boundary: a source that no longer carries the line is a gate error, not a pass."""
+        source = self.base / "src"
+        source.mkdir()
+        (source / "00-esp.conf").write_text("[Partition]\nType=esp\n")
+        (source / "10-root-a.conf").write_text("[Partition]\nCopyFiles=/\n")
+        with self.assertRaises(gate.GateError):
+            gate.stage_planted_layout(self.base, source)
+
+    def test_both_layout_cases_are_run(self):
+        """Positive: the committed layout must be clean, the planted one refused."""
+        root = gate.scratch_root(self.base)
+        cases = {c["name"]: c for c in gate.repart_cases(self.base, root, self.base / "p.raw")}
+        self.assertEqual(cases["repart/positive"]["layout"], [])
+        self.assertIn(
+            "ESP: EFI/BOOT/BOOTX64.EFI is missing",
+            cases["repart/layout-planted-empty-esp"]["layout"],
+        )
+        self.assertIsNone(cases["repart/negative-missing-type"]["layout"])
+
+    def test_layout_problems_compare_the_image_to_its_expectation(self):
+        """Positive, negative, boundary: clean wanted, refusal wanted, nothing asked."""
+        image = self.base / "x.raw"
+        image.write_bytes(b"")
+        clean = {"layout": [], "target": image}
+        refused = {"layout": ["ESP: EFI/BOOT/BOOTX64.EFI is missing"], "target": image}
+        missing = ["ESP: EFI/BOOT/BOOTX64.EFI is missing", "root-a: near-empty EROFS"]
+        with patch.object(gate.image_layout, "problems", return_value=[]):
+            self.assertEqual(gate.layout_problems(clean), [])
+            self.assertTrue(gate.layout_problems(refused))
+        with patch.object(gate.image_layout, "problems", return_value=missing):
+            found = gate.layout_problems(clean)
+            self.assertTrue(any("EFI/BOOT/BOOTX64.EFI is missing" in line for line in found))
+            self.assertEqual(gate.layout_problems(refused), [])
+        self.assertEqual(gate.layout_problems({"target": image}), [])
 
 
 if __name__ == "__main__":

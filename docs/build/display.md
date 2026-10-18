@@ -20,10 +20,12 @@ make verify-display
 ```
 
 **A pass is development evidence for the client half only (D79).** The
-compositor it runs against is the host session's KDE KWin, not P04, and
-nothing here is evidence that P04 serves `zwlr_layer_shell_v1` or
-`zwp_linux_dmabuf_v1`: P04 serves no Wayland protocol, and no milestone yet
-plans one that does. A pass closes no hardware, accessibility or release gate.
+compositor it runs against is not P04: on the reference profile it is the host
+session's KDE KWin, or a nested KWin as in the subtitle run below, and the
+label names which from the compositor's own command line. Nothing here is
+evidence that P04 serves `zwlr_layer_shell_v1` or `zwp_linux_dmabuf_v1`: P04
+serves no Wayland protocol, and no milestone yet plans one that does. A pass
+closes no hardware, accessibility or release gate.
 
 ## What is tracked
 
@@ -114,6 +116,22 @@ gate reads the package database instead.
 | `display/presented-deadline` | boundary | a presentation feedback on a surface never committed fails at its 250 ms deadline, naming the event |
 | `display/driver-not-ihd-refused` | negative (a) | under `LIBVA_DRIVER_NAME=nvidia` the node's VA display is refused on its vendor string |
 
+The `subtitles` child presents the 90-frame Motion-JPEG subtitle fixture clip
+at 30 frames per second with software pacing and evaluates presentation
+feedback timestamps against the `SubRip` cues. The subtitle text is not
+rasterised: a subtitle's presentation time is the `wp_presentation` timestamp
+of the frame its start timecode falls on, measured from the timestamp of the
+clip's first frame:
+
+- `subtitle/cue-1-within-100ms`: the presentation timestamp offset of the
+  first frame of cue 1 falls within 100 ms of the cue's start timecode.
+- `subtitle/cue-2-within-100ms`: the presentation timestamp offset of the
+  first frame of cue 2 falls within 100 ms of the cue's start timecode.
+- `subtitle/cue-3-within-100ms`: the presentation timestamp offset of the
+  first frame of cue 3 falls within 100 ms of the cue's start timecode.
+- `subtitle/planted-150ms-late-refused`: a planted artificial 150 ms delay
+  exceeds the 100 ms tolerance window and is refused with late status.
+
 Every Wayland wait -- the registry roundtrip, the first configure, the
 surface feedback, each `created` or `failed` and each `presented` or
 `discarded` -- polls the connection fd under its own deadline, and a missed
@@ -169,6 +187,47 @@ none of them: the gate accepts that line as reported, not held, and names the
 case so in its summary, so a driver update alone does not turn the gate red.
 Re-recording means a new measurement under the driver that produced it (the
 D73 pattern). The content check is the index row, never the pin.
+
+## The subtitle fixture clip
+
+The milestone M32 fixture provides three synchronized sibling streams across a
+common three-second timeline at 30 frames per second:
+
+- `crates/aegis-scaena/fixtures/subtitle-clip-90.mjpeg`: 279,517 bytes, sha256
+  `499248fe9619c9b9457687cc7abce67e00eb6af23a6285d9532befb3239c493c`. It is
+  90 baseline JPEG frames of 256 x 64, 4:2:0.
+- `crates/aegis-scaena/fixtures/subtitle-clip-90.wav`: 288,044 bytes, sha256
+  `c45da1e5be8e950fcf01483646b4d8b5e58041986625f86b3cf2a23b366f3597`. It is
+  a 48,000 Hz, 16-bit mono PCM tone containing 144,000 samples.
+- `crates/aegis-scaena/fixtures/subtitle-clip-90.srt`: 157 bytes, sha256
+  `20a58bef6628d6628ee523dbcf656d5af8c02aab757cbdc8bcf12143b0917e71`. It is
+  hand-written for Aegis, with LF endings, no byte order mark, and three cues
+  whose timecodes are multiples of 100 ms, so each falls on a frame boundary at
+  30 frames per second.
+
+The files carry the project licence through the `REUSE.toml` `**` table. The
+gate never runs ffmpeg; the commands below document their provenance with
+ffmpeg n9.0.2 and reproduced identical digests on 2026-10-17:
+
+```sh
+ffmpeg -nostdin -hide_banner -loglevel error \
+  -f lavfi -i "testsrc=s=256x64:r=30,format=yuvj420p" \
+  -frames:v 90 -c:v mjpeg -q:v 2 -huffman default \
+  -fflags +bitexact -flags +bitexact -f mjpeg subtitle-clip-90.mjpeg
+
+ffmpeg -nostdin -hide_banner -loglevel error \
+  -f lavfi -i "sine=frequency=1000:sample_rate=48000" \
+  -t 3 -c:a pcm_s16le \
+  -fflags +bitexact -flags +bitexact -f wav subtitle-clip-90.wav
+```
+
+`tools/subtitle_fixture.py` pins all three digests, holds the two commands as
+argument vectors, and `tools/test_subtitle_fixture.py` runs inside
+`make verify-all`.
+
+Audio synchronization is by construction only: the audio and video streams
+share a common duration and timeline, without a demuxed audio-sync measurement.
+Revisit this assumption at the first container fixture or demuxer admission.
 
 ## The reference MPEG-2 frame
 
@@ -255,6 +314,62 @@ surface while the lock screen is up; the display slice gate did not run.` and
 exited 0, and the binary run directly passed the first five cases and failed the
 first frame's presented wait at its 1 s deadline, naming the event: a locked
 session's compositor presents no client surface.
+
+## The recorded subtitle run
+
+Run r20261017T194814-f961 of `make verify-display`, on 2026-10-17, on the
+reference profile, is the evidence for M32; all three children's output is kept
+under `~/.cache/aegis-display/r20261017T194814-f961`.
+
+By then the host session's KWin had the NVIDIA card as its main device
+(renderD128), and the gate skipped on it, as run r20261017T194646-392c
+recorded: "the compositor's main device renderD128 is driven by nvidia, not
+i915 or xe". The run therefore went to a second KWin, 6.8.0-1.1, started for
+it under the user session on the virtual backend and bound to the Intel card,
+and the gate was pointed at that compositor's socket. The bind was set in the
+compositor's environment only; no host setting changed:
+
+```sh
+KWIN_RENDER_NODES=/dev/dri/renderD130 kwin_wayland --virtual --no-lockscreen \
+  --socket aegis-m32 --width 1280 --height 720 &
+WAYLAND_DISPLAY=aegis-m32 make verify-display
+```
+
+The gate printed:
+
+- rustc: rustc 1.99.1 (58cf8f9c3 2026-10-13)
+- libva: 2.24.1 (VA-API 1.24.0), read back with pkg-config
+- VA vendor string: Intel iHD driver for Intel(R) Gen Graphics - 26.3.5 ()
+- compositor: pid 3215997, executable unreadable (Permission denied)
+- compositor main device 226:130, decode node /dev/dri/renderD130 (226:130,
+  kernel driver xe)
+- modifier the driver chose: 0x0100000000000009 (I915_FORMAT_MOD_4_TILED)
+
+The `run` and `driver-probe` children passed every M27 case again, with all 60
+regression pins equal under the newer driver. The `subtitles` child presented
+the 90 frames of the subtitle fixture clip, paced to 30 frames per second with
+a largest per-frame slip of 1 ms, and passed:
+
+- `display/other-render-node-refused` and `display/driver-is-ihd`, as for M27.
+- `subtitle/cue-1-within-100ms`: timecode 500 ms, presented offset 483 ms
+  (difference -16 ms).
+- `subtitle/cue-2-within-100ms`: timecode 1200 ms, presented offset 1183 ms
+  (difference -16 ms).
+- `subtitle/cue-3-within-100ms`: timecode 2000 ms, presented offset 1983 ms
+  (difference -16 ms).
+- `subtitle/planted-150ms-late-refused`: cue 2's offset moved 150 ms later is
+  refused as late.
+
+Each offset is the `wp_presentation` timestamp of the frame the cue's start
+timecode falls on, measured from the timestamp of frame 0. On the virtual
+backend that timestamp comes from KWin's own output clock, not from a scanout;
+the measurement is the client's, as REQ-P17-08 asks. This run predates the
+label reading the compositor's command line, so its label still named the host
+session's compositor although the second KWin served it; the gate now reports
+a compositor started with `--virtual`, `--wayland-display` or `--x11-display`
+as a nested instance (`compositor_origin` in `tools/verify_display.py`). The
+100 ms boundary itself, 100 ms passing and 101 ms failing, is held by
+`crates/aegis-scaena/tests/subtitle_timing.rs`, not by the run.
 
 ## What is not claimed
 

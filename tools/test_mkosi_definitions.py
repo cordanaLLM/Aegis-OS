@@ -10,8 +10,10 @@ from unittest.mock import patch
 from host import target as posix_target
 
 import verify_mkosi_definitions as gate
+from test_bpf_objects import recipe_lines, suppresses
 
 ROOT = Path(__file__).resolve().parent.parent
+MAKEFILE = ROOT / "Makefile"
 
 # The shape `mkosi summary` prints: every resolved image in turn, the implicit
 # default initrd first. Trimmed to the stanzas the gate reads.
@@ -287,6 +289,178 @@ class ScratchTests(unittest.TestCase):
         reviewed = (ROOT / "build" / "mkosi.conf").read_text()
         declarations = [line for line in reviewed.splitlines() if not line.startswith("#")]
         self.assertIn(f"MinimumVersion={gate.MKOSI_FLOOR}", declarations)
+
+
+# Each warning mkosi 27.1 prints while it still exits 0, in its own wording
+# (mkosi/config.py). Every one means part of the reviewed file was not applied.
+IGNORED_LINES = (
+    "\u2023 /w/build/mkosi.conf: Unknown setting BogusSetting",
+    "\u2023 /w/build/mkosi.conf: Setting Format should be configured in [Output], not [Content].",
+    "\u2023 /w/build/mkosi.conf: Setting OldName is deprecated, please use NewName instead.",
+    "\u2023 /w/build/mkosi.conf: The '@' specifier is deprecated, please use Output instead of "
+    "@Output",
+)
+
+
+class IgnoredDiagnosticTests(unittest.TestCase):
+    """E11-3: mkosi exits 0 while ignoring part of the image input; the gate does not."""
+
+    def test_every_ignored_spelling_is_caught(self):
+        """Negative: each warning mkosi 27.1 prints on exit 0 is reported, not only one."""
+        for line in IGNORED_LINES:
+            with self.subTest(line=line):
+                self.assertEqual(gate.ignored_diagnostics("noise\n" + line + "\n"), [line])
+
+    def test_clean_output_has_none(self):
+        """Positive: a summary run with no warnings reports nothing."""
+        self.assertEqual(gate.ignored_diagnostics(SUMMARY), [])
+        self.assertEqual(gate.ignored_diagnostics(""), [])
+
+    def _execute(self, case, stderr):
+        with patch.object(gate, "run", return_value=(0, SUMMARY, stderr)):
+            return gate.execute(case)
+
+    def test_a_passing_case_with_an_ignored_setting_fails(self):
+        """Negative: exit 0 plus an unknown-setting warning is a failed case."""
+        case = {
+            "name": "probe",
+            "directory": ROOT / "build",
+            "code": 0,
+            "requires": (),
+            "repart_directory": None,
+            "expects_ignored": False,
+        }
+        _, problems, _ = self._execute(case, IGNORED_LINES[0])
+        self.assertEqual(len(problems), 1)
+        self.assertIn("BogusSetting", problems[0])
+        _, problems, _ = self._execute(case, "")
+        self.assertEqual(problems, [])
+
+    def test_the_planted_case_requires_the_warning(self):
+        """Boundary: the planted case passes only when mkosi really printed the warning."""
+        case = {
+            "name": "probe",
+            "directory": ROOT / "build",
+            "code": 0,
+            "requires": (gate.UNKNOWN_SETTING,),
+            "repart_directory": None,
+            "expects_ignored": True,
+        }
+        _, problems, _ = self._execute(case, IGNORED_LINES[0])
+        self.assertEqual(problems, [])
+        _, problems, _ = self._execute(case, "")
+        self.assertTrue(problems)
+
+    def test_the_planted_scratch_copy_appends_one_unknown_setting(self):
+        """Positive: the planted copy is the reviewed file plus the unknown setting only."""
+        with tempfile.TemporaryDirectory() as base:
+            target = gate.scratch_ignored_setting(Path(base))
+            copied = (target / "mkosi.conf").read_text().splitlines()
+            reviewed = (ROOT / "build" / "mkosi.conf").read_text().splitlines()
+            self.assertEqual(copied[: len(reviewed)], reviewed)
+            added = [line for line in copied[len(reviewed) :] if line.strip()]
+            self.assertEqual(added, ["[Output]", f"{gate.PLANTED_SETTING}=1"])
+
+    def test_the_cases_carry_the_planted_ignored_setting(self):
+        with tempfile.TemporaryDirectory() as base:
+            listed = {case["name"]: case for case in gate.cases(Path(base))}
+        planted = listed["mkosi/negative-ignored-setting"]
+        self.assertTrue(planted["expects_ignored"])
+        self.assertEqual(planted["code"], 0)
+        self.assertEqual(
+            [name for name, case in listed.items() if case["expects_ignored"]],
+            ["mkosi/negative-ignored-setting"],
+        )
+
+
+class SectionTests(unittest.TestCase):
+    """mkosi 27.1 skips an unknown [Section] without any diagnostic; the gate reads them."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.base = Path(self.temp.name)
+        self.addCleanup(self.temp.cleanup)
+
+    def test_the_reviewed_definition_has_only_known_sections(self):
+        """Positive: build/ names no section mkosi would drop."""
+        self.assertEqual(gate.unknown_sections(ROOT / "build"), [])
+
+    def test_an_unknown_section_is_reported(self):
+        """Negative: a section mkosi skips silently, in mkosi.conf and in a drop-in."""
+        (self.base / "mkosi.conf").write_text("[Output]\nFormat=disk\n[BogusSection]\nFoo=1\n")
+        problems = gate.unknown_sections(self.base)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("BogusSection", problems[0])
+        self.assertIn("mkosi.conf", problems[0])
+        (self.base / "mkosi.conf").write_text("[Output]\n")
+        (self.base / "mkosi.conf.d").mkdir()
+        (self.base / "mkosi.conf.d" / "10-x.conf").write_text("[Outptu]\nFormat=disk\n")
+        problems = gate.unknown_sections(self.base)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("10-x.conf", problems[0])
+
+    def test_every_known_section_and_match_header_is_accepted(self):
+        """Boundary: each section mkosi parses passes, including [Match] and [TriggerMatch]."""
+        body = "".join(f"[{name}]\n" for name in sorted(gate.KNOWN_SECTIONS))
+        (self.base / "mkosi.conf").write_text("# [NotASection]\n" + body)
+        self.assertEqual(gate.unknown_sections(self.base), [])
+        for name in ("Match", "TriggerMatch", "Assert", "TriggerAssert", "Host"):
+            self.assertIn(name, gate.KNOWN_SECTIONS)
+
+    def test_a_missing_or_undecodable_file_is_reported(self):
+        """Boundary: no mkosi.conf, or bytes that are not UTF-8, is a problem, not a pass."""
+        self.assertTrue(gate.unknown_sections(self.base))
+        (self.base / "mkosi.conf").write_bytes(b"[Output]\n\xff\xfe\n")
+        self.assertTrue(gate.unknown_sections(self.base))
+
+    def test_the_known_sections_match_the_installed_mkosi(self):
+        """The allow-list is the set mkosi 27.1 parses, read back from its own source."""
+        try:
+            import mkosi.config as installed
+        except ImportError:
+            self.skipTest("mkosi is not importable on this host; the list is pinned to 27.1")
+        parsed = {setting.section for setting in installed.SETTINGS} | {"Host"}
+        parsed |= {"Match", "TriggerMatch", "Assert", "TriggerAssert"}
+        self.assertEqual(set(gate.KNOWN_SECTIONS), parsed)
+
+    def test_main_refuses_an_unknown_section_before_running_mkosi(self):
+        """Negative: the static check runs on every host, before tool discovery."""
+        build = self.base / "build"
+        build.mkdir()
+        (build / "mkosi.conf").write_text("[BogusSection]\n")
+        stdout = io.StringIO()
+        with patch.object(gate, "ROOT", self.base), patch.object(
+            gate.definitions_container, "dispatch"
+        ) as dispatch, patch.object(
+            gate.sys, "argv", ["verify_mkosi_definitions.py"]
+        ), contextlib.redirect_stdout(
+            stdout
+        ):
+            code = gate.main()
+        self.assertEqual(code, 1)
+        self.assertIn("BogusSection", stdout.getvalue())
+        dispatch.assert_not_called()
+
+
+class SuppressionTests(unittest.TestCase):
+    """E11-3 boundary: no step on the image-input path can turn a failure into a pass."""
+
+    def test_the_image_input_gates_run_unsuppressed(self):
+        makefile = MAKEFILE.read_text()
+        for target, script in (
+            ("verify-systemd", "python3 tools/verify_systemd_definitions.py"),
+            ("verify-mkosi", "python3 tools/verify_mkosi_definitions.py"),
+        ):
+            with self.subTest(target=target):
+                self.assertEqual(recipe_lines(makefile, target), [script])
+                wired = [
+                    line
+                    for line in recipe_lines(makefile, "verify-all")
+                    if line.endswith(f" {target}")
+                ]
+                self.assertEqual(wired, [f"$(MAKE) --no-print-directory {target}"])
+                for line in wired + [script]:
+                    self.assertFalse(suppresses(line), line)
 
 
 class GuardTests(unittest.TestCase):

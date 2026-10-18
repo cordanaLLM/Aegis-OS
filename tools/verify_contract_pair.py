@@ -51,6 +51,9 @@ Cases, every one asserting an exit code and the text beside it:
 * ``product-input/accepted``, ``product-input/tampered-refused``,
   ``product-input/retry-bound``, ``product-input/packages-bound`` and
   ``product-input/aegis-bounds-inside-imago`` (E09-1);
+* ``product-result/accepted``, ``product-result/digest-refused``,
+  ``product-result/correlation-refused`` and
+  ``product-result/reference-bound`` (E11-7);
 * ``kernel-requirement/accepted``, ``kernel-requirement/invalid-feature-refused``
   and ``kernel-requirement/empty-features-refused`` (E09-2 as D92 re-scopes it);
 * ``contract/nucleus-checkout``: the cached nucleus checkout is the pinned
@@ -66,10 +69,12 @@ Every invocation's argv, exit code, stdout and stderr, every payload fed to a
 producer, every nucleus report and the identity record are retained under
 ``AEGIS_CONTRACT_DIR`` (default ``${XDG_CACHE_HOME:-$HOME/.cache}/aegis-contract``)
 in a directory named by the printed run id. Nothing is written into the
-repository and nothing is sent to either producer. A pass is consumption
-evidence; no product result, no image and no kernel came back (D92 moved those
-to M11 and M10), and nucleus's verdict is at its ``declared`` evidence level:
-the kconfig fragments it merges, not a built configuration.
+repository and nothing is sent to either producer. A pass is contract
+evidence (E11-7); an imago product result came back (release tag
+``aegis-aegis-m18-product-input-0001``, run 39094218423), but no image or kernel
+build or boot is claimed (E11-2, M24), and nucleus's verdict is at its
+``declared`` evidence level: the kconfig fragments it merges, not a built
+configuration.
 """
 
 import argparse
@@ -91,6 +96,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PIN = ROOT / "build" / "contract" / "producers.pin.json"
 PIN_SCHEMA = "aegis.m09.contract-pin.v2"
 PRODUCT_INPUT = ROOT / "build" / "product-input.json"
+PRODUCT_RESULT = ROOT / "build" / "contract" / "imago-product-result.json"
 KERNEL_REQUIREMENT = ROOT / "build" / "kernel-requirement.json"
 KERNEL_REFERENCE = ROOT / "build" / "kernel-requirement.reference.json"
 # The Rust constants the M18 schema enforces on the Aegis side.
@@ -116,6 +122,13 @@ PLANTED_FEATURE = {
 }
 PRODUCT_PREFIX = "aegis product-input"
 KERNEL_PREFIX = "kernel requirement"
+RESULT_DIGEST_REASON = 'image-digest: must be "sha256:" followed by 64 lowercase hex characters'
+RESULT_DIGEST_TAMPERS = (
+    ("uppercase-hex", "sha256:" + "0123456789abcdef" * 3 + "0123456789ABCDEF"),
+    ("63-hex", "sha256:" + "0" * 63),
+    ("missing-prefix", "0" * 64),
+    ("sha512-prefix", "sha512:" + "0" * 64),
+)
 # imago's main() ends a rejected command with os.Exit(1); anything else is a crash.
 REFUSAL_EXIT = 1
 # go build writes the name -o gives it, and Windows starts only a named .exe.
@@ -232,6 +245,23 @@ def fixture_problems(rows):
     return [problem for problem in problems if problem]
 
 
+def result_pin_problems(row):
+    """Return what is wrong with the imago.result section in the pin."""
+    if not isinstance(row, dict):
+        return ["imago result section is not a mapping"]
+    problems = []
+    problems.append(relative_problem(row.get("path")))
+    if not SHA256.fullmatch(str(row.get("sha256", ""))):
+        problems.append(f"result sha256 {row.get('sha256')!r} is not 64 hex digits")
+    tag = row.get("release-tag")
+    if not isinstance(tag, str) or not tag:
+        problems.append(f"result release-tag {tag!r} is not a non-empty string")
+    run_id = row.get("run-id")
+    if not isinstance(run_id, int) or isinstance(run_id, bool) or run_id < 1:
+        problems.append(f"result run-id {run_id!r} is not a positive integer")
+    return [p for p in problems if p]
+
+
 def imago_problems(row):
     """Return what is wrong with the imago section beyond its identity."""
     problems = []
@@ -245,6 +275,7 @@ def imago_problems(row):
         value = bounds.get(key)
         if not isinstance(value, int) or isinstance(value, bool) or value < 1:
             problems.append(f"imago bound {key} {value!r} is not a positive integer")
+    problems += result_pin_problems(row.get("result"))
     return [problem for problem in problems if problem] + fixture_problems(row.get("fixtures"))
 
 
@@ -306,6 +337,14 @@ def payload_problems(pin, root=ROOT):
             problems.append(
                 f"{row['aegis']} hashes {found}, the pin records {row['sha256']}; "
                 "re-pin once imago vendors the new bytes"
+            )
+    result_row = pin["imago"].get("result")
+    if isinstance(result_row, dict) and "path" in result_row and "sha256" in result_row:
+        found = sha256_of(read_bytes(Path(root) / result_row["path"]))
+        if found != result_row["sha256"]:
+            problems.append(
+                f"{result_row['path']} hashes {found}, the pin records {result_row['sha256']}; "
+                "re-pin once the vendored result is updated"
             )
     return problems
 
@@ -506,6 +545,33 @@ def kernel_accepted_problems(result, requirement):
     for feature in requirement["features"]:
         if feature_line(feature) not in listed:
             problems.append(f"stdout does not list {' '.join(feature_line(feature))}")
+    return problems
+
+
+def adapt_product_result(request, result_doc):
+    """Return why `result_doc` does not match `request` on correlation-id, or []."""
+    req_id = request.get("correlation-id")
+    res_id = result_doc.get("correlation-id")
+    if req_id != res_id:
+        return [f"aegis product-result {res_id}: correlation-id does not match request {req_id}"]
+    return []
+
+
+def result_accepted_problems(result, document, request=None):
+    """Return why an `imago aegis result validate` run did not accept `document`, or []."""
+    if result["exit"] != 0:
+        return [f"expected exit 0, observed {result['exit']}"] + tail(result["stderr"])
+    lines = result["stdout"].splitlines()
+    header = f"✓ Aegis product-result {document['correlation-id']} accepted ({document['schema']})."
+    wanted = [
+        header,
+        f"  Image digest: {document['image-digest']}",
+        f"  Signature ref: {document['signature-ref']}",
+        f"  Boot evidence ref: {document['boot-evidence-ref']}",
+    ]
+    problems = [f"stdout lacks {line!r}" for line in wanted if line not in lines]
+    if request is not None:
+        problems += adapt_product_result(request, document)
     return problems
 
 
@@ -914,6 +980,8 @@ def validate(context, label, kind, path, binary=None):
     argv = [native(binary or context.binary)]
     if kind == "product-input":
         argv += ["aegis", "validate", native(path), "--json"]
+    elif kind == "product-result":
+        argv += ["aegis", "result", "validate", native(path)]
     else:
         argv += ["kernel", "requirement", "validate", native(path)]
     return invoke(context, label, argv, VALIDATE_TIMEOUT, cwd=context.run_dir)
@@ -1082,6 +1150,10 @@ def row_problems(kind, result, document, reason):
         if reason is None:
             return accepted_problems(result, document)
         return refused_problems(result, PRODUCT_PREFIX, document["correlation-id"], reason)
+    if kind == "product-result":
+        if reason is None:
+            return result_accepted_problems(result, document)
+        return refused_problems(result, PRODUCT_PREFIX, document["correlation-id"], reason)
     if reason is None:
         return kernel_accepted_problems(result, document)
     return refused_problems(result, KERNEL_PREFIX, document["correlation-id"], reason)
@@ -1109,7 +1181,7 @@ def row_outcome(kind, document, reason, row):
         return "NOT as the row expects"
     if reason is None:
         return f"accepted {document['correlation-id']}"
-    prefix = PRODUCT_PREFIX if kind == "product-input" else KERNEL_PREFIX
+    prefix = PRODUCT_PREFIX if kind in ("product-input", "product-result") else KERNEL_PREFIX
     return f"refused: {prefix} {document['correlation-id']}: {reason}"
 
 
@@ -1119,6 +1191,35 @@ def product_tamper_rows(payload):
         (label, with_field(payload, path, value), reason)
         for label, path, value, reason in PRODUCT_TAMPERS
     ]
+
+
+def result_digest_rows(result_doc):
+    """Return negative rows where image-digest is not sha256: + 64 lowercase hex."""
+    return [
+        (label, with_field(result_doc, "image-digest", value), RESULT_DIGEST_REASON)
+        for label, value in RESULT_DIGEST_TAMPERS
+    ]
+
+
+def result_reference_rows(result_doc, bound=512):
+    """Return boundary rows for signature-ref and boot-evidence-ref at bound and bound + 1."""
+    rows = []
+    prefix = "https://example.com/"
+    sig_suffix = "/SHA256SUMS.bundle"
+    for field in ("signature-ref", "boot-evidence-ref"):
+        suffix = sig_suffix if field == "signature-ref" else ""
+        pad_len = bound - len(prefix) - len(suffix)
+        val_bound = prefix + "a" * pad_len + suffix
+        val_over = prefix + "a" * (pad_len + 1) + suffix
+        rows.append((f"{field}-{bound}", with_field(result_doc, field, val_bound), None))
+        rows.append(
+            (
+                f"{field}-{bound + 1}",
+                with_field(result_doc, field, val_over),
+                f"{field}: exceeds {bound} characters",
+            )
+        )
+    return rows
 
 
 def retry_rows(payload, bound):
@@ -1205,6 +1306,55 @@ def product_cases(context):
     ]
 
 
+def product_result_accepted_case(context, payload, result_doc):
+    """Positive (E11-7): imago accepts the vendored product-result and adapter accepts its id."""
+    result = validate(context, "product-result-accepted", "product-result", PRODUCT_RESULT)
+    problems = result_accepted_problems(result, result_doc, request=payload)
+    notes = [
+        f"imago aegis result validate {PRODUCT_RESULT.relative_to(ROOT)}: exit {result['exit']}",
+        f"correlation_id {result_doc['correlation-id']}, image-digest "
+        f"{result_doc['image-digest'][:19]}..., signature-ref "
+        f"({len(result_doc['signature-ref'])} chars), boot-evidence-ref "
+        f"({len(result_doc['boot-evidence-ref'])} chars): accepted and correlated",
+    ]
+    return report(context, "product-result/accepted", problems, notes)
+
+
+def result_correlation_case(context, payload, result_doc):
+    """Negative (E11-7): adapter refuses result with mismatched correlation-id."""
+    mismatched = with_field(result_doc, "correlation-id", "aegis-m18-product-input-9999")
+    path = payload_path(context, "product-result-correlation-mismatch", mismatched)
+    result = validate(context, "product-result-correlation-mismatch", "product-result", path)
+    imago_error = result_accepted_problems(result, mismatched)
+    adapter_problems = adapt_product_result(payload, mismatched)
+    problems = list(imago_error)
+    req_id, res_id = payload["correlation-id"], mismatched["correlation-id"]
+    if not adapter_problems:
+        problems.append("adapter accepted mismatched correlation-id")
+    elif not (req_id in adapter_problems[0] and res_id in adapter_problems[0]):
+        problems.append(f"adapter error {adapter_problems[0]!r} lacks {req_id} or {res_id}")
+    notes = [
+        f"result {res_id} vs request {req_id}: imago exit {result['exit']}; "
+        f"adapter refused: {adapter_problems[0] if adapter_problems else 'NONE'}"
+    ]
+    return report(context, "product-result/correlation-refused", problems, notes)
+
+
+def product_result_cases(context):
+    """The acceptance, negative and boundary cases for the product result (E11-7)."""
+    payload = load_json(PRODUCT_INPUT)
+    result_doc = load_json(PRODUCT_RESULT)
+    kind = "product-result"
+    return [
+        product_result_accepted_case(context, payload, result_doc),
+        rows_case(context, "product-result/digest-refused", kind, result_digest_rows(result_doc)),
+        result_correlation_case(context, payload, result_doc),
+        rows_case(
+            context, "product-result/reference-bound", kind, result_reference_rows(result_doc)
+        ),
+    ]
+
+
 def with_feature(requirement, index, **changes):
     """Return `requirement` with feature `index` changed by `changes`."""
     features = [dict(feature) for feature in requirement["features"]]
@@ -1219,7 +1369,7 @@ def kernel_invalid_rows(requirement):
         (
             "state-yes",
             with_feature(requirement, 0, state="yes"),
-            "features[0].state: must be built-in or module",
+            "features[0].state: must be one of [built-in module present absent]",
         ),
         (
             "probe-dmesg",
@@ -1593,6 +1743,7 @@ def run_cases(context):
     outcomes.append(accepted)
     outcomes.append(simulated_case(context, real))
     outcomes += product_cases(context)
+    outcomes += product_result_cases(context)
     outcomes += kernel_cases(context)
     outcomes += nucleus_cases(context)
     return sum(1 for problems in outcomes if problems)
@@ -1656,14 +1807,17 @@ def write_summary(context, failed):
 def pass_line(context):
     """Return the line a passing gate run ends with: what each producer did, and its limits."""
     imago, nucleus = context.pin["imago"], context.pin["nucleus"]
+    result = imago.get("result", {})
     return (
-        f"PASS: contract pair gate (M09, D92, D106) on run {context.run_dir.name}: imago "
-        f"{imago['commit'][:12]} consumed both Aegis payloads and refused every tampered, "
+        f"PASS: contract pair gate (M09, D92, D106, E11-7) on run {context.run_dir.name}: imago "
+        f"{imago['commit'][:12]} consumed both Aegis payloads, validated product-result "
+        f"{result.get('release-tag', '')} (run {result.get('run-id', '')}) "
+        "and refused every tampered, "
         "out-of-bound and empty one with the payload's correlation id, a stand-in without the "
         f"pinned provenance was refused, and nucleus {nucleus['commit'][:12]} held the kernel "
         f"requirement on {', '.join(nucleus['bound-streams'])} at evidence level "
         f"{nucleus['evidence-level']} and refused a planted, an empty and a mis-bound one. "
-        "Consumption evidence only: no product result, image or kernel came back (M11, M10)."
+        "Contract evidence only: no image or kernel build or boot claimed (E11-2, M24)."
     )
 
 

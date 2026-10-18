@@ -24,6 +24,7 @@ members = [
     "crates/aegis-vesta",
     "crates/aegis-vesta-sandbox",
     "crates/aegis-vulcan",
+    "crates/aegis-vulcan-gpu",
 ]
 
 [workspace.package]
@@ -36,8 +37,11 @@ authors = ["Lusoris <lusoris@proton.me>"]
 
 [workspace.dependencies]
 accesskit = { version = "0.25.1", default-features = false }
+async-io = "2.6.0"
+atspi = { version = "0.30.0", default-features = false, features = ["proxies"] }
 base16ct = { version = "1.0.0", default-features = false }
 cros-libva = { git = "https://github.com/chromeos/cros-libva", rev = "59384456ac2ae78c0c3e5515f41ef1efd9b802cf" }
+futures-lite = "2.6.1"
 gpui = { git = "https://github.com/zed-industries/zed", rev = "322cd509dcccaee1f6bc44725d270598ae8171ad", default-features = false, features = ["wayland"] }
 gpui_linux = { git = "https://github.com/zed-industries/zed", rev = "322cd509dcccaee1f6bc44725d270598ae8171ad", default-features = false, features = ["wayland"] }
 rustix = { version = "1.1.5", features = ["net", "fs", "event"] }
@@ -50,6 +54,7 @@ sha2 = { version = "0.11.0", default-features = false }
 smithay-client-toolkit = { version = "0.21.1", default-features = false }
 thiserror = { version = "2.0.20", default-features = false, features = ["std"] }
 tornus-geometry = { git = "https://github.com/plurano/tornus", rev = "b2710c8ef386275db352bab06bfa4b8eb6859411" }
+zbus = { version = "5.19.0", default-features = false, features = ["async-io"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

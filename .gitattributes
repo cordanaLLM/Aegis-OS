@@ -31,6 +31,18 @@ build/*.schema.json text eol=lf
 ui/concordia-tokens/concordia-tokens.css text eol=lf
 crates/aegis-concordia/src/tokens.rs text eol=lf
 
+# tools/subtitle_fixture.py pins the M32 fixture clip by size and sha256; a
+# host-dependent line ending in the SubRip file would change the pinned bytes.
+crates/aegis-scaena/fixtures/subtitle-clip-90.* -text
+
+# The M27 display slice pins this MJPEG fixture by sha256 (tools/verify_display.py,
+# tools/test_display_slice.py); it is binary and must reach every host unconverted.
+crates/aegis-scaena/fixtures/index-blocks-60.mjpeg -text
+
+# The M04 accessibility suite loads this stub theme as the D76 negative
+# (ui/concordia-tokens/tests/a11y.spec.js); keep its bytes the same on every host.
+ui/concordia-tokens/tests/fixtures/stub-heads-up-theme.css text eol=lf
+
 # BEGIN praetor managed attributes (praetorctl adopt)
 # praetorctl audit hashes these files; keep their checkout bytes the same on every platform.
 tools/figures/** text eol=lf

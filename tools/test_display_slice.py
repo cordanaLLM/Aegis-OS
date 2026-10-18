@@ -305,27 +305,43 @@ class ChildReportTests(unittest.TestCase):
         self.assertEqual(child.call_count, 1)
 
     def test_both_children_run_with_their_drivers(self):
-        """Positive: iHD for the run, nvidia for the probe, and both must pass."""
-        outputs = [(0, passing(gate.RUN_CASES)), (0, passing(gate.PROBE_CASES))]
+        """Positive: iHD for run and subtitles, nvidia for probe; all three must pass."""
+        outputs = [
+            (0, passing(gate.RUN_CASES)),
+            (0, passing(gate.SUBTITLE_CASES)),
+            (0, passing(gate.PROBE_CASES)),
+        ]
         with mock.patch.object(gate, "run_child", side_effect=outputs) as child:
             skipped, failures, _info = gate.run_cases(Path("/bin/true"))
         self.assertIsNone(skipped)
         self.assertEqual(failures, [])
         drivers = [call.args[2] for call in child.call_args_list]
-        self.assertEqual(drivers, ["iHD", "nvidia"])
+        self.assertEqual(drivers, ["iHD", "iHD", "nvidia"])
 
     def test_a_probe_child_that_fails_its_case_fails_the_gate(self):
         """Negative (a): a FAIL of driver-not-ihd-refused is a failure of the gate."""
         probe = "FAIL display/driver-not-ihd-refused\nRESULT fail: 1 case(s) failed\n"
-        outputs = [(0, passing(gate.RUN_CASES)), (1, probe)]
+        outputs = [
+            (0, passing(gate.RUN_CASES)),
+            (0, passing(gate.SUBTITLE_CASES)),
+            (1, probe),
+        ]
         with mock.patch.object(gate, "run_child", side_effect=outputs):
             _skipped, failures, _info = gate.run_cases(Path("/bin/true"))
         self.assertEqual(failures, ["display/driver-not-ihd-refused failed"])
 
     def test_a_child_that_exits_non_zero_after_passing_every_case_fails(self):
         """Negative: every case PASS is not enough when either child exits non-zero."""
-        for codes, expected in (((3, 0), "run exited 3"), ((0, 4), "driver-probe exited 4")):
-            outputs = [(codes[0], passing(gate.RUN_CASES)), (codes[1], passing(gate.PROBE_CASES))]
+        for codes, expected in (
+            ((3, 0, 0), "run exited 3"),
+            ((0, 3, 0), "subtitles exited 3"),
+            ((0, 0, 4), "driver-probe exited 4"),
+        ):
+            outputs = [
+                (codes[0], passing(gate.RUN_CASES)),
+                (codes[1], passing(gate.SUBTITLE_CASES)),
+                (codes[2], passing(gate.PROBE_CASES)),
+            ]
             with mock.patch.object(gate, "run_child", side_effect=outputs):
                 _skipped, failures, _info = gate.run_cases(Path("/bin/true"))
             self.assertEqual(len(failures), 1, failures)
@@ -335,6 +351,7 @@ class ChildReportTests(unittest.TestCase):
         """Positive (D73): a NOTE for the regression pin passes and is named not held."""
         outputs = [
             (0, passing(gate.RUN_CASES, PIN, PIN_NOTE)),
+            (0, passing(gate.SUBTITLE_CASES)),
             (0, passing(gate.PROBE_CASES)),
         ]
         with mock.patch.object(gate, "run_child", side_effect=outputs):
@@ -457,6 +474,27 @@ class ProgramTests(unittest.TestCase):
         self.assertIn("unidentified", gate.compositor(None, runner))
         self.assertIn("unidentified", gate.compositor("unreported", runner))
         runner.assert_not_called()
+
+    def test_a_nested_compositor_is_not_labelled_the_host_sessions(self):
+        """Positive: a compositor started with a nested backend flag is named as nested."""
+        reader = mock.Mock(return_value=b"kwin_wayland\0--virtual\0--socket\0aegis-m32\0")
+        origin = gate.compositor_origin("4242", reader)
+        self.assertEqual(origin, "a nested instance (--virtual), not the host session's")
+        reader.assert_called_once_with("/proc/4242/cmdline")
+
+    def test_a_session_compositor_keeps_the_host_session_label(self):
+        """Negative: no nested backend flag leaves the host session's label."""
+        reader = mock.Mock(return_value=b"/usr/bin/kwin_wayland\0--xwayland\0")
+        self.assertEqual(gate.compositor_origin("3089", reader), "the host session's")
+
+    def test_an_unread_compositor_claims_no_origin(self):
+        """Boundary: no pid or an unreadable command line claims neither origin."""
+        unreadable = mock.Mock(side_effect=OSError(13, "Permission denied"))
+        self.assertEqual(gate.compositor_origin("3089", unreadable), "unidentified")
+        reader = mock.Mock()
+        self.assertEqual(gate.compositor_origin(None, reader), "unidentified")
+        self.assertEqual(gate.compositor_origin("unreported", reader), "unidentified")
+        reader.assert_not_called()
 
     def test_modifiers_are_named(self):
         """Positive: the chosen modifier prints with its DRM name; an unknown one says so."""

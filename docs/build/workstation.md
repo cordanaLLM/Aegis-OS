@@ -152,10 +152,15 @@ statement.
    own session, under a 600 s deadline.
 5. The gate looks for anything the run left behind: a Firecracker or
    `aegis-vesta-sandbox` process whose command line names the run directory,
-   a socket file under it, or a change in `/sys/class/net`
-   (`sandbox/nothing-left-behind`, a gate-side case). A shell, `tail` or
-   pager that merely names the run directory is not the run's and is left
-   alone.
+   a socket file under it, or a tun or tap device in `/sys/class/net` that
+   was not there before (`sandbox/nothing-left-behind`, a gate-side case). A
+   shell, `tail` or pager that merely names the run directory is not the
+   run's and is left alone. A tap device is the only network device
+   Firecracker attaches, and only tun and tap devices carry a `tun_flags`
+   attribute; the `veth` and bridge devices other workloads' containers add
+   and remove are not the run's, which four runs on 2026-10-17 failed on
+   (r20261017T022819-f20b, r20261017T031922-b721, r20261017T154108-f92a,
+   r20261017T175934-056a).
 
 Every microVM is a row the `aegis-vesta` controller admitted first, and the
 guest context identifier Firecracker is given is the one the controller
@@ -465,3 +470,89 @@ CPU model, kernel and rustc), `gate.log` (everything the gate printed), the
 readings document, the enumeration, the child logs, the initramfs and each
 microVM's configuration and console; nothing is written into the repository
 but cargo's target directory.
+
+## VFIO BAR mapping (M25, E25-1)
+
+`aegis-vulcan-gpu map-bar --device <PCI addr> [--sysfs ROOT] [--dev ROOT]`
+maps one Base Address Register (BAR) of a GPU through VFIO as an unprivileged
+user, once the operator has bound the device to `vfio-pci` and handed the user
+the group device node.
+
+Before it opens any device node, the tool reads sysfs and refuses the
+candidate when:
+
+- its driver is not `vfio-pci` (the refusal names the bound driver);
+- it shares its IOMMU group with another PCI function;
+- a display connector other than Writeback is not `disconnected`;
+- it is the boot VGA device.
+
+An admitted candidate gets `<dev>/vfio/vfio` and `<dev>/vfio/<group>` opened,
+the API version and the type-1v2 IOMMU extension checked, the group's
+viability checked, the group set on the container and the device descriptor
+fetched. The tool queries BARs 0..=5 and maps 4 KiB of the first BAR that is
+mmap-capable, at least 4 KiB long and prefetchable by the flags column of
+sysfs `resource` (`IORESOURCE_PREFETCH`, `0x2000`). Register BARs are never
+mapped, because a read of device registers can have side effects. On the
+reference profile's Arc A380 that is BAR2, the 8 GiB VRAM aperture; BAR0, the
+16 MiB register space, is skipped. The mapping is read-only, read with
+volatile 32-bit loads, hashed with SHA-256 and unmapped.
+
+`crates/aegis-vulcan-gpu/tests/vfio_tests.rs` holds the refusals, the BAR
+choice against the Arc's recorded `resource` table and the UAPI ioctl numbers
+and struct layouts.
+
+### The operator run
+
+Binding a device to `vfio-pci` is the operator's act; the tool, the tests and
+the gates never do it. `tools/operator/e25-1-vfio-run.sh` is that act for the
+Arc A380 at `0000:03:00.0`:
+
+```sh
+bash tools/operator/e25-1-vfio-run.sh            # preview, writes nothing
+bash tools/operator/e25-1-vfio-run.sh --apply    # bind, map-bar, rebind xe
+```
+
+It refuses unless the address is the Arc (`8086:56a5`) on `xe`, alone in IOMMU
+group 17, with no connected output. With `--apply` it binds `vfio-pci`, gives
+the user `/dev/vfio/17`, runs `map-bar`, and from an exit trap unbinds,
+clears `driver_override`, reprobes and reads back the driver of the Arc and of
+the NVIDIA device at `0000:06:00.0`, which it never writes to. The log goes to
+`.workingdir/evidence/e25-1-vfio-<UTC time>.log`.
+
+It also refuses, in the preview as well, while any process holds the Arc's
+card or render node, read by PCI path under `/dev/dri/by-path/` because the
+`cardN` numbers move between boots, and it names each holder by pid and
+command. It signals no process. The run of 2026-10-18 13:33 listed a holder
+of `card2` and went on: the map passed and the Arc returned to `xe`, but KWin,
+which used the Arc as a hotplug GPU, logged `Failed to open drm node
+/dev/dri/renderD130` and hung the session until a reboot. On the reference
+profile after that reboot, the preview refuses with
+`REFUSE: pci-0000:03:00.0-card held by 5184 (Xwayland)`.
+
+Its first check, before any device check, is that the compositor runs under
+the home-zeus KWin DRM pin (`~/.config/environment.d/50-kwin-drm-devices.conf`),
+which keeps KWin on the 4090. The pin takes effect only at the next login, so
+the script refuses unless every `kwin_wayland` started strictly after the pin
+file's modification time, from `/proc/<pid>/stat` and the boot time, and
+`nvidia-smi` lists it. A missing pin file, no running `kwin_wayland` or a
+failing `nvidia-smi` also refuses. On the reference profile on 2026-10-18 the
+preview refuses with `REFUSE: kwin_wayland 4914 started 1792323764, not after
+the KWin DRM pin ... (1792327980)`: that session began at 13:42 and the pin
+was written at 14:53.
+
+`tools/test_e25_vfio_card.py` runs the script's stub test
+(`tools/operator/e25-1-vfio-run-stub-test.sh`) inside `make verify-all`: a
+fake sysfs, `/proc`, `nvidia-smi` and sudo, 28 cases, nothing under `/sys` or
+`/dev` touched. A real process started by the test holds the stub card or
+render node, and the preview and `--apply` must refuse and name it without a
+write. A `kwin_wayland` that started before the pin, or in the same second,
+must refuse; one second after must pass.
+
+### Limits
+
+Recorded on the reference profile on 2026-10-18 with the Arc still on `xe`:
+`map-bar --device 0000:03:00.0` prints
+`FAIL: candidate: refused: 0000:03:00.0 driver is xe, expected vfio-pci` and
+exits 1. The positive run waits for the operator's `--apply`. It maps a BAR
+on the host through VFIO; it does not attach the device to a guest, so the
+milestone's guest-passthrough criterion stays open.

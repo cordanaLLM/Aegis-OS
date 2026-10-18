@@ -12,6 +12,7 @@ records are append-only).
 | [0002](0002-exclude-steamworks-from-image.md) | 2026-09-13 | Exclude the Steamworks SDK from the Aegis image | Accepted |
 | [0003](0003-display-runtime-p17-scaena.md) | 2026-09-28 | Add P17 aegis-scaena, where the compositor composes | Accepted |
 | [0004](0004-native-p05-shell-on-gpui.md) | 2026-09-29 | Build the whole P05 shell natively in Rust on gpui | Accepted |
+| [0005](0005-dogfood-sanitizer-export.md) | 2026-10-17 | Dogfood findings reach public repositories through one allow-list export | Accepted |
 
 An accepted ADR is not edited. ADR-0004 supersedes decision 3 of ADR-0003 in
 part, and ADR-0003 stays as it was accepted.

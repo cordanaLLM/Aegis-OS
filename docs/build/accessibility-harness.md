@@ -571,6 +571,14 @@ findings and 0 suppressed, every plant failed with exactly its findings,
 `lint: eslint 10.12.0, eslint-plugin-svelte 3.23.1, svelte-eslint-parser
 1.9.0`. The block above is the first run, kept as recorded.
 
+eslint alone moved to 10.13.0 on 2026-10-18, again after `make a11y-fetch`
+refilled the offline store. Run `r20261018T175704-1601` of `make verify-a11y`
+on podman 6.1.4 exited 0 with 23 PASS lines and no SKIP: `a11y/hiss-lint`
+linted the same 10 files with 0 findings and 0 suppressed, every plant failed
+with exactly its findings, `a11y/suite` passed 11 of 11 tests, and
+`a11y/toolchain-readback` printed `lint: eslint 10.13.0, eslint-plugin-svelte
+3.23.1, svelte-eslint-parser 1.9.0`.
+
 The first lint over M04's own suite found a real defect: `tests/probe.js` was
 one immediately invoked function of 170 lines. It is now a strict-mode block,
 so its declarations stay block-scoped and nothing it measures changed; the

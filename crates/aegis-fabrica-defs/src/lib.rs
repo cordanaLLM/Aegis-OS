@@ -126,7 +126,9 @@ pub use crate::sysupdate::{
     AB_INSTANCES, SOURCE_KEYS, SOURCE_SECTION, TARGET_KEYS, TARGET_SECTION, TRANSFER_KEYS,
     TRANSFER_SECTION, TransferDefinition,
 };
-pub use crate::unit::{Entry, MAX_ENTRIES, MAX_LINE_BYTES, MAX_LINES, MAX_SECTIONS, UnitFile};
+pub use crate::unit::{
+    Entry, MAX_ENTRIES, MAX_LINE_BYTES, MAX_LINES, MAX_SECTIONS, REPEATABLE_KEYS, UnitFile,
+};
 
 /// The contract version the reviewed definitions in `build/` are read under.
 ///

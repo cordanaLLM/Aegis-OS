@@ -79,7 +79,7 @@ pub enum DefinitionError {
         /// The section that repeats.
         section: String,
     },
-    /// A key repeats inside one section.
+    /// A key outside [`crate::REPEATABLE_KEYS`] repeats inside one section.
     ///
     /// systemd takes the last assignment. The crate refuses the repeat for the
     /// same reason it refuses a duplicate section.

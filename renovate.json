@@ -1,65 +1,123 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended",
+    "github>plurano/horistes",
     ":dependencyDashboard",
     ":semanticCommits",
-    ":maintainLockFilesWeekly",
-    ":gitSignOff"
+    ":maintainLockFilesWeekly"
   ],
-  "labels": ["dependencies"],
-  "assignees": [],
+  "labels": [
+    "dependencies"
+  ],
   "packageRules": [
     {
-      "matchPackagePatterns": ["*"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "all non-major dependencies",
-      "automerge": false
+      "matchPackageNames": [
+        "*"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "all non-major dependencies"
     },
     {
-      "matchManagers": ["github-actions"],
+      "matchManagers": [
+        "github-actions"
+      ],
       "pinDigests": true
     },
     {
       "description": "Praetor-locked assets: praetorctl audit requires them byte-for-byte, so updates arrive through a praetor pin bump, not here",
-      "matchFileNames": [".github/workflows/praetor-docs.yml", "tools/markdownlint/**"],
+      "matchFileNames": [
+        ".github/workflows/praetor-docs.yml",
+        "tools/markdownlint/**"
+      ],
       "enabled": false
     },
     {
       "description": "M04: @playwright/test and the Playwright image carry the same browser revision, so they move in one pull request; the accessibility gate fails when their versions differ",
-      "matchPackageNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
+      "matchPackageNames": [
+        "@playwright/test",
+        "mcr.microsoft.com/playwright"
+      ],
       "groupName": "playwright and its container image"
     },
     {
       "description": "M04: package.json engines.node and the pinned Node release move together, and D65 tracks the latest release line. ignoreUnstable is off because Renovate counts a Node release as unstable until its line reaches LTS (the node-version datasource and node versioning alike), so a pin on an LTS line would never be offered the newer Current line",
-      "matchFileNames": ["ui/concordia-tokens/**"],
-      "matchPackageNames": ["node"],
+      "matchFileNames": [
+        "ui/concordia-tokens/**"
+      ],
+      "matchPackageNames": [
+        "node"
+      ],
       "ignoreUnstable": false,
       "groupName": "node for the accessibility gate"
     },
     {
       "description": "M04: packageManager and engines.pnpm name one pnpm version (D43 as decided at M04)",
-      "matchFileNames": ["ui/concordia-tokens/**"],
-      "matchPackageNames": ["pnpm"],
+      "matchFileNames": [
+        "ui/concordia-tokens/**"
+      ],
+      "matchPackageNames": [
+        "pnpm"
+      ],
       "groupName": "pnpm for the accessibility gate"
     },
     {
       "description": "M16, D100: ESLint and the Svelte plugin and parser it loads run together as the ui/ HISS lint, so they move in one pull request, and the gate's planted violations prove each bump still refuses them",
-      "matchFileNames": ["ui/concordia-tokens/**"],
-      "matchPackageNames": ["eslint", "eslint-plugin-svelte", "svelte-eslint-parser"],
+      "matchFileNames": [
+        "ui/concordia-tokens/**"
+      ],
+      "matchPackageNames": [
+        "eslint",
+        "eslint-plugin-svelte",
+        "svelte-eslint-parser"
+      ],
       "groupName": "eslint for the ui HISS lint"
     },
     {
       "description": "saeptum-capsule and saeptum-microvm come from one plurano/saeptum revision; separate pull requests would lock saeptum-capsule twice, once per revision",
-      "matchPackageNames": ["saeptum-capsule", "saeptum-microvm"],
+      "matchPackageNames": [
+        "saeptum-capsule",
+        "saeptum-microvm"
+      ],
       "groupName": "saeptum crates"
+    },
+    {
+      "description": "praetor-managed files: praetorctl adopt ships their updates and praetorctl audit locks them byte for byte",
+      "matchFileNames": [
+        "tools/figures/core.mjs",
+        "tools/figures/checks.mjs",
+        "tools/figures/build.mjs",
+        "tools/figures/types.ts",
+        "tools/figures/third_party/interfig/vendor.json",
+        "tools/figures/third_party/interfig/VENDOR.md",
+        "tools/figures/third_party/interfig/upstream/LICENSE",
+        "tools/figures/third_party/interfig/upstream/src/svg.ts",
+        "tools/figures/third_party/interfig/upstream/src/geometry.ts",
+        "tools/figures/third_party/interfig/upstream/src/model.ts",
+        "tools/figures/player/loader.js",
+        "tools/figures/player/player.js",
+        "tools/figures/player/THIRD-PARTY-LICENSES.txt",
+        "tools/figures/figures.css",
+        "tools/figures/mkdocs_hook.py",
+        "tools/figures/astro.mjs",
+        "tools/figures/serve.mjs",
+        "tools/figures/README.md",
+        ".devcontainer/devcontainer.json",
+        ".devcontainer/Dockerfile.praetor",
+        ".github/workflows/reuse.yml"
+      ],
+      "enabled": false
     }
   ],
   "customManagers": [
     {
       "description": "M04 accessibility gate: the Playwright image in ui/concordia-tokens/toolchain.pin.json, moved by tag and digest together",
       "customType": "regex",
-      "managerFilePatterns": ["/^ui/concordia-tokens/toolchain\\.pin\\.json$/"],
+      "managerFilePatterns": [
+        "/^ui/concordia-tokens/toolchain\\.pin\\.json$/"
+      ],
       "matchStrings": [
         "\"reference\": \"(?<depName>mcr\\.microsoft\\.com/playwright):(?<currentValue>v\\d+\\.\\d+\\.\\d+-noble)@(?<currentDigest>sha256:[0-9a-f]{64})\""
       ],
@@ -69,8 +127,12 @@
     {
       "description": "M04 accessibility gate: the Node release in ui/concordia-tokens/toolchain.pin.json (D65: the latest line, tracked forward); its sha256 is refreshed by hand, and make a11y-fetch refuses a tarball that does not match it",
       "customType": "regex",
-      "managerFilePatterns": ["/^ui/concordia-tokens/toolchain\\.pin\\.json$/"],
-      "matchStrings": ["\"node\": \\{\\s*\"version\": \"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""],
+      "managerFilePatterns": [
+        "/^ui/concordia-tokens/toolchain\\.pin\\.json$/"
+      ],
+      "matchStrings": [
+        "\"node\": \\{\\s*\"version\": \"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
       "depNameTemplate": "node",
       "datasourceTemplate": "node-version",
       "versioningTemplate": "node"

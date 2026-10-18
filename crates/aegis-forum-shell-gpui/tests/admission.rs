@@ -8,7 +8,9 @@
 //! recorded below, and one that is not recorded fails; MPL-2.0 is recorded for
 //! option-ext 0.2.0 and dwrote 0.11.5 alone, each locked unmodified from
 //! crates.io (D113). The member is written out, uses the workspace lints and
-//! holds no `unsafe` token.
+//! holds no `unsafe` token. `cargo tree --locked` shows gpui's git source at
+//! the rev, and the `accesskit_unix` the rev resolves is recorded beside the
+//! newest release as D69 drift.
 
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
@@ -18,7 +20,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use dependency_closure::{closure, metadata, plant, set, synthetic};
+use dependency_closure::{Invocation, closure, metadata, plant, set, synthetic};
 
 /// This member's package name.
 const PACKAGE: &str = "aegis-forum-shell-gpui";
@@ -28,6 +30,16 @@ const ZED_REV: &str = "322cd509dcccaee1f6bc44725d270598ae8171ad";
 
 /// The zed crates admitted from that commit.
 const ZED_CRATES: [&str; 2] = ["gpui", "gpui_linux"];
+
+/// The `accesskit_unix` version the zed rev resolves.
+const ACCESSKIT_UNIX_LOCKED: &str = "0.22.1";
+
+/// The newest `accesskit_unix` release, read from the crates.io API on
+/// 2026-10-18 (0.24.0, published 2026-09-25).
+const ACCESSKIT_UNIX_NEWEST: &str = "0.24.0";
+
+/// Where the D69 drift is recorded.
+const ADMISSION_DOC: &str = "docs/roadmap/toolchain-admission.md";
 
 /// The licence expressions recorded for the closure, exactly as each crate's
 /// manifest spells them. A new expression is a maintainer decision first
@@ -185,6 +197,61 @@ fn unrecorded(found: &BTreeMap<String, BTreeSet<String>>) -> Vec<String> {
         .collect()
 }
 
+/// The version line of each `Cargo.lock` entry named `name`, in lock order.
+fn locked_versions<'l>(lock: &'l str, name: &str) -> Vec<&'l str> {
+    let header = format!("name = \"{name}\"");
+    let lines: Vec<&str> = lock.lines().collect();
+    lines
+        .iter()
+        .enumerate()
+        .filter(|(_, line)| **line == header)
+        .filter_map(|(at, _)| lines.get(at.saturating_add(1)).copied())
+        .collect()
+}
+
+/// Why `lock` and `doc` do not hold the D69 record: one `accesskit_unix` entry
+/// at `locked`, and the admission naming it beside `newest` as D69 drift.
+fn drift_fault(lock: &str, doc: &str, locked: &str, newest: &str) -> Option<&'static str> {
+    if locked_versions(lock, "accesskit_unix") != [format!("version = \"{locked}\"")] {
+        return Some("not the one accesskit_unix the pin resolves");
+    }
+    let prose = doc.split_whitespace().collect::<Vec<_>>().join(" ");
+    let record = format!("accesskit_unix {locked}, ");
+    let newest = format!("the newest release, {newest} ");
+    let named = prose
+        .split(record.as_str())
+        .nth(1)
+        .and_then(|rest| rest.split_once("D69 drift"))
+        .is_some_and(|(before, _)| before.contains(newest.as_str()));
+    (!named).then_some("the drift is not recorded beside the newest release")
+}
+
+/// Why `line`, the first line `cargo tree -i gpui` prints, is not gpui at the
+/// admitted rev of the zed git source.
+fn tree_fault(line: &str) -> Option<&'static str> {
+    let source = format!(
+        " (https://github.com/zed-industries/zed?rev={ZED_REV}#{})",
+        ZED_REV.get(..8).unwrap_or_default()
+    );
+    if !line.starts_with("gpui v") {
+        return Some("not the gpui package");
+    }
+    (!line.ends_with(&source)).then_some("not the zed git source at the admitted rev")
+}
+
+/// The first line `cargo tree --locked --offline` prints for `name`, inverted
+/// from this member at depth 0, under the D78 deadline.
+fn tree_head(name: &str) -> Result<String, String> {
+    let mut invocation = Invocation::recorded()?;
+    invocation.args = ["tree", "--locked", "--offline", "-p", PACKAGE, "-i", name]
+        .into_iter()
+        .chain(["--depth", "0"])
+        .map(str::to_owned)
+        .collect();
+    let text = invocation.run_text()?;
+    Ok(text.lines().next().unwrap_or_default().to_owned())
+}
+
 /// Why `lock` and `manifest` do not hold `name` as D113 admits it: one lock
 /// entry, equal to `entry` (the crates.io release with its index checksum),
 /// and no override of it in the workspace manifest.
@@ -233,6 +300,31 @@ fn the_zed_crates_are_pinned_to_one_rev_and_locked() {
     }
 }
 
+/// Positive: `cargo tree --locked` shows gpui's git source at the admitted
+/// rev, and `accesskit_unix` at the version the rev resolves.
+#[test]
+fn cargo_tree_shows_the_pinned_rev() -> Fallible {
+    let gpui = tree_head("gpui")?;
+    assert_eq!(tree_fault(&gpui), None, "{gpui}");
+    let accesskit_unix = tree_head("accesskit_unix")?;
+    assert_eq!(
+        accesskit_unix,
+        format!("accesskit_unix v{ACCESSKIT_UNIX_LOCKED}")
+    );
+    Ok(())
+}
+
+/// Positive (D69): the `accesskit_unix` the rev resolves is recorded beside the
+/// newest release.
+#[test]
+fn the_accesskit_unix_drift_is_recorded() {
+    let (lock, doc) = (read("Cargo.lock"), read(ADMISSION_DOC));
+    assert_eq!(
+        drift_fault(&lock, &doc, ACCESSKIT_UNIX_LOCKED, ACCESSKIT_UNIX_NEWEST),
+        None
+    );
+}
+
 /// Positive: every licence in this member's closure is recorded.
 #[test]
 fn every_licence_in_the_closure_is_recorded() -> Fallible {
@@ -257,12 +349,20 @@ fn the_mpl_packages_are_locked_unmodified_from_crates_io() {
 /// Positive: the member's sources hold no `unsafe` token.
 #[test]
 fn the_sources_hold_no_unsafe_token() -> Fallible {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    for entry in std::fs::read_dir(dir)?.take(64) {
-        let path = entry?.path();
-        let text = std::fs::read_to_string(&path)?;
-        assert!(!text.contains("unsafe"), "{}", path.display());
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut read = 0_usize;
+    for dir in [src.clone(), src.join("bin")] {
+        for entry in std::fs::read_dir(dir)?.take(64) {
+            let path = entry?.path();
+            if path.is_dir() {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path)?;
+            assert!(!text.contains("unsafe"), "{}", path.display());
+            read += 1;
+        }
     }
+    assert!(read >= 4, "the sweep read {read} source files");
     Ok(())
 }
 
@@ -292,6 +392,50 @@ fn a_branch_a_tag_or_another_rev_is_refused() {
         pin_fault("gpui = { version = \"0.2.2\" }", "gpui"),
         Some("not the zed git source")
     );
+}
+
+/// Negative: a gpui `cargo tree` reports from a branch, another source or
+/// under another name is refused.
+#[test]
+fn a_tree_line_off_the_pin_is_refused() {
+    let short = ZED_REV.get(..8).unwrap_or_default();
+    let base = "gpui v0.2.2 (https://github.com/zed-industries/zed";
+    assert_eq!(
+        tree_fault(&format!("{base}?branch=main#{short})")),
+        Some("not the zed git source at the admitted rev")
+    );
+    assert_eq!(
+        tree_fault("gpui v0.2.2"),
+        Some("not the zed git source at the admitted rev")
+    );
+    assert_eq!(
+        tree_fault(&format!("gpui_linux v0.1.0 {base}?rev={ZED_REV}#{short})")),
+        Some("not the gpui package")
+    );
+}
+
+/// Negative (D69): a lock moved to another `accesskit_unix`, a second entry, or
+/// an admission that drops the newest release or the drift is refused.
+#[test]
+fn an_unrecorded_drift_is_refused() {
+    let (lock, doc) = (read("Cargo.lock"), read(ADMISSION_DOC));
+    let (locked, newest) = (ACCESSKIT_UNIX_LOCKED, ACCESSKIT_UNIX_NEWEST);
+    let entry = format!("name = \"accesskit_unix\"\nversion = \"{locked}\"\n");
+    let moved = format!("name = \"accesskit_unix\"\nversion = \"{newest}\"\n");
+    for planted in [moved.clone(), format!("{entry}{moved}"), String::new()] {
+        assert_eq!(
+            drift_fault(&planted, &doc, locked, newest),
+            Some("not the one accesskit_unix the pin resolves")
+        );
+    }
+    let unnamed = doc.replace(&format!("release, {newest}"), "release");
+    let undeclared = doc.replace("D69 drift", "drift");
+    for planted in [unnamed, undeclared] {
+        assert_eq!(
+            drift_fault(&lock, &planted, locked, newest),
+            Some("the drift is not recorded beside the newest release")
+        );
+    }
 }
 
 /// Negative: a package whose licence is not recorded, or that has none, is
@@ -405,6 +549,39 @@ fn a_near_entry_is_told_apart() {
             "{name}"
         );
     }
+}
+
+/// Boundary (D69): the record wrapped across lines still counts; a lock one
+/// patch release off, or a newest release one patch on, is refused; a tree
+/// line one character short of the rev is refused.
+#[test]
+fn a_near_drift_record_is_told_apart() {
+    let (lock, doc) = (read("Cargo.lock"), read(ADMISSION_DOC));
+    let (locked, newest) = (ACCESSKIT_UNIX_LOCKED, ACCESSKIT_UNIX_NEWEST);
+    let rewrapped = doc.replace(
+        &format!("release, {newest}"),
+        &format!("release,\n{newest}"),
+    );
+    assert_eq!(drift_fault(&lock, &rewrapped, locked, newest), None);
+    let near_lock = lock.replace(
+        &format!("name = \"accesskit_unix\"\nversion = \"{locked}\""),
+        "name = \"accesskit_unix\"\nversion = \"0.22.2\"",
+    );
+    assert_ne!(near_lock, lock);
+    assert_eq!(
+        drift_fault(&near_lock, &doc, locked, newest),
+        Some("not the one accesskit_unix the pin resolves")
+    );
+    assert_eq!(
+        drift_fault(&lock, &doc, locked, "0.24.1"),
+        Some("the drift is not recorded beside the newest release")
+    );
+    let short = ZED_REV.get(..7).unwrap_or_default();
+    let line = format!("gpui v0.2.2 (https://github.com/zed-industries/zed?rev={ZED_REV}#{short})");
+    assert_eq!(
+        tree_fault(&line),
+        Some("not the zed git source at the admitted rev")
+    );
 }
 
 /// Boundary: a second declaration of a zed crate is caught, a rev that

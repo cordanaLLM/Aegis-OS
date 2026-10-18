@@ -216,14 +216,32 @@
           "counterpart": "P15",
           "milestone": "M12",
           "reason": "aegis-vulcan encodes MediaIngestDescriptor (src/contracts/media_ingest.rs), but aegis-hestia has no ingest decoder. M12 brings the DMA-BUF paths in the booted image (E12-1, REQ-P15-02 and REQ-P15-03)."
+        },
+        {
+          "crate": "aegis-vulcan-gpu",
+          "relation": "GPUDIRECT_WEIGHT_STREAMING",
+          "counterpart": "P09",
+          "milestone": "M12",
+          "reason": "the record half reads host sysfs only"
+        },
+        {
+          "crate": "aegis-vulcan-gpu",
+          "relation": "ZERO_COPY_MEDIA_INGEST",
+          "counterpart": "P15",
+          "milestone": "M12",
+          "reason": "the record half reads host sysfs only"
         }
       ],
       "cut": {
-        "class": "standalone",
+        "class": "core-and-adapter",
         "parts": [
           {
             "path": "crates/aegis-vulcan",
             "ties": "os-free"
+          },
+          {
+            "path": "crates/aegis-vulcan-gpu",
+            "ties": "os-bound"
           }
         ]
       },
@@ -910,29 +928,6 @@
         {
           "to": "P17",
           "relation": "ENFORCE_RUNTIME_A11Y"
-        }
-      ],
-      "counterpart_gaps": [
-        {
-          "crate": "aegis-concordia",
-          "relation": "CONSUMES_DESIGN_TOKENS",
-          "counterpart": "P05",
-          "milestone": "M28",
-          "reason": "aegis-concordia holds the generated theme constants, but aegis-forum-shell paints nothing and records the edge only as metadata (src/tokens.rs). The gpui shell that compiles the constants is M28's (D101)."
-        },
-        {
-          "crate": "aegis-concordia",
-          "relation": "ENFORCE_A11Y_STANDARDS",
-          "counterpart": "P15",
-          "milestone": null,
-          "reason": "aegis-concordia carries the token values and the focus-ring floor; aegis-hestia has no accessibility code to hold against them. No milestone's exit criteria bring it."
-        },
-        {
-          "crate": "aegis-concordia",
-          "relation": "ENFORCE_RUNTIME_A11Y",
-          "counterpart": "P17",
-          "milestone": null,
-          "reason": "aegis-scaena has no accessibility code. M28 runs the live AT-SPI suite (REQ-P17-06) against the P05 shell's tree, not against aegis-scaena; no milestone's exit criteria bring it."
         }
       ],
       "cut": {

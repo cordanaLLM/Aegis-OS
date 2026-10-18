@@ -5,7 +5,8 @@
 //!
 //! It reads the subset of the unit-file syntax that `repart.d(5)` and
 //! `sysupdate.d(5)` drop-ins use: comment lines, `[Section]` headers and
-//! `Key=Value` assignments. Line continuations, quoting and `Key=` resets are
+//! `Key=Value` assignments. A key repeats only when it is one of
+//! [`REPEATABLE_KEYS`]. Line continuations, quoting and `Key=` resets are
 //! deliberately absent; none of the reviewed definitions uses them, and a
 //! reader that silently accepted syntax it does not implement would report a
 //! definition as understood when it is not.
@@ -25,6 +26,20 @@ pub const MAX_SECTIONS: usize = 8;
 
 /// Scalar bound on the assignments one definition file may hold.
 pub const MAX_ENTRIES: usize = 128;
+
+/// The keys `repart.d(5)` of systemd 262 documents as usable more than once.
+///
+/// Each assignment adds one item (a copy, an exclusion, a directory, a symlink
+/// or a mount), so the reader keeps every one in file order. Every other key
+/// takes the last assignment in systemd, and the reader refuses its repeat.
+pub const REPEATABLE_KEYS: [&str; 6] = [
+    "CopyFiles",
+    "ExcludeFiles",
+    "ExcludeFilesTarget",
+    "MakeDirectories",
+    "MakeSymlinks",
+    "MountPoint",
+];
 
 /// One `Key=Value` assignment, with the section and line it came from.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,7 +164,8 @@ impl UnitFile {
         Ok(())
     }
 
-    /// Records one assignment, refusing a malformed line, a stray key or a repeat.
+    /// Records one assignment, refusing a malformed line, a stray key or a repeat
+    /// of a key outside [`REPEATABLE_KEYS`].
     fn add_entry(
         &mut self,
         line: usize,
@@ -169,7 +185,7 @@ impl UnitFile {
                 key: key.to_owned(),
             });
         };
-        if self.value(section, key).is_some() {
+        if !REPEATABLE_KEYS.contains(&key) && self.value(section, key).is_some() {
             return Err(DefinitionError::DuplicateKey {
                 name: self.name.clone(),
                 line,
@@ -211,7 +227,8 @@ impl UnitFile {
         &self.entries
     }
 
-    /// The value assigned to `key` in `section`, if any.
+    /// The first value assigned to `key` in `section`, if any; a key in
+    /// [`REPEATABLE_KEYS`] keeps its later assignments in [`Self::entries`].
     #[must_use]
     pub fn value(&self, section: &str, key: &str) -> Option<&str> {
         self.entries

@@ -58,6 +58,18 @@ exceptions:
     category: A
     entered: "2026-10-17"
     expires: "2027-01-15"
+  - rule: HISS-03
+    path: crates/aegis-forum-shell-gpui/Cargo.toml
+    reason: 'D115: gpui at zed commit 322cd509dcccaee1f6bc44725d270598ae8171ad heap-allocates every frame while the accessibility adapter is active (crates/gpui/src/window/a11y.rs: mem::take of all_nodes drops the node capacity, accesskit::Node::new per node, an FxHashSet in repair_tree_update); the deviation is limited to that pinned gpui, enters through this one member (D102), grants nothing to Aegis-authored code and is reviewed at every re-pin of gpui (category A, 90 days)'
+    category: A
+    entered: "2026-10-18"
+    expires: "2027-01-16"
+  - rule: HISS-09
+    path: crates/aegis-vulcan-gpu/Cargo.toml
+    reason: 'aegis-os-m25-unsafe-home: the M25 DMA-BUF, udmabuf, PRIME and VFIO slices need ioctl and mmap calls, so this one member relaxes the workspace unsafe_code forbid to deny; unsafe is allowed only on functions with allow(unsafe_code) and a SAFETY proof on every block, held by tools/verify_unsafe_home.py; the other members stay forbid (category C, 10 days)'
+    category: C
+    entered: "2026-10-18"
+    expires: "2026-10-28"
 register:
   sources:
     expected: 13

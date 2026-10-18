@@ -1,6 +1,6 @@
 # Toolchain admission matrix
 
-Status: recorded admissions, current as of 2026-10-17
+Status: recorded admissions, current as of 2026-10-18
 
 ## Purpose and limits
 
@@ -33,7 +33,7 @@ Two rules follow from the clause and are applied below:
 | Rust (`rustc`, `cargo`) | 1.99.1 | `rust-toolchain.toml`, `channel = "1.99.1"`, materialised by rustup | 1.99.0 until 2026-10-16; 1.98.1 until 2026-10-14; before it the distribution package `rust 1:1.98.1-1.1`, removed 2026-09-13 because a distribution package moves with system updates and cannot satisfy a pinned admission | M02 (D61) |
 | clippy | 0.1.99 | `rust-toolchain.toml`, `components = ["rustfmt", "clippy"]` | 0.1.98 until 2026-10-14; before it the clippy shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
 | rustfmt | 1.10.0-stable | `rust-toolchain.toml`, same `components` list | 1.9.0-stable until 2026-10-14; before it the rustfmt shipped inside the removed `rust 1:1.98.1-1.1` package | M02 (D61) |
-| praetorctl | source commit `21bf5366356b29878cd1bbdd43168bc9fa421707` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `67e0d4013eb4c03ab0a8a3f365fed48b6365d5d5`; the pin follows Praetor's `main` (see below) | M00 |
+| praetorctl | source commit `32a35c8fb947b449ff46ae0a3b32017b409dccad` | `.github/workflows/ci.yml`, `PRAETOR_REF`, verified with `git rev-parse` before the build | the previous pin, source commit `963e6ee6494c82e072c2a7ffe8c9c1909d9a923e`; the pin follows Praetor's `main` (see below) | M00 |
 | Go toolchain | the version Praetor's own `go.mod` declares | `actions/setup-go` with `go-version-file: praetor-src/go.mod`, `GOTOOLCHAIN=local` | nothing; a build input for praetorctl and, since M09, for the imago `make contract-fetch` builds, held to imago's own floor below | M00; M09 for the imago build |
 | lefthook | 2.1.12 | `.github/workflows/ci.yml`, `LEFTHOOK_VERSION` plus the `LEFTHOOK_SHA256` checksum of the downloaded binary | nothing | M00 |
 | reuse | 6.2.0 | `.github/workflows/ci.yml`, `REUSE_VERSION`, read by `tools/ci_lints.py`, run through `pipx run` by `make verify-lints`, a prerequisite of `make verify-all` | nothing | M00 |
@@ -56,6 +56,8 @@ Two rules follow from the clause and are applied below:
 | Realtime kernel | Nucleus release `v7.2.8-realtime-lusoris2`: image `vmlinuz-7.2.8-lusoris2-realtime`, `kernel.release` `7.2.8-lusoris2-realtime`, `CONFIG_PREEMPT_RT=y` | `build/kernel/nucleus-artifact.pin.json`, the pin the M10 gate uses; the gate hashes the image against the pin's sha256 and size before every boot, and the guest reports the release and the option back from inside itself | M26's `linux-7.2.5` build (D70, retired by D112), and the distribution `linux-rt` package D57 recommended, which is **not** downloaded, installed or booted here | M23 (D57, D112) |
 | Firecracker | 1.17.0, release archive `firecracker-v1.17.0-x86_64.tgz` sha256 `06094a1108ae9e82aa4c23a775aa92758f53f1175d422270d9d6162cb9ade558`, binary sha256 `99ad0f5cd0514a88aad0e9ae8cfdb3cc3b4ab9d190e1194602406c786b5de7a5`, Apache-2.0 | `build/sandbox/firecracker.pin.json`; fetched by `make workstation-fetch`, hashed again and read back with `--version` before every run; the jailer is not used | the distribution package `firecracker 1.17.0-1.1` at `/usr/bin/firecracker`, which M06 probed and no gate runs | M21 (D58) |
 | Guest kernel for Firecracker | `vmlinux-6.18.44` from Firecracker's CI artifacts, sha256 `d8ced68bd61e27b6813e2c993cc53a4029c59e13210672180591c84109684fe4`, configuration sha256 `9fb2be18303d2f6e8ec35b3a20ecf1209f54a4ece10114a893cb37beabee7030` | `build/sandbox/firecracker.pin.json`; the gate hashes both and requires five configuration options before every run | nothing; no Firecracker guest was pinned before | M21 |
+| swtpm | 0.10.2; reference profile `TPM emulator version 0.10.2`, distribution package `extra/swtpm 0.10.2-1` | `tools/verify_boot_harness.py` (M24); `tools/verify_attestation.py` (M20), read back from `swtpm --version` before the gate runs | nothing | M24 (boot harness); M20 (verify-attestation) |
+| tpm2-tools | 5.8; reference profile `version="5.8"`, distribution package `extra/tpm2-tools 5.8-1` | `tools/verify_attestation.py` (M20), read back from `tpm2_quote --version` before the gate runs | nothing | M20 (verify-attestation) |
 
 The pinned Rust toolchain is materialised explicitly before the first cargo
 gate, because a runner image that ships rustup does not thereby ship the pinned
@@ -103,7 +105,7 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | Crate | Pinned version | How it is pinned | Role | Admitted by |
 | :--- | :--- | :--- | :--- | :--- |
 | base16ct | 1.0.0 | `[workspace.dependencies]`, `default-features = false` | lower-case hexadecimal digest rendering and parsing | M02 |
-| sha2 | 0.11.0 | `[workspace.dependencies]`, `default-features = false` | the single `LedgerHasher` implementation (D02) | M02 |
+| sha2 | 0.11.0 | `[workspace.dependencies]`, `default-features = false` | the single `LedgerHasher` implementation (D02); since M25 the sha256 of the DMA-BUF read-back in `crates/aegis-vulcan-gpu` | M02 |
 | thiserror | 2.0.20 | `[workspace.dependencies]`, `features = ["std"]` | typed error enums at every boundary | M02 |
 | serde | 1.0.229 | `[workspace.dependencies]`, optional, behind the `jsonl` feature | JSON Lines rendering, off the hashing path | M02 |
 | serde_json | 1.0.151 | `[workspace.dependencies]`, optional, behind the `jsonl` feature | JSON Lines rendering, off the hashing path | M02 |
@@ -113,7 +115,7 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | gpui_linux | the same revision (package 0.1.0, Apache-2.0) | as gpui, `features = ["wayland"]`, no X11 | the Linux platform gpui runs on, a crate of its own at this revision | M28 (D102) |
 | cros-libva | git revision `59384456ac2ae78c0c3e5515f41ef1efd9b802cf` of chromeos/cros-libva (package 0.0.13, BSD-3-Clause), the merge of #37 on 2026-09-01 and the head of `main` on 2026-09-29 | `[workspace.dependencies]`, `git` with `rev =`; locked as `git+https://github.com/chromeos/cros-libva?rev=59384456...#59384456...`; used only by `crates/aegis-scaena` | VA-API decode and DMA-BUF export through `Surface::export_prime` (D80) | M27 (D80) |
 | smithay-client-toolkit | 0.21.1 (MIT), crate checksum `74dc9ee14b0fdcb535f9556141bacac070c994a977d2240ee455d7438a617f00` | `[workspace.dependencies]`, `default-features = false`; used only by `crates/aegis-scaena` | the layer surface and the `zwp_linux_dmabuf_v1` client over wayland-client's pure-Rust backend; libwayland is neither linked nor loaded | M27 (D75) |
-| rustix | 1.1.5 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT), crate checksum `891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d` | `[workspace.dependencies]`, `features = ["net", "fs", "event"]`; used by `crates/aegis-scaena` and, since M21, by `crates/aegis-vesta-sandbox`, which adds the `system` feature | `sendmsg` and `recvmsg` with `SCM_RIGHTS` and `MSG_CMSG_CLOEXEC`, `SO_RCVTIMEO` and `SO_SNDTIMEO`, `fstatfs`, `fstat`, `lseek`, `poll` on the Wayland connection fd under a deadline, and in tests `memfd_create` (M27); `reboot(RebootCommand::Restart)`, with which the M21 guest init ends its microVM (M21) | M27 (D77); the `system` feature M21 |
+| rustix | 1.1.5 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT), crate checksum `891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d` | `[workspace.dependencies]`, `features = ["net", "fs", "event"]`; used by `crates/aegis-scaena`; since M21 by `crates/aegis-vesta-sandbox`, which adds the `system` feature; since M25 by `crates/aegis-vulcan-gpu`, which adds `mm` and `param` and is the one crate allowed `unsafe` code (`tools/verify_unsafe_home.py`) | `sendmsg` and `recvmsg` with `SCM_RIGHTS` and `MSG_CMSG_CLOEXEC`, `SO_RCVTIMEO` and `SO_SNDTIMEO`, `fstatfs`, `fstat`, `lseek`, `poll` on the Wayland connection fd under a deadline, and in tests `memfd_create` (M27); `reboot(RebootCommand::Restart)`, with which the M21 guest init ends its microVM (M21); `memfd_create`, `fcntl_add_seals`, `mmap` and `munmap`, `page_size`, and the `ioctl` calls `UDMABUF_CREATE`, `DRM_IOCTL_PRIME_FD_TO_HANDLE`, `DRM_IOCTL_PRIME_HANDLE_TO_FD`, `DRM_IOCTL_GEM_CLOSE` and `DMA_BUF_IOCTL_SYNC` behind `SAFETY` proofs (M25) | M27 (D77); the `system` feature M21; `mm` and `param` M25 |
 | socket2 | 0.6.5 (MIT OR Apache-2.0), crate checksum `c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4` | transitive since 2026-10-16: no longer in `[workspace.dependencies]`; it arrives through `saeptum-microvm`, whose own manifest pins it with `default-features = false`, `features = ["all"]` | the guest's `AF_VSOCK` listener: `SockAddr::vsock` is a safe constructor of a `sockaddr_vm`, which rustix 1.1.5 does not offer and the workspace's `unsafe_code = "forbid"` would otherwise require | M21 |
 | saeptum-capsule | git revision `997a1b34f0a2912de8bf67231846b3af512ff041` of plurano/saeptum (package 0.1.0, EUPL-1.2), the squash merge of saeptum#16 on 2026-10-17 | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta` | the capsule registry, ring, microVM and VMM controllers and the wire form of their bounded values, cut from `aegis-vesta` (cut unit CUT-1632-03) | CUT-1632-03, 2026-10-16 |
 | saeptum-microvm | git revision `997a1b34f0a2912de8bf67231846b3af512ff041` of plurano/saeptum (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta-sandbox` | the Firecracker configuration, the hybrid-vsock line framing, the VM process, the guest listener and the guest's boot-complete signal, cut from `aegis-vesta-sandbox` (cut unit CUT-1632-04); carries socket2 and libc | CUT-1632-04, 2026-10-16 |
@@ -455,9 +457,22 @@ input `build/definitions/toolchain.pin.json` pins exactly:
 | `mkosi` | `27.1-1` | `mkosi summary` for `make verify-mkosi` |
 | `python` | `3.14.7-1` | runs the two gate scripts |
 | `dosfstools` | `4.2-5` | `Format=vfat` in `build/repart.d/00-esp.conf` |
+| `mtools` | `1:4.0.49-1` | `mcopy`, which `systemd-repart` runs to copy `CopyFiles=` into the vfat ESP of `build/repart.d/00-esp.conf` |
 | `erofs-utils` | `1.9.4-1` | `Format=erofs` in `build/repart.d/10-root-a.conf` |
-| `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/repart.d/20-var.conf` |
-| `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/repart.d/20-var.conf` |
+| `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
+| `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
+
+Without `mtools`, `systemd-repart` formats the ESP and then stops with
+`Could not find mcopy binary.` as soon as the tree it copies holds a file. Before
+2026-10-18 neither image carried it, and the repart cases passed only because
+their scratch root had nothing under `/boot` or `/efi`, so an ESP with no UKI
+went unnoticed until Imago run 39090040772 booted one. The scratch root now
+holds a PE-headed `EFI/BOOT/BOOTX64.EFI`, and the repart gate reads each layout
+case's image with `build/mkosi.postoutput.d/image_layout.py`: `repart/positive`
+must hold the UKI and a root, and `repart/layout-planted-empty-esp`, the
+committed definitions without the two `CopyFiles=` lines that run lacked, must
+be refused as missing the UKI. `LayoutCaseTests` in
+`tools/test_systemd_definitions.py` covers the cases.
 
 `make definitions-fetch` is the one networked step. It pulls the base image,
 installs the packages from the snapshot, and removes the image again unless
@@ -530,9 +545,10 @@ release itself, inside a second local image that
 | `systemd` | `261.3-1` | `systemd-repart` and `systemd-sysupdate` at `SYSTEMD_FLOOR`, the reference profile's release |
 | `python` | `3.14.7-1` | runs the gate script |
 | `dosfstools` | `4.2-5` | `Format=vfat` in `build/repart.d/00-esp.conf` |
+| `mtools` | `1:4.0.49-1` | `mcopy`, which `systemd-repart` runs to copy `CopyFiles=` into the vfat ESP of `build/repart.d/00-esp.conf` |
 | `erofs-utils` | `1.9.4-1` | `Format=erofs` in `build/repart.d/10-root-a.conf` |
-| `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/repart.d/20-var.conf` |
-| `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/repart.d/20-var.conf` |
+| `btrfs-progs` | `7.1-1` | `Format=btrfs` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
+| `cryptsetup` | `2.8.8-1` | `Encrypt=tpm2` in `build/mkosi.extra/usr/lib/repart.d/20-var.conf` |
 
 `make definitions-fetch-floor` builds it the way `make definitions-fetch` builds
 the main image, with the same retries and the same exact-version check. A run
@@ -859,9 +875,9 @@ and for the producers from `git ls-remote --heads`.
 
 | Tool or producer | Pinned version or commit | How it is pinned | Latest upstream, read 2026-09-28 | Role |
 | :--- | :--- | :--- | :--- | :--- |
-| `go` | floor 1.27.1, from imago's `go.mod` (`go 1.27.1`); reference profile go1.27.1 (`go 2:1.27.1-2`); CI 1.27.1 | `imago.go` in the pin, checked against the cached `go.mod`; every go command runs with `GOTOOLCHAIN=local`, so a Go below the floor is refused by the fetch rather than replaced by a download. CI's Go is the M00 row above: setup-go resolves Praetor's `go 1.27` to the newest 1.27 patch, 1.27.1, which meets the floor | 1.27.1 (stable), `go.dev/dl` | `make contract-fetch`: `go mod download`, `go mod verify` and the `-trimpath -buildvcs=true` build; the gate: `go version -m` and the offline stand-in build, with `GOPROXY=off` |
+| `go` | floor 1.27.2, from imago's `go.mod` (`go 1.27.2`); reference profile go1.27.2 (`go 2:1.27.2-1`); CI 1.27.2 | `imago.go` in the pin, checked against the cached `go.mod`; every go command runs with `GOTOOLCHAIN=local`, so a Go below the floor is refused by the fetch rather than replaced by a download. CI's Go is the M00 row above: setup-go resolves Praetor's `go 1.27` to the newest 1.27 patch, 1.27.2, which meets the floor | 1.27.2 (stable), `go.dev/dl` | `make contract-fetch`: `go mod download`, `go mod verify` and the `-trimpath -buildvcs=true` build; the gate: `go version -m` and the offline stand-in build, with `GOPROXY=off` |
 | `git` | reference profile 2.55.0 (`git 2.55.0-1.1`) | recorded, not pinned; no source this gate relies on declares a minimum beyond the 2.32 that `GIT_CONFIG_GLOBAL` needs | 2.56.0, tag `v2.56.0`; the distribution ships 2.55.0 | `make contract-fetch`: `ls-remote --heads`, the depth-1 fetch and checkout; the gate: `rev-parse`, `status --untracked-files=all --ignored`, `ls-files -v` and `log` of the imago checkout, `rev-parse` and `status` of this repository, and the stand-in's commit. Every git command, and go's own git calls, run with `GIT_CONFIG_NOSYSTEM=1`, an empty `GIT_CONFIG_GLOBAL` and no inherited `GIT_*` variable |
-| `cordanaLLM/imago` | commit `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311` (was `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` until D107) | `imago.commit` in the pin; fetched by commit into a fresh directory, checked by `git rev-parse HEAD`, by the binary's `vcs.revision`, `vcs.time` and module version, and by the binary sha256 the fetch recorded | `main` at `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311`, read 2026-09-29 | consumes both M18 payloads (`pkg/aegis`, `pkg/kernel`) |
+| `cordanaLLM/imago` | commit `9394202595effca3b34a0dfd0299adb7bdac406a` (was `987b95a432e5c9aac1b4885b97fa2d3ff1b9d311` until E11-7, `16f964b4dafadac2b1f0a662c7dcbb4b7bb29bee` until D107) | `imago.commit` in the pin; fetched by commit into a fresh directory, checked by `git rev-parse HEAD`, by the binary's `vcs.revision`, `vcs.time` and module version, and by the binary sha256 the fetch recorded | `main` at `9394202595effca3b34a0dfd0299adb7bdac406a`, read 2026-10-18 | consumes both M18 payloads (`pkg/aegis`, `pkg/kernel`) and validates product-result (E11-7) |
 | `cordanaLLM/nucleus` | commit `677dd401b68363b9ac3a1f2e891e6c1a1e9a0d9a` (was `852be742eb173700d5ef93b0c6f867b855f9c640` from D107 until 2026-10-17, `82aa6b7a3c68a42a6330370c81ec642482014c9f` from the re-pin of 2026-09-29 until D107, `0a4eac93f29fef432bfa9d892ad236568ce2f482` from D106 until that re-pin, and `8672247ff1bd22ed6b6b89d498116f20ff00c2ab` until D106) | `nucleus.commit` in the pin; fetched by commit into a fresh directory and checked by `git rev-parse HEAD`, a clean status and index, the presence of `scripts/verify_kernel_requirement.py` and the `versions.json` row that binds `aegis-os` to this repository's payload on `realtime` | `main` at `852be742eb173700d5ef93b0c6f867b855f9c640`, read 2026-09-29 | verifies `build/kernel-requirement.json` against the kconfig fragments of its bound stream at evidence level `declared` (nucleus#35, D106); its `--resolved-config` level (nucleus#36) needs a networked kernel-source resolve and is not run |
 | `python3` | reference profile 3.14.7 (`python3 --version`); CI runs the Python of the `ubuntu-26.04` image (3.14.4) | recorded, not pinned: the gate starts nucleus's verifier with the interpreter running the gate (`sys.executable`, which `make` starts as `python3`), `-I`, which ignores every `PYTHON*` variable and the user site, and `-B`, which keeps the sibling import from writing `scripts/__pycache__` into the checkout; the script and the sibling module it imports, `scripts/versions_query.py`, are standard-library only, and nucleus lints them for Python 3.11 (`target-version = "py311"`) and runs the script on CPython 3.12 in its CI | 3.14.7 of 2026-08-05, `python.org` | the gate: `scripts/verify_kernel_requirement.py --report-json`, six runs per gate run, from the nucleus checkout |
 
@@ -992,7 +1008,8 @@ API, from zed-industries/zed or from the reference profile's package manager.
 
 | Tool or crate | Reference version, read 2026-09-29 | Proposed pin or floor | Role |
 | :--- | :--- | :--- | :--- |
-| zbus, atspi | 5.19.0 and 0.30.0 (both Apache-2.0 OR MIT), the newest releases; accesskit_unix 0.24.0 requires zbus ^5.19 and atspi ^0.29 | as the pinned accesskit_unix resolves them; atspi also for the tests that read the tree back (M28) | pure-Rust D-Bus and AT-SPI below accesskit_unix |
+| zbus, atspi | 5.19.0 (MIT) and 0.29.0 (Apache-2.0 OR MIT), the versions accesskit_unix 0.22.1 resolves; the reader in `crates/aegis-forum-shell-gpui/src/readback.rs` uses atspi 0.29.0 (proxies only) and zbus 5.19.0 (async-io) | as the pinned accesskit_unix 0.22.1 resolves them, so the lock gains no package; atspi also for the tests that read the tree back (M28) | pure-Rust D-Bus and AT-SPI below accesskit_unix and for readback verification |
+| async-io, futures-lite | 2.6.0 and 2.6.1 (both Apache-2.0 OR MIT), resolved by zbus and accesskit_unix | as pinned in Cargo.lock, so the lock gains no package | asynchronous I/O and future combinators for readback with deadlines |
 | libxkbcommon | 1.13.2 (`libxkbcommon 1.13.2-1.1`) | the floor the pinned xkbcommon crate (0.8.0 at zed `main`) needs, read at admission (M28) | the C keymap library gpui links for Linux keyboard input |
 | libwayland-client | 1.26.0 (`wayland 1.26.0-1.1`) | read at admission (M28) | loaded by wayland-backend through `dlopen` |
 | at-spi2-core | 2.60.7 (`at-spi2-core 2.60.7-1.1`), with `dbus-run-session` from `dbus 1.16.2-1.1` | recorded and read back before the AT-SPI cases run (M28) | the bus launcher and registry of the private AT-SPI session M28's tests start |
@@ -1035,13 +1052,14 @@ added. D99, the one pnpm workspace under `ui/`, was withdrawn by D101, so the
 lint has no workspace root of its own. `tools/test_a11y.py` reads this table
 back against the manifest, and the gate reads each version back from inside
 the container before it lints. The last-but-one column is the D69
-comparison, the npm registry's `latest` on 2026-10-13. The three were first
+comparison, the npm registry's `latest` on 2026-10-18. The three were first
 admitted on 2026-09-29 as eslint 10.11.0, eslint-plugin-svelte 3.23.0 and
-svelte-eslint-parser 1.8.1, and moved together to these on 2026-10-13.
+svelte-eslint-parser 1.8.1, and moved together to 10.12.0, 3.23.1 and 1.9.0
+on 2026-10-13; eslint alone moved to 10.13.0 on 2026-10-18.
 
-| Tool | Pinned version | How it is pinned | Latest upstream, read 2026-10-13 | Role |
+| Tool | Pinned version | How it is pinned | Latest upstream, read 2026-10-18 | Role |
 | :--- | :--- | :--- | :--- | :--- |
-| `eslint` | 10.12.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 10.12.0 of 2026-10-02 (`latest`); `maintenance` is 9.39.5 | runs the rules below over every `.js`, `.mjs`, `.cjs` and `.svelte` file of the package |
+| `eslint` | 10.13.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 10.13.0 of 2026-10-16 (`latest`); `maintenance` is 9.39.5 | runs the rules below over every `.js`, `.mjs`, `.cjs` and `.svelte` file of the package |
 | `eslint-plugin-svelte` | 3.23.1 (MIT) | `package.json`, exact; pnpm-lock.yaml | 3.23.1 of 2026-10-09 | its `base` configuration hands `.svelte` files to the parser and turns on only its two bookkeeping rules, `svelte/comment-directive` and `svelte/system` |
 | `svelte-eslint-parser` | 1.9.0 (MIT) | `package.json`, exact; pnpm-lock.yaml | 1.9.0 of 2026-10-09 | parses a Svelte component's script for the rules; its manifest declares `engines.pnpm` 10.34.6, which pnpm 12.6.0 does not enforce for a dependency, so `engineStrict` does not refuse it |
 
@@ -1200,6 +1218,36 @@ one of two call sites, each with a deadline.
 | aegis-tellus-rapl | `run <readings document>` | the RAPL cases |
 | aegis-vesta-sandbox | `run <firecracker> <kernel> <initramfs> <run-dir>`, in its own session | the sandbox cases |
 | curl | in `make workstation-fetch` only | M24's admission (8.22.0); the gate itself never touches the network |
+
+## The attestation gate's toolchain (M20)
+
+`make verify-attestation` (`tools/verify_attestation.py`) drives a private
+software TPM instance and tpm2-tools to verify attestation quotes against
+canonical audit-record digests from `crates/aegis-justitia`. Every value below
+was read on the reference profile on 2026-10-18.
+
+| Tool | Reference-profile version | Floor | Latest upstream, read 2026-10-18 | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| swtpm | 0.10.2 | none declared | 0.10.2, `v0.10.2` of 2026-08-19 | private TPM 2.0 instance in ephemeral directory |
+| tpm2-tools | 5.8 | none declared | 5.8, tag `5.8` of 2026-06-25 | EK/AK creation, PCR extension, quote and checkquote |
+
+### The attestation gate's programs
+
+`tools/test_verify_attestation.py` holds the gate's `REQUIRED_PROGRAMS` list,
+verifies missing capabilities with unit test doubles, and requires every process
+to run under a deadline.
+
+| Program | Invocation | Role |
+| :--- | :--- | :--- |
+| swtpm | `socket --tpm2 --tpmstate ... --server ... --ctrl ... --flags not-need-init,startup-clear` | private software TPM 2.0 emulator |
+| tpm2_createek | `-c ek.ctx -G rsa` | creates Endorsement Key |
+| tpm2_createak | `-C ek.ctx -c ak.ctx -G ecc -g sha256 -s ecdsa -u ak.pub -f pem -n ak.name` | creates Attestation Key |
+| tpm2_pcrextend | `<pcr>:sha256=<digest>` | extends PCRs 0, 4, 7, 11 |
+| tpm2_quote | `-c ak.ctx -l sha256:<pcrs> -q <digest> -m ... -s ... -o ... -g sha256` | generates quote over selected PCRs and qualifying data |
+| tpm2_checkquote | `-u ak.pub -m ... -s ... -f ... -g sha256 -q <digest>` | verifies cryptographic quote and PCR digest |
+| tpm2_print | `-t TPMS_ATTEST <msg>` | extracts `pcrSelect` for client selection enforcement |
+| tpm2_flushcontext | `-t` or `-s` | flushes transient and session contexts to avoid `0x902` memory exhaustion |
+| cargo | `cargo run --locked --offline -q -p aegis-justitia --example record_digest [other]` | computes canonical audit-record digests |
 
 ## Not yet admitted
 

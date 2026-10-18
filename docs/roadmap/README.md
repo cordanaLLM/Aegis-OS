@@ -65,8 +65,9 @@ Current verified state at revision time:
   descriptions are not kept current; ranks are read from
   `planning/roadmap.json`, which stays the source of truth. Open epic issues
   are written from it: `python3 tools/render_epics.py --apply` sets each
-  title and body, and `.github/workflows/roadmap-epics.yml` runs `--check`
-  after the roadmap changes on main and once a day (issue #220).
+  title and body. `.github/workflows/roadmap-epics.yml` runs `--apply` and
+  then `--check` after the roadmap changes on main, and `--check` alone once
+  a day (issue #220).
 - cordanaLLM/imago and cordanaLLM/nucleus resolve. imago decodes both M18
   payloads at the commit M09 pins (16f964b until D107, 987b95a since), nucleus
   verifies `build/kernel-requirement.json` against the kconfig fragments of its
@@ -244,13 +245,13 @@ score.
 | 19 | M27 | P17 Scaena first slice: VA-API frames to a layer surface over SCM_RIGHTS | done | medium | yes | no | full | M07 | M28, M29, M32 |
 | 20 | M21 | Workstation hardware slices: RAPL counters and KVM sandboxing | done | small | yes | no | full (privileged read) | M05 | - |
 | 21 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | done | medium | yes | yes | partial | M09, M19, M23 | M12 |
-| 22 | M25 | GPU host slices on the reference profile: DMA-BUF and VFIO | ready | medium | yes | no | full | M08, M17 | M12 |
-| 23 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | ready | large | yes | no | full | M16, M27 | M29, M30, M31 |
-| 24 | M22 | P10 microVM sandbox measurements on KVM | ready | medium | yes | no | full | M06 | - |
-| 25 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | blocked | medium | yes | no | full | M28, M27 | - |
-| 26 | M30 | P05 canvas accessibility: semantics, pointer alternatives, text scale | blocked | medium | yes | no | full | M28 | - |
-| 27 | M31 | P12 D76 heads-up theme: reduced motion, security states, flash limit | blocked | medium | yes | no | full | M28 | - |
-| 28 | M32 | P17 Scaena subtitle timing on a fixture clip with audio and subtitles | ready | medium | yes | no | full | M27 | - |
+| 22 | M22 | P10 microVM sandbox measurements on KVM | done | medium | yes | no | full | M06 | - |
+| 23 | M32 | P17 Scaena subtitle timing on a fixture clip with audio and subtitles | done | medium | yes | no | full | M27 | - |
+| 24 | M25 | GPU host slices on the reference profile: DMA-BUF and VFIO | ready | medium | yes | no | full | M08, M17 | M12 |
+| 25 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | ready | large | yes | no | full | M16, M27 | M29, M30, M31 |
+| 26 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | blocked | medium | yes | no | full | M28, M27 | - |
+| 27 | M30 | P05 canvas accessibility: semantics, pointer alternatives, text scale | blocked | medium | yes | no | full | M28 | - |
+| 28 | M31 | P12 D76 heads-up theme: reduced motion, security states, flash limit | blocked | medium | yes | no | full | M28 | - |
 | 29 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
 | 30 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
 | 31 | M33 | Consume amussis-decision in place of the in-tree decision engine | blocked | medium | no | yes | not-hardware | M02 | - |
@@ -1917,7 +1918,7 @@ Epics:
 
 ### M25 - GPU host slices on the reference profile: DMA-BUF and VFIO
 
-Rank 22. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 24. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M08, M17. Unblocks: M12.
 
@@ -1974,7 +1975,7 @@ Epics:
 
 ### M22 - P10 microVM sandbox measurements on KVM
 
-Rank 24. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 22. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M06. Unblocks: nothing.
 
@@ -2032,6 +2033,88 @@ Epics:
   the one recorded is refused.
   Boundary: a pass here is development evidence on the reference profile and
   closes no hardware gate.
+
+Evidence:
+
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: on 2026-10-17, before the state
+  moved, exit criterion 3 and E22-2's positive were amended by the maintainer's
+  answer recorded as aegis-os-e22-2-mechanism. Both named /dev/vhost-vsock and
+  CONFIG_VHOST_VSOCK=m as the mechanism, which describes a vhost-based monitor;
+  Firecracker 1.17.0, the VMM D58 admitted, carries vsock through its own
+  virtio-vsock device model and an AF_UNIX socket on the host (docs/vsock.md at
+  v1.17.0), as M21's evidence point 5 recorded. Both now name that hybrid vsock
+  as the mechanism and require the host's vhost state to be recorded and shown
+  unused. It is not a relaxation: the measured transport, the VMM identity and
+  the negative are unchanged, and the vhost state is still recorded. No other
+  criterion, epic or the cheapest exit was rewritten.
+- E22-2 (2026-10-17): run r20261017T022908-f3ef of make verify-workstation on
+  the reference profile (kernel 7.2.10-1-cachyos) passed every case,
+  sandbox/nothing-left-behind included; its gate.log is kept under
+  ~/.cache/aegis-workstation/runs/r20261017T022908-f3ef. sandbox/vsock-transport
+  recorded /dev/vhost-vsock present and CONFIG_VHOST_VSOCK=m, with vhost_vsock
+  references 0 before the first boot and 0 while sandbox 100 ran, so vhost was
+  not in the path, and timed 12 round trips of the candidate evaluation on
+  sandbox 100 under Firecracker 1.17.0, each from the AF_UNIX connect to the
+  close: min 188.7 us, median 197.6 us, max 494.6 us (docs/build/workstation.md,
+  The recorded transport figure). A vhost_vsock reference count that rose during
+  the timed run fails the case, and the figure names its VMM through
+  aegis_vesta::VmmIdentity. Development evidence on the reference profile only;
+  it closes no hardware gate.
+- E22-1 (2026-10-17), positive and negative: saeptum-capsule at 997a1b34f0a2
+  (saeptum#16) replaces the scaffold's unmeasured 112 ms literal with Measured
+  figures from run r20261017T124857-0027 of make verify-workstation under
+  Firecracker 1.17.0: MEASURED_BOOT_TIME_MS 306 ms, the median Guest-boot-time
+  wall clock of 64 boots (min 254112 us, max 551196 us), and
+  MEASURED_FOOTPRINT_KIB 61620 KiB, the median monitor VmRSS (min 57972, max
+  68292). Measured carries its value, VmmIdentity and run in private fields
+  behind one constructor, so a bare number or a figure naming no VMM does not
+  compile (compile_fail doctests in src/measured.rs); a planted mutant that
+  dropped the VMM parameter failed that doctest. A QEMU microvm row carries no
+  boot time rather than Firecracker's (Measured::for_vmm,
+  tests/measured_figures.rs). REQ-P10-01's targets, 125 ms and 5 MiB, stay
+  Unmeasured and are missed; docs/build/workstation.md records both. Not yet
+  evidenced: E22-1's boundary, the passthrough limits read from the pinned
+  release. Development evidence on the reference profile only; it closes no
+  hardware gate.
+- E22-1 (2026-10-17), boundary: the device passthrough limit is read from the
+  pinned release. build/sandbox/firecracker.pin.json now pins the release
+  archive's own OpenAPI document,
+  release-v1.17.0-x86_64/firecracker_spec-v1.17.0.yaml (sha256 473a0a392927, the
+  digest the archive's SHA256SUMS names), and lists its 26 endpoints; none
+  attaches a host device, and the document holds no vfio, passthrough or pci.
+  The PCI support v1.17.0 adds is a transport for Firecracker's own virtio
+  devices behind --enable-pci (CHANGELOG #5364), so PCI passthrough stays with
+  the QEMU harness (D58) and VmmIdentity::Firecracker reports none. The
+  gate-side case sandbox/passthrough-limits reads the endpoints from the cached
+  spec and fails on one the pin lacks or one the spec no longer offers;
+  tools/test_workstation_slices.py (PassthroughLimitTests) plants a /vfio/{id}
+  endpoint, a dropped endpoint, a nested path and an empty spec, and each failed
+  before the reader existed. Run r20261017T154108-f92a of make
+  verify-workstation on the reference profile (kernel 7.2.10-1-cachyos) passed
+  sandbox/passthrough-limits, every RAPL case and all eight host cases; it
+  failed only sandbox/nothing-left-behind, because Docker bridge ports of
+  containers other workloads started during the run (master br-e61809989ea4)
+  changed /sys/class/net; the microVMs carry no network interface
+  (docs/build/workstation.md, The device passthrough limit). Development
+  evidence on the reference profile only; it closes no hardware gate.
+- Done, and each part by the entry named: criterion 1 by M21's toolchain entry
+  and the Firecracker row of docs/roadmap/toolchain-admission.md, which pin
+  1.17.0 by archive and binary digest in build/sandbox/firecracker.pin.json
+  before any microVM run; criterion 2 and E22-1's positive and negative by the
+  saeptum-capsule 997a1b34f0a2 entry and run r20261017T124857-0027; criterion 3
+  and E22-2 by run r20261017T022908-f3ef, as the disclosure records; criteria 4
+  and 8 and E22-1's boundary by the pinned-release entry and run
+  r20261017T154108-f92a; criteria 5 and 6 by the scope sentence each measured
+  entry carries; criterion 7 by the reference profile's distribution package
+  firecracker 1.17.0-1.1, whose /usr/bin/firecracker and /usr/bin/jailer each
+  report v1.17.0 (read 2026-10-17), while the gate runs the pinned binary and
+  does not use the jailer (docs/build/workstation.md). Run r20261017T180954-5aa1
+  of make verify-workstation on the reference profile at this revision passed
+  sandbox/passthrough-limits, sandbox/vsock-transport, sandbox/boot-time and
+  sandbox/footprint again. Each rests on cargo test and tools/ tests inside make
+  verify-all or on the recorded runs, and none on simulated output. Development
+  evidence on the reference profile only; it closes no hardware gate.
 
 ### M26 - Aegis-built kernel with the pinned configuration
 
@@ -2995,7 +3078,7 @@ Epics:
 
 ### M28 - P05 native shell on gpui: layer surface, AT-SPI tree, frame time
 
-Rank 23. State: ready. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 25. State: ready. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M16, M27. Unblocks: M29, M30, M31.
 
@@ -3071,7 +3154,7 @@ Exit criteria:
   frame-time case counts, this milestone records whether HISS-03 binds gpui's
   per-frame work -- gpui rebuilds its AccessKit tree every frame
   (crates/gpui/src/window/a11y.rs) -- the question D83 answered for P17's
-  decoder.
+  decoder; D115 answers it with a scoped deviation.
 - `make verify-shell`, a new target outside make verify-all like verify-display,
   runs the live cases (surface, AT-SPI, pixels and timing) on the reference
   profile; without its capabilities it prints `SKIP: <reason>; the native shell
@@ -3148,7 +3231,7 @@ Epics:
 
 ### M29 - P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher
 
-Rank 25. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 26. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M28, M27. Unblocks: nothing.
 
@@ -3232,7 +3315,7 @@ Epics:
 
 ### M30 - P05 canvas accessibility: semantics, pointer alternatives, text scale
 
-Rank 26. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 27. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M28. Unblocks: nothing.
 
@@ -3291,7 +3374,7 @@ Epics:
 
 ### M31 - P12 D76 heads-up theme: reduced motion, security states, flash limit
 
-Rank 27. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 28. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M28. Unblocks: nothing.
 
@@ -3353,7 +3436,7 @@ Epics:
 
 ### M32 - P17 Scaena subtitle timing on a fixture clip with audio and subtitles
 
-Rank 28. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 23. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M27. Unblocks: nothing.
 
@@ -3738,9 +3821,12 @@ Exit criteria:
   preconditions, not image content
 - The A/B sysupdate transfer is exercised once between root-a and root-b, and
   observed transitions are compared with the M15 state machine
-- The M24 harness is reused unchanged except for the one pin scheme D85 moves
-  here, and the only new inputs are the Imago artifact and its pin; a criterion
-  states that no second boot apparatus is built here.
+- The M24 harness is reused with the changes D114 lists and no others: the pin
+  scheme D85 moves here, and branches keyed by the pin's signature scheme for
+  the overlay's backing format, the producer version and file rule, and the boot
+  success marker. The only new inputs are the Imago artifact, its pin and the
+  boot-report unit the Aegis image carries; a criterion states that no second
+  boot apparatus is built here.
 - The artifact's digest and signature are verified with the pinned cosign (2.6.3
   on the reference profile) before the boot runs, and a tampered-digest negative
   case is exercised.
@@ -3876,6 +3962,51 @@ Evidence:
   unchanged and one is added. Nothing else in this milestone changed; it stays
   ready by the register rule while its external BLOCKED-until criterion holds,
   and this entry is not evidence that any criterion is met.
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, on 2026-10-18
+  under controller decision aegis-os-e11-1-scheme-scope, E11-1's acceptance
+  gained its last sentence, which names the pin scheme. Before it, E11-1 ended
+  'This half moved from M24's criterion 2 and E24-1, whose requirements it
+  shares.' and named no scheme. The scheme is the signature form Imago's
+  aegis-build workflow produces at commit
+  6fd9c170be9b2038b17b26751560b5e17dbb36f8 (cosign sign-blob --bundle
+  SHA256SUMS.bundle SHA256SUMS, keyless, verified there with the workflow
+  identity and that issuer). It is not a relaxation: it fixes which signature is
+  accepted and adds the workflow SHA and ref, which the producer's own check
+  omits. tools/verify_boot_harness.py reads the scheme from a pin and builds the
+  cosign argument vector, and tools/test_boot_harness.py refuses a wrong issuer,
+  identity, workflow SHA or ref, a missing bundle, a failed or silent cosign run
+  and a SHA256SUMS with zero or two lines for the file, against a stubbed
+  cosign. No Imago artifact was verified or booted; the positive case waits for
+  an Imago build whose boot passes. Nothing else in this milestone changed; it
+  stays ready by the register rule while its external BLOCKED-until criterion
+  holds, and this entry is not evidence that any criterion is met.
+- Disclosure, in the shape M18 recorded, because a milestone that edits its own
+  bar must say so where the bar is judged: before any delivery, on 2026-10-18
+  under decision D114, the harness criterion and the title and acceptance of
+  E11-2 were rewritten. The criterion read 'The M24 harness is reused unchanged
+  except for the one pin scheme D85 moves here, and the only new inputs are the
+  Imago artifact and its pin; a criterion states that no second boot apparatus
+  is built here.', E11-2 was titled 'The Imago artifact runs through the M24
+  harness, changed only by the D85 pin scheme', and its acceptance read
+  'Positive: the Imago artifact is fed to the M24 harness with no change to the
+  harness except the pin scheme for its signature form that D85 moves here
+  (E11-1), and the harness reports the same evidence shape it reported for a
+  pinned upstream image. Negative: no second boot apparatus is built here -- any
+  other change to the harness fails this milestone rather than being absorbed
+  into it. Boundary: under decision D72 the real boot evidence is M24's epic and
+  the A/B transfer is E11-4's; what this milestone adds is the artifact, that
+  one pin scheme and the proof that the harness needed nothing else to accept
+  it.' This is a relaxation of the harness criterion and it is disclosed as one:
+  the harness may now change in the places D114 lists, which the old text
+  forbade, because the Imago artifact differs from the upstream image in format,
+  version, file name and console. What is not relaxed: the evidence shape is the
+  same (a nonce and PCR 0, 4, 7 and 11 read from inside the guest), any change
+  D114 does not list still fails the milestone, each new branch carries
+  positive, negative and boundary tests, and the upstream pin must still boot
+  unchanged. Nothing else in this milestone changed; it stays ready by the
+  register rule while its external BLOCKED-until criterion holds, and this entry
+  is not evidence that any criterion is met.
 
 Epics:
 
@@ -3889,17 +4020,26 @@ Epics:
   signature verify before the boot, a tampered digest or a bad signature is
   refused before boot and not during it, and the upstream pin M24 recorded still
   verifies unchanged. This half moved from M24's criterion 2 and E24-1, whose
-  requirements it shares.
-- **E11-2 The Imago artifact runs through the M24 harness, changed only by the
-  D85 pin scheme**. Requirements: REQ-P01-05, REQ-P01-01. Acceptance: Positive:
-  the Imago artifact is fed to the M24 harness with no change to the harness
-  except the pin scheme for its signature form that D85 moves here (E11-1), and
-  the harness reports the same evidence shape it reported for a pinned upstream
-  image. Negative: no second boot apparatus is built here -- any other change to
-  the harness fails this milestone rather than being absorbed into it. Boundary:
+  requirements it shares. The pin scheme is cosign-keyless-sha256sums: cosign
+  verify-blob --offline checks the release's SHA256SUMS against its bundle for
+  the exact certificate identity, the GitHub Actions OIDC issuer (host
+  token.actions.githubusercontent.com), the GitHub workflow SHA and the workflow
+  ref the pin records, and the artifact's digest is the one SHA256SUMS line
+  naming its file.
+- **E11-2 The Imago artifact runs through the M24 harness, changed only as D114
+  lists**. Requirements: REQ-P01-05, REQ-P01-01. Acceptance: Positive: the Imago
+  artifact is fed to the M24 harness changed only by the D85 pin scheme (E11-1)
+  and the D114 branches, and the harness reports the same evidence shape it
+  reported for a pinned upstream image: the nonce it handed the guest, and PCR
+  0, 4, 7 and 11, printed to the console by the boot-report unit in the Aegis
+  image. Negative: no second boot apparatus is built here -- any harness change
+  D114 does not list fails this milestone rather than being absorbed into it,
+  and each D114 branch refuses a pin that mixes the two kinds (an Imago pin with
+  a qcow2 format, a Fedora version or file name, and the reverse). Boundary:
   under decision D72 the real boot evidence is M24's epic and the A/B transfer
-  is E11-4's; what this milestone adds is the artifact, that one pin scheme and
-  the proof that the harness needed nothing else to accept it.
+  is E11-4's; the upstream pin M24 recorded boots unchanged through the same
+  harness; what this milestone adds is the artifact, that pin scheme, the D114
+  branches and the proof that the harness needed nothing else to accept it.
 - **E11-3 Analyzer gate without suppression in the image path**. Requirements:
   REQ-CI-01. Acceptance: Positive: the M03 gate passes on the image inputs.
   Negative: an ignored-key diagnostic fails the image acceptance. Boundary: no
@@ -6089,6 +6229,72 @@ against the decoder of `061bbde`.
   the crates.io release and the checksum the crates.io index records for it,
   with no override in the workspace manifest; the licence table in
   `docs/roadmap/toolchain-admission.md` lists each arm.
+
+### Decision on the Imago artifact shape (2026-10-18)
+
+- **D114** How does the Imago artifact boot through the M24 harness? M11's
+  harness criterion and E11-2 allowed one change to the harness, the pin scheme
+  D85 moves here (E11-1, cosign-keyless-sha256sums since PR #317). Imago's
+  aegis-build workflow (commit 6fd9c170be9b2038b17b26751560b5e17dbb36f8) returns
+  a raw disk, aegis-os.raw, under a release tag `aegis-<correlation-id>`, with
+  no MAJOR-MINOR.RESPIN version and no cloud-init. The harness hard-codes all
+  three: `prepare_guest` creates the overlay with `-F qcow2`,
+  `pin_value_problems` requires the Fedora version form and file name, and
+  `prompt_or_exit` waits for `LOGIN_PROMPT`, while the guest report reaches the
+  guest only through the NoCloud seed `write_seed` builds. Options: build an
+  Aegis-side qcow2 and cloud-init path for the Imago image; amend the bar so the
+  harness branches by pin kind; or ask Imago to return the Fedora shape.
+  **Decision (2026-10-18, controller id aegis-os-e11-2-amend-imago-shape,
+  paraphrased):** amend the bar. The harness branches by pin kind for the
+  backing format, which comes from the pin's format (raw or qcow2), for the
+  producer version and file rule, and for a success marker regex from the pin's
+  boot section; the upstream pin M24 recorded keeps today's path and boots
+  unchanged. The guest report ships in the Aegis image as a systemd unit that
+  prints the same AEGIS-M24 fields to the console; it is a build input, not
+  harness code. **Derived refinements (2026-10-18, controller id
+  aegis-os-d114-refinements, not part of the answer above):** the pin kind is
+  read from the pin's signature scheme (gpg keeps the upstream path, cosign
+  takes the Imago path); the Imago version is the request's correlation-id,
+  whose trailing four-digit ordinal is compared against a floor of the same
+  stem; the file name is `aegis-os.<format>`; and the boot-report unit takes the
+  nonce as a system credential passed by SMBIOS type 11
+  (`io.systemd.credential:`). This record is amended if the Imago boot shows the
+  guest without that credential. Changed paths: `tools/verify_boot_harness.py`
+  (`load_pin` and `pin_value_problems`, `fetch_pinned`, `check_cache`,
+  `verify_artifact` with `cosign_checksum` and `sha256sums_record`,
+  `prepare_guest`, `guest_argv`, `prompt_or_exit`),
+  `tools/test_boot_harness.py`, `docs/build/boot-harness.md`, and under
+  `build/mkosi.extra/` the boot-report unit and its script. Each branch carries
+  positive, negative and boundary tests. M11's harness criterion and E11-2 are
+  rewritten, with a disclosure entry; any other harness change still fails M11.
+
+- **D115** Does HISS-03 (no dynamic heap allocation in hot loops) bind gpui's
+  per-frame accessibility work on the native shell's path? M28 asks this before
+  E28-6's frame-time case counts. Options: a scoped deviation like D83, where
+  HISS-03 binds Aegis-authored code and gpui's allocation is named at its pin;
+  HISS-03 binds, and the allocation is removed upstream before the case counts;
+  the allocation is only recorded. Why: at zed commit
+  322cd509dcccaee1f6bc44725d270598ae8171ad (D102), while the AccessKit adapter
+  is active gpui rebuilds its tree every frame in
+  `crates/gpui/src/window/a11y.rs`: `mem::take` of `all_nodes` drops the
+  vector's capacity, `accesskit::Node::new` allocates per node, and
+  `repair_tree_update` collects an `FxHashSet`.
+  **Decision (2026-10-18):** a scoped deviation, the case D83 decided on
+  2026-09-28. HISS-03 binds the code Aegis writes. gpui's per-frame
+  accessibility allocation is a named deviation limited to the gpui revision
+  `Cargo.lock` pins, which enters through `crates/aegis-forum-shell-gpui` and no
+  other member, and it is reviewed at every re-pin of gpui. It grants nothing to
+  Aegis-authored code and waives no other invariant. E28-6 reports the
+  allocation's share of the frame time beside the frame-time figure. A gpui
+  change that keeps the vector's capacity is an upstream proposal and is not
+  part of this decision.
+  **Declared (2026-10-18):** D115 is the HISS-03 entry for
+  `crates/aegis-forum-shell-gpui/Cargo.toml` in the exceptions list of
+  `.standards.yaml`, category A, expiring 90 days after entry.
+  `tools/verify_deviations.py` (in `make verify-all`) fails once the entry
+  expires, and whenever its reason does not name the gpui revision `Cargo.lock`
+  pins: a re-pin of gpui fails the gate until the deviation is reviewed and the
+  entry renewed.
 
 ## Evidence
 
