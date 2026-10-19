@@ -20,8 +20,11 @@ from verify_shell import (  # noqa: E402
     ALLOCATOR_SYMBOLS,
     REFERENCE_LINE,
     TIMING_CASES,
+    WAYLAND_CLIENT_FLOOR,
+    XKBCOMMON_FLOOR,
     allocator_share,
     capability_reasons,
+    check_library_floors,
     compute_distribution,
     evaluate_timing,
     find_atspi_program,
@@ -1289,6 +1292,138 @@ class TestRefusedParameters(unittest.TestCase):
             (("schema", "aegis.p05-p17.mount-shell-canvas.v2"), ("layer", "middle")),
         ):
             self.assertEqual(changed, dict(verify_shell.REFERENCE_PARAMS, **{key: value}))
+
+
+class TestLibraryFloors(unittest.TestCase):
+    """libxkbcommon and libwayland-client floors checked before cases run (M28 criterion 1)."""
+
+    def test_positive_floors_at_floor_pass(self):
+        def fake_runner(argv, timeout):
+            if argv[2] == "xkbcommon":
+                return 0, f"{XKBCOMMON_FLOOR}\n", ""
+            if argv[2] == "wayland-client":
+                return 0, f"{WAYLAND_CLIENT_FLOOR}\n", ""
+            return 1, "", ""
+
+        status, msg, versions = check_library_floors(runner=fake_runner)
+        self.assertEqual(status, "ok")
+        self.assertIsNone(msg)
+        self.assertEqual(versions["xkbcommon"], XKBCOMMON_FLOOR)
+        self.assertEqual(versions["wayland-client"], WAYLAND_CLIENT_FLOOR)
+
+    def test_positive_floors_above_floor_pass(self):
+        def fake_runner(argv, timeout):
+            if argv[2] == "xkbcommon":
+                return 0, "1.13.2\n", ""
+            if argv[2] == "wayland-client":
+                return 0, "1.26.0\n", ""
+            return 1, "", ""
+
+        status, msg, versions = check_library_floors(runner=fake_runner)
+        self.assertEqual(status, "ok")
+        self.assertIsNone(msg)
+        self.assertEqual(versions["xkbcommon"], "1.13.2")
+        self.assertEqual(versions["wayland-client"], "1.26.0")
+
+    def test_negative_xkbcommon_below_floor_fails(self):
+        def fake_runner(argv, timeout):
+            if argv[2] == "xkbcommon":
+                return 0, "0.9.0\n", ""
+            if argv[2] == "wayland-client":
+                return 0, f"{WAYLAND_CLIENT_FLOOR}\n", ""
+            return 1, "", ""
+
+        status, msg, _ = check_library_floors(runner=fake_runner)
+        self.assertEqual(status, "fail")
+        self.assertIn("xkbcommon", msg)
+        self.assertIn("0.9.0", msg)
+        self.assertIn(XKBCOMMON_FLOOR, msg)
+
+    def test_negative_wayland_client_below_floor_fails(self):
+        def fake_runner(argv, timeout):
+            if argv[2] == "xkbcommon":
+                return 0, f"{XKBCOMMON_FLOOR}\n", ""
+            if argv[2] == "wayland-client":
+                return 0, "1.10.0\n", ""
+            return 1, "", ""
+
+        status, msg, _ = check_library_floors(runner=fake_runner)
+        self.assertEqual(status, "fail")
+        self.assertIn("wayland-client", msg)
+        self.assertIn("1.10.0", msg)
+        self.assertIn(WAYLAND_CLIENT_FLOOR, msg)
+
+    def test_boundary_equal_to_floor_passes(self):
+        def fake_runner(argv, timeout):
+            if argv[2] == "xkbcommon":
+                return 0, "1.0.0\n", ""
+            if argv[2] == "wayland-client":
+                return 0, "1.11.0\n", ""
+            return 1, "", ""
+
+        status, msg, versions = check_library_floors(runner=fake_runner)
+        self.assertEqual(status, "ok")
+        self.assertIsNone(msg)
+        self.assertEqual(versions["xkbcommon"], "1.0.0")
+        self.assertEqual(versions["wayland-client"], "1.11.0")
+
+    def test_boundary_unparsable_version_fails(self):
+        def fake_runner(argv, timeout):
+            if argv[2] == "xkbcommon":
+                return 0, "1.x.0\n", ""
+            if argv[2] == "wayland-client":
+                return 0, f"{WAYLAND_CLIENT_FLOOR}\n", ""
+            return 1, "", ""
+
+        status, msg, _ = check_library_floors(runner=fake_runner)
+        self.assertEqual(status, "fail")
+        self.assertIn("xkbcommon", msg)
+        self.assertIn("unparsable", msg)
+
+    def test_boundary_missing_xkbcommon_skips(self):
+        def fake_runner(argv, timeout):
+            if argv[2] == "xkbcommon":
+                return 1, "", "Package xkbcommon was not found"
+            return 0, "1.26.0\n", ""
+
+        status, msg, _ = check_library_floors(runner=fake_runner)
+        self.assertEqual(status, "skip")
+        self.assertIn("xkbcommon", msg)
+
+    def test_boundary_missing_wayland_client_skips(self):
+        def fake_runner(argv, timeout):
+            if argv[2] == "wayland-client":
+                return 1, "", "Package wayland-client was not found"
+            return 0, "1.13.2\n", ""
+
+        status, msg, _ = check_library_floors(runner=fake_runner)
+        self.assertEqual(status, "skip")
+        self.assertIn("wayland-client", msg)
+
+    def test_main_exits_zero_on_missing_module_with_skip(self):
+        def fake_runner(argv, timeout):
+            return 1, "", "Package not found"
+
+        stdout = io.StringIO()
+        with patch("sys.stdout", stdout):
+            code = main(argv=["--timing-out", "/tmp/nonexistent"], runner=fake_runner)
+        self.assertEqual(code, 0)
+        self.assertIn("SKIP:", stdout.getvalue())
+
+    def test_main_exits_nonzero_on_below_floor_with_fail(self):
+        def fake_runner(argv, timeout):
+            if "xkbcommon" in argv:
+                return 0, "0.5.0\n", ""
+            if "wayland-client" in argv:
+                return 0, "1.26.0\n", ""
+            return 0, "1.0.0\n", ""
+
+        stdout = io.StringIO()
+        with patch("sys.stdout", stdout), patch("verify_shell.capability_reasons", return_value=[]):
+            code = main(argv=["--timing-out", "/tmp/nonexistent"], runner=fake_runner)
+        self.assertEqual(code, 1)
+        self.assertIn("FAIL:", stdout.getvalue())
+        self.assertIn("xkbcommon", stdout.getvalue())
 
 
 if __name__ == "__main__":

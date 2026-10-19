@@ -11,6 +11,7 @@
 //! | Module | Holds |
 //! | :--- | :--- |
 //! | [`capture`] | live KWin ScreenShot2 reader capturing raw pixels over D-Bus |
+//! | [`convert`] | converts accesskit 0.25.1 tree updates to gpui's 0.24.1 format |
 //! | [`fixture`] | accessibility test surface, defect variants, and seeded node tree |
 //! | [`judge`] | pure rules evaluating AT-SPI accessibility trees against acceptance criteria |
 //! | [`layer`] | the P17 `MOUNT_SHELL_CANVAS` parameters mapped onto gpui's `LayerShellOptions` |
@@ -24,6 +25,7 @@
 //! | `timing_fixture` (feature `timing`) | frame-time measurement surface driving gpui profiler traces and AccessKit log capture |
 
 pub mod capture;
+pub mod convert;
 pub mod fixture;
 pub mod judge;
 pub mod layer;
@@ -37,4 +39,5 @@ pub mod timing;
 #[cfg(feature = "timing")]
 pub mod timing_fixture;
 
+pub use convert::{ConvertError, to_gpui};
 pub use layer::{LayerMapError, layer_shell_options};
