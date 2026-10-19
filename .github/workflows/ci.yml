@@ -168,9 +168,25 @@ jobs:
             && go build -trimpath -buildvcs=false \
               -o "$RUNNER_TEMP/bin/praetorctl" ./cmd/standardsctl )
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          # The hook launcher .config/lefthook/engine.sh runs the engine from
+          # its cache under the pin and fills a cold cache with a second
+          # "go install" of the same commit. Run 39328609008 failed when that
+          # fetch hit a sum.golang.org stream error. Seeding the cache with the
+          # binary built and verified above removes the second fetch.
+          engine="${XDG_CACHE_HOME:-$HOME/.cache}/praetor/engine/$PRAETOR_REF"
+          mkdir -p "$engine"
+          cp "$RUNNER_TEMP/bin/praetorctl" "$engine/standardsctl"
           # The Praetor checkout is a build input only; the preparation gate must
           # not scan or publish it as Aegis repository content.
           rm -rf praetor-src
+
+      # With the module proxy off, the launcher fails unless it finds the
+      # seeded engine, so a seed path that drifts from the launcher's lookup
+      # fails here instead of falling back to a network install.
+      - name: Prove the hook launcher runs the seeded engine offline
+        env:
+          GOPROXY: "off"
+        run: sh .config/lefthook/engine.sh version
 
       - name: Install pinned lefthook
         run: |
