@@ -272,7 +272,7 @@ class AdmissionTests(unittest.TestCase):
 
     def test_the_milestone_pins_are_the_recorded_versions(self):
         pinned = {row[0]: row[4] for row in gate.TOOLCHAIN}
-        self.assertEqual(pinned["qemu-system-x86_64"], "11.1.1")
+        self.assertEqual(pinned["qemu-system-x86_64"], "11.1.2")
         self.assertEqual(pinned["swtpm"], "0.10.2")
         self.assertEqual(pinned["sbsign"], "0.9.5")
         self.assertEqual(pinned["virt-firmware"], "26.9")

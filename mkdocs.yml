@@ -113,6 +113,7 @@ nav:
       - eBPF fixtures and verifier evidence: build/bpf.md
       - Latency fixture and determinism verdicts: build/latency.md
       - Boot harness over a pinned upstream image: build/boot-harness.md
+      - P05 live session in a VM, pinned guest services: build/live-session.md
       - Accessibility harness over the P12 tokens: build/accessibility-harness.md
       - Contract pair against the pinned producers: build/contract-pair.md
       - P05 Forum shell model and tree check: build/forum-shell.md

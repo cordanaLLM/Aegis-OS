@@ -665,7 +665,7 @@ runs, or a floor edited on this page alone, fails `make verify-all`.
 
 | Tool | Reference-profile version | Floor | Role |
 | :--- | :--- | :--- | :--- |
-| qemu-system-x86_64 | 11.1.1 | none declared | the guest that boots the kernel under test |
+| qemu-system-x86_64 | 11.1.2 | none declared | the guest that boots the kernel under test |
 | cyclictest | 2.10 | 2.10 | the measurement itself |
 | cpio | 2.15 | none declared | the guest initramfs |
 | ldd | 2.44 | none declared | the guest programs' shared-library closure |
@@ -768,8 +768,8 @@ each project's own release listing.
 
 | Tool | Reference-profile version | Floor | Latest upstream, read 2026-09-28 | Role |
 | :--- | :--- | :--- | :--- | :--- |
-| qemu-system-x86_64 | 11.1.1 | none declared | 11.1.1, `download.qemu.org` | every guest, `accel=kvm` with no fallback |
-| qemu-img | 11.1.1 | none declared | 11.1.1 | each boot's throwaway overlay, and the read-only ESP copy |
+| qemu-system-x86_64 | 11.1.2 | none declared | 11.1.2, `download.qemu.org`, read 2026-10-19 | every guest, `accel=kvm` with no fallback |
+| qemu-img | 11.1.2 | none declared | 11.1.2, read 2026-10-19 | each boot's throwaway overlay, and the read-only ESP copy |
 | swtpm | 0.10.2 | none declared | 0.10.2, `v0.10.2` of 2026-08-19 | the guest's TPM 2.0, one instance per boot |
 | swtpm_setup | 0.10.2 | none declared | 0.10.2, same release | manufactures each boot's TPM state: EK, sha256 bank only |
 | virt-firmware (`virt-fw-vars`) | 26.9 | none declared | 26.9, PyPI | every guest variable store, from the shipped template |
@@ -1108,7 +1108,7 @@ well, so criterion 3's pinned emulator is shared rather than admitted twice.
 
 | Tool | Reference-profile version | Floor | Latest upstream, read 2026-09-29 | Role |
 | :--- | :--- | :--- | :--- | :--- |
-| qemu-system-x86_64 | 11.1.1 | none declared | 11.1.1, as M24 records | both guests, `-enable-kvm`; the gate skips without a read-write `/dev/kvm` |
+| qemu-system-x86_64 | 11.1.2 | none declared | 11.1.2, as M24 records | both guests, `-enable-kvm`; the gate skips without a read-write `/dev/kvm` |
 | cpio | 2.15 | none declared | as M23 records | the two initramfs archives, through M23's `archive_tree` |
 | ldd | 2.44 | none declared | as M23 records | the guest userspace's library closure |
 | bash | 5.3.15 | 4.2 | as M23 records | the guest's PID 1 and the host half of the probe |
@@ -1261,6 +1261,20 @@ to run under a deadline.
 | tpm2_print | `-t TPMS_ATTEST <msg>` | extracts `pcrSelect` for client selection enforcement |
 | tpm2_flushcontext | `-t` or `-s` | flushes transient and session contexts to avoid `0x902` memory exhaustion |
 | cargo | `cargo run --locked --offline -q -p aegis-justitia --example record_digest [other]` | computes canonical audit-record digests |
+
+## The live session gate's toolchain (M29)
+
+`make verify-session` (E29-4) admits no tool of its own. It runs four of M24's
+rows above -- qemu-system-x86_64, xorriso, gpg and curl -- read back through
+`tools/verify_boot_harness.py`'s own `TOOLCHAIN` list under the same rule: a
+floor refuses an older tool, and a version other than the recorded one prints
+beside it. The guest image it boots is pinned in `build/session/guest.pin.json`
+and described in `docs/build/live-session.md`.
+
+QEMU's rows moved from 11.1.1 to 11.1.2 on 2026-10-19 in M23's, M24's and
+M10's tables together, since M10 and M29 reuse M23's and M24's rows; 11.1.2 is
+the version the reference profile prints and the newest release
+`download.qemu.org` lists on that day.
 
 ## Not yet admitted
 
