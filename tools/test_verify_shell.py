@@ -365,6 +365,9 @@ class TestVerifyShellNegative(unittest.TestCase):
         self.assertIn("unexpectedly listed zwlr_layer_shell_v1", why)
 
     def test_main_missing_kwin_prints_skip(self):
+        def floors_met(argv, timeout):
+            return 0, "1.26.0\n", ""
+
         with patch.object(
             verify_shell,
             "capability_reasons",
@@ -372,13 +375,31 @@ class TestVerifyShellNegative(unittest.TestCase):
         ):
             buf = io.StringIO()
             with patch("sys.stdout", buf):
-                code = main()
+                code = main(argv=[], runner=floors_met)
             self.assertEqual(code, 0)
             output = buf.getvalue()
             expected = "SKIP: kwin_wayland is not installed; the native shell gate did not run.\n"
             self.assertEqual(output, expected)
             self.assertTrue(output.startswith("SKIP: "))
             self.assertTrue(output.strip().endswith("; the native shell gate did not run."))
+
+    def test_missing_capability_skips_without_reading_floors(self):
+        def no_pkg_config(argv, timeout):
+            raise verify_shell.GateError("pkg-config: not found")
+
+        with patch.object(
+            verify_shell,
+            "capability_reasons",
+            return_value=["pkg-config is not installed"],
+        ):
+            buf = io.StringIO()
+            with patch("sys.stdout", buf):
+                code = main(argv=[], runner=no_pkg_config)
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            buf.getvalue(),
+            "SKIP: pkg-config is not installed; the native shell gate did not run.\n",
+        )
 
 
 class TestVerifyShellBoundary(unittest.TestCase):

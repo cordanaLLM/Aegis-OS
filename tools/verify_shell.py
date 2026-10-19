@@ -1885,10 +1885,14 @@ def check_prerequisites(argv, runner=run_command):
         sys.stdout.write("RESULT error: --timing-out requires a path argument\n")
         return 1, None
 
+    # Floors are read only once pkg-config is known to exist, so a host
+    # without it skips instead of raising.
     reasons = capability_reasons()
-    status, msg, lib_versions = check_library_floors(runner=runner)
-    if status == "skip":
-        reasons.append(msg)
+    status, msg, lib_versions = "skip", None, {}
+    if not reasons:
+        status, msg, lib_versions = check_library_floors(runner=runner)
+        if status == "skip":
+            reasons.append(msg)
     if reasons:
         sys.stdout.write(f"SKIP: {'; '.join(reasons)}; the native shell gate did not run.\n")
         sys.stdout.flush()
