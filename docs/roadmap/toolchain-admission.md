@@ -104,7 +104,14 @@ than a silent upgrade. No dependency here replaces an earlier one: the crate is
 new at M02, and the MD5 hashing the imported sketch used was dropped for the
 SHA-256 trait boundary (D02) rather than substituted crate for crate.
 
-| Crate | Pinned version | How it is pinned | Role | Admitted by |
+The versions this section names are the versions each crate had when it was
+admitted, and they stay as that record. Lock-file maintenance later moves a
+resolution inside the requirement `Cargo.toml` declares without a new
+admission, so `Cargo.lock` holds the current resolution.
+`tools/test_admission_history.py` keeps this table's header and requires every
+crate it admits to still be in the lock.
+
+| Crate | Version at admission | How it is pinned | Role | Admitted by |
 | :--- | :--- | :--- | :--- | :--- |
 | base16ct | 1.0.0 | `[workspace.dependencies]`, `default-features = false` | lower-case hexadecimal digest rendering and parsing | M02 |
 | sha2 | 0.11.0 | `[workspace.dependencies]`, `default-features = false` | the single `LedgerHasher` implementation (D02); since M25 the sha256 of the DMA-BUF read-back in `crates/aegis-vulcan-gpu` | M02 |
@@ -123,7 +130,7 @@ SHA-256 trait boundary (D02) rather than substituted crate for crate.
 | saeptum-microvm | git revision `997a1b34f0a2912de8bf67231846b3af512ff041` of plurano/saeptum (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta-sandbox` | the Firecracker configuration, the hybrid-vsock line framing, the VM process, the guest listener and the guest's boot-complete signal, cut from `aegis-vesta-sandbox` (cut unit CUT-1632-04); carries socket2 and libc | CUT-1632-04, 2026-10-16 |
 | tornus-geometry | git revision `df214e113701297d995cd3d14ffd877bd0cf8d27` of plurano/tornus (package 0.1.0, EUPL-1.2), the head of `main` read on 2026-10-18; since the cut commit `b2710c8ef386275db352bab06bfa4b8eb6859411` only repository governance files changed, not the crate source | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-hephaestus` | the geometry and meshing bounds, the `STEP` source name, the solver admission and the wire form of the bounded values, cut from `aegis-hephaestus` (cut unit CUT-1632-01) | CUT-1632-01, 2026-10-16 |
 
-The resolved graph the first seven pull in is fixed by `Cargo.lock`: block-buffer
+At admission, `Cargo.lock` resolved the graph the first seven pull in to: block-buffer
 0.12.1, cfg-if 1.0.4, cpufeatures 0.3.1, crypto-common 0.2.2, digest 0.11.3,
 dyn-clone 1.0.20, hybrid-array 0.4.15, itoa 1.0.18, libc 0.2.189, memchr 2.8.3,
 proc-macro2 1.0.107, quote 1.0.47, ref-cast 1.0.27, ref-cast-impl 1.0.27,
