@@ -24,7 +24,9 @@ One run:
 5. moves the pin in ci.yml and in docs/roadmap/toolchain-admission.md;
 6. runs the repository's gates with the pinned praetorctl first on PATH;
 7. GREEN: commits with sign-off and force-pushes the one rolling branch,
-   opening or updating its pull request. RED: pushes nothing, writes the log to
+   opening or updating its pull request, and writes dated evidence to
+   .workingdir/evidence/praetor-bump-<sha7>-green-<UTC time>.log.
+   RED: pushes nothing, writes the log to
    .workingdir/evidence/praetor-bump-<sha7>.log, keeps the worktree until the
    next run that has work, and hands one line to the local notifier.
 
@@ -1260,11 +1262,51 @@ def notify(session, line):
     return True
 
 
-def red(session, plan, tree, error):
-    """Record a failed bump: evidence in the primary checkout, worktree kept."""
+def evidence_dir(session):
+    """Return the primary checkout's evidence folder, created when missing."""
     evidence = session.args.repo / ".workingdir" / "evidence"
     evidence.mkdir(parents=True, exist_ok=True)
-    evidence = evidence / f"praetor-bump-{plan.target[:7]}.log"
+    return evidence
+
+
+def green_text(plan, report, red_log, gates, log, published):
+    """Return the GREEN evidence: the pin move, the gates and their results, then the log."""
+    forge = f"{ROLLING_BRANCH} pushed" if published else "nothing pushed (--no-publish)"
+    return "\n".join(
+        [
+            f"praetor bump to {plan.target} on Aegis {plan.base}: GREEN",
+            f"pin: {plan.pin} -> {plan.target}",
+            f"forge: {forge}",
+            f"supersedes: {red_log if red_log.is_file() else 'no RED log for this head'}",
+            "",
+            "== gates ==",
+            *gates,
+            "",
+            "== skips ==",
+            *(report.skips or ["(none)"]),
+            "",
+            "== full log ==",
+            log,
+            "",
+        ]
+    )
+
+
+def green(session, plan, report, published):
+    """Record a green bump in its own dated file, so no earlier RED log stays the newest."""
+    evidence = evidence_dir(session)
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    path = evidence / f"praetor-bump-{plan.target[:7]}-green-{stamp}.log"
+    red_log = evidence / f"praetor-bump-{plan.target[:7]}.log"
+    gates = [entry for entry in session.entries if entry.startswith("gate ")]
+    text = green_text(plan, report, red_log, gates, session.log_text(), published)
+    write_exact(path, text)
+    session.note(f"GREEN evidence: {path}")
+
+
+def red(session, plan, tree, error):
+    """Record a failed bump: evidence in the primary checkout, worktree kept."""
+    evidence = evidence_dir(session) / f"praetor-bump-{plan.target[:7]}.log"
     text = evidence_text(plan, tree, error, session.log_text(), session.pushed)
     write_exact(evidence, text)
     marker = failure_marker(session.cache, plan, session.args.plain_adopt)
@@ -1290,6 +1332,7 @@ def execute(session, plan):
         published = publish(session, plan, tree, report)
     except BumpError as error:
         return red(session, plan, tree, error)
+    green(session, plan, report, published)
     if published:
         clean(session)
     return 0
