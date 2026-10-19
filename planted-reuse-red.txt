@@ -1,0 +1,3 @@
+# SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+# SPDX-License-Identifier: Zlib
+Planted defect: names a licence with no text in LICENSES/. This pull request is closed unmerged.
