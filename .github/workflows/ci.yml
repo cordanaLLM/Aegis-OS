@@ -57,7 +57,7 @@ env:
   TRIVY_VERSION: "0.76.0"
   TRIVY_SHA256: "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7"
   # renovate: datasource=pypi depName=semgrep
-  SEMGREP_VERSION: "1.180.0"
+  SEMGREP_VERSION: "1.181.0"
   # Published Praetor commit that builds the praetorctl this gate pins. The
   # name is the one Praetor's hook launcher looks for under .github/workflows,
   # so local hooks and this job resolve the same engine; a full commit SHA.
