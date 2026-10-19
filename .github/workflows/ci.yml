@@ -27,25 +27,36 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # renovate: datasource=github-releases depName=evilmartians/lefthook
   LEFTHOOK_VERSION: "2.1.12"
   LEFTHOOK_SHA256: "22ff1ad48d1a0f4dca8d6b7e920056c6a9015f9204e5b693858ed9c2db759a16"
+  # renovate: datasource=pypi depName=reuse
   REUSE_VERSION: "6.2.0"
+  # renovate: datasource=npm depName=markdownlint-cli2
   MARKDOWNLINT_VERSION: "0.23.2"
+  # renovate: datasource=pypi depName=yamllint
   YAMLLINT_VERSION: "1.38.0"
+  # renovate: datasource=pypi depName=flake8
   FLAKE8_VERSION: "7.3.0"
+  # renovate: datasource=pypi depName=black
   BLACK_VERSION: "26.5.1"
   # shfmt-py on PyPI ships the shfmt release binary; 4.2.0 carries shfmt 3.14.1.
+  # renovate: datasource=pypi depName=shfmt-py
   SHFMT_VERSION: "4.2.0"
+  # renovate: datasource=pypi depName=codespell
   CODESPELL_VERSION: "2.4.3"
   # Security scanners .standards.yaml declares, each a release binary checked
   # against the sha256 its release publishes, or a PyPI pin. Trivy is the
   # binary, not aquasecurity/trivy-action: the action's tags were rewritten in
   # the March 2026 compromise (CVE-2026-33634), and a binary pinned by digest
   # cannot move under a tag.
+  # renovate: datasource=github-releases depName=gitleaks/gitleaks
   GITLEAKS_VERSION: "8.30.1"
   GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+  # renovate: datasource=github-releases depName=aquasecurity/trivy
   TRIVY_VERSION: "0.75.0"
   TRIVY_SHA256: "c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f"
+  # renovate: datasource=pypi depName=semgrep
   SEMGREP_VERSION: "1.180.0"
   # Published Praetor commit that builds the praetorctl this gate pins. The
   # name is the one Praetor's hook launcher looks for under .github/workflows,
@@ -54,10 +65,13 @@ env:
   # D80 libva floor on this runner (maintainer decision of 2026-09-29): the
   # intel/libva release tarball, its sha256 as the GitHub release publishes it,
   # and the meson and ninja wheels that build it, each pinned by its PyPI sha256.
+  # renovate: datasource=github-releases depName=intel/libva
   LIBVA_VERSION: "2.24.1"
   LIBVA_SHA256: "eec6050b52876f229bd35e9df17cd31a06785e18e6f7990c445b584628483d67"
+  # renovate: datasource=pypi depName=meson
   MESON_VERSION: "1.12.1"
   MESON_WHEEL_SHA256: "930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02"
+  # renovate: datasource=pypi depName=ninja
   NINJA_VERSION: "1.13.2"
   NINJA_WHEEL_SHA256: "65a24341b5ac09fcadcc37082660be40a94174e51a937fabf6e2cae26225fa2c"
 
