@@ -31,6 +31,9 @@ jobs:
     # continue-on-error as a required status context, and this check is not
     # one. Findings reach the code scanning alerts either way.
     continue-on-error: true
+    # A draft pull request skips the analysis; marking it ready for review
+    # starts the run. Pushes and the weekly run carry no draft flag.
+    if: github.event.pull_request.draft != true
     permissions:
       contents: read
       security-events: write
@@ -40,9 +43,6 @@ jobs:
       fail-fast: false
       matrix:
         language: [actions, python, javascript-typescript, rust]
-    # No draft step: a failed draft step under continue-on-error would report
-    # success, so drafts run in full under the HISS-18 exception for this file
-    # in .standards.yaml.
     steps:
       - name: Check out the source
         # yamllint disable-line rule:line-length
