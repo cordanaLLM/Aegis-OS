@@ -38,12 +38,11 @@ class TestCacheDir(unittest.TestCase):
 
     def test_neither_set_uses_home_cache(self):
         """Boundary: neither env var set falls back to ~/.cache/<name>."""
-        with mock.patch.dict(os.environ, {}, clear=True):
-            expected = Path.home() / ".cache" / "aegis-test"
-            self.assertEqual(
-                gate_common.cache_dir("AEGIS_TEST_DIR", "aegis-test", environ={}),
-                expected,
-            )
+        expected = Path.home() / ".cache" / "aegis-test"
+        self.assertEqual(
+            gate_common.cache_dir("AEGIS_TEST_DIR", "aegis-test", environ={}),
+            expected,
+        )
 
     def test_positive_override_tilde_expands_to_home(self):
         """Positive: override path starting with ~/ expands to user home directory."""
