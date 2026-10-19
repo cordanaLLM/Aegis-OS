@@ -210,9 +210,9 @@ TOOLCHAIN = (
         ["qemu-system-x86_64", "--version"],
         r"QEMU emulator version (\d+(?:\.\d+)*)",
         None,
-        "11.1.1",
+        "11.1.2",
     ),
-    ("qemu-img", ["qemu-img", "--version"], r"qemu-img version (\d+(?:\.\d+)*)", None, "11.1.1"),
+    ("qemu-img", ["qemu-img", "--version"], r"qemu-img version (\d+(?:\.\d+)*)", None, "11.1.2"),
     ("swtpm", ["swtpm", "--version"], r"TPM emulator version (\d+(?:\.\d+)*)", None, "0.10.2"),
     (
         "swtpm_setup",

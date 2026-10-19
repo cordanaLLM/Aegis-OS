@@ -131,7 +131,7 @@ TOOLCHAIN = (
         ["qemu-system-x86_64", "--version"],
         r"QEMU emulator version (\d+(?:\.\d+)*)",
         None,
-        "11.1.1",
+        "11.1.2",
     ),
     ("cyclictest", ["cyclictest", "--help"], r"cyclictest V (\d+(?:\.\d+)*)", "2.10", "2.10"),
     ("cpio", ["cpio", "--version"], r"cpio \(GNU cpio\) (\d+(?:\.\d+)*)", None, "2.15"),

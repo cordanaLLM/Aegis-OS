@@ -1,0 +1,39 @@
+{
+  "schema": "aegis.m29.session-guest-pin.v1",
+  "name": "Fedora-KDE-Desktop-Live",
+  "version": "44-1.7",
+  "version-floor": "44-1.7",
+  "architecture": "x86_64",
+  "format": "iso",
+  "file": "Fedora-KDE-Desktop-Live-44-1.7.x86_64.iso",
+  "url": "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/KDE/x86_64/iso/Fedora-KDE-Desktop-Live-44-1.7.x86_64.iso",
+  "sha256": "c8295961d4c41adbf785a31a17c21a971d3b7415fda72dcad0c11c49577bf03a",
+  "size": 3368683520,
+  "signature": {
+    "scheme": "gpg-clearsigned-checksum",
+    "checksum-file": "Fedora-KDE-44-1.7-x86_64-CHECKSUM",
+    "checksum-url": "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/KDE/x86_64/iso/Fedora-KDE-44-1.7-x86_64-CHECKSUM",
+    "key-url": "https://fedoraproject.org/fedora.gpg",
+    "fingerprint": "36F612DCF27F7D1A48A835E4DBFCF71C6D9F90A6"
+  },
+  "boot": {
+    "kernel": "boot/x86_64/loader/linux",
+    "initrd": "boot/x86_64/loader/initrd",
+    "volume-id": "Fedora-KDE-Live-44",
+    "live-user": "liveuser",
+    "memory-mib": 4096,
+    "cpus": 4,
+    "session-deadline-seconds": 300,
+    "report-deadline-seconds": 600,
+    "shutdown-deadline-seconds": 120
+  },
+  "services": [
+    {"label": "compositor", "bus": "session", "name": "org.kde.KWin", "deadline-seconds": 60},
+    {"label": "portal", "bus": "session", "name": "org.freedesktop.portal.Desktop", "deadline-seconds": 60},
+    {"label": "portal-backend", "bus": "session", "name": "org.freedesktop.impl.portal.desktop.kde", "deadline-seconds": 60},
+    {"label": "a11y-bus", "bus": "session", "name": "org.a11y.Bus", "deadline-seconds": 60},
+    {"label": "at-spi2-registry", "bus": "a11y", "name": "org.a11y.atspi.Registry", "deadline-seconds": 60},
+    {"label": "watcher", "bus": "session", "name": "org.kde.StatusNotifierWatcher", "deadline-seconds": 60}
+  ],
+  "required-globals": ["zwlr_layer_shell_v1"]
+}

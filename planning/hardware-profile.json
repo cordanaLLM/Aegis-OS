@@ -182,7 +182,9 @@
   "toolchain": {
     "qemu-system-x86_64": {
       "present": true,
-      "version": "QEMU emulator version 11.1.1"
+      "version": "QEMU emulator version 11.1.2",
+      "recorded_on": "2026-10-19",
+      "previous": "QEMU emulator version 11.1.1 on 2026-09-28"
     },
     "swtpm": {
       "present": true,
