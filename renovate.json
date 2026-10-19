@@ -109,6 +109,23 @@
         ".github/workflows/reuse.yml"
       ],
       "enabled": false
+    },
+    {
+      "description": "CI tool pins with digest verification in .github/workflows/ci.yml: Renovate cannot compute binary/wheel SHA256 digests, so the matching *_SHA256 must be refreshed by hand; CI sha256sum -c fails until then",
+      "matchFileNames": [
+        ".github/workflows/ci.yml"
+      ],
+      "matchPackageNames": [
+        "evilmartians/lefthook",
+        "gitleaks/gitleaks",
+        "aquasecurity/trivy",
+        "intel/libva",
+        "meson",
+        "ninja"
+      ],
+      "prBodyNotes": [
+        "The matching `*_SHA256` or `*_WHEEL_SHA256` pin in `.github/workflows/ci.yml` must be refreshed by hand; CI `sha256sum -c` fails until updated."
+      ]
     }
   ],
   "customManagers": [
@@ -136,6 +153,17 @@
       "depNameTemplate": "node",
       "datasourceTemplate": "node-version",
       "versioningTemplate": "node"
+    },
+    {
+      "description": "CI tool pins in .github/workflows/ci.yml",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/ci\\.yml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+?) depName=(?<depName>[^\\s]+?)\\s*\\n\\s*(?<envKey>[A-Z0-9_]+_VERSION):\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "extractVersionTemplate": "^v?(?<version>.*)$"
     }
   ]
 }
