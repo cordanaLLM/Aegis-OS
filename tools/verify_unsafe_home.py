@@ -105,36 +105,60 @@ def _mask_string(text, i, n, out):
     return i
 
 
+def _mask_comment(text, i, n, out):
+    """Mask line or block comments with spaces. Returns advanced index."""
+    if i + 1 >= n:
+        return i
+    if text[i : i + 2] == "//":
+        while i < n and text[i] != "\n":
+            out.append(" ")
+            i += 1
+        return i
+    if text[i : i + 2] == "/*":
+        return _mask_block_comment(text, i, n, out)
+    return i
+
+
+def _mask_raw_string_candidate(text, i, n, out):
+    """Mask raw string literal if prefix matches. Returns advanced index."""
+    if text[i] == "r" and i + 1 < n and (text[i + 1] in ('"', "#")):
+        return _mask_raw_string(text, i, n, out)
+    return i
+
+
+def _mask_char_literal(text, i, n, out):
+    """Mask character literal ('c' or '\\c') with spaces. Returns advanced index."""
+    if i + 2 < n and text[i + 2] == "'":
+        out.extend([" "] * 3)
+        return i + 3
+    if i + 3 < n and text[i + 1] == "\\" and text[i + 3] == "'":
+        out.extend([" "] * 4)
+        return i + 4
+    return i
+
+
 def mask_rust(text):
     """Replace comments and string literals with spaces, preserving newlines."""
     out = []
     i = 0
     n = len(text)
     while i < n:
-        if i + 1 < n and text[i : i + 2] == "//":
-            while i < n and text[i] != "\n":
-                out.append(" ")
-                i += 1
+        next_i = _mask_comment(text, i, n, out)
+        if next_i != i:
+            i = next_i
             continue
-        if i + 1 < n and text[i : i + 2] == "/*":
-            i = _mask_block_comment(text, i, n, out)
-            continue
-        if text[i] == "r" and i + 1 < n and (text[i + 1] in ('"', "#")):
-            orig_i = i
-            i = _mask_raw_string(text, i, n, out)
-            if i != orig_i:
+        if text[i] == "r":
+            next_i = _mask_raw_string_candidate(text, i, n, out)
+            if next_i != i:
+                i = next_i
                 continue
         if text[i] == '"':
             i = _mask_string(text, i, n, out)
             continue
         if text[i] == "'":
-            if i + 2 < n and text[i + 2] == "'":
-                out.extend([" "] * 3)
-                i += 3
-                continue
-            if i + 3 < n and text[i + 1] == "\\" and text[i + 3] == "'":
-                out.extend([" "] * 4)
-                i += 4
+            next_i = _mask_char_literal(text, i, n, out)
+            if next_i != i:
+                i = next_i
                 continue
         out.append(text[i])
         i += 1
@@ -319,6 +343,36 @@ def check_vulcan_gpu_safety(root):
     return problems
 
 
+def _check_exception_dates(entry, today):
+    """Validate entered and expires dates against bounds and current date."""
+    problems = []
+    try:
+        entered = datetime.date.fromisoformat(entry.get("entered", ""))
+    except ValueError:
+        entered = None
+        msg = f"{VULCAN_GPU_MANIFEST}: exception entered date missing or invalid"
+        problems.append(msg)
+
+    try:
+        expires = datetime.date.fromisoformat(entry.get("expires", ""))
+    except ValueError:
+        expires = None
+        msg = f"{VULCAN_GPU_MANIFEST}: exception expires date missing or invalid"
+        problems.append(msg)
+
+    if entered and expires:
+        limit = entered + datetime.timedelta(days=CATEGORY_DAYS)
+        if expires > limit:
+            problems.append(
+                f"{VULCAN_GPU_MANIFEST}: exception expires {expires} > entered + "
+                f"{CATEGORY_DAYS} days ({limit})"
+            )
+        if expires < today:
+            problems.append(f"{VULCAN_GPU_MANIFEST}: exception expired on {expires}")
+
+    return problems
+
+
 def check_exception_entry(root, today):
     """Check rule 5: exactly one valid HISS-09 exception in .standards.yaml."""
     manifest_path = root / MANIFEST
@@ -348,29 +402,7 @@ def check_exception_entry(root, today):
             f"found {entry.get('category')!r}"
         )
 
-    try:
-        entered = datetime.date.fromisoformat(entry.get("entered", ""))
-    except ValueError:
-        entered = None
-        msg = f"{VULCAN_GPU_MANIFEST}: exception entered date missing or invalid"
-        problems.append(msg)
-
-    try:
-        expires = datetime.date.fromisoformat(entry.get("expires", ""))
-    except ValueError:
-        expires = None
-        msg = f"{VULCAN_GPU_MANIFEST}: exception expires date missing or invalid"
-        problems.append(msg)
-
-    if entered and expires:
-        limit = entered + datetime.timedelta(days=CATEGORY_DAYS)
-        if expires > limit:
-            problems.append(
-                f"{VULCAN_GPU_MANIFEST}: exception expires {expires} > entered + "
-                f"{CATEGORY_DAYS} days ({limit})"
-            )
-        if expires < today:
-            problems.append(f"{VULCAN_GPU_MANIFEST}: exception expired on {expires}")
+    problems.extend(_check_exception_dates(entry, today))
 
     reason = entry.get("reason", "")
     if UNSAFE_HOME_REASON not in reason:

@@ -769,9 +769,8 @@ def verify_profile_capability(name, row):
         raise ValueError(f"Capability {name} needs a boolean and an evidence command")
 
 
-def verify_hardware_profile(milestones):
-    """Validate the reference profile and every milestone claim made against it."""
-    data = read_json(ROOT / "planning/hardware-profile.json")
+def _verify_profile_metadata(data):
+    """Validate operator actions and metadata requirements of the hardware profile."""
     for row in data.get("operator_actions", []):
         if not row.get("action") or not row.get("unblocks"):
             raise ValueError("Every operator action needs an action and what it unblocks")
@@ -779,16 +778,10 @@ def verify_hardware_profile(milestones):
         raise ValueError("Profile must declare schema 1 and its evidence class")
     if "development evidence only" not in data["evidence_class"].lower():
         raise ValueError("Profile must state that it is development evidence only")
-    capabilities = data["capabilities"]
-    if set(capabilities) != PROFILE_CAPABILITIES:
-        raise ValueError("Profile must record exactly the declared capability set")
-    for name, row in capabilities.items():
-        verify_profile_capability(name, row)
-    blob = json.dumps(data).lower()
-    leaked = [key for key in PROFILE_IDENTIFIERS if f'"{key}"' in blob]
-    if leaked:
-        raise ValueError(f"Profile must not record machine identifiers: {leaked}")
-    available = {name for name, row in capabilities.items() if row["present"]}
+
+
+def _verify_milestone_profile_claims(milestones, available):
+    """Validate milestone capability requirements and full support claims against profile."""
     for row in milestones:
         claimed = row.get("reference_profile", {}).get("requires", [])
         unknown = set(claimed) - PROFILE_CAPABILITIES
@@ -799,6 +792,23 @@ def verify_hardware_profile(milestones):
             raise ValueError(
                 f"Milestone {row['id']} claims full local support without the capability"
             )
+
+
+def verify_hardware_profile(milestones):
+    """Validate the reference profile and every milestone claim made against it."""
+    data = read_json(ROOT / "planning/hardware-profile.json")
+    _verify_profile_metadata(data)
+    capabilities = data["capabilities"]
+    if set(capabilities) != PROFILE_CAPABILITIES:
+        raise ValueError("Profile must record exactly the declared capability set")
+    for name, row in capabilities.items():
+        verify_profile_capability(name, row)
+    blob = json.dumps(data).lower()
+    leaked = [key for key in PROFILE_IDENTIFIERS if f'"{key}"' in blob]
+    if leaked:
+        raise ValueError(f"Profile must not record machine identifiers: {leaked}")
+    available = {name for name, row in capabilities.items() if row["present"]}
+    _verify_milestone_profile_claims(milestones, available)
     return data
 
 
