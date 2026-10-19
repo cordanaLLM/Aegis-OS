@@ -1247,6 +1247,32 @@ def is_allocator_symbol(sym):
     return False
 
 
+def _extract_report_pct(parts):
+    """Extracts percentage float from token list or returns None."""
+    if not parts:
+        return None
+    if parts[0].endswith("%"):
+        try:
+            return float(parts[0].rstrip("%"))
+        except ValueError:
+            return None
+    if len(parts) > 1 and parts[1] == "%":
+        try:
+            return float(parts[0])
+        except ValueError:
+            return None
+    return None
+
+
+def _extract_report_sym(line, parts):
+    """Extracts symbol from line using bracket markers or last token."""
+    if "[.]" in line:
+        return line.split("[.]", 1)[1].strip()
+    if "[k]" in line:
+        return line.split("[k]", 1)[1].strip()
+    return parts[-1] if parts else ""
+
+
 def parse_report_line(line):
     """Extracts (percentage, symbol) from a perf report stdio line."""
     line = line.strip()
@@ -1255,25 +1281,10 @@ def parse_report_line(line):
     parts = line.split()
     if not parts:
         return None, None
-    pct = None
-    if parts[0].endswith("%"):
-        try:
-            pct = float(parts[0].rstrip("%"))
-        except ValueError:
-            return None, None
-    elif len(parts) > 1 and parts[1] == "%":
-        try:
-            pct = float(parts[0])
-        except ValueError:
-            return None, None
+    pct = _extract_report_pct(parts)
     if pct is None:
         return None, None
-    if "[.]" in line:
-        sym = line.split("[.]", 1)[1].strip()
-    elif "[k]" in line:
-        sym = line.split("[k]", 1)[1].strip()
-    else:
-        sym = parts[-1]
+    sym = _extract_report_sym(line, parts)
     return pct, sym
 
 
@@ -1372,28 +1383,21 @@ def compute_distribution(values):
     }
 
 
-def evaluate_timing(lines, info, frames=600, warmup=60, min_nodes=1000):
-    """Evaluates timing samples against acceptance invariants.
-
-    Returns (measurement_dict, None) on success or (None, refusal_str) on refusal.
-    """
+def _validate_timing_info(info):
+    """Validates hardware and environment metadata before evaluation."""
     if info.get("software", False):
-        return None, f"REFUSED software renderer emulated: {info.get('gpu', '')}"
+        return f"REFUSED software renderer emulated: {info.get('gpu', '')}"
     for field in ("gpu", "driver", "compositor", "zed_commit"):
         if not info.get(field, "").strip():
-            return None, f"REFUSED missing info field: {field}"
+            return f"REFUSED missing info field: {field}"
+    return None
 
-    samples = []
-    for line in lines:
-        sample = parse_frame_line(line)
-        if sample is not None:
-            samples.append(sample)
 
-    kept = samples[warmup:]
-    if len(kept) < frames:
-        return None, f"REFUSED too few frames: got {len(kept)}, want {frames}"
+def _evaluate_timing_nodes(eval_samples, min_nodes):
+    """Evaluates node counts across eval_samples.
 
-    eval_samples = kept[:frames]
+    Returns ((min_seen, max_seen), refusal_or_None).
+    """
     frames_without_update = 0
     min_seen = float("inf")
     max_seen = 0
@@ -1417,6 +1421,34 @@ def evaluate_timing(lines, info, frames=600, warmup=60, min_nodes=1000):
     if min_seen < min_nodes:
         reported = 0 if min_seen == float("inf") else min_seen
         return None, f"REFUSED too few nodes: min seen {reported}, want {min_nodes}"
+
+    return (min_seen, max_seen), None
+
+
+def evaluate_timing(lines, info, frames=600, warmup=60, min_nodes=1000):
+    """Evaluates timing samples against acceptance invariants.
+
+    Returns (measurement_dict, None) on success or (None, refusal_str) on refusal.
+    """
+    refusal = _validate_timing_info(info)
+    if refusal is not None:
+        return None, refusal
+
+    samples = []
+    for line in lines:
+        sample = parse_frame_line(line)
+        if sample is not None:
+            samples.append(sample)
+
+    kept = samples[warmup:]
+    if len(kept) < frames:
+        return None, f"REFUSED too few frames: got {len(kept)}, want {frames}"
+
+    eval_samples = kept[:frames]
+    bounds, refusal = _evaluate_timing_nodes(eval_samples, min_nodes)
+    if refusal is not None:
+        return None, refusal
+    min_seen, max_seen = bounds
 
     frame_dist = compute_distribution([s["draw_ns"] for s in eval_samples])
     tree_dist = compute_distribution([s["residual_ns"] for s in eval_samples])
@@ -1494,6 +1526,43 @@ def wait_child(proc, timeout):
         return None
 
 
+def _process_timing_chunk(chunk, line_buf, lines):
+    """Processes chunk bytes, appending matched lines and checking for DONE."""
+    line_buf += chunk.decode(errors="replace")
+    while "\n" in line_buf:
+        line, line_buf = line_buf.split("\n", 1)
+        line = line.strip()
+        if line.startswith("GPU ") or line.startswith("FRAME "):
+            lines.append(line)
+        elif line == "DONE":
+            return line_buf, True
+    return line_buf, False
+
+
+def _drain_timing_output(proc, deadline, select_fn, read_fn):
+    """Reads stdout until DONE, timeout, or child exit. Returns (done, lines)."""
+    lines = []
+    if not proc.stdout:
+        return False, lines
+    fd = proc.stdout.fileno()
+    line_buf = ""
+    for _ in range(200000):
+        left = deadline - time.monotonic()
+        if left <= 0:
+            break
+        ready, _, _ = select_fn([proc.stdout], [], [], min(1.0, max(0.01, left)))
+        if ready:
+            chunk = read_fn(fd, 4096)
+            if not chunk:
+                break
+            line_buf, done = _process_timing_chunk(chunk, line_buf, lines)
+            if done:
+                return True, lines
+        elif proc.poll() is not None:
+            break
+    return False, lines
+
+
 def run_timing_case(
     binary,
     env,
@@ -1515,33 +1584,13 @@ def run_timing_case(
         env=env,
         start_new_session=True,
     )
-    lines = []
     deadline = time.monotonic() + timeout
-    line_buf = ""
     try:
-        if proc.stdout:
-            fd = proc.stdout.fileno()
-            for _ in range(200000):
-                left = deadline - time.monotonic()
-                if left <= 0:
-                    break
-                ready, _, _ = select_fn([proc.stdout], [], [], min(1.0, max(0.01, left)))
-                if ready:
-                    chunk = read_fn(fd, 4096)
-                    if not chunk:
-                        break
-                    line_buf += chunk.decode(errors="replace")
-                    while "\n" in line_buf:
-                        line, line_buf = line_buf.split("\n", 1)
-                        line = line.strip()
-                        if line.startswith("GPU ") or line.startswith("FRAME "):
-                            lines.append(line)
-                        elif line == "DONE":
-                            # The fixture quits on its own after DONE; waiting lets a wrapping
-                            # `perf record` finish writing its data before the group is killed.
-                            return wait_child(proc, DONE_EXIT_WAIT), lines
-                elif proc.poll() is not None:
-                    break
+        done, lines = _drain_timing_output(proc, deadline, select_fn, read_fn)
+        if done:
+            # The fixture quits on its own after DONE; waiting lets a wrapping
+            # `perf record` finish writing its data before the group is killed.
+            return wait_child(proc, DONE_EXIT_WAIT), lines
         try:
             code = proc.wait(timeout=2)
         except Exception:

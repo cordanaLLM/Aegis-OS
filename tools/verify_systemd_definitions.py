@@ -137,6 +137,26 @@ def layout_problems(case):
     ]
 
 
+def _check_conf_encrypt_lines(entry_name, content):
+    """Scan lines of a repart definition file for disallowed Encrypt= values."""
+    problems = []
+    for line in content.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith(("#", ";")):
+            continue
+        if "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if key == "Encrypt" and value.lower() in {"tpm2", "key-file+tpm2"}:
+            problems.append(
+                f"{entry_name} declares Encrypt={value}; TPM2 enrolment belongs at "
+                f"first boot (build/mkosi.extra/usr/lib/repart.d)"
+            )
+    return problems
+
+
 def build_time_encrypt_problems(directory):
     """Return problems for TPM2 encryption in build-time repart definitions."""
     dir_path = Path(directory)
@@ -153,20 +173,7 @@ def build_time_encrypt_problems(directory):
         except (OSError, UnicodeDecodeError) as error:
             problems.append(f"{entry.name} could not be read as utf-8: {error}")
             continue
-        for line in content.splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith(("#", ";")):
-                continue
-            if "=" not in stripped:
-                continue
-            key, value = stripped.split("=", 1)
-            key = key.strip()
-            value = value.strip()
-            if key == "Encrypt" and value.lower() in {"tpm2", "key-file+tpm2"}:
-                problems.append(
-                    f"{entry.name} declares Encrypt={value}; TPM2 enrolment belongs at "
-                    f"first boot (build/mkosi.extra/usr/lib/repart.d)"
-                )
+        problems.extend(_check_conf_encrypt_lines(entry.name, content))
     return problems
 
 
