@@ -47,6 +47,7 @@ set, so a missing ledger has to be restored explicitly. `bugs.meta.json` and
 | What did the last run do? | `journalctl --user -u aegis-praetor-bump.service` |
 | When does it run next? | `systemctl --user list-timers aegis-praetor-bump.timer` |
 | Why did a bump fail? | The journal first: every `FAIL:` and `RED:` line and any traceback is there. `.workingdir/evidence/praetor-bump-<sha7>.log` in the primary checkout exists only for a failure after the survey, not for a failed fetch or `gh pr list`, an unexpected exception or a stopped run |
+| Did a rerun pass? | The newest `.workingdir/evidence/praetor-bump-<sha7>-green-<UTC time>.log` in the primary checkout: every green run writes one with the pin it moved, each gate and its result, the skips and the whole log, and names the RED log of the same head it supersedes. An older RED log stays, but is no longer the newest file for that head |
 | Who is told when a run fails? | Whoever the local notifier tells: see [Failure notice](#failure-notice). Without one, nobody, and the journal line `not announced:` says so |
 | Run it once now | `systemctl --user start aegis-praetor-bump.service`, or `python3 tools/praetor_bump.py` |
 | Pause it | `systemctl --user disable --now aegis-praetor-bump.path aegis-praetor-bump.timer` |
@@ -118,7 +119,9 @@ set, so a missing ledger has to be restored explicitly. `bugs.meta.json` and
    repository's hooks running, and force-pushes `chore/praetor-pin-auto`. It
    opens that branch's pull request, or rewrites the title and body of the one
    already open, so at most one bump pull request exists. Every worktree and
-   binary in the cache is then removed. On a failure it writes the failing
+   binary in the cache is then removed. Every pass, pushed or kept local
+   with `--no-publish`, writes its own dated evidence file (see the table
+   above). On a failure it writes the failing
    lines and the whole log to the evidence file named above, keeps the
    worktree under `work/` in the cache directory until the next run that has
    work, hands one line to the [local notifier](#failure-notice), exits

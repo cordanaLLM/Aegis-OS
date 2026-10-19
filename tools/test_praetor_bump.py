@@ -16,6 +16,7 @@ Python.
 import ast
 import datetime
 import io
+import os
 import shutil
 import signal
 import subprocess
@@ -1159,6 +1160,69 @@ class KeptWorktreeTests(unittest.TestCase):
             left = [path for path in (session.cache / "work").iterdir() if path.name in kept]
             self.assertEqual(len(left), 2)
             self.assertIn("2 kept worktree(s) past the bound", session.stream.getvalue())
+
+
+class GreenEvidenceTests(unittest.TestCase):
+    """A green run leaves its own dated evidence, so a stale RED log is never the newest."""
+
+    def green_run(self, base, published=True, red_log=None):
+        """Run `execute()` on PLAN with prepare and publish faked; return the evidence folder."""
+        cache, repo = Path(base) / "cache", Path(base) / "repo"
+        session = bump.Session(args(cache=str(cache), repo=repo), stream=io.StringIO())
+        evidence = repo / ".workingdir" / "evidence"
+        evidence.mkdir(parents=True)
+        if red_log is not None:
+            (evidence / red_log).write_text("praetor bump: RED\n", encoding="utf-8")
+            os.utime(evidence / red_log, (1_000_000_000, 1_000_000_000))
+        report = bump.Report([], [], [], ["SKIP: perf is not installed"], "message")
+
+        def prepare(own, _plan, tree):
+            tree.mkdir(parents=True)
+            own.note("gate make verify-all: pass")
+            own.note("gate audit: pass")
+            return report
+
+        done = bump.Result((), 0, "", "")
+        with mock.patch.object(bump, "run", return_value=done), mock.patch.object(
+            bump, "prepare", side_effect=prepare
+        ), mock.patch.object(bump, "publish", return_value=published):
+            self.assertEqual(bump.execute(session, PLAN), 0)
+        return evidence
+
+    def test_a_green_rerun_is_newer_than_the_red_log_it_follows(self):
+        """Negative, the planted case: an old RED log for the same head stays, but not newest."""
+        red = f"praetor-bump-{NEW[:7]}.log"
+        with tempfile.TemporaryDirectory() as base:
+            evidence = self.green_run(base, red_log=red)
+            files = sorted(evidence.iterdir(), key=lambda path: path.stat().st_mtime_ns)
+            newest = files[-1]
+            self.assertNotEqual(newest.name, red)
+            self.assertRegex(newest.name, rf"^praetor-bump-{NEW[:7]}-green-\d{{8}}T\d{{6}}Z\.log$")
+            text = newest.read_text(encoding="utf-8")
+            self.assertEqual((evidence / red).read_text(encoding="utf-8"), "praetor bump: RED\n")
+        self.assertIn(f"pin: {OLD} -> {NEW}", text)
+        self.assertIn(": GREEN", text)
+        self.assertIn(f"supersedes: {evidence / red}", text)
+
+    def test_the_green_evidence_names_every_gate_and_its_result(self):
+        """Positive: gates, results and skips are in the file, without a RED log before it."""
+        with tempfile.TemporaryDirectory() as base:
+            evidence = self.green_run(base)
+            (only,) = evidence.iterdir()
+            text = only.read_text(encoding="utf-8")
+        self.assertIn("gate make verify-all: pass", text)
+        self.assertIn("gate audit: pass", text)
+        self.assertIn("SKIP: perf is not installed", text)
+        self.assertIn("supersedes: no RED log", text)
+        self.assertIn(f"forge: {bump.ROLLING_BRANCH} pushed", text)
+
+    def test_a_green_run_kept_local_says_nothing_was_pushed(self):
+        """Boundary: --no-publish is green too, and its evidence says the branch stayed local."""
+        with tempfile.TemporaryDirectory() as base:
+            evidence = self.green_run(base, published=False)
+            (only,) = evidence.iterdir()
+            text = only.read_text(encoding="utf-8")
+        self.assertIn("forge: nothing pushed (--no-publish)", text)
 
 
 class NotifierTests(unittest.TestCase):
