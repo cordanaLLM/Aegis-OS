@@ -3,7 +3,7 @@ SHELL := /bin/sh
 PRAETORCTL ?= praetorctl
 
 .PHONY: verify-all verify-rust verify-systemd verify-mkosi definitions-fetch definitions-fetch-floor verify-a11y a11y-fetch verify-contract \
-	contract-fetch verify-bpf verify-latency verify-boot verify-display verify-shell verify-sources \
+	contract-fetch verify-bpf verify-latency verify-boot verify-session verify-display verify-shell verify-sources \
 	verify-nucleus-kernel nucleus-kernel-fetch verify-workstation workstation-fetch verify-reuse verify-lints \
 	readiness test build boot release install-praetor-bump uninstall-praetor-bump
 
@@ -350,6 +350,25 @@ verify-latency:
 # See docs/build/boot-harness.md.
 verify-boot:
 	python3 tools/verify_boot_harness.py
+
+# The live session gate (M29 E29-4), outside verify-all: it needs KVM, the
+# admitted QEMU, and a pinned 3.4 GB upstream live image (Fedora KDE Desktop
+# Live 44-1.7) cached under AEGIS_SESSION_DIR, default
+# ${XDG_CACHE_HOME:-$HOME/.cache}/aegis-session; `python3
+# tools/verify_live_session.py --fetch` downloads and verifies it. A host that
+# cannot run it -- no read-write /dev/kvm, a tool below its floor, less than
+# 12 GiB of available memory or 15 GiB of free swap, or no cached image -- prints
+# "SKIP: <reason>; the live session gate did not run." and exits 0.
+#
+# It verifies the image with M24's signature and digest code, refuses a pin with
+# a wrong sha256 before anything runs, boots the image under KVM with its own
+# kernel and a read-back delivered as systemd credentials, and fails a planted
+# absent service by name. The guest's bytes are never changed. A pass is
+# development evidence in a VM on the reference profile: the guest's compositor
+# is not P04 (D79), and it closes no hardware, accessibility or release gate.
+# See docs/build/live-session.md.
+verify-session:
+	python3 tools/verify_live_session.py
 
 # The display slice gate (M27, D79, D80, D83): crates/aegis-scaena's
 # aegis-scaena-display decodes cros-libva's reference MPEG-2 intra frame and
