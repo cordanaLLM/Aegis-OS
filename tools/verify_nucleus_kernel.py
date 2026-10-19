@@ -64,6 +64,8 @@ import verify_contract_pair as contract
 import verify_latency_fixture as harness
 from host import kernel_release
 from host import target as linux_path
+import gate_common
+from gate_common import file_sha256
 
 ROOT = Path(__file__).resolve().parent.parent
 PIN = ROOT / "build" / "kernel" / "nucleus-artifact.pin.json"
@@ -94,8 +96,6 @@ MAX_REPORT_LINES = 1 << 20
 MAX_LOG_BYTES = 16 << 20
 MAX_IMAGE_BYTES = 64 << 20
 MAX_VMLINUX_BYTES = 256 << 20
-HASH_CHUNK = 1 << 20
-MAX_HASH_CHUNKS = 1 << 12
 MAX_POWER_ROWS = 1024
 MAX_TAIL_LINES = 4
 MAX_CONFIG_LINES = 65536
@@ -262,7 +262,7 @@ class Context:
 
 def cache_dir():
     """Return the out-of-repository directory, overridable by AEGIS_NUCLEUS_KERNEL_DIR."""
-    return harness.cache_dir(CACHE_VARIABLE, CACHE_NAME)
+    return gate_common.cache_dir(CACHE_VARIABLE, CACHE_NAME)
 
 
 def read_json(path):
@@ -346,18 +346,6 @@ def load_pin(path=PIN):
     if problems:
         raise GateError("; ".join(problems[:MAX_PROBLEM_LINES]))
     return pin
-
-
-def file_sha256(path):
-    """Return the sha256 of the file at `path`, read in bounded chunks."""
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as handle:
-        for _ in range(MAX_HASH_CHUNKS):
-            chunk = handle.read(HASH_CHUNK)
-            if not chunk:
-                break
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def file_problems(path, row):

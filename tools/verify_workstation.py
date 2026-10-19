@@ -63,7 +63,6 @@ import hashlib
 import json
 import os
 import re
-import secrets
 import shutil
 import signal
 import stat
@@ -76,6 +75,8 @@ from pathlib import Path, PurePosixPath
 from platform import machine as platform_machine
 
 import host
+import gate_common
+from gate_common import executable_from, run_id
 
 ROOT = Path(__file__).resolve().parent.parent
 PIN_FILE = ROOT / "build" / "sandbox" / "firecracker.pin.json"
@@ -128,7 +129,6 @@ SANDBOX_TIMEOUT = 600
 DOWNLOAD_TIMEOUT = 600
 # Scalar bounds on what is read.
 MAX_OUTPUT_LINES = 400
-MAX_BUILD_LINES = 20000
 MAX_PROBLEM_LINES = 24
 MAX_POWERCAP_ENTRIES = 64
 MAX_PROC_ENTRIES = 65536
@@ -276,19 +276,9 @@ def rustc_version(runner=run, which=shutil.which):
     return stdout.strip() if code == 0 else f"unread (exit {code}: {stderr.strip()[:120]})"
 
 
-def run_id():
-    """Return a run identifier: the UTC start time and a random suffix."""
-    return time.strftime("r%Y%m%dT%H%M%S", time.gmtime()) + "-" + secrets.token_hex(2)
-
-
 def cache_dir(environ=None):
     """Return the out-of-repository directory fetched bytes and runs are kept in."""
-    environ = os.environ if environ is None else environ
-    override = environ.get("AEGIS_WORKSTATION_DIR")
-    if override:
-        return Path(override).expanduser()
-    cache = environ.get("XDG_CACHE_HOME")
-    return (Path(cache).expanduser() if cache else Path.home() / ".cache") / "aegis-workstation"
+    return gate_common.cache_dir("AEGIS_WORKSTATION_DIR", "aegis-workstation", environ=environ)
 
 
 def tail(text, lines=MAX_PROBLEM_LINES):
@@ -427,22 +417,6 @@ def readings_document(zone, range_text, mode, readings, unprivileged):
         "readings": [{k: v for k, v in read.items() if k in keep} for read in readings],
         "unprivileged": {k: v for k, v in unprivileged.items() if k in keep},
     }
-
-
-def executable_from(messages, name):
-    """Return the executable cargo reported for `name` in its JSON messages."""
-    for line in messages.splitlines()[:MAX_BUILD_LINES]:
-        if not line.startswith("{"):
-            continue
-        try:
-            message = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        target = message.get("target") or {}
-        if message.get("reason") == "compiler-artifact" and target.get("name") == name:
-            if message.get("executable"):
-                return Path(message["executable"])
-    return None
 
 
 def cargo_build(crate, binary, extra=(), extra_env=None, runner=run):

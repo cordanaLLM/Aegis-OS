@@ -68,14 +68,20 @@ import os
 import re
 import secrets
 import shutil
-import signal
 import subprocess
 import sys
 import tarfile
 import time
 from pathlib import Path
 
-from host import end_session, gid, uid
+from host import gid, uid
+import gate_common
+from gate_common import (
+    c_locale,
+    install_signal_handlers,
+    report,
+    tail,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 PACKAGE = ROOT / "ui" / "concordia-tokens"
@@ -138,8 +144,6 @@ PULL_TIMEOUT = 1800
 DOWNLOAD_TIMEOUT = 600
 STEP_TIMEOUT = 300
 SUITE_TIMEOUT = 600
-STOP_TIMEOUT = 15
-TERMINATING_SIGNALS = ("SIGTERM", "SIGHUP", "SIGQUIT")
 
 # Scalar bounds (HISS-02).
 MAX_OUTPUT_CHARS = 1 << 20
@@ -379,24 +383,9 @@ def load_pin(path=PIN, manifest_path=MANIFEST, lock_path=LOCKFILE):
     return pin
 
 
-def c_locale():
-    """Return this environment with a fixed locale, so tool output parses the same everywhere."""
-    env = dict(os.environ)
-    env.update({"LC_ALL": "C", "LANG": "C", "NO_COLOR": "1"})
-    return env
-
-
 def stop(process):
-    """End `process` and everything in its session, waiting a bounded time for it."""
-    if process.poll() is None:
-        ended, _reason = end_session(process.pid)
-        if not ended:
-            process.kill()
-    try:
-        process.wait(timeout=STOP_TIMEOUT)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait(timeout=STOP_TIMEOUT)
+    """End a child and its descendants, SIGTERM then SIGKILL."""
+    return gate_common.stop(process)
 
 
 def run(argv, timeout):
@@ -461,11 +450,7 @@ def image_present(engine, image):
 
 def cache_dir():
     """Return the directory the fetched image inputs and the run logs live in."""
-    override = os.environ.get(CACHE_VARIABLE)
-    if override:
-        return Path(override)
-    base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
-    return Path(base) / "aegis-a11y"
+    return gate_common.cache_dir(CACHE_VARIABLE, "aegis-a11y")
 
 
 def file_digests(path):
@@ -575,11 +560,7 @@ def bind(source, target, readonly=False):
 
 def user_arguments(engine):
     """docker runs as root unless told otherwise; run it as the invoking user."""
-    if engine != "docker":
-        return []
-    user, _reason = uid()
-    group, _reason = gid()
-    return [] if user is None or group is None else ["--user", f"{user}:{group}"]
+    return gate_common.user_arguments(engine, uid_fn=uid, gid_fn=gid)
 
 
 def container_argv(context, name, argv, options):
@@ -630,21 +611,6 @@ def step(context, label, argv, timeout, **options):
     logs.mkdir(parents=True, exist_ok=True)
     (logs / f"{label}.log").write_bytes(text.encode("utf-8"))
     return code, text
-
-
-def report(name, problems, notes=()):
-    """Print one case's outcome and, when it failed, why."""
-    print(f"{'PASS' if not problems else 'FAIL'} {name}")
-    for note in notes:
-        print(f"     {note}")
-    for line in problems[:MAX_PROBLEM_LINES]:
-        print(f"     {line}")
-
-
-def tail(text, lines=6):
-    """Return the last non-empty lines of a step's output, for a failure note."""
-    kept = [line for line in text.splitlines() if line.strip()]
-    return kept[-lines:]
 
 
 ESCAPES = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
@@ -1501,22 +1467,6 @@ def prune_runs(store):
     names = sorted(path for path in runs.iterdir() if path.is_dir())[:MAX_PRUNED]
     for old in names[:-MAX_RETAINED_RUNS]:
         shutil.rmtree(old, ignore_errors=True)
-
-
-def terminated(signum, _frame):
-    """Turn a termination signal into SystemExit, so every container is removed on the way out."""
-    raise SystemExit(128 + signum)
-
-
-def install_signal_handlers():
-    """Route SIGTERM, SIGHUP and SIGQUIT through `terminated`; each is looked up (HISS-21)."""
-    handled = []
-    for name in TERMINATING_SIGNALS:
-        number = getattr(signal, name, None)
-        if number is not None:
-            signal.signal(number, terminated)
-            handled.append(name)
-    return handled
 
 
 def parse_arguments(argv):

@@ -66,7 +66,6 @@ import os
 import re
 import secrets
 import shutil
-import signal
 import socket
 import statistics
 import struct
@@ -79,6 +78,14 @@ from pathlib import Path
 
 from host import end_session
 from host import target as posix_target
+import gate_common
+from gate_common import (
+    cache_dir,
+    c_locale,
+    install_signal_handlers,
+    report,
+    version_tuple,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 PIN = ROOT / "build" / "boot" / "artifact.pin.json"
@@ -126,8 +133,6 @@ FIRMWARE_BOOT_TIMEOUT = 90
 STOP_TIMEOUT = 15
 QMP_TIMEOUT = 10
 POLL_INTERVAL = 0.25
-# Signals that end the harness through its finally blocks, not around them.
-TERMINATING_SIGNALS = ("SIGTERM", "SIGHUP", "SIGQUIT")
 # The negative login case. Measured boots reach the prompt in about sixteen
 # seconds (docs/build/boot-harness.md); five is below the firmware stage alone.
 TOO_SHORT_TIMEOUT = 5
@@ -251,13 +256,6 @@ class Refused(Exception):
         self.stage = stage
 
 
-def c_locale():
-    """Return this environment with a fixed locale, so tool output parses the same everywhere."""
-    env = dict(os.environ)
-    env.update({"LC_ALL": "C", "LANG": "C", "NO_COLOR": "1"})
-    return env
-
-
 def stop(process):
     """End `process` and everything in its session, waiting a bounded time for it."""
     if process.poll() is None:
@@ -352,11 +350,6 @@ def login_outcome(elapsed, timeout):
     return "reached"
 
 
-def version_tuple(text):
-    """Return a dotted version as a tuple of integers, for ordering."""
-    return tuple(int(part) for part in text.split("."))
-
-
 def metadata_version(name):
     """Return (banner, version) from a Python distribution's own metadata."""
     try:
@@ -384,19 +377,7 @@ def read_version(row):
 
 def check_toolchain():
     """Print the admitted toolchain read back from the host; return why it cannot run."""
-    reasons = []
-    for row in TOOLCHAIN:
-        name, _argv, _pattern, floor, reference = row
-        banner, found = read_version(row)
-        if found is None:
-            reasons.append(banner)
-            continue
-        limit = "" if floor is None else f", floor {floor}"
-        note = "" if found == reference else f" [reference profile recorded {reference}]"
-        print(f"     {name}: {found} (read back from {banner!r}{limit}){note}")
-        if floor is not None and version_tuple(found) < version_tuple(floor):
-            reasons.append(f"{name} {found} is below the admitted floor {floor}")
-    return reasons
+    return gate_common.check_toolchain(TOOLCHAIN, read_version, version_tuple)
 
 
 def ovmf_dir():
@@ -438,16 +419,6 @@ def check_kvm():
         return [f"{KVM_DEVICE} is not read-write for this account; KVM is required"]
     print(f"     {KVM_DEVICE}: read-write; every guest runs with accel=kvm and no fallback")
     return []
-
-
-def cache_dir():
-    """Return the out-of-repository directory the artifact and the run logs live under."""
-    override = os.environ.get("AEGIS_BOOT_HARNESS_DIR")
-    if override:
-        return Path(override).expanduser()
-    cache = os.environ.get("XDG_CACHE_HOME")
-    root = Path(cache).expanduser() if cache else Path.home() / ".cache"
-    return root / "aegis-boot-harness"
 
 
 def version_key(text, scheme=GPG_SCHEME):
@@ -948,15 +919,6 @@ def verify_artifact(context, artifact, checksum):
     if scheme == COSIGN_SCHEME:
         return verify_artifact_cosign(context, artifact, checksum)
     raise GateError(f"signature scheme {scheme} is not built")
-
-
-def report(name, problems, notes=()):
-    """Print one case's outcome and, when it failed, why."""
-    print(f"{'PASS' if not problems else 'FAIL'} {name}")
-    for note in notes:
-        print(f"     {note}")
-    for line in problems[:MAX_PROBLEM_LINES]:
-        print(f"     {line}")
 
 
 def host_efi_value(name):
@@ -1801,28 +1763,6 @@ def prune_runs(store):
         shutil.rmtree(old, ignore_errors=True)
 
 
-def terminated(signum, _frame):
-    """Turn a termination signal into SystemExit, so every session is ended on the way out."""
-    raise SystemExit(128 + signum)
-
-
-def install_signal_handlers():
-    """Route SIGTERM, SIGHUP and SIGQUIT through `terminated`; return the signals handled.
-
-    SIGINT already raises KeyboardInterrupt. Left at their defaults, SIGHUP (a
-    closed terminal or a dropped SSH session) and SIGQUIT end Python without its
-    finally blocks, and swtpm and QEMU, in sessions of their own, never see the
-    hangup. SIGHUP and SIGQUIT are POSIX-only, so each is looked up (HISS-21).
-    """
-    handled = []
-    for name in TERMINATING_SIGNALS:
-        number = getattr(signal, name, None)
-        if number is not None:
-            signal.signal(number, terminated)
-            handled.append(name)
-    return handled
-
-
 def measure_count(text):
     """Parse --measure: a whole number of boots from 1 to MAX_MEASURED_BOOTS."""
     try:
@@ -1862,7 +1802,7 @@ def main(argv=None):
     """Run the gate: SKIP with a reason, FAIL with a reason, or PASS with every case above it."""
     options = parse_arguments(argv)
     install_signal_handlers()
-    store = cache_dir()
+    store = cache_dir("AEGIS_BOOT_HARNESS_DIR", "aegis-boot-harness")
     run_dir = store / "runs" / f"{time.strftime('r%Y%m%dT%H%M%S')}-{secrets.token_hex(2)}"
     print(f"Boot harness gate (M24, D62, D72, D84; development evidence only). Cache: {store}")
     try:

@@ -29,6 +29,8 @@ from unittest import mock
 import audit_strict
 import host
 import praetor_bump as bump
+import testkit
+from testkit import complexity
 import verify_public_host
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -42,7 +44,6 @@ TODAY = datetime.date(2026, 9, 28)
 # Scalar bounds the sweeps below apply (HISS-02, HISS-04).
 MAX_FUNCTION_LINES = 60
 MAX_COMPLEXITY = 10
-BRANCHES = (ast.If, ast.For, ast.While, ast.IfExp, ast.ExceptHandler, ast.With, ast.Assert)
 
 WORKFLOW = f"""env:
   MARKDOWNLINT_VERSION: "0.23.2"
@@ -71,19 +72,6 @@ def args(**overrides):
     for key, value in overrides.items():
         setattr(options, key, value)
     return options
-
-
-def complexity(function):
-    """Return a McCabe-style count: one plus each branch and each extra boolean operand."""
-    count = 1
-    for node in ast.walk(function):
-        if isinstance(node, BRANCHES):
-            count += 1
-        elif isinstance(node, ast.BoolOp):
-            count += len(node.values) - 1
-        elif isinstance(node, ast.comprehension):
-            count += 1 + len(node.ifs)
-    return count
 
 
 class PinTests(unittest.TestCase):
@@ -1425,14 +1413,10 @@ class SourceSweeps(unittest.TestCase):
 
     def test_the_complexity_count_sees_branches(self):
         """Positive: the measure is proven against a known-branchy function."""
-        planted = ast.parse(
-            "def f(a, b):\n    if a and b:\n        return 1\n    for x in a:\n        pass\n"
-        )
-        self.assertEqual(complexity(planted.body[0]), 4)
+        testkit.assert_complexity_sees_branches(self, complexity)
 
     def test_the_module_never_evaluates_code(self):
-        names = {node.id for node in ast.walk(self.tree) if isinstance(node, ast.Name)}
-        self.assertFalse(names & {"eval", "exec", "compile"})
+        testkit.assert_never_evaluates_code(self, self.tree)
 
 
 if __name__ == "__main__":
