@@ -18,21 +18,23 @@ ROOT = Path(__file__).resolve().parent.parent
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 RENOVATE = ROOT / "renovate.json"
 
+# Datasource and depName per pin. The version is read from ci.yml itself, so a
+# Renovate bump of any pin keeps this test green.
 EXPECTED_PINS = {
-    "LEFTHOOK_VERSION": ("github-releases", "evilmartians/lefthook", "2.1.12"),
-    "REUSE_VERSION": ("pypi", "reuse", "6.2.0"),
-    "MARKDOWNLINT_VERSION": ("npm", "markdownlint-cli2", "0.23.2"),
-    "YAMLLINT_VERSION": ("pypi", "yamllint", "1.38.0"),
-    "FLAKE8_VERSION": ("pypi", "flake8", "7.3.0"),
-    "BLACK_VERSION": ("pypi", "black", "26.5.1"),
-    "SHFMT_VERSION": ("pypi", "shfmt-py", "4.2.0"),
-    "CODESPELL_VERSION": ("pypi", "codespell", "2.4.3"),
-    "GITLEAKS_VERSION": ("github-releases", "gitleaks/gitleaks", "8.30.1"),
-    "TRIVY_VERSION": ("github-releases", "aquasecurity/trivy", "0.75.0"),
-    "SEMGREP_VERSION": ("pypi", "semgrep", "1.180.0"),
-    "LIBVA_VERSION": ("github-releases", "intel/libva", "2.24.1"),
-    "MESON_VERSION": ("pypi", "meson", "1.12.1"),
-    "NINJA_VERSION": ("pypi", "ninja", "1.13.2"),
+    "LEFTHOOK_VERSION": ("github-releases", "evilmartians/lefthook"),
+    "REUSE_VERSION": ("pypi", "reuse"),
+    "MARKDOWNLINT_VERSION": ("npm", "markdownlint-cli2"),
+    "YAMLLINT_VERSION": ("pypi", "yamllint"),
+    "FLAKE8_VERSION": ("pypi", "flake8"),
+    "BLACK_VERSION": ("pypi", "black"),
+    "SHFMT_VERSION": ("pypi", "shfmt-py"),
+    "CODESPELL_VERSION": ("pypi", "codespell"),
+    "GITLEAKS_VERSION": ("github-releases", "gitleaks/gitleaks"),
+    "TRIVY_VERSION": ("github-releases", "aquasecurity/trivy"),
+    "SEMGREP_VERSION": ("pypi", "semgrep"),
+    "LIBVA_VERSION": ("github-releases", "intel/libva"),
+    "MESON_VERSION": ("pypi", "meson"),
+    "NINJA_VERSION": ("pypi", "ninja"),
 }
 
 EXPECTED_SHA256_DEPS = {
@@ -64,10 +66,15 @@ def ci_manager(config):
     return None
 
 
+def ci_env_versions(ci_text):
+    """Return {key: value} for every *_VERSION pin in the workflow env block."""
+    env_block = ci_text.split("\njobs:")[0]
+    return dict(re.findall(r"^\s*([A-Z0-9_]+_VERSION):\s*\"([^\"]+)\"", env_block, re.MULTILINE))
+
+
 def ci_env_version_keys(ci_text):
     """Return all *_VERSION keys declared in the workflow env block."""
-    env_block = ci_text.split("\njobs:")[0]
-    return set(re.findall(r"^\s*([A-Z0-9_]+_VERSION):\s*\"[^\"]+\"", env_block, re.MULTILINE))
+    return set(ci_env_versions(ci_text))
 
 
 def extract_pins_from_text(ci_text, manager):
@@ -106,12 +113,13 @@ class PositiveTest(unittest.TestCase):
     def test_every_version_pin_is_extracted_once_with_expected_metadata(self):
         """Positive: every *_VERSION pin is extracted once with expected metadata."""
         pins, matches_seen = extract_pins_from_text(self.ci_text, self.manager)
+        versions = ci_env_versions(self.ci_text)
         self.assertEqual(len(matches_seen), len(EXPECTED_PINS))
         self.assertEqual(len(pins), len(EXPECTED_PINS))
         for key, expected_tuple in EXPECTED_PINS.items():
             with self.subTest(key=key):
                 self.assertIn(key, pins)
-                self.assertEqual(pins[key], expected_tuple)
+                self.assertEqual(pins[key], (*expected_tuple, versions[key]))
 
     def test_extracted_env_keys_match_all_workflow_version_pins(self):
         """Positive: extracted pin keys match all *_VERSION keys in ci.yml env block."""

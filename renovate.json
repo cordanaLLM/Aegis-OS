@@ -84,6 +84,13 @@
       "groupName": "saeptum crates"
     },
     {
+      "description": "zbus stays on 5.x while atspi does: aegis-forum-shell-gpui hands its zbus::Connection to atspi proxies, and atspi-proxies 0.14.0 (the newest, checked 2026-10-19) requires zbus ^5.5, so zbus 6 resolves to a second Connection type the proxies refuse; lift this when an atspi release depends on zbus 6",
+      "matchPackageNames": [
+        "zbus"
+      ],
+      "allowedVersions": "<6"
+    },
+    {
       "description": "praetor-managed files: praetorctl adopt ships their updates and praetorctl audit locks them byte for byte",
       "matchFileNames": [
         "tools/figures/core.mjs",
