@@ -59,6 +59,8 @@ verify-lints:
 	git ls-files -z '*.sh' | xargs -0 -r shellcheck -x
 	python3 tools/shfmt_scope.py check -- \
 		pipx run --spec "shfmt-py==$$(python3 tools/ci_lints.py pin SHFMT_VERSION)" shfmt
+	git ls-files -z | xargs -0 -r \
+		pipx run "codespell==$$(python3 tools/ci_lints.py pin CODESPELL_VERSION)" --config .codespellrc
 
 # The crate gate for every workspace member listed in Cargo.toml, including
 # crates whose component planning/components.json still records as a proposal,

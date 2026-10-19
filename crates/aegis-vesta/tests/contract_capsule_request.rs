@@ -167,7 +167,7 @@ fn unknown_fields_and_values_are_refused() -> Fallible {
         tamper(&text, r#""slot":1"#, r#""slot":1,"gpu":true"#)?,
         tamper(&text, r#""filesystem-read""#, r#""filesystem-everything""#)?,
         tamper(&text, r#""firecracker""#, r#""cloud-hypervisor""#)?,
-        tamper(&text, r#""edge""#, r#""egde""#)?,
+        tamper(&text, r#""edge""#, r#""no-such-monitor""#)?,
     ];
     for tampered in cases {
         assert_eq!(

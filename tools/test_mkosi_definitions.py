@@ -394,7 +394,7 @@ class SectionTests(unittest.TestCase):
         self.assertIn("mkosi.conf", problems[0])
         (self.base / "mkosi.conf").write_text("[Output]\n")
         (self.base / "mkosi.conf.d").mkdir()
-        (self.base / "mkosi.conf.d" / "10-x.conf").write_text("[Outptu]\nFormat=disk\n")
+        (self.base / "mkosi.conf.d" / "10-x.conf").write_text("[OutputTypo]\nFormat=disk\n")
         problems = gate.unknown_sections(self.base)
         self.assertEqual(len(problems), 1)
         self.assertIn("10-x.conf", problems[0])

@@ -955,7 +955,7 @@ class PreparationTests(unittest.TestCase):
             self.write_roadmap([row(good)])
             self.assertEqual(len(check.verify_roadmap()), 1)
         for bad in (
-            row("swtpm and tpm2-tools are instal"),
+            row("swtpm and tpm2-tools are installed"),
             row("It boots", exit_text="Read it back"),
         ):
             self.write_roadmap([bad])

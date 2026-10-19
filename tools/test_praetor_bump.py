@@ -1314,10 +1314,10 @@ class UnitVerifyTests(unittest.TestCase):
 
     def test_an_unknown_key_is_reported_though_verify_exits_zero(self):
         def misspell(name, text):
-            return text.replace("Persistent=", "Persistant=") if name.endswith(".timer") else text
+            return text.replace("Persistent=", "PersistentX=") if name.endswith(".timer") else text
 
         _, named = self.findings(self.render(misspell))
-        self.assertTrue(any("Persistant" in line and ".timer" in line for line in named), named)
+        self.assertTrue(any("PersistentX" in line and ".timer" in line for line in named), named)
 
     def test_a_service_command_that_is_not_executable_is_reported(self):
         def break_command(name, text):
