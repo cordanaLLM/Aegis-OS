@@ -28,18 +28,18 @@ concurrency:
 
 env:
   # renovate: datasource=github-releases depName=evilmartians/lefthook
-  LEFTHOOK_VERSION: "2.1.12"
+  LEFTHOOK_VERSION: "2.2.2"
   LEFTHOOK_SHA256: "22ff1ad48d1a0f4dca8d6b7e920056c6a9015f9204e5b693858ed9c2db759a16"
   # renovate: datasource=pypi depName=reuse
   REUSE_VERSION: "6.2.0"
   # renovate: datasource=npm depName=markdownlint-cli2
-  MARKDOWNLINT_VERSION: "0.23.2"
+  MARKDOWNLINT_VERSION: "0.23.3"
   # renovate: datasource=pypi depName=yamllint
   YAMLLINT_VERSION: "1.38.0"
   # renovate: datasource=pypi depName=flake8
-  FLAKE8_VERSION: "7.3.0"
+  FLAKE8_VERSION: "7.4.1"
   # renovate: datasource=pypi depName=black
-  BLACK_VERSION: "26.5.1"
+  BLACK_VERSION: "26.10.1"
   # shfmt-py on PyPI ships the shfmt release binary; 4.2.0 carries shfmt 3.14.1.
   # renovate: datasource=pypi depName=shfmt-py
   SHFMT_VERSION: "4.2.0"
@@ -54,7 +54,7 @@ env:
   GITLEAKS_VERSION: "8.30.1"
   GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
   # renovate: datasource=github-releases depName=aquasecurity/trivy
-  TRIVY_VERSION: "0.75.0"
+  TRIVY_VERSION: "0.76.0"
   TRIVY_SHA256: "c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f"
   # renovate: datasource=pypi depName=semgrep
   SEMGREP_VERSION: "1.180.0"
