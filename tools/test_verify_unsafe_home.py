@@ -23,7 +23,7 @@ REPO = vuh.ROOT
 # The planted cases pin the fixture entry to these dates, so a renewal of the
 # live entry in .standards.yaml does not move what the cases assert.
 FIXTURE_ENTERED = "2026-01-01"
-FIXTURE_EXPIRES = "2026-01-11"
+FIXTURE_EXPIRES = "2026-05-01"
 FIXTURE_TODAY = datetime.date(2026, 1, 5)
 
 
@@ -204,26 +204,26 @@ pub fn do_call() {
         )
         self.assertRefused("expected exactly one HISS-09 exceptions entry")
 
-    def test_category_b_exception_is_refused(self):
+    def test_category_c_exception_is_refused(self):
         self.replace_in_file(
             vuh.MANIFEST,
+            "category: D",
             "category: C",
-            "category: B",
         )
-        self.assertRefused("exception category must be 'C'")
+        self.assertRefused("exception category must be 'D'")
 
     def test_expired_exception_is_refused(self):
-        expired = datetime.date(2026, 1, 12)
+        expired = datetime.date(2026, 5, 2)
         self.assertRefused(f"exception expired on {FIXTURE_EXPIRES}", today=expired)
 
     def test_the_last_day_still_passes(self):
-        self.assertEqual(self.problems_on(datetime.date(2026, 1, 11)), [])
+        self.assertEqual(self.problems_on(datetime.date(2026, 5, 1)), [])
 
     def test_excessive_expiry_interval_is_refused(self):
         self.replace_in_file(
             vuh.MANIFEST,
             f'expires: "{FIXTURE_EXPIRES}"',
-            'expires: "2026-01-12"',
+            'expires: "2026-05-02"',
         )
         self.assertRefused("exception expires", today=datetime.date(2026, 1, 5))
 
@@ -258,8 +258,8 @@ pub const RAW: &str = r#"unsafe fn in a raw string"#;
 
         self.replace_in_file(
             vuh.MANIFEST,
+            "category: D",
             "category: C",
-            "category: B",
         )
         err = io.StringIO()
         with contextlib.redirect_stderr(err):

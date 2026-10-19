@@ -17,8 +17,8 @@ This check fails when:
    (previous non-blank line(s)) by a // SAFETY: comment, or an unsafe item
    lacks #[allow(unsafe_code)] on its function;
 5. .standards.yaml has not exactly one exceptions entry rule HISS-09, path
-   crates/aegis-vulcan-gpu/Cargo.toml, with category C, an entered date,
-   expires <= entered + 10 days, expires >= today, and a reason naming
+   crates/aegis-vulcan-gpu/Cargo.toml, with category D, an entered date,
+   expires <= entered + 120 days, expires >= today, and a reason naming
    aegis-os-m25-unsafe-home.
 
 Usage: ``python3 tools/verify_unsafe_home.py [ROOT]``.
@@ -39,6 +39,9 @@ except ImportError:
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MANIFEST = ".standards.yaml"
+# Operator answer aegis-os-m25-unsafe-home-renew: category D, 120 days.
+CATEGORY = "D"
+CATEGORY_DAYS = 120
 VULCAN_GPU_MEMBER = "crates/aegis-vulcan-gpu"
 VULCAN_GPU_MANIFEST = f"{VULCAN_GPU_MEMBER}/Cargo.toml"
 UNSAFE_HOME_REASON = "aegis-os-m25-unsafe-home"
@@ -339,9 +342,9 @@ def check_exception_entry(root, today):
     entry = matching[0]
     problems = []
 
-    if entry.get("category") != "C":
+    if entry.get("category") != CATEGORY:
         problems.append(
-            f"{VULCAN_GPU_MANIFEST}: exception category must be 'C', "
+            f"{VULCAN_GPU_MANIFEST}: exception category must be {CATEGORY!r}, "
             f"found {entry.get('category')!r}"
         )
 
@@ -360,10 +363,11 @@ def check_exception_entry(root, today):
         problems.append(msg)
 
     if entered and expires:
-        if expires > entered + datetime.timedelta(days=10):
+        limit = entered + datetime.timedelta(days=CATEGORY_DAYS)
+        if expires > limit:
             problems.append(
-                f"{VULCAN_GPU_MANIFEST}: exception expires {expires} > entered + 10 days "
-                f"({entered + datetime.timedelta(days=10)})"
+                f"{VULCAN_GPU_MANIFEST}: exception expires {expires} > entered + "
+                f"{CATEGORY_DAYS} days ({limit})"
             )
         if expires < today:
             problems.append(f"{VULCAN_GPU_MANIFEST}: exception expired on {expires}")
@@ -404,7 +408,7 @@ def main(argv):
 
     print(
         f"PASS: unsafe code held to {VULCAN_GPU_MEMBER} with deny lints, "
-        "safety proofs, and live Category C exception."
+        f"safety proofs, and live category {CATEGORY} exception."
     )
     return 0
 
