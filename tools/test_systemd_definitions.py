@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import verify_systemd_definitions as gate
+from testkit import setup_temp_directory
 
 REVIEWED = """[Transfer]
 ProtectVersion=%A
@@ -164,9 +165,7 @@ class InvocationTests(unittest.TestCase):
 
 class StagingTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.base = Path(self.temp.name)
-        self.addCleanup(self.temp.cleanup)
+        setup_temp_directory(self)
 
     def source(self, name, text):
         directory = self.base / "src"
@@ -525,9 +524,7 @@ class BuildTimeEncryptTests(unittest.TestCase):
     """build_time_encrypt_problems flags TPM2 encryption declarations in build-time repart sets."""
 
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.base = Path(self.temp.name)
-        self.addCleanup(self.temp.cleanup)
+        setup_temp_directory(self)
 
     def test_real_build_repart_directory_has_no_encrypt_problems(self):
         """Positive: real build/repart.d -> build_time_encrypt_problems == []."""
@@ -656,9 +653,7 @@ class LayoutCaseTests(unittest.TestCase):
     """The repart gate reads what its images hold, not only how repart exited (M11)."""
 
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.base = Path(self.temp.name)
-        self.addCleanup(self.temp.cleanup)
+        setup_temp_directory(self)
 
     def test_the_scratch_root_holds_a_pe_uki_and_a_payload(self):
         """Positive: the ESP and root-a copies have something real to copy."""

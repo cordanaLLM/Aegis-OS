@@ -45,7 +45,6 @@ accessibility or release gate.
 import argparse
 import base64
 import json
-import os
 import re
 import secrets
 import shutil
@@ -54,6 +53,7 @@ import time
 from pathlib import Path
 
 import verify_boot_harness as harness
+import gate_common
 
 ROOT = Path(__file__).resolve().parent.parent
 PIN = ROOT / "build" / "session" / "guest.pin.json"
@@ -249,12 +249,7 @@ def load_pin(path):
 
 def cache_dir():
     """Return the out-of-repository directory the image and the run logs live under."""
-    override = os.environ.get("AEGIS_SESSION_DIR")
-    if override:
-        return Path(override).expanduser()
-    cache = os.environ.get("XDG_CACHE_HOME")
-    root = Path(cache).expanduser() if cache else Path.home() / ".cache"
-    return root / "aegis-session"
+    return gate_common.cache_dir("AEGIS_SESSION_DIR", "aegis-session")
 
 
 def meminfo(text):

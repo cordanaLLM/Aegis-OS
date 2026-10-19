@@ -11,6 +11,7 @@ from host import target as posix_target
 
 import verify_mkosi_definitions as gate
 from test_bpf_objects import recipe_lines, suppresses
+from testkit import setup_temp_directory
 
 ROOT = Path(__file__).resolve().parent.parent
 MAKEFILE = ROOT / "Makefile"
@@ -377,9 +378,7 @@ class SectionTests(unittest.TestCase):
     """mkosi 27.1 skips an unknown [Section] without any diagnostic; the gate reads them."""
 
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.base = Path(self.temp.name)
-        self.addCleanup(self.temp.cleanup)
+        setup_temp_directory(self)
 
     def test_the_reviewed_definition_has_only_known_sections(self):
         """Positive: build/ names no section mkosi would drop."""

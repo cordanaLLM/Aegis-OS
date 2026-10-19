@@ -33,6 +33,9 @@ import unittest
 from pathlib import Path, PureWindowsPath
 from unittest import mock
 
+import gate_common
+import testkit
+from testkit import function_index
 import verify_contract_pair as gate
 from test_bpf_objects import recipe_lines, suppresses
 
@@ -48,7 +51,6 @@ ADMISSION_HEADING = "## The contract pair's toolchain and producer pins (M09)"
 MAX_FUNCTION_LINES = 60
 MAX_COMPLEXITY = 10
 MAX_STATEMENTS = 50
-BRANCHES = (ast.If, ast.For, ast.While, ast.IfExp, ast.ExceptHandler, ast.With, ast.Assert)
 # What the gate may start: git, go, the binary under test (imago or the stand-in)
 # and the interpreter running it, for nucleus's stdlib-only verifier.
 ALLOWED_PROGRAMS = {"git", "go", "python3", "<binary>"}
@@ -1056,10 +1058,10 @@ class GuardTests(unittest.TestCase):
         run.assert_not_called()
 
     def test_every_terminating_signal_this_host_has_is_routed(self):
-        with mock.patch.object(gate.signal, "signal") as install:
+        with mock.patch.object(gate_common.signal, "signal") as install:
             handled = gate.install_signal_handlers()
         self.assertEqual(install.call_count, len(handled))
-        self.assertLessEqual(set(handled), set(gate.TERMINATING_SIGNALS))
+        self.assertLessEqual(set(handled), set(gate_common.TERMINATING_SIGNALS))
 
 
 class RecordTests(unittest.TestCase):
@@ -1653,23 +1655,6 @@ class AdmissionTests(unittest.TestCase):
         self.assertIn("build/contract-pair.md", text(MKDOCS))
 
 
-def function_index(tree):
-    return {node.name: node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
-
-
-def complexity(function):
-    """Return a McCabe-style count: one plus each branch and each extra boolean operand."""
-    count = 1
-    for node in ast.walk(function):
-        if isinstance(node, BRANCHES):
-            count += 1
-        elif isinstance(node, ast.BoolOp):
-            count += len(node.values) - 1
-        elif isinstance(node, ast.comprehension):
-            count += 1 + len(node.ifs)
-    return count
-
-
 def program_of(node):
     """Name what an argv list starts: a string literal, or <binary> for a path under test."""
     if isinstance(node, ast.Call) and getattr(node.func, "id", "") == "git":
@@ -1693,11 +1678,7 @@ class SourceSweeps(unittest.TestCase):
     functions = function_index(tree)
 
     def calls(self, name):
-        return [
-            node
-            for node in ast.walk(self.tree)
-            if isinstance(node, ast.Call) and getattr(node.func, "id", None) == name
-        ]
+        return testkit.calls(self.tree, name)
 
     def assigned(self, function, name):
         """Return the values `name` is assigned inside `function`."""
@@ -1767,24 +1748,9 @@ class SourceSweeps(unittest.TestCase):
             self.assertGreaterEqual(len(call.args), 4, f"no deadline at line {call.lineno}")
 
     def test_only_run_starts_a_process_and_every_wait_is_bounded(self):
-        starters = [
-            (function.name, node.attr)
-            for function in self.functions.values()
-            for node in ast.walk(function)
-            if isinstance(node, ast.Attribute)
-            and getattr(node.value, "id", "") == "subprocess"
-            and node.attr in {"Popen", "run", "call", "check_output", "check_call"}
-        ]
-        self.assertEqual(starters, [("run", "Popen")])
-        waits = [
-            node
-            for node in ast.walk(self.tree)
-            if isinstance(node, ast.Call)
-            and getattr(node.func, "attr", "") in {"wait", "communicate"}
-        ]
-        self.assertTrue(waits)
-        for node in waits:
-            self.assertIn("timeout", {keyword.arg for keyword in node.keywords}, node.lineno)
+        testkit.assert_only_run_starts_a_process_and_every_wait_is_bounded(
+            self, self.functions, self.tree
+        )
 
     def test_the_network_is_reached_only_by_the_fetch(self):
         """ls-remote, fetch and `go mod download` appear in the fetch functions only."""
@@ -1810,19 +1776,12 @@ class SourceSweeps(unittest.TestCase):
             self.assertEqual(env["CGO_ENABLED"], "0")
 
     def test_no_function_exceeds_the_length_or_complexity_limit(self):
-        offenders = []
-        for node in self.functions.values():
-            length = node.end_lineno - node.lineno + 1
-            statements = sum(1 for inner in ast.walk(node) if isinstance(inner, ast.stmt)) - 1
-            if length > MAX_FUNCTION_LINES or complexity(node) > MAX_COMPLEXITY:
-                offenders.append(f"{node.name}: {length} lines, complexity {complexity(node)}")
-            elif statements > MAX_STATEMENTS:
-                offenders.append(f"{node.name}: {statements} statements")
-        self.assertEqual(offenders, [])
+        testkit.assert_function_limits(
+            self, self.functions, MAX_FUNCTION_LINES, MAX_COMPLEXITY, MAX_STATEMENTS
+        )
 
     def test_the_gate_never_evaluates_code(self):
-        names = {node.id for node in ast.walk(self.tree) if isinstance(node, ast.Name)}
-        self.assertFalse(names & {"eval", "exec", "compile"})
+        testkit.assert_never_evaluates_code(self, self.tree)
 
 
 if __name__ == "__main__":

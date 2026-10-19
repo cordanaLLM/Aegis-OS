@@ -60,6 +60,7 @@ TOOLS_DIR = Path(__file__).resolve().parent
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
+import gate_common  # noqa: E402
 import host  # noqa: E402
 
 BINARY = "aegis-forum-shell-gpui"
@@ -247,26 +248,9 @@ class GateError(Exception):
 
 def run_command(argv, timeout, environ=None, cwd=None):
     """Runs a program under timeout and returns (returncode, stdout, stderr)."""
-    env = dict(os.environ if environ is None else environ)
-    env["LC_ALL"] = "C"
-    env["LANG"] = "C"
-    try:
-        proc = subprocess.run(
-            argv,
-            capture_output=True,
-            text=True,
-            errors="replace",
-            timeout=timeout,
-            env=env,
-            cwd=cwd,
-            stdin=subprocess.DEVNULL,
-            check=False,
-        )
-        return proc.returncode, proc.stdout, proc.stderr
-    except subprocess.TimeoutExpired as error:
-        raise GateError(f"{Path(argv[0]).name} exceeded {timeout}s timeout") from error
-    except OSError as error:
-        raise GateError(f"{argv[0]} could not be run: {error}") from error
+    return gate_common.run_command(
+        argv, timeout=timeout, environ=environ, cwd=cwd, gate_error_cls=GateError
+    )
 
 
 def has_unix_fd_passing():
@@ -1789,12 +1773,7 @@ def run_all_cases(
 
 def summary(case_results):
     """Returns the RESULT line; every one of the CASE_COUNT cases must have run and passed."""
-    if len(case_results) != CASE_COUNT:
-        return f"RESULT fail: {len(case_results)} of {CASE_COUNT} cases ran"
-    failures = sum(1 for _name, passed, _why in case_results if not passed)
-    if failures:
-        return f"RESULT fail: {failures} case(s) failed"
-    return "RESULT pass"
+    return gate_common.summary(case_results, CASE_COUNT)
 
 
 def teardown_process(proc):

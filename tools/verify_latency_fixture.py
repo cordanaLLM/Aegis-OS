@@ -38,7 +38,6 @@ live under ``AEGIS_LATENCY_BUILD_DIR`` (default
 """
 
 import argparse
-import hashlib
 import json
 import os
 import re
@@ -49,6 +48,8 @@ import sys
 from pathlib import Path
 
 from host import kernel_release
+import gate_common
+from gate_common import cache_dir, file_sha256, report, version_tuple
 
 ROOT = Path(__file__).resolve().parent.parent
 PROBE_SCRIPT = ROOT / "tools" / "guest" / "aegis-preempt-probe.sh"
@@ -81,8 +82,6 @@ MAX_GUEST_LIBRARIES = 64
 MAX_PROBLEM_LINES = 24
 MAX_MODULE_DIRECTORIES = 64
 MAX_DIAGNOSTIC_LINES = 20
-HASH_CHUNK = 1 << 20
-MAX_HASH_CHUNKS = 1 << 12
 
 GUEST_MARK = "AEGIS-M23"
 GUEST_MEMORY = "2048"
@@ -174,11 +173,6 @@ def run(argv, timeout, cwd=None, stdin=None):
     return done.returncode, done.stdout, done.stderr
 
 
-def version_tuple(text):
-    """Return a dotted version as a tuple of integers, for ordering."""
-    return tuple(int(part) for part in text.split("."))
-
-
 def read_version(row):
     """Return (banner, version string) for one toolchain row, or (reason, None)."""
     name, argv, pattern, _floor, _reference = row
@@ -195,29 +189,7 @@ def read_version(row):
 
 def check_toolchain():
     """Print the admitted toolchain read back from the host; return the reasons it cannot run."""
-    reasons = []
-    for row in TOOLCHAIN:
-        name, _argv, _pattern, floor, reference = row
-        banner, found = read_version(row)
-        if found is None:
-            reasons.append(banner)
-            continue
-        limit = "" if floor is None else f", floor {floor}"
-        note = "" if found == reference else f" [reference profile recorded {reference}]"
-        print(f"     {name}: {found} (read back from {banner!r}{limit}){note}")
-        if floor is not None and version_tuple(found) < version_tuple(floor):
-            reasons.append(f"{name} {found} is below the admitted floor {floor}")
-    return reasons
-
-
-def cache_dir(variable, name):
-    """Return an out-of-repository directory, overridable by `variable`."""
-    override = os.environ.get(variable)
-    if override:
-        return Path(override).expanduser()
-    cache = os.environ.get("XDG_CACHE_HOME")
-    root = Path(cache).expanduser() if cache else Path.home() / ".cache"
-    return root / name
+    return gate_common.check_toolchain(TOOLCHAIN, read_version, version_tuple)
 
 
 def pinned_kernel(pin_path=NUCLEUS_PIN):
@@ -238,18 +210,6 @@ def kernel_artifacts():
     if not image.is_file():
         return None, f"{image} does not exist; run `make nucleus-kernel-fetch` first"
     return (image, release), None
-
-
-def file_sha256(path):
-    """Return the sha256 of the file at `path`, read in bounded chunks."""
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as handle:
-        for _ in range(MAX_HASH_CHUNKS):
-            chunk = handle.read(HASH_CHUNK)
-            if not chunk:
-                break
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def verified_image(image):
@@ -567,15 +527,6 @@ def host_probe():
         raise GateError("bash is not on PATH")
     code, stdout, stderr = run(["bash", str(PROBE_SCRIPT)], PROBE_TIMEOUT)
     return code, (stdout + stderr).strip(), os.path.realpath(shell)
-
-
-def report(name, problems, notes=()):
-    """Print one case's outcome and, when it failed, why."""
-    print(f"{'PASS' if not problems else 'FAIL'} {name}")
-    for note in notes:
-        print(f"     {note}")
-    for line in problems[:MAX_PROBLEM_LINES]:
-        print(f"     {line}")
 
 
 def guest_identity_case(report_text, nonce, release):
