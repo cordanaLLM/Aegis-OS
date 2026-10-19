@@ -54,7 +54,7 @@ sha2 = { version = "0.11.0", default-features = false }
 smithay-client-toolkit = { version = "0.21.1", default-features = false }
 thiserror = { version = "2.0.20", default-features = false, features = ["std"] }
 tornus-geometry = { git = "https://github.com/plurano/tornus", rev = "df214e113701297d995cd3d14ffd877bd0cf8d27" }
-zbus = { version = "5.19.0", default-features = false, features = ["async-io"] }
+zbus = { version = "6.0.0", default-features = false, features = ["async-io"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
