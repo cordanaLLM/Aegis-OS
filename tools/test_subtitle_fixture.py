@@ -19,30 +19,13 @@ try:
 except ImportError:
     from tools import subtitle_fixture as fixture
 
-BRANCHES = (
-    ast.If,
-    ast.For,
-    ast.While,
-    ast.IfExp,
-    ast.ExceptHandler,
-    ast.With,
-    ast.Assert,
-)
+try:
+    from testkit import complexity as count_complexity
+except ImportError:
+    from tools.testkit import complexity as count_complexity
+
 MAX_FUNCTION_LINES = 60
 MAX_COMPLEXITY = 10
-
-
-def count_complexity(function):
-    """Return McCabe-style cyclomatic complexity for a function AST node."""
-    count = 1
-    for node in ast.walk(function):
-        if isinstance(node, BRANCHES):
-            count += 1
-        elif isinstance(node, ast.BoolOp):
-            count += len(node.values) - 1
-        elif isinstance(node, ast.comprehension):
-            count += 1 + len(node.ifs)
-    return count
 
 
 class TestSubtitleFixturePositive(unittest.TestCase):

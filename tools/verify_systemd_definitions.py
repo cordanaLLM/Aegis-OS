@@ -32,6 +32,7 @@ from pathlib import Path
 
 import definitions_container
 import gate_policy
+from gate_common import report_definition as report
 from host import target as posix_target
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -602,18 +603,6 @@ def execute(case):
     if case["image"] is not None and case["image"].exists():
         case["image"].unlink()
     return (not problems), code, problems, diagnostics
-
-
-def report(case, code, problems, diagnostics):
-    """Print one case's outcome, and its diagnostics when it failed."""
-    status = "PASS" if not problems else "FAIL"
-    print(f"{status} {case['name']}: exit {code}")
-    if not problems:
-        return
-    for line in problems:
-        print(f"     {line}")
-    for line in diagnostics.splitlines()[:12]:
-        print(f"     | {line}")
 
 
 def resolve_tools():

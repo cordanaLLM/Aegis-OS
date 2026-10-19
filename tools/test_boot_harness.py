@@ -27,6 +27,9 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+import gate_common
+import testkit
+from testkit import complexity, function_index
 import verify_boot_harness as gate
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -40,7 +43,6 @@ MAX_RESOLUTION_STEPS = 8
 MAX_FUNCTION_LINES = 60
 MAX_COMPLEXITY = 10
 MAX_STATEMENTS = 50
-BRANCHES = (ast.If, ast.For, ast.While, ast.IfExp, ast.ExceptHandler, ast.With, ast.Assert)
 TABLE_ROW = re.compile(r"^\|([^|]*)\|([^|]*)\|([^|]*)\|[^|]*\|[^|]*\|$")
 REFERENCE = re.compile(r"[0-9a-f]{64}|\d+(?:\.\d+)+(?:\.pl\d+)?")
 
@@ -166,11 +168,6 @@ def admitted_rows():
     return found
 
 
-def function_index(tree):
-    """Return every function definition in `tree` by name."""
-    return {node.name: node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
-
-
 def bindings(scope):
     """Return ``{name: first value assigned}`` for plain assignments inside one function."""
     bound = {}
@@ -238,19 +235,6 @@ def call_sites(path):
             else:
                 resolved.add(head)
     return resolved, undecided
-
-
-def complexity(function):
-    """Return a McCabe-style count: one plus each branch and each extra boolean operand."""
-    count = 1
-    for node in ast.walk(function):
-        if isinstance(node, BRANCHES):
-            count += 1
-        elif isinstance(node, ast.BoolOp):
-            count += len(node.values) - 1
-        elif isinstance(node, ast.comprehension):
-            count += 1 + len(node.ifs)
-    return count
 
 
 class AdmissionTests(unittest.TestCase):
@@ -1788,7 +1772,7 @@ class SkipAndRetentionTests(unittest.TestCase):
                 stack.enter_context(mock.patch.object(gate, "check_toolchain", return_value=["x"]))
                 stack.enter_context(mock.patch.object(gate, "check_firmware", return_value=[]))
                 stack.enter_context(mock.patch.object(gate, "check_kvm", return_value=[]))
-                stack.enter_context(mock.patch.object(gate.signal, "signal"))
+                stack.enter_context(mock.patch.object(gate_common.signal, "signal"))
                 stack.enter_context(redirect_stdout(printed))
                 code = gate.main([])
         self.assertEqual(code, 0)
@@ -1805,23 +1789,25 @@ class SkipAndRetentionTests(unittest.TestCase):
                 )
                 stack.enter_context(mock.patch.object(gate, "preflight", return_value=[]))
                 stack.enter_context(mock.patch.object(gate, "run_cases", side_effect=refusal))
-                stack.enter_context(mock.patch.object(gate.signal, "signal"))
+                stack.enter_context(mock.patch.object(gate_common.signal, "signal"))
                 stack.enter_context(redirect_stdout(printed))
                 code = gate.main([])
         self.assertEqual(code, 1)
         self.assertIn("FAIL: the pinned artifact was refused at digest", printed.getvalue())
 
     def test_every_terminating_signal_this_host_has_ends_through_finally(self):
-        expected = [name for name in gate.TERMINATING_SIGNALS if hasattr(gate.signal, name)]
+        expected = [
+            name for name in gate_common.TERMINATING_SIGNALS if hasattr(gate_common.signal, name)
+        ]
         self.assertIn("SIGTERM", expected)
-        with mock.patch.object(gate.signal, "signal") as installed:
+        with mock.patch.object(gate_common.signal, "signal") as installed:
             self.assertEqual(gate.install_signal_handlers(), expected)
         numbers = [call.args[0] for call in installed.call_args_list]
-        self.assertEqual(numbers, [getattr(gate.signal, name) for name in expected])
+        self.assertEqual(numbers, [getattr(gate_common.signal, name) for name in expected])
         for call in installed.call_args_list:
-            self.assertIs(call.args[1], gate.terminated)
+            self.assertIs(call.args[1], gate_common.terminated)
         with self.assertRaises(SystemExit) as ended:
-            gate.terminated(1, None)
+            gate_common.terminated(1, None)
         self.assertEqual(ended.exception.code, 129)
 
     def test_main_installs_the_handlers(self):
@@ -2028,14 +2014,10 @@ class SourceSweeps(unittest.TestCase):
         self.assertEqual(offenders, [])
 
     def test_the_complexity_count_sees_branches(self):
-        planted = ast.parse(
-            "def f(a, b):\n    if a and b:\n        return 1\n    for x in a:\n        pass\n"
-        )
-        self.assertEqual(complexity(planted.body[0]), 4)
+        testkit.assert_complexity_sees_branches(self, complexity)
 
     def test_the_gate_never_evaluates_code(self):
-        names = {node.id for node in ast.walk(self.tree) if isinstance(node, ast.Name)}
-        self.assertFalse(names & {"eval", "exec", "compile"})
+        testkit.assert_never_evaluates_code(self, self.tree)
 
 
 if __name__ == "__main__":

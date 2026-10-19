@@ -38,6 +38,7 @@ import tempfile
 import time
 from pathlib import Path
 
+import gate_common
 import gate_policy
 from host import gid, uid
 
@@ -170,11 +171,7 @@ def image_present(engine, tag):
 
 def user_arguments(engine):
     """docker runs as root unless told otherwise; run it as the invoking user."""
-    if engine != "docker":
-        return []
-    user, _reason = uid()
-    group, _reason = gid()
-    return [] if user is None or group is None else ["--user", f"{user}:{group}"]
+    return gate_common.user_arguments(engine, uid_fn=uid, gid_fn=gid)
 
 
 def gate_argv(engine, tag, script, environ=None):

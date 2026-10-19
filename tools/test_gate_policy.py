@@ -1,22 +1,13 @@
 """Regressions for the required-gate policy: a required gate that cannot run fails."""
 
-import contextlib
-import io
 import unittest
 
 import gate_policy as policy
+from testkit import capture
 
 
 def environ(value):
     return {policy.VARIABLE: value}
-
-
-def capture(function, *args, **kwargs):
-    """Return (result, stdout) of `function` called with `args` and `kwargs`."""
-    out = io.StringIO()
-    with contextlib.redirect_stdout(out):
-        result = function(*args, **kwargs)
-    return result, out.getvalue()
 
 
 class NamedTests(unittest.TestCase):

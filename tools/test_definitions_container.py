@@ -1,7 +1,5 @@
 """Regressions for the pinned definition-gate container: pin, selection, command line."""
 
-import contextlib
-import io
 import json
 import tempfile
 import unittest
@@ -10,16 +8,9 @@ from unittest.mock import patch
 
 import definitions_container as container
 import gate_policy
+from testkit import capture
 import verify_mkosi_definitions
 import verify_systemd_definitions
-
-
-def capture(function, *args, **kwargs):
-    """Return (result, stdout) of `function` called with `args` and `kwargs`."""
-    out = io.StringIO()
-    with contextlib.redirect_stdout(out):
-        result = function(*args, **kwargs)
-    return result, out.getvalue()
 
 
 class PinTests(unittest.TestCase):

@@ -21,6 +21,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from testkit import passing
 import verify_display as gate
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -46,16 +47,6 @@ FAIL display/mpeg2-reference-crc
 info modifier the driver chose: 0x0100000000000009
 RESULT fail: 1 case(s) failed
 """
-
-
-def passing(cases, replace=None, line=""):
-    """A child report in which every case of `cases` passed.
-
-    With `replace`, that case's PASS line is `line` instead, the way the binary
-    prints a NOTE or SKIP line in its place and still ends with RESULT pass.
-    """
-    lines = [line if case == replace else f"PASS {case}" for case in cases]
-    return "\n".join(lines + ["RESULT pass"]) + "\n"
 
 
 PIN = "display/frame-crc-regression-pin"

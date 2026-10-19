@@ -48,17 +48,16 @@ from the package database, never from the program.
 """
 
 import hashlib
-import json
 import os
 import re
-import secrets
 import shutil
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 import display_toolchain
+import gate_common
+from gate_common import run_id
 import subtitle_fixture
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -127,7 +126,6 @@ BUILD_TIMEOUT = 1800
 RUN_TIMEOUT = 120
 # Scalar bounds on what is read.
 MAX_OUTPUT_LINES = 400
-MAX_BUILD_LINES = 20000
 MAX_DRM_ENTRIES = 256
 MAX_PROBLEM_LINES = 24
 
@@ -355,18 +353,7 @@ def libva_version(runner=run):
 
 def executable_from(messages, name=BINARY):
     """Return the executable cargo reported for `name` in its JSON messages."""
-    for line in messages.splitlines()[:MAX_BUILD_LINES]:
-        if not line.startswith("{"):
-            continue
-        try:
-            message = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        target = message.get("target") or {}
-        if message.get("reason") == "compiler-artifact" and target.get("name") == name:
-            if message.get("executable"):
-                return Path(message["executable"])
-    return None
+    return gate_common.executable_from(messages, name)
 
 
 def build(runner=run):
@@ -451,11 +438,6 @@ def not_held(cases, notes):
         for name in NOTED_CASES
         if name not in cases and any(line.startswith(f"NOTE {name}: ") for line in notes)
     ]
-
-
-def run_id():
-    """Return a run identifier: the UTC start time and a random suffix."""
-    return time.strftime("r%Y%m%dT%H%M%S", time.gmtime()) + "-" + secrets.token_hex(2)
 
 
 def retain_dir(environ=None):

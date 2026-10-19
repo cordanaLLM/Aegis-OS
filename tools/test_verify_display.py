@@ -7,13 +7,8 @@ from pathlib import Path
 import unittest
 from unittest import mock
 
+from testkit import passing
 import verify_display as gate
-
-
-def passing(cases, replace=None, line=""):
-    """Return a child report in which every case of `cases` passed."""
-    lines = [line if case == replace else f"PASS {case}" for case in cases]
-    return "\n".join(lines + ["RESULT pass"]) + "\n"
 
 
 class TestSubtitleCasesPositive(unittest.TestCase):

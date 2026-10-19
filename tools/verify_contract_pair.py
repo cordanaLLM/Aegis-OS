@@ -84,13 +84,13 @@ import os
 import re
 import secrets
 import shutil
-import signal
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-from host import end_session
+import gate_common
+from gate_common import install_signal_handlers, stop
 
 ROOT = Path(__file__).resolve().parent.parent
 PIN = ROOT / "build" / "contract" / "producers.pin.json"
@@ -151,8 +151,6 @@ NETWORK_TIMEOUT = 300
 DOWNLOAD_TIMEOUT = 600
 BUILD_TIMEOUT = 600
 VALIDATE_TIMEOUT = 60
-STOP_TIMEOUT = 15
-TERMINATING_SIGNALS = ("SIGTERM", "SIGHUP", "SIGQUIT")
 
 # Scalar bounds (HISS-02).
 MAX_OUTPUT_CHARS = 1 << 20
@@ -577,8 +575,7 @@ def result_accepted_problems(result, document, request=None):
 
 def tail(text, lines=4):
     """Return the last non-empty lines of `text`, for a failure note."""
-    kept = [line for line in text.splitlines() if line.strip()]
-    return kept[-lines:]
+    return gate_common.tail(text, lines=lines)
 
 
 def ls_remote_main(text):
@@ -678,19 +675,6 @@ def go_environment(offline):
     return env
 
 
-def stop(process):
-    """End `process` and everything in its session, waiting a bounded time for it."""
-    if process.poll() is None:
-        ended, _reason = end_session(process.pid)
-        if not ended:
-            process.kill()
-    try:
-        process.wait(timeout=STOP_TIMEOUT)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait(timeout=STOP_TIMEOUT)
-
-
 def run(argv, timeout, env=None, cwd=None):
     """Run `argv` in its own session under a hard deadline; return (code, stdout, stderr)."""
     try:
@@ -723,11 +707,7 @@ def decode(data):
 
 def cache_dir():
     """Return the directory the checkout, the binary and the run logs live in."""
-    override = os.environ.get(CACHE_VARIABLE)
-    if override:
-        return Path(override).expanduser()
-    base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
-    return Path(base) / "aegis-contract"
+    return gate_common.cache_dir(CACHE_VARIABLE, "aegis-contract")
 
 
 class Context:
@@ -2049,22 +2029,6 @@ def prune_runs(store):
         for old in group[:-MAX_RETAINED_RUNS]:
             if old.name not in keep:
                 shutil.rmtree(old, ignore_errors=True)
-
-
-def terminated(signum, _frame):
-    """Turn a termination signal into SystemExit, so a running child is ended on the way out."""
-    raise SystemExit(128 + signum)
-
-
-def install_signal_handlers():
-    """Route SIGTERM, SIGHUP and SIGQUIT through `terminated`; each is looked up (HISS-21)."""
-    handled = []
-    for name in TERMINATING_SIGNALS:
-        number = getattr(signal, name, None)
-        if number is not None:
-            signal.signal(number, terminated)
-            handled.append(name)
-    return handled
 
 
 def parse_arguments(argv):
