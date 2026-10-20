@@ -283,13 +283,7 @@ fn the_workspace_lists_every_crate_with_a_manifest() {
 /// Boundary: the crate inherits the workspace lints rather than restating them.
 #[test]
 fn the_crate_inherits_the_workspace_lints() {
-    let manifest = read("crates/aegis-compositor/Cargo.toml");
-    assert!(manifest.contains("[lints]"));
-    assert!(manifest.contains("workspace = true"));
-    assert!(!manifest.contains("[lints.rust]"));
-    assert!(!manifest.contains("[lints.clippy]"));
-    let root = read("Cargo.toml");
-    assert!(root.contains("unsafe_code = \"forbid\""));
+    dependency_closure::assert_inherits_workspace_lints("crates/aegis-compositor/Cargo.toml");
 }
 
 /// Boundary (E27-3): wayland-backend is in `Cargo.lock` -- P17's

@@ -11,6 +11,9 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "../../dependency_closure.rs"]
+mod dependency_closure;
+
 /// Returns the workspace root, two directories above this crate's manifest.
 fn workspace_root() -> Option<PathBuf> {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -188,13 +191,8 @@ fn the_workspace_lists_every_crate_with_a_manifest() {
 /// Boundary: the crate inherits the workspace lints rather than restating them.
 #[test]
 fn the_crate_inherits_the_workspace_lints() {
-    let manifest = read("crates/aegis-minerva/Cargo.toml");
-    assert!(manifest.contains("[lints]"));
-    assert!(manifest.contains("workspace = true"));
-    assert!(!manifest.contains("[lints.rust]"));
-    assert!(!manifest.contains("[lints.clippy]"));
+    dependency_closure::assert_inherits_workspace_lints("crates/aegis-minerva/Cargo.toml");
     let root = read("Cargo.toml");
-    assert!(root.contains("unsafe_code = \"forbid\""));
     assert!(
         root.contains("rust-version = \"1.99.1\""),
         "D111: the workspace rust-version is the rust-toolchain.toml pin"

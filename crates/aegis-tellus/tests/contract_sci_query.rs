@@ -5,6 +5,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_tellus::{
     CandidateId, CandidateList, CandidateSciQuery, CandidateSciResponse, ContractError,
     Correlation, EdgeId, EnergyKwh, GridIntensity, MAX_CONTRACT_PAYLOAD_BYTES,
@@ -22,9 +25,10 @@ fn a_query_round_trips() -> Fallible {
     let payload = query()?;
     let mut buffer = PayloadBuffer::new();
     let text = payload.encode_into(&mut buffer)?;
-    assert!(text.contains(CORRELATION));
-    assert!(text.contains(CANDIDATE));
-    assert!(text.contains(SchemaId::CandidateSciQuery.tag()));
+    test_assertions::assert_encoded_names(
+        text,
+        &[CORRELATION, CANDIDATE, SchemaId::CandidateSciQuery.tag()],
+    );
     assert_eq!(CandidateSciQuery::decode(text)?, payload);
     assert_eq!(CandidateSciQuery::SCHEMA, SchemaId::CandidateSciQuery);
     assert_eq!(CandidateSciQuery::EDGE, EdgeId::EvaluateCandidateCarbonSci);

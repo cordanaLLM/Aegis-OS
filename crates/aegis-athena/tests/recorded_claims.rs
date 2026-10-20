@@ -11,6 +11,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_athena::{
     Citation, ClaimStatus, DecisionRecord, DecisionState, LEDGER_ALGORITHM, LedgerAlgorithmReading,
     P16_RECORDED_CLAIMS, RecordedClaim, SANDBOX_DEFERRED_TO,
@@ -144,14 +147,12 @@ fn the_gate_count_row_separates_the_counts_from_the_names() -> Fallible {
 /// renders.
 #[test]
 fn the_register_has_no_duplicate_requirement() {
-    let mut seen: Vec<&str> = P16_RECORDED_CLAIMS
-        .into_iter()
-        .map(|entry| entry.requirement)
-        .collect();
-    seen.sort_unstable();
-    let before = seen.len();
-    seen.dedup();
-    assert_eq!(seen.len(), before, "a requirement is recorded twice");
+    test_assertions::assert_unique_requirements(
+        P16_RECORDED_CLAIMS
+            .into_iter()
+            .map(|entry| entry.requirement)
+            .collect(),
+    );
 
     for status in [
         ClaimStatus::Recorded,
