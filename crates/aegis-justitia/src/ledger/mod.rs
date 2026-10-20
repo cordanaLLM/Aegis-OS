@@ -437,7 +437,6 @@ impl AuditRecord {
     }
 }
 
-#[path = "../../../chain.rs"]
 mod chain;
 
 pub use chain::{Chain, ChainRecord, Timestamped};
@@ -695,24 +694,22 @@ impl<H: LedgerHasher, S: RecordSigner, K: LedgerSink> AuditLedger<H, S, K> {
     /// misbehaves, no signer is bound, or the sink refuses the record. Nothing
     /// is committed unless every step succeeds.
     pub fn append(&mut self, draft: RecordDraft) -> Result<Digest32, LedgerError> {
-        self.chain.check_append(draft.at)?;
-        let sequence = self.chain.next_sequence();
-        let body = RecordBody::from_parts(sequence, self.chain.head(), H::ALGORITHM, draft);
+        let (sequence, head) = self.chain.next_link(draft.at)?;
+        let body = RecordBody::from_parts(sequence, head, H::ALGORITHM, draft);
         let digest = body.digest::<H>()?;
         let signature = self.signer.sign(&digest)?;
         let record = AuditRecord::from_parts(body, signature, digest);
         self.sink.append_record(&record, self.io_deadline)?;
-        self.chain.commit(record, digest, sequence, draft.at);
-        Ok(digest)
+        Ok(self.chain.seal(record))
     }
 
     /// Re-walks the ledger's own records.
     ///
     /// # Errors
     ///
-    /// Returns [`LedgerError`] from [`verify_chain_bounded`].
+    /// Returns [`LedgerError`] from [`Chain::verify`].
     pub fn verify(&self) -> Result<Digest32, LedgerError> {
-        verify_chain_bounded::<H>(self.chain.records(), self.chain.bound())
+        self.chain.verify::<H>()
     }
 }
 

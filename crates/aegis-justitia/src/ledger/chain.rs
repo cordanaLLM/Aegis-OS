@@ -3,8 +3,6 @@
 
 //! Generic hash-linked chain state and record contract.
 
-#![allow(dead_code)]
-
 use crate::ledger::hash::{Digest32, HashAlgorithm, LedgerHasher};
 use crate::ledger::{LedgerError, RecordBody, Sequence, verify_link};
 use crate::time::UnixSeconds;
@@ -178,13 +176,44 @@ impl<R> Chain<R> {
         Ok(())
     }
 
+    /// Verifies that an append at `at` is valid and returns the next sequence number and predecessor digest.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LedgerError::LengthBoundExceeded`] when the chain is full, or
+    /// [`LedgerError::NonMonotonicTimestamp`] when `at` precedes the latest record.
+    pub fn next_link(&self, at: UnixSeconds) -> Result<(Sequence, Digest32), LedgerError> {
+        self.check_append(at)?;
+        Ok((self.next_sequence, self.head))
+    }
+
     /// Commits a sealed record to the chain.
-    pub fn commit(&mut self, record: R, digest: Digest32, sequence: Sequence, at: UnixSeconds) {
+    fn commit(&mut self, record: R, digest: Digest32, sequence: Sequence, at: UnixSeconds) {
         self.head = digest;
         // Saturating, not wrapping: at the u64 ceiling the next append fails with
         // a sequence gap rather than silently restarting the chain at one.
         self.next_sequence = Sequence::new(sequence.get().saturating_add(1));
         self.last_at = Some(at);
         self.records.push(record);
+    }
+}
+
+impl<R: ChainRecord> Chain<R> {
+    /// Re-walks the chain's records under the chain's scalar bound.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LedgerError`] from [`ChainRecord::verify_chain_bounded`].
+    pub fn verify<H: LedgerHasher>(&self) -> Result<Digest32, LedgerError> {
+        R::verify_chain_bounded::<H>(&self.records, self.bound)
+    }
+
+    /// Commits a sealed record to the chain and returns its digest.
+    pub fn seal(&mut self, record: R) -> Digest32 {
+        let digest = record.digest();
+        let sequence = record.sequence();
+        let at = record.at();
+        self.commit(record, digest, sequence, at);
+        digest
     }
 }

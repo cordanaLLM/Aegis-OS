@@ -59,6 +59,9 @@ fn the_scanner_reads_public_surface_and_not_private_helpers() {
             "append_record",
             "ALGORITHM",
             "Sha256Ledger",
+            "Chain",
+            "ChainRecord",
+            "Timestamped",
         ],
         &[
             "commit",

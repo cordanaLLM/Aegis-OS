@@ -6330,6 +6330,19 @@ against the decoder of `061bbde`.
   sources through `crates/surface_sources.rs`, which follows `#[path]`
   attributes, so a public name in a shared file stays under the HISS-15 sweep;
   `tools/verify_recursion.py` follows the same attributes for HISS-01.
+- **D117** Where does the hash-linked chain state that `aegis-justitia`'s
+  `AuditLedger` and `aegis-athena`'s `CheckpointLedger` both carry live? The
+  two ledgers held the same record walk, bound and timestamp checks and
+  accessors. D116 does not fit: `aegis-athena` already depends on
+  `aegis-justitia`, and a shared file outside `src/` would keep the names out
+  of the crate's own sources. **Decision (2026-10-20, operator):**
+  `Chain`, `ChainRecord` and `Timestamped` become tested public API of
+  `aegis-justitia` in `crates/aegis-justitia/src/ledger/chain.rs`; under
+  HISS-14 (public contracts are append-only) the names stay once added.
+  Both ledgers dereference to their `Chain`, so `aegis-athena` keeps its
+  accessors. Positive, negative and boundary tests are in
+  `crates/aegis-justitia/tests/chain.rs`, and the public-surface sweep names
+  the three items.
 
 ## Evidence
 

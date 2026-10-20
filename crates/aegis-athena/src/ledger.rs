@@ -352,22 +352,20 @@ impl<H: LedgerHasher> CheckpointLedger<H> {
     /// precedes the previous record, the pre-image overflows, or the hash
     /// backend misbehaves. Nothing is committed unless every step succeeds.
     pub fn append(&mut self, draft: CheckpointDraft) -> Result<Digest32, LedgerError> {
-        self.chain.check_append(draft.at)?;
-        let sequence = self.chain.next_sequence();
-        let body = CheckpointBody::from_parts(sequence, self.chain.head(), H::ALGORITHM, draft);
+        let (sequence, head) = self.chain.next_link(draft.at)?;
+        let body = CheckpointBody::from_parts(sequence, head, H::ALGORITHM, draft);
         let digest = body.digest::<H>()?;
         let record = CheckpointRecord::from_parts(body, digest);
-        self.chain.commit(record, digest, sequence, draft.at);
-        Ok(digest)
+        Ok(self.chain.seal(record))
     }
 
     /// Re-walks the ledger's own records.
     ///
     /// # Errors
     ///
-    /// Returns [`LedgerError`] from [`verify_chain_bounded`].
+    /// Returns [`LedgerError`] from [`Chain::verify`].
     pub fn verify(&self) -> Result<Digest32, LedgerError> {
-        verify_chain_bounded::<H>(self.chain.records(), self.chain.bound())
+        self.chain.verify::<H>()
     }
 }
 
