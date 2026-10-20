@@ -29,7 +29,8 @@
 
 use crate::contracts::graph::EdgeId;
 use crate::contracts::{
-    ContractError, Correlation, PayloadBuffer, SchemaId, decode_text, encode_into,
+    ContractError, Correlation, PayloadBuffer, SchemaId, decode_text, decode_validated,
+    encode_into, ensure_edge,
 };
 use crate::id::{CandidateId, CorrelationId};
 use crate::sci::{EnergyKwh, GridIntensity, SciRate};
@@ -225,12 +226,12 @@ impl CandidateSciQuery {
     /// and [`ContractError::EmptyCandidateList`] for a query with no subject.
     pub fn validate(&self) -> Result<(), ContractError> {
         let correlation = self.correlation();
-        if self.edge != Self::EDGE {
-            return Err(ContractError::WrongEdge {
-                correlation,
-                found: self.edge.name(),
-            });
-        }
+        ensure_edge(self.edge, Self::EDGE, correlation, |c, found| {
+            ContractError::WrongEdge {
+                correlation: c,
+                found,
+            }
+        })?;
         if self.candidates.is_empty() {
             return Err(ContractError::EmptyCandidateList { correlation });
         }
@@ -257,9 +258,7 @@ impl CandidateSciQuery {
     /// bound, [`ContractError::Malformed`] for anything the schema refuses,
     /// and otherwise whatever [`Self::validate`] refuses.
     pub fn decode(text: &str) -> Result<Self, ContractError> {
-        let decoded: Self = decode_text(Self::SCHEMA, text)?;
-        decoded.validate()?;
-        Ok(decoded)
+        decode_validated(decode_text(Self::SCHEMA, text), Self::validate)
     }
 }
 
@@ -311,12 +310,12 @@ impl CandidateSciResponse {
     /// and [`ContractError::EmptyCandidateList`] for a response with no rate.
     pub fn validate(&self) -> Result<(), ContractError> {
         let correlation = self.correlation();
-        if self.edge != Self::EDGE {
-            return Err(ContractError::WrongEdge {
-                correlation,
-                found: self.edge.name(),
-            });
-        }
+        ensure_edge(self.edge, Self::EDGE, correlation, |c, found| {
+            ContractError::WrongEdge {
+                correlation: c,
+                found,
+            }
+        })?;
         if self.rates.is_empty() {
             return Err(ContractError::EmptyCandidateList { correlation });
         }
@@ -377,8 +376,6 @@ impl CandidateSciResponse {
     /// bound, [`ContractError::Malformed`] for anything the schema refuses,
     /// and otherwise whatever [`Self::validate`] refuses.
     pub fn decode(text: &str) -> Result<Self, ContractError> {
-        let decoded: Self = decode_text(Self::SCHEMA, text)?;
-        decoded.validate()?;
-        Ok(decoded)
+        decode_validated(decode_text(Self::SCHEMA, text), Self::validate)
     }
 }

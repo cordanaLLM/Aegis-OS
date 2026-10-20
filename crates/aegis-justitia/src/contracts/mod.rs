@@ -71,8 +71,6 @@ pub mod graph;
 pub mod proposal;
 pub mod unit;
 
-use core::fmt;
-
 use crate::identity::Identity;
 use crate::risk::RequiredApproval;
 
@@ -117,308 +115,90 @@ impl SchemaId {
     }
 }
 
-impl fmt::Display for SchemaId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.tag())
-    }
-}
-
-/// What a refusal is about: the contract, and the payload when it could be read.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Correlation {
-    schema: SchemaId,
-    id: Option<Identity>,
-}
-
-impl Correlation {
-    /// Builds a correlation from a schema and the identifier, if one was read.
-    #[must_use]
-    pub const fn new(schema: SchemaId, id: Option<Identity>) -> Self {
-        Self { schema, id }
-    }
-
-    /// Returns the contract the payload claimed to satisfy.
-    #[must_use]
-    pub const fn schema(&self) -> SchemaId {
-        self.schema
-    }
-
-    /// Returns the correlation identifier, when the decoder could read one.
-    #[must_use]
-    pub const fn id(&self) -> Option<Identity> {
-        self.id
-    }
-}
-
-impl fmt::Display for Correlation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.id {
-            Some(id) => write!(f, "{} [{}]", self.schema, id),
-            None => write!(f, "{} [uncorrelated]", self.schema),
-        }
-    }
-}
-
-/// Reasons a contract payload is refused.
-///
-/// Every variant carries its [`Correlation`], so no refusal is anonymous.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
-#[non_exhaustive]
-pub enum ContractError {
-    /// The payload names a contract version this build does not admit.
-    #[error("{correlation}: the payload names a contract version this build does not admit")]
-    UnknownVersion {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// The payload is not a well-formed instance of its contract.
-    #[error("{correlation}: the payload is not a well-formed instance of this contract")]
-    Malformed {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// The payload does not fit the contract's scalar byte bound.
-    #[error("{correlation}: the payload does not fit the {max}-byte contract bound")]
-    PayloadTooLong {
-        /// What the refusal is about.
-        correlation: Correlation,
-        /// The scalar bound in bytes.
-        max: usize,
-    },
-    /// An action proposal arrived without an oversight signature.
-    #[error("{correlation}: the action proposal carries no oversight signature")]
-    Unsigned {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// The approval window is outside the declared bounds.
-    #[error("{correlation}: an approval window of {seconds}s is outside {min}s..={max}s")]
-    WindowOutOfRange {
-        /// What the refusal is about.
-        correlation: Correlation,
-        /// The window the payload declared, in seconds.
-        seconds: u64,
-        /// The shortest admissible window, in seconds.
-        min: u32,
-        /// The longest admissible window, in seconds.
-        max: u32,
-    },
-    /// A genesis previous-link appeared on a record that is not the first.
-    #[error(
-        "{correlation}: a genesis previous link is admissible only at sequence 1, not {sequence}"
-    )]
-    GenesisLinkOutOfPlace {
-        /// What the refusal is about.
-        correlation: Correlation,
-        /// The sequence number the payload declared.
-        sequence: u64,
-    },
-    /// The first record in a chain did not carry the genesis previous-link.
-    #[error("{correlation}: the record at sequence 1 must carry the genesis previous link")]
-    MissingGenesisLink {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// A refusal was recorded without the reason that produced it.
-    #[error("{correlation}: a refused action must record the reason it was refused")]
-    RefusalWithoutReason {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// A decision that refused nothing still carried a refusal reason.
-    #[error("{correlation}: a decision that refused nothing must record no reason")]
-    ReasonWithoutRefusal {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// The declared approval is not the one the tier and class demand.
-    #[error("{correlation}: declared approval {declared:?} is not the demanded {demanded:?}")]
-    ApprovalMismatch {
-        /// What the refusal is about.
-        correlation: Correlation,
-        /// The approval the payload declared.
-        declared: RequiredApproval,
-        /// The approval the tier and oversight class demand.
-        demanded: RequiredApproval,
-    },
-    /// A decision request was raised where no human decision is demanded.
-    #[error("{correlation}: this tier and oversight class demand no human decision")]
-    NoApprovalRequired {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-}
-
-impl ContractError {
-    /// Returns what the refusal is about.
-    #[must_use]
-    pub const fn correlation(&self) -> Correlation {
-        match self {
-            Self::UnknownVersion { correlation }
-            | Self::Malformed { correlation }
-            | Self::PayloadTooLong { correlation, .. }
-            | Self::Unsigned { correlation }
-            | Self::WindowOutOfRange { correlation, .. }
-            | Self::GenesisLinkOutOfPlace { correlation, .. }
-            | Self::MissingGenesisLink { correlation }
-            | Self::RefusalWithoutReason { correlation }
-            | Self::ReasonWithoutRefusal { correlation }
-            | Self::ApprovalMismatch { correlation, .. }
-            | Self::NoApprovalRequired { correlation } => *correlation,
-        }
-    }
-}
+#[macro_use]
+#[path = "../../../contract_scaffold.rs"]
+mod contract_scaffold;
 
 /// A fixed buffer holding one encoded contract payload.
-///
-/// Encoding writes into a caller-supplied buffer rather than returning an
-/// owned string, so a payload that encodes successfully costs no heap and the
-/// [`MAX_CONTRACT_PAYLOAD_BYTES`] bound is enforced by the buffer itself
-/// instead of by a length check after the fact.
-#[derive(Debug, Clone, Copy)]
-pub struct PayloadBuffer {
-    bytes: [u8; MAX_CONTRACT_PAYLOAD_BYTES],
-    len: usize,
-}
+pub type PayloadBuffer = contract_scaffold::PayloadBuffer<MAX_CONTRACT_PAYLOAD_BYTES>;
 
-impl Default for PayloadBuffer {
-    fn default() -> Self {
-        Self::new()
+/// What a refusal is about: the contract, and the payload when it could be read.
+pub type Correlation = contract_scaffold::Correlation<SchemaId, Identity>;
+
+define_contract_error! {
+    SchemaId, Identity;
+    /// Reasons a contract payload is refused.
+    ///
+    /// Every variant carries its [`Correlation`], so no refusal is anonymous.
+    pub enum ContractError {
+        /// An action proposal arrived without an oversight signature.
+        #[error("{correlation}: the action proposal carries no oversight signature")]
+        Unsigned {
+            /// What the refusal is about.
+            correlation: Correlation,
+        },
+        /// The approval window is outside the declared bounds.
+        #[error("{correlation}: an approval window of {seconds}s is outside {min}s..={max}s")]
+        WindowOutOfRange {
+            /// What the refusal is about.
+            correlation: Correlation,
+            /// The window the payload declared, in seconds.
+            seconds: u64,
+            /// The shortest admissible window, in seconds.
+            min: u32,
+            /// The longest admissible window, in seconds.
+            max: u32,
+        },
+        /// A genesis previous-link appeared on a record that is not the first.
+        #[error(
+            "{correlation}: a genesis previous link is admissible only at sequence 1, not {sequence}"
+        )]
+        GenesisLinkOutOfPlace {
+            /// What the refusal is about.
+            correlation: Correlation,
+            /// The sequence number the payload declared.
+            sequence: u64,
+        },
+        /// The first record in a chain did not carry the genesis previous-link.
+        #[error("{correlation}: the record at sequence 1 must carry the genesis previous link")]
+        MissingGenesisLink {
+            /// What the refusal is about.
+            correlation: Correlation,
+        },
+        /// A refusal was recorded without the reason that produced it.
+        #[error("{correlation}: a refused action must record the reason it was refused")]
+        RefusalWithoutReason {
+            /// What the refusal is about.
+            correlation: Correlation,
+        },
+        /// A decision that refused nothing still carried a refusal reason.
+        #[error("{correlation}: a decision that refused nothing must record no reason")]
+        ReasonWithoutRefusal {
+            /// What the refusal is about.
+            correlation: Correlation,
+        },
+        /// The declared approval is not the one the tier and class demand.
+        #[error("{correlation}: declared approval {declared:?} is not the demanded {demanded:?}")]
+        ApprovalMismatch {
+            /// What the refusal is about.
+            correlation: Correlation,
+            /// The approval the payload declared.
+            declared: RequiredApproval,
+            /// The approval the tier and oversight class demand.
+            demanded: RequiredApproval,
+        },
+        /// A decision request was raised where no human decision is demanded.
+        #[error("{correlation}: this tier and oversight class demand no human decision")]
+        NoApprovalRequired {
+            /// What the refusal is about.
+            correlation: Correlation,
+        },
     }
 }
 
-impl PayloadBuffer {
-    /// Builds an empty buffer.
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            bytes: [0u8; MAX_CONTRACT_PAYLOAD_BYTES],
-            len: 0,
-        }
-    }
-
-    /// Returns the bytes written so far.
-    #[must_use]
-    pub fn as_bytes(&self) -> &[u8] {
-        match self.bytes.get(..self.len) {
-            Some(slice) => slice,
-            None => &[],
-        }
-    }
-
-    /// Returns the encoded payload as text, when it is valid UTF-8.
-    #[must_use]
-    pub fn as_str(&self) -> Option<&str> {
-        core::str::from_utf8(self.as_bytes()).ok()
-    }
-
-    /// Returns the number of bytes written.
-    #[must_use]
-    pub const fn len(&self) -> usize {
-        self.len
-    }
-
-    /// Returns `true` when nothing has been encoded into the buffer.
-    #[must_use]
-    pub const fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-}
-
-/// The lenient view of a payload's `schema` field, and of nothing else.
-///
-/// Every other field is an unknown field to this type, so it is skipped rather
-/// than parsed. That is what keeps the peek per-field: reading the claimed
-/// version cannot be spoiled by a field this view does not name.
-#[derive(serde::Deserialize)]
-struct PeekSchema {
-    #[serde(default)]
-    schema: Option<Identity>,
-}
-
-/// The lenient view of a payload's correlation identifier, and of nothing else.
-///
-/// Deliberately a second type rather than a second field on [`PeekSchema`]. A
-/// `schema` value that is out of the identifier charset, longer than
-/// [`crate::MAX_IDENTITY_LEN`] or not a string at all fails to parse, and a
-/// single view carrying both fields would discard the correlation identifier
-/// with it -- one byte in the version tag would make every refusal anonymous.
-/// Here that byte is in a field this view never looks at.
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "kebab-case")]
-struct PeekCorrelation {
-    #[serde(default)]
-    correlation_id: Option<Identity>,
-}
-
-/// Reads the correlation identifier a payload carried, if it carried one.
-fn peek_correlation(text: &str) -> Option<Identity> {
-    serde_json::from_str::<PeekCorrelation>(text)
-        .ok()
-        .and_then(|row| row.correlation_id)
-}
-
-/// Reads the contract version a payload claimed, if it claimed a readable one.
-fn peek_schema(text: &str) -> Option<Identity> {
-    serde_json::from_str::<PeekSchema>(text)
-        .ok()
-        .and_then(|row| row.schema)
-}
-
-/// Classifies a decode failure into a correlated refusal.
-///
-/// The two fields are read independently, so the only payload that refuses
-/// anonymously is one whose correlation identifier genuinely cannot be read --
-/// input that is not JSON, or that carries no readable identifier at all.
-fn classify(schema: SchemaId, text: &str) -> ContractError {
-    let correlation = Correlation::new(schema, peek_correlation(text));
-    match peek_schema(text) {
-        Some(tag) if tag.as_bytes() != schema.tag().as_bytes() => {
-            ContractError::UnknownVersion { correlation }
-        }
-        _ => ContractError::Malformed { correlation },
-    }
-}
-
-/// Decodes one payload of `schema`, refusing anything over the byte bound.
-pub(crate) fn decode_text<T>(schema: SchemaId, text: &str) -> Result<T, ContractError>
-where
-    T: for<'de> serde::Deserialize<'de>,
-{
-    if text.len() > MAX_CONTRACT_PAYLOAD_BYTES {
-        return Err(ContractError::PayloadTooLong {
-            correlation: Correlation::new(schema, None),
-            max: MAX_CONTRACT_PAYLOAD_BYTES,
-        });
-    }
-    match serde_json::from_str::<T>(text) {
-        Ok(value) => Ok(value),
-        Err(_) => Err(classify(schema, text)),
-    }
-}
-
-/// Encodes `value` into `buffer` and returns the rendered payload.
-pub(crate) fn encode_into<'b, T>(
-    value: &T,
-    correlation: Correlation,
-    buffer: &'b mut PayloadBuffer,
-) -> Result<&'b str, ContractError>
-where
-    T: serde::Serialize,
-{
-    buffer.len = 0;
-    let mut tail: &mut [u8] = &mut buffer.bytes;
-    let written = serde_json::to_writer(&mut tail, value);
-    let remaining = tail.len();
-    if written.is_err() {
-        return Err(ContractError::PayloadTooLong {
-            correlation,
-            max: MAX_CONTRACT_PAYLOAD_BYTES,
-        });
-    }
-    buffer.len = MAX_CONTRACT_PAYLOAD_BYTES.saturating_sub(remaining);
-    match buffer.as_str() {
-        Some(text) => Ok(text),
-        None => Err(ContractError::Malformed { correlation }),
-    }
-}
+scaffold_contract!(
+    SchemaId,
+    Identity,
+    MAX_CONTRACT_PAYLOAD_BYTES,
+    ContractError
+);

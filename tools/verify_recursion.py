@@ -195,6 +195,7 @@ class Graph:
     """Every function the scanned files define and the indexes calls resolve against."""
 
     def __init__(self):
+        self.root = None
         self.fns = []
         self.modules = set()
         self.free = {}
@@ -236,6 +237,57 @@ def last_ident(tokens, start, end, pairs):
             name = text
         index = pairs.get(index, index) + 1
     return name
+
+
+def skip_visibility_before(tokens, idx):
+    """Return index before any leading pub or pub(...) modifier."""
+    cur = idx
+    if cur >= 0 and tokens[cur].text in (")", "pub"):
+        if tokens[cur].text == ")":
+            for _ in range(MAX_PATH_SEGMENTS):
+                if cur < 0 or tokens[cur].text == "pub":
+                    break
+                cur -= 1
+        cur -= 1
+    return cur
+
+
+def find_attr_open(tokens, close_idx):
+    """Return the '#' token index opening the attribute that close_idx ends, or -1."""
+    open_idx = close_idx - 1
+    for _ in range(MAX_PATH_SEGMENTS):
+        if open_idx < 1 or (tokens[open_idx].text == "[" and tokens[open_idx - 1].text == "#"):
+            break
+        open_idx -= 1
+    return open_idx - 1 if open_idx >= 1 and tokens[open_idx - 1].text == "#" else -1
+
+
+def match_path_attr(tokens, open_idx, close_idx):
+    """Return the string argument if tokens[open_idx:close_idx] is a path attribute."""
+    for i in range(open_idx + 1, close_idx - 2):
+        if (
+            tokens[i].text == "path"
+            and tokens[i + 1].text == "="
+            and tokens[i + 2].kind == "string"
+        ):
+            return tokens[i + 2].text.strip('"')
+    return None
+
+
+def extract_path_before(tokens, mod_idx):
+    """Return the target path of a #[path = "..."] attribute immediately before ``mod_idx``."""
+    cur = skip_visibility_before(tokens, mod_idx - 1)
+    for _ in range(MAX_PATH_SEGMENTS):
+        if cur < 0 or tokens[cur].text != "]":
+            break
+        open_hash = find_attr_open(tokens, cur)
+        if open_hash < 0:
+            break
+        found = match_path_attr(tokens, open_hash + 1, cur)
+        if found is not None:
+            return found
+        cur = open_hash - 1
+    return None
 
 
 class Scanner:
@@ -305,13 +357,40 @@ class Scanner:
         return ("module",)
 
     def mod_item(self, index):
-        """Open an inline module."""
-        if self.kind(index + 1) != "id" or self.text(index + 2) != "{":
+        """Open an inline module or scan a path-included module."""
+        if self.kind(index + 1) != "id":
             return None
         name = self.tokens[index + 1].text
-        self.push(self.pairs[index + 2], ("mod", name))
-        self.graph.modules.add((self.target, self.module_path()))
-        return index + 3
+        if self.text(index + 2) == "{":
+            self.push(self.pairs[index + 2], ("mod", name))
+            self.graph.modules.add((self.target, self.module_path()))
+            return index + 3
+        if self.text(index + 2) == ";":
+            self.scan_path_mod(index, name)
+            return index + 3
+        return None
+
+    def scan_path_mod(self, index, name):
+        """Scan an external file declared via #[path = "..."] mod <name>;."""
+        rel_path = extract_path_before(self.tokens, index)
+        if rel_path is None or not getattr(self.graph, "root", None):
+            return
+        path = self.graph.root / self.file
+        target_path = (path.parent / rel_path).resolve()
+        if not target_path.is_file():
+            return
+        target_module = self.module_path() + (name,)
+        self.graph.modules.add((self.target, target_module))
+        try:
+            target_name = (
+                target_path.relative_to(self.graph.root).as_posix()
+                if target_path.is_relative_to(self.graph.root)
+                else target_path.as_posix()
+            )
+        except ValueError:
+            target_name = target_path.as_posix()
+        target_tokens = lex(target_path.read_text(encoding="utf-8"))
+        Scanner(self.graph, target_tokens, (target_name, self.target, target_module)).scan()
 
     def header_end(self, start):
         """Return the index of the body brace after ``start``, or of the token ending the item."""
@@ -532,6 +611,8 @@ def path_base(graph, fn, segments):
         return module, rest
     if (fn.target, fn.module + (head,)) in graph.modules:
         return fn.module, segments
+    if (fn.target, (head,)) in graph.modules:
+        return (), segments
     return None, segments
 
 
@@ -542,9 +623,20 @@ def path_targets(graph, fn, segments, name):
         found = graph.free.get((fn.target, base + tuple(rest)), {}).get(name)
         if found:
             return found
-    if rest and rest[-1][:1].isupper():
+    if not rest or not rest[-1][:1].isupper():
+        return []
+    if len(segments) == 1:
         return type_targets(graph, fn.target, rest[-1], name)
-    return []
+    if base is None:
+        return []
+    target_module = base + tuple(rest[:-1])
+    if (fn.target, target_module) not in graph.modules:
+        return []
+    return [
+        callee
+        for callee in type_targets(graph, fn.target, rest[-1], name)
+        if callee.module == target_module
+    ]
 
 
 def resolve(graph):
@@ -632,6 +724,7 @@ def rust_files(root):
 def check(root, files):
     """Return the graph and every call cycle among the functions in ``files``."""
     graph = Graph()
+    graph.root = root
     for path in files:
         if not path.is_file():
             continue

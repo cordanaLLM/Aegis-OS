@@ -21,7 +21,8 @@
 
 use crate::contracts::graph::EdgeId;
 use crate::contracts::{
-    ContractError, Correlation, PayloadBuffer, SchemaId, decode_text, encode_into,
+    ContractError, Correlation, PayloadBuffer, SchemaId, decode_text, decode_validated,
+    encode_into, ensure_edge,
 };
 use crate::id::{CorrelationId, SliceName};
 use crate::sci::{DEFER_THRESHOLD_G_PER_KWH, GridIntensity, SciEngine};
@@ -95,12 +96,12 @@ impl TaskShiftDirective {
     /// the intensity the payload itself carries.
     pub fn validate(&self) -> Result<(), ContractError> {
         let correlation = self.correlation();
-        if self.edge != Self::EDGE {
-            return Err(ContractError::WrongEdge {
-                correlation,
-                found: self.edge.name(),
-            });
-        }
+        ensure_edge(self.edge, Self::EDGE, correlation, |c, found| {
+            ContractError::WrongEdge {
+                correlation: c,
+                found,
+            }
+        })?;
         if self.defer != (self.intensity.get() > Self::THRESHOLD) {
             return Err(ContractError::Malformed { correlation });
         }
@@ -127,8 +128,6 @@ impl TaskShiftDirective {
     /// bound, [`ContractError::Malformed`] for anything the schema refuses,
     /// and otherwise whatever [`Self::validate`] refuses.
     pub fn decode(text: &str) -> Result<Self, ContractError> {
-        let decoded: Self = decode_text(Self::SCHEMA, text)?;
-        decoded.validate()?;
-        Ok(decoded)
+        decode_validated(decode_text(Self::SCHEMA, text), Self::validate)
     }
 }
