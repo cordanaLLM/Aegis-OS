@@ -14,7 +14,7 @@ use aegis_athena::{
     AthenaError, MIN_PASSING_GATES, Maturity, PROMOTION_GATE_COUNT, PromotionGate, PromotionGates,
 };
 
-use common::Fallible;
+use common::{Fallible, NINE_PROMOTION_GATES};
 
 /// Records the first `count` gates as passing.
 fn pass(gates: &mut PromotionGates, count: usize) -> Fallible {
@@ -76,17 +76,7 @@ fn the_gate_vocabulary_is_nine_distinct_gates() {
         ],
         "the nine gate names are this milestone's reading, and they are these nine"
     );
-    for gate in [
-        PromotionGate::TypedInterface,
-        PromotionGate::ThreeDimensionalTests,
-        PromotionGate::BoundedLoops,
-        PromotionGate::NoAbortPath,
-        PromotionGate::DeadlinedIo,
-        PromotionGate::CommittedManifest,
-        PromotionGate::SweptSurface,
-        PromotionGate::CitedClaims,
-        PromotionGate::NoDecisionPathHeap,
-    ] {
+    for gate in NINE_PROMOTION_GATES {
         assert!(PromotionGate::ALL.contains(&gate));
     }
 }

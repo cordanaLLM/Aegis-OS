@@ -27,6 +27,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use core::mem::size_of;
 
 use aegis_hestia::{
@@ -118,10 +121,12 @@ fn an_escaped_payload_decodes_to_the_same_value() -> Fallible {
 #[test]
 fn the_payload_buffer_does_not_grow() -> Fallible {
     let buffer = PayloadBuffer::new();
-    assert!(buffer.is_empty());
-    assert_eq!(buffer.len(), 0);
-    assert_eq!(buffer.as_bytes(), b"");
-    assert_eq!(buffer.as_str(), Some(""));
+    test_assertions::assert_empty_buffer_view(
+        buffer.is_empty(),
+        buffer.len(),
+        buffer.as_bytes(),
+        buffer.as_str(),
+    );
 
     let mut second = PayloadBuffer::default();
     registration()?.encode_into(&mut second)?;
@@ -134,9 +139,10 @@ fn the_payload_buffer_does_not_grow() -> Fallible {
 /// Boundary: the buffer is exactly its bound plus its length field.
 #[test]
 fn the_payload_buffer_is_its_bound_plus_a_length() {
-    let buffer = size_of::<PayloadBuffer>();
-    assert!(buffer >= MAX_CONTRACT_PAYLOAD_BYTES);
-    assert!(buffer <= MAX_CONTRACT_PAYLOAD_BYTES.saturating_add(size_of::<usize>() * 2));
+    test_assertions::assert_bound_plus_length(
+        size_of::<PayloadBuffer>(),
+        MAX_CONTRACT_PAYLOAD_BYTES,
+    );
 }
 
 /// Boundary: the store is small, and a copy of it shares nothing.

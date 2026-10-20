@@ -15,15 +15,14 @@ mod common;
 
 use aegis_athena::{
     AthenaEngine, AthenaError, CONTRACT_VERSION, CallDeadline, CallKind, CheckpointLedger,
-    ContractError, Event, EventKind, LatencyMs, LedgerError, Lifecycle, PortError, PromotionGate,
-    PromotionGates, SciCarbonRate, Sha256CheckpointLedger, Stage, StubSysupdate, SysupdateCall,
-    SysupdatePort,
+    ContractError, Event, EventKind, LatencyMs, LedgerError, Lifecycle, PortError, PromotionGates,
+    SciCarbonRate, Sha256CheckpointLedger, Stage, StubSysupdate, SysupdateCall, SysupdatePort,
 };
 use aegis_justitia::{
     Digest32, HashAlgorithm, LedgerHasher, Sequence, Sha256Hasher, SignedAuditRecord, UnixSeconds,
 };
 
-use common::{AT, Fallible, audit_record, candidate, passing};
+use common::{AT, Fallible, NINE_PROMOTION_GATES, audit_record, candidate, passing};
 
 // --- Positive -------------------------------------------------------------
 
@@ -281,17 +280,7 @@ fn the_port_refuses_a_short_deadline() -> Fallible {
 #[test]
 fn a_gate_set_records_all_nine_exactly_once() -> Fallible {
     let mut gates = PromotionGates::new();
-    for gate in [
-        PromotionGate::TypedInterface,
-        PromotionGate::ThreeDimensionalTests,
-        PromotionGate::BoundedLoops,
-        PromotionGate::NoAbortPath,
-        PromotionGate::DeadlinedIo,
-        PromotionGate::CommittedManifest,
-        PromotionGate::SweptSurface,
-        PromotionGate::CitedClaims,
-        PromotionGate::NoDecisionPathHeap,
-    ] {
+    for gate in NINE_PROMOTION_GATES {
         gates.record(gate, true)?;
         assert!(matches!(
             gates.record(gate, true),

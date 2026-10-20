@@ -13,7 +13,8 @@
 #![allow(dead_code)]
 
 use aegis_athena::{
-    CandidateMetrics, LatencyMs, MemoryMb, NullModelRetention, SciCarbonRate, Sha256AthenaEngine,
+    CandidateMetrics, Event, LatencyMs, Lifecycle, MemoryMb, NullModelRetention, PromotionGate,
+    SciCarbonRate, Sha256AthenaEngine,
 };
 use aegis_justitia::{
     ActionType, AgentId, AuditRecordVersion, Digest32, EventId, HashAlgorithm, Identity,
@@ -24,6 +25,12 @@ use aegis_tellus::{CandidateId, CorrelationId};
 
 /// What every test in this suite returns.
 pub type Fallible = Result<(), Box<dyn std::error::Error>>;
+
+/// Returns this crate's `src/` directory.
+#[must_use]
+pub fn source_root() -> std::path::PathBuf {
+    source_effects::crate_source_root(env!("CARGO_MANIFEST_DIR"))
+}
 
 /// The candidate identifier the imported scaffold evaluates.
 pub const CANDIDATE: &str = "candidate-001-scx-cake-v2";
@@ -151,91 +158,33 @@ pub fn seal() -> Result<OversightSignature, Box<dyn std::error::Error>> {
     ))
 }
 
-/// Scalar bound on directories visited and entries read per directory.
-pub const WALK_BOUND: usize = 64;
-
-/// Returns the `.rs` files under `root`, as (file name, body) pairs.
-///
-/// The walk is iterative and doubly bounded: at most [`WALK_BOUND`]
-/// directories and at most [`WALK_BOUND`] entries per directory.
+/// Returns a lifecycle stepped through Challenge, Decompose, and Prove.
 ///
 /// # Errors
 ///
-/// Returns the first read failure, so a sweep cannot pass by reading nothing.
-pub fn rust_sources(
-    root: &std::path::Path,
-) -> Result<Vec<(String, String)>, Box<dyn std::error::Error>> {
-    let mut out: Vec<(String, String)> = Vec::new();
-    let mut stack: Vec<std::path::PathBuf> = vec![root.to_path_buf()];
-    for _ in 0..WALK_BOUND {
-        let Some(directory) = stack.pop() else { break };
-        for entry in std::fs::read_dir(&directory)?.take(WALK_BOUND) {
-            let path = entry?.path();
-            if path.is_dir() {
-                stack.push(path);
-                continue;
-            }
-            if path.extension().is_none_or(|ext| ext != "rs") {
-                continue;
-            }
-            let name = path
-                .file_name()
-                .map(|raw| raw.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            out.push((name, std::fs::read_to_string(&path)?));
-        }
-    }
-    if out.is_empty() {
-        return Err(format!("no Rust source was read under {}", root.display()).into());
-    }
-    Ok(out)
+/// Propagates stepping errors.
+pub fn lifecycle_proven() -> Result<Lifecycle, Box<dyn std::error::Error>> {
+    let mut lifecycle = Lifecycle::new();
+    lifecycle.step(Event::Challenge)?;
+    lifecycle.step(Event::Decompose)?;
+    lifecycle.step(Event::Prove)?;
+    Ok(lifecycle)
 }
 
-/// Scalar bound on the lines read from any one source file.
-pub const LINE_BOUND: usize = 4096;
+/// The nine promotion gates in declared sequence.
+pub const NINE_PROMOTION_GATES: [PromotionGate; 9] = [
+    PromotionGate::TypedInterface,
+    PromotionGate::ThreeDimensionalTests,
+    PromotionGate::BoundedLoops,
+    PromotionGate::NoAbortPath,
+    PromotionGate::DeadlinedIo,
+    PromotionGate::CommittedManifest,
+    PromotionGate::SweptSurface,
+    PromotionGate::CitedClaims,
+    PromotionGate::NoDecisionPathHeap,
+];
 
-/// Returns the `"<file>:<line>: <identifier>"` hits `text` carries.
-fn hits(name: &str, number: usize, text: &str, watched: &[&str]) -> Vec<String> {
-    watched
-        .iter()
-        .filter(|needle| text.contains(**needle))
-        .map(|needle| format!("{name}:{}: {needle}", number.saturating_add(1)))
-        .collect()
-}
-
-/// Returns the hits one body of text carries, skipping comment lines.
-///
-/// Comment lines are skipped whole: the crate documentation names the very
-/// identifiers a sweep watches for, precisely in order to say it does not use
-/// them, so a sweep that read comments would fail on its own documentation.
-///
-/// This is public so a watched list can be exercised against planted text.
-/// A list of constructs is a gate only if each entry is one the scan reports,
-/// and that is checkable without writing a file.
-pub fn scan_text(name: &str, body: &str, watched: &[&str]) -> Vec<String> {
-    let mut found: Vec<String> = Vec::new();
-    for (number, line) in body.lines().take(LINE_BOUND).enumerate() {
-        let text = line.trim();
-        if text.starts_with("//") {
-            continue;
-        }
-        found.extend(hits(name, number, text, watched));
-    }
-    found
-}
-
-/// Returns every watched identifier the sources under `root` carry.
-///
-/// # Errors
-///
-/// Propagates [`rust_sources`], so a sweep cannot pass by reading nothing.
-pub fn scan_sources(
-    root: &std::path::Path,
-    watched: &[&str],
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let mut found: Vec<String> = Vec::new();
-    for (name, body) in rust_sources(root)? {
-        found.extend(scan_text(&name, &body, watched));
-    }
-    Ok(found)
-}
+#[path = "../../../source_effects.rs"]
+mod source_effects;
+#[allow(unused_imports)]
+pub use source_effects::*;

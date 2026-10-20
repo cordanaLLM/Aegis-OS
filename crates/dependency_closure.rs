@@ -61,6 +61,55 @@ pub fn workspace_root() -> Option<PathBuf> {
     Some(manifest.parent()?.parent()?.to_path_buf())
 }
 
+/// Reads a workspace file, returning an empty string when it is missing.
+#[must_use]
+pub fn read_workspace_file(name: &str) -> String {
+    workspace_root()
+        .and_then(|root| std::fs::read_to_string(root.join(name)).ok())
+        .unwrap_or_default()
+}
+
+/// The package names a lock entry's `dependencies` array lists.
+///
+/// Cargo writes a dependency line as `"name",` while one version of the name
+/// is locked and as `"name 2.0.20",` once two are (M27: cros-libva locks
+/// thiserror 1 beside the workspace's thiserror 2), so the version it appends
+/// is stripped before the names are compared.
+#[must_use]
+pub fn dependency_names(entry: &str) -> Vec<&str> {
+    entry
+        .lines()
+        .map(str::trim)
+        .filter_map(|line| line.strip_prefix('"')?.strip_suffix("\","))
+        .map(|dependency| dependency.split(' ').next().unwrap_or(dependency))
+        .collect()
+}
+
+/// Asserts that a crate manifest inherits the workspace lints.
+pub fn assert_inherits_workspace_lints(manifest_path: &str) {
+    let manifest = read_workspace_file(manifest_path);
+    assert!(manifest.contains("[lints]"));
+    assert!(manifest.contains("workspace = true"));
+    assert!(!manifest.contains("[lints.rust]"));
+    assert!(!manifest.contains("[lints.clippy]"));
+    let root = read_workspace_file("Cargo.toml");
+    assert!(root.contains("unsafe_code = \"forbid\""));
+}
+
+/// Asserts that the crate's closure contains none of the forbidden packages.
+pub fn assert_closure_forbids(
+    package: &str,
+    forbidden: &[&'static str],
+) -> Result<BTreeSet<String>, String> {
+    let names = own_closure(package)?;
+    let found = hits(&names, forbidden);
+    assert!(
+        found.is_empty(),
+        "the closure of {package} resolves {found:?}"
+    );
+    Ok(names)
+}
+
 /// One `cargo metadata` invocation: which program, which arguments, where.
 #[derive(Debug, Clone)]
 pub struct Invocation {

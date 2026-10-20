@@ -30,13 +30,8 @@
 //! This file excludes itself from the scanned test sources. A sweep that could
 //! read its own expectation list would pass by naming the names it checks.
 
-use std::path::Path;
-
 /// This file's name, excluded from the scanned test sources.
 const SWEEP_FILE: &str = "public_surface.rs";
-
-/// Scalar bound on the lines read from any one source file.
-const LINE_BOUND: usize = 4096;
 
 /// The smallest public surface the scanner may report before it is assumed to
 /// be reading nothing rather than finding nothing.
@@ -60,444 +55,111 @@ const MINIMUM_SURFACE: usize = 172;
 /// for a shape this `src/` does not yet use.
 const FIELD_ARM_NAMES: usize = 47;
 
-/// Which enclosing block makes an unmarked item public API.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Block {
-    /// Not inside a public enum or trait.
-    Outside,
-    /// Inside a `pub enum`: its direct children are variants.
-    Enum,
-    /// Inside a `pub trait`: its direct children are trait items.
-    Trait,
-}
-
-/// Returns the identifier that starts `text`, if it starts with one.
-fn leading_identifier(text: &str) -> Option<String> {
-    let name: String = text
-        .chars()
-        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
-        .collect();
-    let first = name.chars().next()?;
-    if first.is_ascii_digit() {
-        return None;
-    }
-    Some(name)
-}
-
-/// Returns the public struct field `text` declares, once `pub ` is stripped.
-///
-/// A field is the one public declaration that introduces its name without a
-/// keyword: `pub schema: String,`. The colon after the identifier is what
-/// distinguishes it, because no keyword-introduced item may carry one there,
-/// and `::` is excluded so that a `pub use crate::..` path is not read as a
-/// field. `pub(crate)` never reaches here: it has no space after `pub`.
-///
-/// The M15 verification found this arm missing. `TraceHeader`, `TraceLine`,
-/// `DecisionRecord` and `Citation` are all-public-field structs, so the whole
-/// rendered form of a trace sat outside the sweep, and a planted
-/// `pub untested_knob: u8` passed.
-fn field_name(after_pub: &str) -> Option<String> {
-    let name = leading_identifier(after_pub)?;
-    let tail = after_pub.get(name.len()..)?.trim_start();
-    if tail.starts_with("::") || !tail.starts_with(':') {
-        return None;
-    }
-    Some(name)
-}
-
-/// Returns the name a `pub` declaration on `text` introduces.
-///
-/// `pub use` and `pub mod` are deliberately not names of their own: a
-/// re-export names an item declared elsewhere, and a module is a namespace
-/// rather than an interface. Everything else a `pub` line can introduce is
-/// here: an item behind its keyword, or a struct field behind none.
-fn declared_name(text: &str) -> Option<String> {
-    let after_pub = text.strip_prefix("pub ")?;
-    let rest = after_pub
-        .strip_prefix("const fn ")
-        .or_else(|| after_pub.strip_prefix("unsafe fn "))
-        .or_else(|| after_pub.strip_prefix("fn "))
-        .or_else(|| after_pub.strip_prefix("struct "))
-        .or_else(|| after_pub.strip_prefix("enum "))
-        .or_else(|| after_pub.strip_prefix("trait "))
-        .or_else(|| after_pub.strip_prefix("type "))
-        .or_else(|| after_pub.strip_prefix("const "))
-        .or_else(|| after_pub.strip_prefix("static "));
-    match rest {
-        Some(rest) => leading_identifier(rest.trim_start()),
-        None => field_name(after_pub),
-    }
-}
-
-/// Returns the name a keyword-only sweep would have read on `text`.
-///
-/// This is [`declared_name`] without the two shapes the M15 verification found
-/// missing: the keyword-free public field, and `pub static`. It exists so the
-/// contribution of that arm can be measured against the floor rather than
-/// asserted in prose.
-fn keyword_only_name(text: &str) -> Option<String> {
-    let name = declared_name(text)?;
-    let after_pub = text.strip_prefix("pub ")?;
-    if after_pub.starts_with("static ") || field_name(after_pub).is_some() {
-        return None;
-    }
-    Some(name)
-}
-
-/// Returns the variant `text` declares, when it declares one.
-fn variant_name(text: &str) -> Option<String> {
-    let name = leading_identifier(text)?;
-    if !name.chars().next()?.is_ascii_uppercase() {
-        return None;
-    }
-    let tail = text.get(name.len()..)?.trim_start();
-    let opens_payload = tail.starts_with('{') || tail.starts_with('(');
-    if tail.is_empty() || tail.starts_with(',') || opens_payload {
-        return Some(name);
-    }
-    None
-}
-
-/// Returns the trait item `text` declares, when it declares one.
-fn trait_item_name(text: &str) -> Option<String> {
-    if let Some(rest) = text.strip_prefix("fn ") {
-        return leading_identifier(rest);
-    }
-    leading_identifier(text.strip_prefix("const ")?)
-}
-
-/// Returns the name of a direct child of a public enum or trait.
-fn member_name(block: Block, text: &str) -> Option<String> {
-    match block {
-        Block::Outside => None,
-        Block::Enum => variant_name(text),
-        Block::Trait => trait_item_name(text),
-    }
-}
-
-/// Returns the kind of block `text` opens, if it opens one.
-fn block_opener(text: &str) -> Option<Block> {
-    if text.starts_with("pub enum ") {
-        return Some(Block::Enum);
-    }
-    if text.starts_with("pub trait ") {
-        return Some(Block::Trait);
-    }
-    None
-}
-
-/// Returns the net brace nesting `line` introduces.
-fn brace_delta(line: &str) -> i32 {
-    let opens = i32::try_from(line.matches('{').count()).unwrap_or(0);
-    let closes = i32::try_from(line.matches('}').count()).unwrap_or(0);
-    opens.saturating_sub(closes)
-}
-
-/// Collects public names from one source file, line by line.
-///
-/// `reader` is how a line is turned into the name it declares. It is a
-/// parameter so the same walk can be run with the M15 arm and without it, and
-/// the difference read off as that arm's contribution.
-struct Scanner {
-    depth: i32,
-    block: Block,
-    block_depth: i32,
-    reader: fn(&str) -> Option<String>,
-    names: Vec<String>,
-}
-
-impl Scanner {
-    /// Builds an empty scanner that reads declarations with `reader`.
-    fn new(reader: fn(&str) -> Option<String>) -> Self {
-        Self {
-            depth: 0,
-            block: Block::Outside,
-            block_depth: 0,
-            reader,
-            names: Vec::new(),
-        }
-    }
-
-    /// Scans one file, resetting the nesting state first.
-    fn file(&mut self, body: &str) {
-        self.depth = 0;
-        self.block = Block::Outside;
-        self.block_depth = 0;
-        for line in body.lines().take(LINE_BOUND) {
-            self.line(line);
-        }
-    }
-
-    /// Records what one line declares and tracks the nesting it changes.
-    ///
-    /// Comment lines are skipped whole, braces included: the crate documents
-    /// its own encodings, and a brace inside prose is not nesting.
-    fn line(&mut self, line: &str) {
-        let text = line.trim();
-        if text.starts_with("//") {
-            return;
-        }
-        self.collect(text);
-        if let Some(kind) = block_opener(text) {
-            self.block = kind;
-            self.block_depth = self.depth;
-        }
-        self.close(brace_delta(line));
-    }
-
-    /// Records whatever `text` declares at the current nesting.
-    fn collect(&mut self, text: &str) {
-        if let Some(name) = (self.reader)(text) {
-            self.names.push(name);
-        }
-        if self.depth != self.block_depth.saturating_add(1) {
-            return;
-        }
-        if let Some(name) = member_name(self.block, text) {
-            self.names.push(name);
-        }
-    }
-
-    /// Advances the nesting depth and leaves the block when it closes.
-    fn close(&mut self, delta: i32) {
-        let next = self.depth.saturating_add(delta);
-        if next <= self.block_depth {
-            self.block = Block::Outside;
-        }
-        self.depth = next;
-    }
-}
-
-#[path = "../../surface_sources.rs"]
-mod surface_sources;
-use surface_sources::rust_sources;
-
-/// Returns the distinct names `reader` finds in the crate's `src/`.
-fn collected_names(reader: fn(&str) -> Option<String>) -> Vec<String> {
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let mut scanner = Scanner::new(reader);
-    for (_, body) in rust_sources(&src) {
-        scanner.file(&body);
-    }
-    scanner.names.sort_unstable();
-    scanner.names.dedup();
-    scanner.names
-}
-
-/// Returns every public name the crate's `src/` declares.
-fn public_names() -> Vec<String> {
-    collected_names(declared_name)
-}
-
-/// Returns the public names a keyword-only sweep would have collected.
-fn keyword_only_names() -> Vec<String> {
-    collected_names(keyword_only_name)
-}
-
-/// Returns the code of every integration test but this one, comments removed.
-///
-/// Comments are removed so that naming an item in a doc comment does not count
-/// as exercising it.
-fn test_sources() -> String {
-    let tests = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
-    let mut out = String::new();
-    for (name, body) in rust_sources(&tests) {
-        if name == SWEEP_FILE {
-            continue;
-        }
-        for line in body.lines().take(LINE_BOUND) {
-            if line.trim_start().starts_with("//") {
-                continue;
-            }
-            out.push_str(line);
-            out.push('\n');
-        }
-    }
-    out
-}
-
-/// Returns `true` when `c` may appear inside a Rust identifier.
-fn is_identifier_char(c: char) -> bool {
-    c.is_ascii_alphanumeric() || c == '_'
-}
-
-/// Returns `true` when `text` contains `name` as a whole identifier.
-fn contains_identifier(text: &str, name: &str) -> bool {
-    text.match_indices(name).any(|(at, _)| {
-        let before = text.get(..at).and_then(|head| head.chars().next_back());
-        let after = text
-            .get(at.saturating_add(name.len())..)
-            .and_then(|tail| tail.chars().next());
-        !before.is_some_and(is_identifier_char) && !after.is_some_and(is_identifier_char)
-    })
-}
+#[path = "../../surface_scan.rs"]
+mod surface_scan;
 
 // --- Positive -------------------------------------------------------------
 
-/// Positive: every public item the crate declares is named by a test.
-///
-/// This is the sweep itself. A failure lists the items, so closing it is
-/// mechanical: give the item a triple, or delete the item.
+/// Positive: minerva public surface; see [`surface_scan::assert_every_public_item_is_named`].
 #[test]
 fn every_public_item_is_named_by_an_integration_test() {
-    let names = public_names();
-    assert!(
-        names.len() >= MINIMUM_SURFACE,
-        "the scanner reported only {} public names, fewer than the {MINIMUM_SURFACE} \
-         this crate is known to export; it is reading nothing, not finding nothing",
-        names.len()
-    );
-    let sources = test_sources();
-    assert!(
-        !sources.is_empty(),
-        "no integration test source was read at all"
-    );
-    let missing: Vec<&str> = names
-        .iter()
-        .map(String::as_str)
-        .filter(|name| !contains_identifier(&sources, name))
-        .collect();
-    assert!(
-        missing.is_empty(),
-        "public items with no integration-test reference: {missing:?}"
+    surface_scan::assert_every_public_item_is_named(
+        env!("CARGO_MANIFEST_DIR"),
+        SWEEP_FILE,
+        MINIMUM_SURFACE,
     );
 }
 
 // --- Negative -------------------------------------------------------------
 
-/// Negative: the scanner distinguishes public surface from private helpers,
-/// so the sweep cannot pass by collecting nothing or by collecting everything.
+/// Negative: minerva public surface; see [`surface_scan::assert_reads_public_surface_and_not_private_helpers`].
 #[test]
 fn the_scanner_reads_public_surface_and_not_private_helpers() {
-    let names = public_names();
-    for expected in [
-        "AlpsRouter",
-        "AgentHerEngine",
-        "ConstraintScreen",
-        "MAX_SLM_EXPERTS",
-        "POWER_CAP_MILLIWATTS",
-        "ExpertTableFull",
-        "D27_CAD_VERIFICATION_DIRECTION",
-        "P09_RECORDED_CLAIMS",
-        "CadVerificationRequest",
-        "draw_milliwatts",
-        "correlation_id",
-        "sha256_prefix",
-        "readings",
-        "relabelled_goal",
-    ] {
-        assert!(
-            names.iter().any(|name| name == expected),
-            "the scanner missed the public item {expected}"
-        );
-    }
-    for private in [
-        "permitted",
-        "peek_schema",
-        "peek_correlation",
-        "classify",
-        "decode_text",
-        "PeekSchema",
-        "PeekCorrelation",
-        "steps",
-        "experts",
-        "screened_count",
-    ] {
-        assert!(
-            !names.iter().any(|name| name == private),
-            "the scanner collected the private helper {private}"
-        );
-    }
+    surface_scan::assert_reads_public_surface_and_not_private_helpers(
+        env!("CARGO_MANIFEST_DIR"),
+        &[
+            "AlpsRouter",
+            "AgentHerEngine",
+            "ConstraintScreen",
+            "MAX_SLM_EXPERTS",
+            "POWER_CAP_MILLIWATTS",
+            "ExpertTableFull",
+            "D27_CAD_VERIFICATION_DIRECTION",
+            "P09_RECORDED_CLAIMS",
+            "CadVerificationRequest",
+            "draw_milliwatts",
+            "correlation_id",
+            "sha256_prefix",
+            "readings",
+            "relabelled_goal",
+        ],
+        &[
+            "permitted",
+            "peek_schema",
+            "peek_correlation",
+            "classify",
+            "decode_text",
+            "PeekSchema",
+            "PeekCorrelation",
+            "steps",
+            "experts",
+            "screened_count",
+        ],
+    );
 }
 
-/// Negative: a public struct field and a `pub static` are declarations, and
-/// the scanner reads them as such without reading a private field, a
-/// `pub(crate)` item, a `pub use` or a `pub mod`.
-///
-/// The two inputs the M15 verification planted -- `pub untested_knob: u8` and
-/// `pub static UNTESTED_REGISTER`, both of which a keyword-only sweep passed
-/// over -- are the first two cases here.
+/// Negative: minerva fields and statics; see [`surface_scan::assert_reads_fields_and_statics`].
 #[test]
 fn the_scanner_reads_public_fields_and_statics_and_not_private_ones() {
-    for (line, expected) in [
-        ("pub untested_knob: u8,", "untested_knob"),
-        (
-            "pub static UNTESTED_REGISTER: ScreenOutcome = ScreenOutcome::NotRejected;",
-            "UNTESTED_REGISTER",
-        ),
-        ("pub reward: Reward,", "reward"),
-        ("pub draw_milliwatts: u32,", "draw_milliwatts"),
-        ("pub relabelled_goal: Option<StateHash>,", "relabelled_goal"),
-        ("pub const fn tag(self) -> &'static str {", "tag"),
-    ] {
-        assert_eq!(
-            declared_name(line).as_deref(),
-            Some(expected),
-            "the scanner did not read {line:?} as declaring {expected}"
-        );
-    }
-    for ignored in [
-        "experts: [Option<SlmExpert>; MAX_SLM_EXPERTS],",
-        "pub(crate) fn decode_text(schema: SchemaId) {",
-        "pub use crate::expert::AlpsRouter;",
-        "pub mod contracts;",
-        "let pub_like = 1;",
-        "",
-    ] {
-        assert_eq!(
-            declared_name(ignored),
-            None,
-            "the scanner read a declaration out of {ignored:?}"
-        );
-    }
+    surface_scan::assert_reads_fields_and_statics(
+        &[
+            ("pub untested_knob: u8,", "untested_knob"),
+            (
+                "pub static UNTESTED_REGISTER: ScreenOutcome = ScreenOutcome::NotRejected;",
+                "UNTESTED_REGISTER",
+            ),
+            ("pub reward: Reward,", "reward"),
+            ("pub draw_milliwatts: u32,", "draw_milliwatts"),
+            ("pub relabelled_goal: Option<StateHash>,", "relabelled_goal"),
+            ("pub const fn tag(self) -> &'static str {", "tag"),
+        ],
+        &[
+            "experts: [Option<SlmExpert>; MAX_SLM_EXPERTS],",
+            "pub(crate) fn decode_text(schema: SchemaId) {",
+            "pub use crate::expert::AlpsRouter;",
+            "pub mod contracts;",
+            "let pub_like = 1;",
+            "",
+        ],
+    );
 }
 
 // --- Boundary -------------------------------------------------------------
 
-/// Boundary: identifier matching is exact at both ends, so a name is not
-/// counted as referenced because a longer name contains it.
+/// Boundary: minerva identifier matching; see [`surface_scan::assert_identifier_matcher_is_exact`].
 #[test]
 fn the_identifier_matcher_is_exact_at_both_ends() {
-    assert!(contains_identifier(
-        "MinervaError::ExpertTableFull",
-        "ExpertTableFull"
-    ));
-    assert!(!contains_identifier("MAX_SLM_EXPERTS", "SLM_EXPERTS"));
-    assert!(!contains_identifier(
-        "draw_milliwatts_of",
-        "draw_milliwatts"
-    ));
-    assert!(!contains_identifier("outer_AlpsRouter", "AlpsRouter"));
-    assert!(!contains_identifier("AlpsRouter2", "AlpsRouter"));
-    assert!(contains_identifier("AlpsRouter", "AlpsRouter"));
-    assert!(!contains_identifier("", "AlpsRouter"));
+    surface_scan::assert_identifier_matcher_is_exact(
+        &[
+            ("MinervaError::ExpertTableFull", "ExpertTableFull"),
+            ("AlpsRouter", "AlpsRouter"),
+        ],
+        &[
+            ("MAX_SLM_EXPERTS", "SLM_EXPERTS"),
+            ("draw_milliwatts_of", "draw_milliwatts"),
+            ("outer_AlpsRouter", "AlpsRouter"),
+            ("AlpsRouter2", "AlpsRouter"),
+            ("", "AlpsRouter"),
+        ],
+    );
 }
 
-/// Boundary: the field-and-static arm is what carries the floor above what a
-/// keyword-only sweep collects, and its contribution is measured here.
-///
-/// The previous form of this test filtered the collected names by whether
-/// `pub {name}: u8,` reads as a declaration, which is true of every collected
-/// name while the arm exists. It therefore measured nothing and would have
-/// passed at any contribution, zero included. This form runs the same walk
-/// twice, once with the arm and once without, and reads the difference.
+/// Boundary: minerva field arm floor; see [`surface_scan::assert_field_arm_carries_the_floor`].
 #[test]
 fn the_field_arm_carries_the_floor() {
-    let all = public_names();
-    let keyword_only = keyword_only_names();
-    let contribution = all.len().saturating_sub(keyword_only.len());
-    assert_eq!(
-        contribution, FIELD_ARM_NAMES,
-        "the field-and-static arm contributes {contribution} names, not {FIELD_ARM_NAMES}"
-    );
-    assert!(
-        all.len() >= MINIMUM_SURFACE,
-        "the collected surface must stay at or above the measured floor"
-    );
-    assert!(
-        keyword_only.len() < MINIMUM_SURFACE,
-        "a keyword-only sweep still collects {} names, which clears the floor, \
-         so dropping the arm would not fail the gate",
-        keyword_only.len()
+    surface_scan::assert_field_arm_carries_the_floor(
+        env!("CARGO_MANIFEST_DIR"),
+        FIELD_ARM_NAMES,
+        MINIMUM_SURFACE,
     );
 }

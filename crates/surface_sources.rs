@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 const WALK_BOUND: usize = 64;
 
 /// Scalar bound on path-included source files followed.
-const INCLUDE_BOUND: usize = 32;
+pub const INCLUDE_BOUND: usize = 32;
 
 /// Scalar bound on lines scanned in any one source file.
 const LINE_BOUND: usize = 4096;
@@ -89,18 +89,15 @@ fn walk_dir_entries(
         let path = entry.path();
         if path.is_dir() {
             stack.push(path);
-            continue;
+        } else if path.extension().is_some_and(|ext| ext == "rs") {
+            let Some((canonical, name, body)) = read_source_file(&path, visited) else {
+                continue;
+            };
+            if let Some(parent) = canonical.parent() {
+                scan_includes(&body, parent, queue);
+            }
+            out.push((name, body));
         }
-        if path.extension().is_none_or(|ext| ext != "rs") {
-            continue;
-        }
-        let Some((canonical, name, body)) = read_source_file(&path, visited) else {
-            continue;
-        };
-        if let Some(parent) = canonical.parent() {
-            scan_includes(&body, parent, queue);
-        }
-        out.push((name, body));
     }
 }
 
@@ -157,149 +154,4 @@ pub fn rust_sources(root: &Path) -> Vec<(String, String)> {
     process_includes(&mut include_queue, &mut visited, &mut out);
 
     out
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::atomic::{AtomicU64, Ordering};
-
-    struct TempFixture {
-        path: PathBuf,
-    }
-
-    impl TempFixture {
-        fn new(label: &str) -> Self {
-            static COUNTER: AtomicU64 = AtomicU64::new(0);
-            let count = COUNTER.fetch_add(1, Ordering::Relaxed);
-            let pid = std::process::id();
-            let name = format!("aegis_surface_sources_test_{label}_{pid}_{count}");
-            let path = std::env::temp_dir().join(name);
-            let _ = std::fs::remove_dir_all(&path);
-            let _ = std::fs::create_dir_all(&path);
-            Self { path }
-        }
-
-        /// Creates and returns the fixture's `src/` and `shared/` directories.
-        fn src_and_shared(&self) -> (PathBuf, PathBuf) {
-            let src = self.path.join("src");
-            let shared = self.path.join("shared");
-            assert!(std::fs::create_dir_all(&src).is_ok());
-            assert!(std::fs::create_dir_all(&shared).is_ok());
-            (src, shared)
-        }
-    }
-
-    impl Drop for TempFixture {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.path);
-        }
-    }
-
-    #[test]
-    fn positive_path_included_source_returned() {
-        let fixture = TempFixture::new("positive");
-        let (src, shared) = fixture.src_and_shared();
-
-        let lib_path = src.join("lib.rs");
-        let external_path = shared.join("external.rs");
-        assert!(
-            std::fs::write(
-                &lib_path,
-                "#[path = \"../shared/external.rs\"]\nmod external;\n"
-            )
-            .is_ok()
-        );
-        assert!(std::fs::write(&external_path, "pub fn unique_external_symbol() {}\n").is_ok());
-
-        let sources = rust_sources(&src);
-        let found = sources
-            .iter()
-            .any(|(name, body)| name == "external.rs" && body.contains("unique_external_symbol"));
-        assert!(found, "path-included source was not collected");
-    }
-
-    #[test]
-    fn negative_missing_include_target_skipped_no_panic() {
-        let fixture = TempFixture::new("negative");
-        let src = fixture.path.join("src");
-        assert!(std::fs::create_dir_all(&src).is_ok());
-
-        let lib_path = src.join("lib.rs");
-        assert!(
-            std::fs::write(
-                &lib_path,
-                "#[path = \"../missing_file.rs\"]\nmod missing;\n"
-            )
-            .is_ok()
-        );
-
-        let sources = rust_sources(&src);
-        assert_eq!(sources.len(), 1);
-        let first_name = match sources.first() {
-            Some((name, _)) => name.as_str(),
-            None => "",
-        };
-        assert_eq!(first_name, "lib.rs");
-    }
-
-    #[test]
-    fn boundary_include_chain_hits_bound_and_stops() {
-        let fixture = TempFixture::new("chain_bound");
-        let dir = fixture.path.join("chain");
-        assert!(std::fs::create_dir_all(&dir).is_ok());
-
-        let chain_len = INCLUDE_BOUND.saturating_add(10);
-        for i in 0..chain_len {
-            let file_path = dir.join(format!("file_{i}.rs"));
-            let next_i = i.saturating_add(1);
-            let content = format!("#[path = \"file_{next_i}.rs\"]\nmod next;\n");
-            assert!(std::fs::write(&file_path, content).is_ok());
-        }
-        let last_path = dir.join(format!("file_{chain_len}.rs"));
-        assert!(std::fs::write(&last_path, "pub fn final_chain_target() {}\n").is_ok());
-
-        let root_dir = fixture.path.join("root");
-        assert!(std::fs::create_dir_all(&root_dir).is_ok());
-        let root_file = root_dir.join("lib.rs");
-        assert!(
-            std::fs::write(&root_file, "#[path = \"../chain/file_0.rs\"]\nmod chain;\n").is_ok()
-        );
-
-        let sources = rust_sources(&root_dir);
-        let bound_limit = INCLUDE_BOUND.saturating_add(1);
-        assert!(
-            sources.len() <= bound_limit,
-            "sources length {} exceeded bound {}",
-            sources.len(),
-            bound_limit
-        );
-        let reached_final = sources
-            .iter()
-            .any(|(name, _)| name == &format!("file_{chain_len}.rs"));
-        assert!(
-            !reached_final,
-            "include chain did not stop at INCLUDE_BOUND"
-        );
-    }
-
-    #[test]
-    fn boundary_duplicate_include_read_once() {
-        let fixture = TempFixture::new("dedupe");
-        let (src, shared) = fixture.src_and_shared();
-
-        let a_path = src.join("a.rs");
-        let b_path = src.join("b.rs");
-        let shared_path = shared.join("dup.rs");
-        assert!(std::fs::write(&a_path, "#[path = \"../shared/dup.rs\"]\nmod dup;\n").is_ok());
-        assert!(std::fs::write(&b_path, "#[path = \"../shared/dup.rs\"]\nmod dup;\n").is_ok());
-        assert!(std::fs::write(&shared_path, "pub fn dup_symbol() {}\n").is_ok());
-
-        let sources = rust_sources(&src);
-        let dup_count = sources.iter().filter(|(name, _)| name == "dup.rs").count();
-        assert_eq!(
-            dup_count, 1,
-            "duplicate include target was not deduplicated"
-        );
-    }
 }
