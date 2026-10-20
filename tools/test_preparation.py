@@ -567,14 +567,17 @@ class PreparationTests(unittest.TestCase):
             f"{indent}    - run: make\n"
         )
 
-    def release_step(self, extra="", action="v5.0.0"):
+    def release_step(self, extra="", action="v5.0.0", with_block=None):
         """One release-please step in the train's shape, extra lines given verbatim."""
+        if with_block is None:
+            tail = "        with:\n          config-file: release-please-config.json\n"
+        else:
+            tail = "".join(f"        {line}\n" for line in with_block.splitlines())
         return (
             "      - name: Maintain the release pull request\n"
             + "".join(f"        {line}\n" for line in extra.splitlines())
             + f"        uses: googleapis/release-please-action@{action}\n"
-            "        with:\n"
-            "          config-file: release-please-config.json\n"
+            + tail
         )
 
     def release_workflow(self, *steps, tail=""):
@@ -593,6 +596,22 @@ class PreparationTests(unittest.TestCase):
         return (
             self.release_step("id: train\ncontinue-on-error: true"),
             self.release_step(retry_extra, **kwargs),
+        )
+
+    def retried_anchor(
+        self,
+        anchor="&release-please-inputs",
+        alias="*release-please-inputs",
+        retry_extra="if: steps.train.outcome == 'failure'",
+        **kwargs,
+    ):
+        """A first attempt defining an anchor and a retry referencing it."""
+        return (
+            self.release_step(
+                "id: train\ncontinue-on-error: true",
+                with_block=f"with: {anchor}\n  config-file: release-please-config.json",
+            ),
+            self.release_step(retry_extra, with_block=f"with: {alias}", **kwargs),
         )
 
     def test_a_retried_release_train_passes(self):
@@ -644,6 +663,47 @@ class PreparationTests(unittest.TestCase):
         tail = "  disabled-notice:\n    if: steps.train.outcome == 'failure'\n"
         self.release_workflow(*self.retried(""), tail=tail)
         with self.assertRaisesRegex(ValueError, "steps.train.outcome"):
+            check.verify_release_retry()
+
+    def test_an_anchored_release_train_passes(self):
+        self.release_workflow(*self.retried_anchor())
+        check.verify_release_retry()
+
+    def test_a_retry_with_unknown_alias_fails(self):
+        self.release_workflow(*self.retried_anchor(alias="*unknown-inputs"))
+        with self.assertRaisesRegex(ValueError, "same pin with the same inputs"):
+            check.verify_release_retry()
+
+    def test_an_anchor_on_first_with_different_inline_retry_inputs_fails(self):
+        first = self.release_step(
+            "id: train\ncontinue-on-error: true",
+            with_block="with: &release-please-inputs\n  config-file: release-please-config.json",
+        )
+        retry = self.release_step(
+            "if: steps.train.outcome == 'failure'",
+            with_block="with:\n  config-file: different.json",
+        )
+        self.release_workflow(first, retry)
+        with self.assertRaisesRegex(ValueError, "same pin with the same inputs"):
+            check.verify_release_retry()
+
+    def test_an_anchored_retry_with_another_pin_fails(self):
+        self.release_workflow(*self.retried_anchor(action="v4.4.0"))
+        with self.assertRaisesRegex(ValueError, "same pin with the same inputs"):
+            check.verify_release_retry()
+
+    def test_a_retry_with_shared_prefix_alias_fails(self):
+        self.release_workflow(*self.retried_anchor(anchor="&inputs", alias="*inputs-x"))
+        with self.assertRaisesRegex(ValueError, "same pin with the same inputs"):
+            check.verify_release_retry()
+
+    def test_an_anchor_on_retry_only_fails(self):
+        retry = self.release_step(
+            "if: steps.train.outcome == 'failure'",
+            with_block="with: &other-inputs\n  config-file: release-please-config.json",
+        )
+        self.release_workflow(self.release_step("id: train\ncontinue-on-error: true"), retry)
+        with self.assertRaisesRegex(ValueError, "same pin with the same inputs"):
             check.verify_release_retry()
 
     def test_jobs_within_the_ceiling_pass(self):
