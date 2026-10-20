@@ -96,10 +96,7 @@ fn the_event_vocabulary_covers_every_offer() -> Fallible {
 /// that published it was treated as final.
 #[test]
 fn a_published_candidate_can_still_be_withdrawn() -> Fallible {
-    let mut lifecycle = Lifecycle::new();
-    lifecycle.step(Event::Challenge)?;
-    lifecycle.step(Event::Decompose)?;
-    lifecycle.step(Event::Prove)?;
+    let mut lifecycle = common::lifecycle_proven()?;
     lifecycle.step(Event::Check {
         metrics: passing()?,
         elapsed_ms: 10,
@@ -224,10 +221,7 @@ fn a_check_past_the_latency_budget_is_refused() -> Fallible {
 #[test]
 fn a_check_at_exactly_the_latency_budget_is_accepted() -> Fallible {
     assert_eq!(CHECK_LATENCY_BUDGET_MS, 500);
-    let mut lifecycle = Lifecycle::new();
-    lifecycle.step(Event::Challenge)?;
-    lifecycle.step(Event::Decompose)?;
-    lifecycle.step(Event::Prove)?;
+    let mut lifecycle = common::lifecycle_proven()?;
     assert_eq!(
         lifecycle.step(Event::Check {
             metrics: passing()?,
@@ -243,10 +237,7 @@ fn a_check_at_exactly_the_latency_budget_is_accepted() -> Fallible {
 /// vocabulary covers every reason a record can carry.
 #[test]
 fn the_lifecycle_boundaries_are_representable() -> Fallible {
-    let mut lifecycle = Lifecycle::new();
-    lifecycle.step(Event::Challenge)?;
-    lifecycle.step(Event::Decompose)?;
-    lifecycle.step(Event::Prove)?;
+    let mut lifecycle = common::lifecycle_proven()?;
     assert_eq!(
         lifecycle.step(Event::Check {
             metrics: passing()?,

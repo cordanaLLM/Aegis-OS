@@ -28,6 +28,16 @@ fn draft(stage: Stage, at: UnixSeconds) -> Result<CheckpointDraft, Box<dyn std::
     })
 }
 
+/// Appends two sample publish drafts to `ledger`.
+fn append_sample_chain(ledger: &mut CheckpointLedger<Sha256Hasher>) -> Fallible {
+    ledger.append(draft(Stage::Publish, AT)?)?;
+    ledger.append(draft(
+        Stage::Publish,
+        UnixSeconds::new(AT.get().saturating_add(1)),
+    )?)?;
+    Ok(())
+}
+
 // --- Positive -------------------------------------------------------------
 
 /// Positive: a chain of records re-walks and returns the head digest.
@@ -150,11 +160,7 @@ fn a_gap_or_a_broken_link_is_detected() -> Fallible {
     ));
 
     let mut ledger = Sha256CheckpointLedger::new();
-    ledger.append(draft(Stage::Publish, AT)?)?;
-    ledger.append(draft(
-        Stage::Publish,
-        UnixSeconds::new(AT.get().saturating_add(1)),
-    )?)?;
+    append_sample_chain(&mut ledger)?;
     let mut records = ledger.records().to_vec();
     let second = *records.get(1).ok_or("the chain must carry two records")?;
     let unlinked = CheckpointBody::from_parts(
@@ -197,11 +203,7 @@ fn the_ledger_refuses_a_record_past_its_bound() -> Fallible {
     let mut ledger: CheckpointLedger<Sha256Hasher> = CheckpointLedger::with_bound(2);
     assert_eq!(ledger.bound(), 2);
     assert_eq!(ledger.reserved(), 2);
-    ledger.append(draft(Stage::Publish, AT)?)?;
-    ledger.append(draft(
-        Stage::Publish,
-        UnixSeconds::new(AT.get().saturating_add(1)),
-    )?)?;
+    append_sample_chain(&mut ledger)?;
     assert!(matches!(
         ledger.append(draft(
             Stage::Publish,
@@ -321,11 +323,7 @@ fn the_domain_tag_separates_the_two_chains() -> Fallible {
 fn a_chain_past_the_bound_is_refused_before_the_walk() -> Fallible {
     let mut ledger = Sha256CheckpointLedger::new();
     assert_eq!(ledger.bound(), MAX_CHECKPOINT_RECORDS);
-    ledger.append(draft(Stage::Publish, AT)?)?;
-    ledger.append(draft(
-        Stage::Publish,
-        UnixSeconds::new(AT.get().saturating_add(1)),
-    )?)?;
+    append_sample_chain(&mut ledger)?;
     assert!(matches!(
         verify_chain_bounded::<Sha256Hasher>(ledger.records(), 1),
         Err(LedgerError::LengthBoundExceeded { max: 1 })
