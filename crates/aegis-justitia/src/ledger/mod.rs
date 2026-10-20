@@ -126,35 +126,18 @@ pub enum SinkError {
     Unavailable,
 }
 
-/// The deadline within which a sink operation must complete.
-///
-/// The parameter is in the trait signature so a future file-backed or daemon
-/// sink cannot implement [`LedgerSink`] without receiving one; that is the
-/// HISS-02 obligation for I/O made structural.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct IoDeadline(NonZeroU32);
+#[path = "../../../millis_deadline.rs"]
+#[macro_use]
+mod millis_deadline;
 
-impl IoDeadline {
-    /// Builds a deadline of `millis` milliseconds.
-    #[must_use]
-    pub const fn from_millis(millis: NonZeroU32) -> Self {
-        Self(millis)
-    }
-
-    /// Builds a deadline of `millis` milliseconds, or `None` when it is zero.
-    #[must_use]
-    pub const fn try_from_millis(millis: u32) -> Option<Self> {
-        match NonZeroU32::new(millis) {
-            Some(value) => Some(Self(value)),
-            None => None,
-        }
-    }
-
-    /// Returns the deadline in milliseconds.
-    #[must_use]
-    pub const fn millis(self) -> u32 {
-        self.0.get()
-    }
+millis_deadline! {
+    /// The deadline within which a sink operation must complete.
+    ///
+    /// The parameter is in the trait signature so a future file-backed or daemon
+    /// sink cannot implement [`LedgerSink`] without receiving one; that is the
+    /// HISS-02 obligation for I/O made structural.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct IoDeadline;
 }
 
 /// A monotonically increasing record sequence number, starting at one.
@@ -260,22 +243,24 @@ pub struct RecordDraft {
 }
 
 /// One sealed audit-record body, including its chain position.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RecordBody {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RecordBody<D = RecordDraft> {
     sequence: Sequence,
     previous: Digest32,
     algorithm: HashAlgorithm,
-    draft: RecordDraft,
+    draft: D,
 }
 
-impl RecordBody {
+impl<D: Eq> Eq for RecordBody<D> {}
+
+impl<D> RecordBody<D> {
     /// Places a draft at a chain position.
     #[must_use]
     pub const fn from_parts(
         sequence: Sequence,
         previous: Digest32,
         algorithm: HashAlgorithm,
-        draft: RecordDraft,
+        draft: D,
     ) -> Self {
         Self {
             sequence,
@@ -305,10 +290,33 @@ impl RecordBody {
 
     /// Returns the caller-supplied fields.
     #[must_use]
-    pub const fn draft(&self) -> &RecordDraft {
+    pub const fn draft(&self) -> &D {
         &self.draft
     }
 
+    /// Builds the standard pre-image header up to the draft payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PreimageError::Overflow`] when writing into [`CanonicalBuffer`] fails.
+    pub fn header(
+        &self,
+        domain: &[u8],
+        contract_version: &str,
+        at: UnixSeconds,
+    ) -> Result<CanonicalBuffer, PreimageError> {
+        let mut buffer = CanonicalBuffer::new();
+        buffer.write_tag(domain)?;
+        buffer.write_framed(contract_version.as_bytes())?;
+        buffer.write_u8(self.algorithm.tag())?;
+        buffer.write_u64(self.sequence.get())?;
+        buffer.write_digest(&self.previous)?;
+        buffer.write_u64(at.get())?;
+        Ok(buffer)
+    }
+}
+
+impl RecordBody<RecordDraft> {
     /// Returns a copy of this body carrying a different status.
     ///
     /// This is the storage round-trip path: it lets a caller restate a record
@@ -327,13 +335,7 @@ impl RecordBody {
     /// Returns [`PreimageError::Overflow`] when the encoding would exceed the
     /// fixed buffer. The encoding never truncates.
     pub fn canonical_preimage(&self) -> Result<CanonicalBuffer, PreimageError> {
-        let mut buffer = CanonicalBuffer::new();
-        buffer.write_tag(AUDIT_DOMAIN)?;
-        buffer.write_framed(CONTRACT_VERSION.as_bytes())?;
-        buffer.write_u8(self.algorithm.tag())?;
-        buffer.write_u64(self.sequence.get())?;
-        buffer.write_digest(&self.previous)?;
-        buffer.write_u64(self.draft.at.get())?;
+        let mut buffer = self.header(AUDIT_DOMAIN, CONTRACT_VERSION, self.draft.at)?;
         buffer.write_u8(self.draft.status.tag())?;
         buffer.write_u8(self.draft.action_type.tag())?;
         write_block_reason(&mut buffer, self.draft.block_reason)?;
@@ -432,6 +434,33 @@ impl AuditRecord {
     #[must_use]
     pub const fn digest(&self) -> Digest32 {
         self.digest
+    }
+}
+
+#[path = "../../../chain.rs"]
+mod chain;
+
+pub use chain::{Chain, ChainRecord, Timestamped};
+
+impl Timestamped for RecordDraft {
+    fn at(&self) -> UnixSeconds {
+        self.at
+    }
+}
+
+impl ChainRecord for AuditRecord {
+    type Draft = RecordDraft;
+
+    fn body(&self) -> &RecordBody<Self::Draft> {
+        &self.body
+    }
+
+    fn digest(&self) -> Digest32 {
+        self.digest
+    }
+
+    fn verify<H: LedgerHasher>(&self) -> Result<Digest32, LedgerError> {
+        self.body.digest::<H>()
     }
 }
 
@@ -604,15 +633,19 @@ impl LedgerSink for InMemorySink {
 /// Dispatch is static: there is no `dyn` and no vtable on the audit path.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuditLedger<H: LedgerHasher, S: RecordSigner, K: LedgerSink> {
-    records: Vec<AuditRecord>,
-    head: Digest32,
-    next_sequence: Sequence,
-    last_at: Option<UnixSeconds>,
-    bound: usize,
+    chain: Chain<AuditRecord>,
     signer: SignerBinding<S>,
     sink: K,
     io_deadline: IoDeadline,
     hasher: core::marker::PhantomData<H>,
+}
+
+impl<H: LedgerHasher, S: RecordSigner, K: LedgerSink> core::ops::Deref for AuditLedger<H, S, K> {
+    type Target = Chain<AuditRecord>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.chain
+    }
 }
 
 /// The SHA-256 ledger, the only instantiation milestone M02 ships.
@@ -639,54 +672,12 @@ impl<H: LedgerHasher, S: RecordSigner, K: LedgerSink> AuditLedger<H, S, K> {
         bound: usize,
     ) -> Self {
         Self {
-            records: Vec::with_capacity(bound),
-            head: Digest32::GENESIS,
-            next_sequence: Sequence::FIRST,
-            last_at: None,
-            bound,
+            chain: Chain::with_bound(bound),
             signer,
             sink,
             io_deadline,
             hasher: core::marker::PhantomData,
         }
-    }
-
-    /// Returns the scalar record bound.
-    #[must_use]
-    pub const fn bound(&self) -> usize {
-        self.bound
-    }
-
-    /// Returns the capacity reserved at construction.
-    ///
-    /// HISS-03 evidence: this value must not change while the ledger is in use.
-    #[must_use]
-    pub fn reserved(&self) -> usize {
-        self.records.capacity()
-    }
-
-    /// Returns the digest of the most recent record, or the genesis link.
-    #[must_use]
-    pub const fn head(&self) -> Digest32 {
-        self.head
-    }
-
-    /// Returns the number of records held.
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.records.len()
-    }
-
-    /// Returns `true` when the ledger holds no record.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.records.is_empty()
-    }
-
-    /// Returns the records held.
-    #[must_use]
-    pub fn records(&self) -> &[AuditRecord] {
-        &self.records
     }
 
     /// Returns the sink.
@@ -704,34 +695,15 @@ impl<H: LedgerHasher, S: RecordSigner, K: LedgerSink> AuditLedger<H, S, K> {
     /// misbehaves, no signer is bound, or the sink refuses the record. Nothing
     /// is committed unless every step succeeds.
     pub fn append(&mut self, draft: RecordDraft) -> Result<Digest32, LedgerError> {
-        if self.records.len() >= self.bound {
-            return Err(LedgerError::LengthBoundExceeded { max: self.bound });
-        }
-        if let Some(last) = self.last_at
-            && draft.at < last
-        {
-            return Err(LedgerError::NonMonotonicTimestamp {
-                last: last.get(),
-                observed: draft.at.get(),
-            });
-        }
-        let body = RecordBody::from_parts(self.next_sequence, self.head, H::ALGORITHM, draft);
+        self.chain.check_append(draft.at)?;
+        let sequence = self.chain.next_sequence();
+        let body = RecordBody::from_parts(sequence, self.chain.head(), H::ALGORITHM, draft);
         let digest = body.digest::<H>()?;
         let signature = self.signer.sign(&digest)?;
         let record = AuditRecord::from_parts(body, signature, digest);
         self.sink.append_record(&record, self.io_deadline)?;
-        self.commit(&record, draft.at);
+        self.chain.commit(record, digest, sequence, draft.at);
         Ok(digest)
-    }
-
-    /// Commits a sealed record. Called only after every fallible step passed.
-    fn commit(&mut self, record: &AuditRecord, at: UnixSeconds) {
-        self.head = record.digest();
-        // Saturating, not wrapping: at the u64 ceiling the next append fails with
-        // a sequence gap rather than silently restarting the chain at one.
-        self.next_sequence = Sequence::new(record.body().sequence().get().saturating_add(1));
-        self.last_at = Some(at);
-        self.records.push(*record);
     }
 
     /// Re-walks the ledger's own records.
@@ -740,37 +712,36 @@ impl<H: LedgerHasher, S: RecordSigner, K: LedgerSink> AuditLedger<H, S, K> {
     ///
     /// Returns [`LedgerError`] from [`verify_chain_bounded`].
     pub fn verify(&self) -> Result<Digest32, LedgerError> {
-        verify_chain_bounded::<H>(&self.records, self.bound)
+        verify_chain_bounded::<H>(self.chain.records(), self.chain.bound())
     }
 }
 
 /// Verifies one link of a chain against the state that precedes it.
-fn verify_link<H: LedgerHasher>(
+pub(super) fn verify_link<H: LedgerHasher, R: ChainRecord>(
     previous: Digest32,
     expected: Sequence,
-    record: &AuditRecord,
+    record: &R,
 ) -> Result<(), LedgerError> {
-    let body = record.body();
-    if body.algorithm() != H::ALGORITHM {
+    if record.algorithm() != H::ALGORITHM {
         return Err(LedgerError::AlgorithmMismatch {
             expected: H::ALGORITHM,
-            found: body.algorithm(),
+            found: record.algorithm(),
         });
     }
-    if body.sequence() != expected {
+    if record.sequence() != expected {
         return Err(LedgerError::SequenceGap {
             expected: expected.get(),
-            found: body.sequence().get(),
+            found: record.sequence().get(),
         });
     }
-    if body.previous() != previous {
+    if record.previous() != previous {
         return Err(LedgerError::PreviousHashMismatch {
-            at: body.sequence().get(),
+            at: record.sequence().get(),
         });
     }
-    if body.digest::<H>()? != record.digest() {
+    if record.verify::<H>()? != record.digest() {
         return Err(LedgerError::DigestMismatch {
-            at: body.sequence().get(),
+            at: record.sequence().get(),
         });
     }
     Ok(())
@@ -800,28 +771,5 @@ pub fn verify_chain_bounded<H: LedgerHasher>(
     records: &[AuditRecord],
     max: usize,
 ) -> Result<Digest32, LedgerError> {
-    if records.len() > max {
-        return Err(LedgerError::LengthBoundExceeded { max });
-    }
-    let mut previous = Digest32::GENESIS;
-    let mut expected = Sequence::FIRST;
-    let mut last_at: Option<UnixSeconds> = None;
-    for record in records.iter().take(max) {
-        verify_link::<H>(previous, expected, record)?;
-        let at = record.body().draft().at;
-        if let Some(last) = last_at
-            && at < last
-        {
-            return Err(LedgerError::NonMonotonicTimestamp {
-                last: last.get(),
-                observed: at.get(),
-            });
-        }
-        previous = record.digest();
-        expected = expected
-            .next()
-            .ok_or(LedgerError::LengthBoundExceeded { max })?;
-        last_at = Some(at);
-    }
-    Ok(previous)
+    AuditRecord::verify_chain_bounded::<H>(records, max)
 }

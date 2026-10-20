@@ -49,31 +49,14 @@ pub enum PortError {
     },
 }
 
-/// The deadline within which a port call must complete.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct CallDeadline(NonZeroU32);
+#[path = "../../millis_deadline.rs"]
+#[macro_use]
+mod millis_deadline;
 
-impl CallDeadline {
-    /// Builds a deadline of `millis` milliseconds.
-    #[must_use]
-    pub const fn from_millis(millis: NonZeroU32) -> Self {
-        Self(millis)
-    }
-
-    /// Builds a deadline of `millis` milliseconds, or `None` when it is zero.
-    #[must_use]
-    pub const fn try_from_millis(millis: u32) -> Option<Self> {
-        match NonZeroU32::new(millis) {
-            Some(value) => Some(Self(value)),
-            None => None,
-        }
-    }
-
-    /// Returns the deadline in milliseconds.
-    #[must_use]
-    pub const fn millis(self) -> u32 {
-        self.0.get()
-    }
+millis_deadline! {
+    /// The deadline within which a port call must complete.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    pub struct CallDeadline;
 }
 
 /// What a recorded call asked for.

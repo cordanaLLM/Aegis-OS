@@ -302,35 +302,18 @@ impl ZoneList {
 
 /// The deadline within which a wattage sample must complete.
 ///
-/// The parameter is in the trait signature so that a reader that does open a
-/// file cannot implement [`WattageSource`] without receiving one. That is the
-/// HISS-02 obligation for I/O made structural rather than remembered; at M21
-/// the reads happen in the gate, each under its own deadline, and
-/// [`crate::MeasuredWattage`] still honours this one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SampleDeadline(NonZeroU32);
+#[path = "../../millis_deadline.rs"]
+#[macro_use]
+mod millis_deadline;
 
-impl SampleDeadline {
-    /// Builds a deadline of `millis` milliseconds.
-    #[must_use]
-    pub const fn from_millis(millis: NonZeroU32) -> Self {
-        Self(millis)
-    }
-
-    /// Builds a deadline of `millis` milliseconds, or `None` when it is zero.
-    #[must_use]
-    pub const fn try_from_millis(millis: u32) -> Option<Self> {
-        match NonZeroU32::new(millis) {
-            Some(value) => Some(Self(value)),
-            None => None,
-        }
-    }
-
-    /// Returns the deadline in milliseconds.
-    #[must_use]
-    pub const fn millis(self) -> u32 {
-        self.0.get()
-    }
+millis_deadline! {
+    /// The parameter is in the trait signature so that a reader that does open a
+    /// file cannot implement [`WattageSource`] without receiving one. That is the
+    /// HISS-02 obligation for I/O made structural rather than remembered; at M21
+    /// the reads happen in the gate, each under its own deadline, and
+    /// [`crate::MeasuredWattage`] still honours this one.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    pub struct SampleDeadline;
 }
 
 /// One zone's draw, with the provenance of the number.

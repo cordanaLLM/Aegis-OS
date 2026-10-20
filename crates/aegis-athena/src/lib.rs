@@ -133,7 +133,20 @@ pub const CONTRACT_VERSION: &str = "aegis.athena.v1";
 /// charset and one bound serve both sides of that edge. The empty identifier
 /// the imported P16 scaffold guards with `assert!` is refused by
 /// [`CandidateId::parse`].
-pub use aegis_tellus::{CandidateId, CorrelationId};
+/// The candidate identifier shared with P13.
+pub type CandidateId = aegis_tellus::CandidateId;
+/// The correlation identifier shared with P13.
+pub type CorrelationId = aegis_tellus::CorrelationId;
+/// Unix timestamp in seconds shared with P06.
+pub type UnixSeconds = aegis_justitia::UnixSeconds;
+/// Monotonic sequence number shared with P06.
+pub type Sequence = aegis_justitia::Sequence;
+/// The SHA-256 hasher backend shared with P06.
+pub type Sha256Hasher = aegis_justitia::Sha256Hasher;
+/// A 32-byte digest shared with P06.
+pub type Digest32 = aegis_justitia::Digest32;
+/// The hash algorithm identifier shared with P06.
+pub type HashAlgorithm = aegis_justitia::HashAlgorithm;
 
 pub use crate::contracts::audit_intake::AuditIntake;
 pub use crate::contracts::graph::EdgeId;
