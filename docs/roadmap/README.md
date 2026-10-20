@@ -6306,6 +6306,30 @@ against the decoder of `061bbde`.
   expires, and whenever its reason does not name the gpui revision `Cargo.lock`
   pins: a re-pin of gpui fails the gate until the deviation is reviewed and the
   entry renewed.
+- **D116** Where does code that several crates copy verbatim live once it is
+  folded into one definition? The code-clone scan (`praetorctl dedupe scan`)
+  reports groups that span crates with no dependency between them, such as the
+  contract scaffolds under each crate's `src/contracts/` and the
+  `DecisionState` register enum. Options: a new shared workspace crate; move the
+  code into an existing crate and add dependency edges; source files directly
+  under `crates/`, included by path into each crate that needs them. Why: a
+  shared crate enters the dependency closure of every crate that uses it (D78)
+  and carries a permanent public name, and new edges between crates that are
+  independent today change what each crate's negative sweep reads.
+  **Decision (2026-10-20):** the third option, which extends the shape D78's
+  test helpers already use (`crates/dependency_closure.rs`,
+  `crates/binary_transcript.rs`) from test helpers to library code. A shared
+  file under `crates/` holds the single definition, generic over the including
+  crate's own types where they differ (for example each crate's `SchemaId`),
+  and each crate includes it with a `#[path]` attribute and re-exports the
+  same public names it exported before. Each including crate compiles its own
+  copy, so the types are distinct per crate and no crate gains a dependency.
+  Revisit when crates are published, or when two crates need one shared type
+  identity: either case is a decision for a crate. Because the shared file
+  lies outside each crate's `src/`, every public-surface sweep reads its
+  sources through `crates/surface_sources.rs`, which follows `#[path]`
+  attributes, so a public name in a shared file stays under the HISS-15 sweep;
+  `tools/verify_recursion.py` follows the same attributes for HISS-01.
 
 ## Evidence
 

@@ -300,6 +300,65 @@ class Planted(unittest.TestCase):
             graph, edges, found = vr.check(root, write_crate(root, {"src/lib.rs": ""}))
         self.assertEqual((graph.fns, found), ([], []))
 
+    def test_n1_qualified_path_same_named_type_in_module_no_cycle(self):
+        source = """
+            pub struct P;
+            impl P {
+                pub fn new() -> Self {
+                    inner::P::new()
+                }
+            }
+            pub mod inner {
+                pub struct P;
+                impl P {
+                    pub fn new() -> Self {
+                        P
+                    }
+                }
+            }
+        """
+        self.assertEqual(self.run_check({"src/lib.rs": source}), [])
+
+    def test_n2_true_self_cycle_in_impl(self):
+        source_p = """
+            pub struct P;
+            impl P {
+                pub fn new() -> Self {
+                    P::new()
+                }
+            }
+        """
+        self.assertEqual(self.run_check({"src/lib.rs": source_p}), [["new"]])
+        source_self = """
+            pub struct P;
+            impl P {
+                pub fn new() -> Self {
+                    Self::new()
+                }
+            }
+        """
+        self.assertEqual(self.run_check({"src/lib.rs": source_self}), [["new"]])
+
+    def test_n3_recursion_in_path_included_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp).resolve()
+            src = root / "crates" / "planted" / "src"
+            src.mkdir(parents=True)
+            (root / "crates" / "planted" / "Cargo.toml").write_text('[package]\nname = "planted"\n')
+            (src / "lib.rs").write_text('#[path = "../shared/included.rs"]\nmod included;\n')
+            shared = root / "crates" / "planted" / "shared"
+            shared.mkdir(parents=True)
+            (shared / "included.rs").write_text("""
+                pub struct S;
+                impl S {
+                    pub fn recurse() {
+                        Self::recurse();
+                    }
+                }
+            """)
+            _, _, found = vr.check(root, [src / "lib.rs"])
+            self.assertEqual([[fn.name for fn in cycle] for cycle in found], [["recurse"]])
+
 
 class RealCrate(unittest.TestCase):
     """A planted pair in a copy of a committed crate is refused; the copy alone passes."""
