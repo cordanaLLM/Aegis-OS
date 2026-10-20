@@ -23,6 +23,7 @@
 //! | [`theme`] | the generated Concordia token constants as gpui types, the crate's only colours |
 //! | [`timing`] | pure frame-time and tree-update distributions, refusal rules, and line formats |
 //! | `timing_fixture` (feature `timing`) | frame-time measurement surface driving gpui profiler traces and AccessKit log capture |
+//! | [`watcher`] | real StatusNotifierWatcher adapter registering the shell over D-Bus |
 
 pub mod capture;
 pub mod convert;
@@ -38,6 +39,8 @@ pub mod theme;
 pub mod timing;
 #[cfg(feature = "timing")]
 pub mod timing_fixture;
+pub mod watcher;
 
 pub use convert::{ConvertError, to_gpui};
 pub use layer::{LayerMapError, layer_shell_options};
+pub use watcher::{WatcherRegistration, ZbusWatcher};
