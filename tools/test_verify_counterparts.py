@@ -195,7 +195,7 @@ class Boundary(CounterpartTree):
         self.assertEqual(self.problems(), [])
 
     def test_a_milestone_not_yet_done_is_accepted(self):
-        self.edit_entry("P15", 1, milestone="M28")
+        self.edit_entry("P15", 1, milestone="M29")
         self.assertEqual(self.problems(), [])
 
     def test_a_renamed_dependency_still_pairs_the_crates(self):

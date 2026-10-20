@@ -1663,7 +1663,7 @@
     {
       "id": "M25",
       "title": "GPU host slices on the reference profile: DMA-BUF and VFIO",
-      "rank": 24,
+      "rank": 25,
       "state": "ready",
       "blocked_by": [
         "M08",
@@ -1882,8 +1882,8 @@
     {
       "id": "M28",
       "title": "P05 native shell on gpui: layer surface, AT-SPI tree, frame time",
-      "rank": 25,
-      "state": "ready",
+      "rank": 24,
+      "state": "done",
       "blocked_by": [
         "M16",
         "M27"
@@ -1970,7 +1970,7 @@
       ],
       "evidence": [
         "Disclosure, in the shape M18 recorded: no exit criterion, epic or cheapest exit was rewritten. Two points differ from the letter of the bar and are recorded instead. (1) On 2026-10-18 the gate (tools/verify_shell.py) did not run against the operator host session's compositor, but launched an isolated, headless KWin instance (kwin_wayland --virtual) in a dedicated XDG_RUNTIME_DIR under dbus-run-session with animations disabled (AnimationDurationFactor=0, write_kwin_config); its ScreenShot2 capture area and wayland surface calls never touched the operator session (docs/build/native-shell.md:22-27, 306-309). (2) gpui was admitted on 2026-10-17 at zed commit 322cd509dcccaee1f6bc44725d270598ae8171ad and re-pinned on 2026-10-18 to 56934ec0560bce8929025497411de7f5322fb6ca (docs/roadmap/toolchain-admission.md:170-173); the frame-time and tree-update timing run in docs/build/native-shell.md:469 was measured with commit 322cd509dc before the re-pin, while Cargo.lock and tests/admission.rs pin 56934ec056 (crates/gpui/src/window/a11y.rs is unchanged between the two commits, .standards.yaml:57).",
-        "Criterion 1: open, tracked in #396; the milestone stays ready until it closes. Met: gpui is one git dependency at a rev, locked, with cargo tree --locked reading the zed source at that rev, accesskit_unix 0.22.1 recorded as D69 drift beside 0.24.0, and the closure's licences read from cargo metadata --locked (crates/aegis-forum-shell-gpui/tests/admission.rs, PR #336, squash 6a8fd16). Not met: (a) the criterion's second branch was taken (docs/roadmap/toolchain-admission.md:206-213, accesskit 0.24.1 beside M16's 0.25.1), but no conversion between the two is written or tested; crates/aegis-forum-shell-gpui/src/fixture.rs builds its tree with gpui's accesskit directly. (b) libxkbcommon and libwayland-client have no recorded floor (docs/roadmap/toolchain-admission.md:1026-1027 still lists them as proposals) and neither tools/verify_shell.py nor a test reads them back before the gate runs.",
+        "Criterion 1 (2026-10-20): gpui is one git dependency at a rev, locked, with cargo tree --locked reading the zed source at that rev, accesskit_unix 0.22.1 recorded as D69 drift beside 0.24.0, and the closure's licences read from cargo metadata --locked (crates/aegis-forum-shell-gpui/tests/admission.rs, PR #336, squash 6a8fd16). The criterion's second branch was taken (docs/roadmap/toolchain-admission.md:206-217, accesskit 0.24.1 beside M16's 0.25.1), and the conversion is written and tested: to_gpui in crates/aegis-forum-shell-gpui/src/convert.rs converts M16's 0.25.1 tree update into gpui's 0.24.1 one, pairing roles and actions by variant name in compile-checked tables (182 roles and 22 actions, identical in both versions) and refusing a non-root tree id, an html_id, an unpaired role or any property it does not map with a named ConvertError; crates/aegis-forum-shell-gpui/tests/convert.rs (11 tests, inside make verify-all) converts a11y::export of the seeded 1,000-node and the empty canvas and covers the refusals. libxkbcommon and libwayland-client carry a floor and a reference value (docs/roadmap/toolchain-admission.md:1026-1027): floor 1.0.0 from xkb_utf32_to_keysym (xkbcommon-0.8.0/src/xkb/ffi.rs:125) and floor 1.11.0 from wl_proxy_create_wrapper (wayland-sys-0.31.11/src/client.rs:66), reference 1.13.2 and 1.26.0; tools/verify_shell.py reads both back through pkg-config before any case runs, fails below a floor and skips without the module (tools/test_verify_shell.py TestLibraryFloors). Read back on the reference profile on 2026-10-20: xkbcommon 1.13.2, wayland-client 1.26.0. PR #401, merge commit 528e3fa, closes #396. Closing moves M28 from rank 25 to rank 24: tools/rank_roadmap.py places done milestones before open ones, so M25 moves down one place, to 25. No rank_override is recorded and no other milestone moves.",
         "Criterion 2 (2026-10-18): gpui enters through dedicated workspace member crates/aegis-forum-shell-gpui (Cargo.toml:13), which depends on crates/aegis-forum-shell (crates/aegis-forum-shell-gpui/Cargo.toml:20); the M16 model crate keeps its toolkit-free closure and its unit tests run without display, GPU, or D-Bus (crates/aegis-forum-shell/tests/manifest_hygiene.rs); aegis-forum-shell-gpui declares [lints] workspace = true (crates/aegis-forum-shell-gpui/Cargo.toml:38), contains zero unsafe tokens in its sources (crates/aegis-forum-shell-gpui/tests/admission.rs:11, confirmed across src/), and every other crate's closure sweep is unchanged (tests/admission.rs:328-337); committed in PR #336 (merge commit 6a8fd16) and PR #330 (merge commit 0b2ef5b).",
         "Criterion 3 (2026-10-18): P05 to P17 MOUNT_SHELL_CANVAS contract fixed as line-delimited JSON-RPC 2.0 over AF_UNIX with schema aegis.p05-p17.mount-shell-canvas.v1 owned by consumer aegis-scaena (crates/aegis-scaena/src/mount.rs:53, PR #337 merge commit 42d01f8), defining gpui LayerShellOptions parameters with byte bound MAX_LINE_BYTES (1,024 bytes) and read deadlines (HISS-02); live verification on headless KWin 6.8.0 via make verify-shell passed 8 surface cases (docs/build/native-shell.md:63-75, 119-126): surface/first-configure (OUTCOME configured 1280x48), surface/filter-control, surface/layer-shell-missing (exit 4, LayerShellNotSupportedError via tools/wayland_filter.py hide proxy), surface/first-configure-deadline (exit 5, configure deadline via drop proxy), surface/refused-line (exit 6, bad jsonrpc), surface/unknown-schema (exit 6), surface/unknown-layer (exit 6), and surface/parameters-read-back (WAYLAND_DEBUG=server readback from KWin request log: get_layer_surface layer 2 namespace aegis-forum, set_anchor 13, set_exclusive_zone 48, set_exclusive_edge 1, set_keyboard_interactivity 2).",
         "Criterion 4 (2026-10-18): AccessKit tree reaches AT-SPI live over gpui's accesskit_unix adapter on a private D-Bus session with dbus-daemon, at-spi-bus-launcher and at-spi2-registryd; tools/verify_shell.py read back versions before test execution (NOTE versions: at-spi2-core 2.62.1, dbus 1.16.2); aegis-atspi-readback walked the tree under per-call deadlines (crates/aegis-forum-shell-gpui/tests/readback_deadline.rs) and passed 6 AT-SPI cases on headless KWin 6.8.0 (docs/build/native-shell.md:197-243, PR #330 merge commit 0b2ef5b, PR #336 merge commit 6a8fd16): atspi/sound read 1,005 nodes (1,000 seeded rows with 10 in view all reachable and named Node 0..999, fixture button exposed with role button and click action mutating label to 'Forum opened', focus tracking verified on button, hidden subtree absent), atspi/late-client (full tree received 0.5 s post-mount), atspi/negative-button-as-container (fails button-exposed with role panel), atspi/negative-unlabelled (fails every-node-named at node 517), atspi/negative-culled (fails seeded-reachable with 10 of 1000), and atspi/negative-hidden-shown (fails hidden-subtree-hidden with Hidden panel).",
@@ -1992,7 +1992,7 @@
       "id": "M29",
       "title": "P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher",
       "rank": 26,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M28",
         "M27"
@@ -2585,7 +2585,7 @@
       "id": "M30",
       "title": "P05 canvas accessibility: semantics, pointer alternatives, text scale",
       "rank": 27,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M28"
       ],
@@ -2644,7 +2644,7 @@
       "id": "M31",
       "title": "P12 D76 heads-up theme: reduced motion, security states, flash limit",
       "rank": 28,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M28"
       ],
