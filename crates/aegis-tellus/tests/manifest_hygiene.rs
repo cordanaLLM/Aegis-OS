@@ -17,8 +17,7 @@
 
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
-
-use std::path::{Path, PathBuf};
+use dependency_closure::{dependency_names, read_workspace_file as read};
 
 /// This crate's package name, the start of its closure (D78).
 const PACKAGE: &str = "aegis-tellus";
@@ -26,19 +25,6 @@ const PACKAGE: &str = "aegis-tellus";
 /// The crates this crate's closure must not resolve: the list the lock-wide
 /// sweep carried before D78, kept verbatim.
 const FORBIDDEN: [&str; 7] = ["aya", "zbus", "tokio", "blake3", "md5", "nix", "procfs"];
-
-/// Returns the workspace root, two directories above this crate's manifest.
-fn workspace_root() -> Option<PathBuf> {
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    Some(manifest.parent()?.parent()?.to_path_buf())
-}
-
-/// Reads a workspace file, returning an empty string when it is missing.
-fn read(name: &str) -> String {
-    workspace_root()
-        .and_then(|root| std::fs::read_to_string(root.join(name)).ok())
-        .unwrap_or_default()
-}
 
 // --- Positive -------------------------------------------------------------
 
@@ -153,12 +139,7 @@ fn the_crate_declares_no_binary_target() {
 /// asserted instead is that this crate's own lock entry does not name it.
 #[test]
 fn no_new_third_party_crate_is_resolved() -> Result<(), String> {
-    let names = dependency_closure::own_closure(PACKAGE)?;
-    let found = dependency_closure::hits(&names, &FORBIDDEN);
-    assert!(
-        found.is_empty(),
-        "the closure of {PACKAGE} resolves {found:?}"
-    );
+    let _names = dependency_closure::assert_closure_forbids(PACKAGE, &FORBIDDEN)?;
     let lock = read("Cargo.lock");
     assert!(
         lock.contains("name = \"sha2\""),
@@ -189,33 +170,12 @@ fn the_lock_entry_names_exactly_three_dependencies() {
     );
 }
 
-/// The package names a lock entry's `dependencies` array lists.
-///
-/// Cargo writes a dependency line as `"name",` while one version of the name
-/// is locked and as `"name 2.0.20",` once two are (M27: cros-libva locks
-/// thiserror 1 beside the workspace's thiserror 2), so the version it appends
-/// is stripped before the names are compared.
-fn dependency_names(entry: &str) -> Vec<&str> {
-    entry
-        .lines()
-        .map(str::trim)
-        .filter_map(|line| line.strip_prefix('"')?.strip_suffix("\","))
-        .map(|dependency| dependency.split(' ').next().unwrap_or(dependency))
-        .collect()
-}
-
 // --- Boundary -------------------------------------------------------------
 
 /// Boundary: the crate inherits the workspace lints rather than restating them.
 #[test]
 fn the_crate_inherits_the_workspace_lints() {
-    let manifest = read("crates/aegis-tellus/Cargo.toml");
-    assert!(manifest.contains("[lints]"));
-    assert!(manifest.contains("workspace = true"));
-    assert!(!manifest.contains("[lints.rust]"));
-    assert!(!manifest.contains("[lints.clippy]"));
-    let root = read("Cargo.toml");
-    assert!(root.contains("unsafe_code = \"forbid\""));
+    dependency_closure::assert_inherits_workspace_lints("crates/aegis-tellus/Cargo.toml");
 }
 
 /// Boundary: the toolchain pin is untouched by this milestone.

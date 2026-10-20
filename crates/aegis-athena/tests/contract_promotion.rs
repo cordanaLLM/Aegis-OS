@@ -6,6 +6,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_athena::{
     CallDeadline, CallKind, ContractError, Correlation, EdgeId, Event, InvalidationReason,
     Lifecycle, MAX_CONTRACT_PAYLOAD_BYTES, MAX_RECORDED_CALLS, PayloadBuffer, PortError,
@@ -17,10 +20,7 @@ use common::{CANDIDATE, CORRELATION, Fallible, candidate, correlation, passing};
 
 /// Returns a lifecycle that has published the fixture candidate.
 fn publishing() -> Result<Lifecycle, Box<dyn std::error::Error>> {
-    let mut lifecycle = Lifecycle::new();
-    lifecycle.step(Event::Challenge)?;
-    lifecycle.step(Event::Decompose)?;
-    lifecycle.step(Event::Prove)?;
+    let mut lifecycle = common::lifecycle_proven()?;
     lifecycle.step(Event::Check {
         metrics: passing()?,
         elapsed_ms: 100,
@@ -47,9 +47,10 @@ fn a_promotion_trigger_round_trips() -> Fallible {
     let payload = trigger()?;
     let mut buffer = PayloadBuffer::new();
     let text = payload.encode_into(&mut buffer)?;
-    assert!(text.contains(CORRELATION));
-    assert!(text.contains(CANDIDATE));
-    assert!(text.contains(SchemaId::PromotionTrigger.tag()));
+    test_assertions::assert_encoded_names(
+        text,
+        &[CORRELATION, CANDIDATE, SchemaId::PromotionTrigger.tag()],
+    );
     assert_eq!(PromotionTrigger::decode(text)?, payload);
     Ok(())
 }

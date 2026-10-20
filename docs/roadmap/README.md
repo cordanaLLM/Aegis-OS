@@ -6325,7 +6325,11 @@ against the decoder of `061bbde`.
   same public names it exported before. Each including crate compiles its own
   copy, so the types are distinct per crate and no crate gains a dependency.
   Revisit when crates are published, or when two crates need one shared type
-  identity: either case is a decision for a crate.
+  identity: either case is a decision for a crate. Because the shared file
+  lies outside each crate's `src/`, every public-surface sweep reads its
+  sources through `crates/surface_sources.rs`, which follows `#[path]`
+  attributes, so a public name in a shared file stays under the HISS-15 sweep;
+  `tools/verify_recursion.py` follows the same attributes for HISS-01.
 
 ## Evidence
 

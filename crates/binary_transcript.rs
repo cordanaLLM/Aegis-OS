@@ -16,18 +16,15 @@
 #![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+#[path = "child_deadline.rs"]
+mod child_deadline;
 
 /// How long one binary run may take.
 pub const DEADLINE: Duration = Duration::from_secs(60);
-
-/// How often the deadline loop polls the child.
-const POLL: Duration = Duration::from_millis(10);
-
-/// The most polls one wait makes: 60 s / 10 ms.
-const MAX_POLLS: u32 = 6_000;
 
 /// Numbers each run within one test binary, so concurrent runs never share
 /// an output file.
@@ -72,23 +69,6 @@ pub fn scratch(label: &str) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-/// Waits for `child` under `deadline`, killing it past the deadline.
-fn wait(child: &mut Child, deadline: Duration) -> Result<ExitStatus, String> {
-    let started = Instant::now();
-    for _ in 0..=MAX_POLLS {
-        match child.try_wait() {
-            Ok(Some(status)) => return Ok(status),
-            Ok(None) if started.elapsed() < deadline => std::thread::sleep(POLL),
-            Ok(None) => break,
-            Err(error) => return Err(format!("waiting for the binary failed: {error}")),
-        }
-    }
-    let killed = child.kill().and_then(|()| child.wait());
-    Err(format!(
-        "the binary missed its {deadline:?} deadline; killed: {killed:?}"
-    ))
-}
-
 /// Runs `binary` with `args` and only the environment `env` names, in a
 /// fresh scratch directory.
 ///
@@ -126,7 +106,7 @@ pub fn run_in(
         .stderr(stderr)
         .spawn()
         .map_err(|error| format!("{binary} could not be spawned: {error}"))?;
-    let status = wait(&mut child, DEADLINE)?;
+    let status = child_deadline::wait(&mut child, DEADLINE, "the binary")?;
     let read = |path: &PathBuf| std::fs::read_to_string(path).map_err(|error| error.to_string());
     Ok(Transcript {
         code: status.code(),

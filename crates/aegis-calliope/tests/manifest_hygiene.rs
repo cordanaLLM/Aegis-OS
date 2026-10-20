@@ -12,8 +12,7 @@
 
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
-
-use std::path::{Path, PathBuf};
+use dependency_closure::{read_workspace_file as read, workspace_root};
 
 /// This crate's package name, the start of its closure (D78).
 const PACKAGE: &str = "aegis-calliope";
@@ -30,19 +29,6 @@ const FORBIDDEN: [&str; 8] = [
     "wayland-server",
     "drm",
 ];
-
-/// Returns the workspace root, two directories above this crate's manifest.
-fn workspace_root() -> Option<PathBuf> {
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    Some(manifest.parent()?.parent()?.to_path_buf())
-}
-
-/// Reads a workspace file, returning an empty string when it is missing.
-fn read(name: &str) -> String {
-    workspace_root()
-        .and_then(|root| std::fs::read_to_string(root.join(name)).ok())
-        .unwrap_or_default()
-}
 
 /// The member list is checked against this rather than against a literal
 /// count. A count has to be edited every time a milestone activates a crate,
@@ -258,11 +244,5 @@ fn the_workspace_lists_every_crate_with_a_manifest() {
 /// Boundary: the crate inherits the workspace lints rather than restating them.
 #[test]
 fn the_crate_inherits_the_workspace_lints() {
-    let manifest = read("crates/aegis-calliope/Cargo.toml");
-    assert!(manifest.contains("[lints]"));
-    assert!(manifest.contains("workspace = true"));
-    assert!(!manifest.contains("[lints.rust]"));
-    assert!(!manifest.contains("[lints.clippy]"));
-    let root = read("Cargo.toml");
-    assert!(root.contains("unsafe_code = \"forbid\""));
+    dependency_closure::assert_inherits_workspace_lints("crates/aegis-calliope/Cargo.toml");
 }

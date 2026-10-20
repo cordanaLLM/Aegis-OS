@@ -31,7 +31,8 @@ use aegis_tellus::{CandidateId, CorrelationId};
 
 use crate::contracts::graph::EdgeId;
 use crate::contracts::{
-    ContractError, Correlation, PayloadBuffer, SchemaId, decode_text, encode_into,
+    ContractError, Correlation, PayloadBuffer, SchemaId, decode_text, decode_validated,
+    encode_into, ensure_edge,
 };
 use crate::machine::Lifecycle;
 use crate::stage::Stage;
@@ -238,21 +239,20 @@ impl PromotionTrigger {
     /// and [`ContractError::ActionDoesNotFollow`] when the action is not the
     /// one the reported stage justifies.
     pub fn validate(&self) -> Result<(), ContractError> {
-        let correlation = self.correlation();
-        if self.edge != Self::EDGE {
-            return Err(ContractError::WrongEdge {
-                correlation,
-                found: self.edge.name(),
-            });
-        }
         if PromotionAction::for_stage(self.stage.as_stage()) != Some(self.action) {
             return Err(ContractError::ActionDoesNotFollow {
-                correlation,
+                correlation: self.correlation(),
                 action: self.action.name(),
                 stage: self.stage.name(),
             });
         }
-        Ok(())
+        let correlation = self.correlation();
+        ensure_edge(self.edge, Self::EDGE, correlation, |c, found| {
+            ContractError::WrongEdge {
+                correlation: c,
+                found,
+            }
+        })
     }
 
     /// Encodes a validated trigger into `buffer`.
@@ -275,8 +275,6 @@ impl PromotionTrigger {
     /// bound, [`ContractError::Malformed`] for anything the schema refuses,
     /// and otherwise whatever [`Self::validate`] refuses.
     pub fn decode(text: &str) -> Result<Self, ContractError> {
-        let decoded: Self = decode_text(Self::SCHEMA, text)?;
-        decoded.validate()?;
-        Ok(decoded)
+        decode_validated(decode_text(Self::SCHEMA, text), Self::validate)
     }
 }

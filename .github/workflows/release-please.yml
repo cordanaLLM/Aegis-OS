@@ -59,7 +59,7 @@ jobs:
         id: train
         continue-on-error: true
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
-        with:
+        with: &release-please-inputs
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           skip-github-release: ${{ steps.gate.outputs.skip-github-release }}
@@ -71,10 +71,7 @@ jobs:
       - name: Retry the release pull request once
         if: steps.train.outcome == 'failure'
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
-        with:
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
-          skip-github-release: ${{ steps.gate.outputs.skip-github-release }}
+        with: *release-please-inputs
 
   disabled-notice:
     name: Release train disabled

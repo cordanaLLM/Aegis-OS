@@ -12,6 +12,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_tellus::{
     ClaimSource, ClaimStatus, P13_RECORDED_CLAIMS, REFERENCE_ENERGY_UJ_MODE,
     REFERENCE_MAX_ENERGY_RANGE_UJ, RecordedClaim,
@@ -111,14 +114,12 @@ fn the_ebpf_row_disclaims_the_probe() -> Fallible {
 /// Boundary: the register has no duplicate requirement and no empty status.
 #[test]
 fn the_register_has_no_duplicate_requirement() {
-    let mut seen: Vec<&str> = P13_RECORDED_CLAIMS
-        .into_iter()
-        .map(|row| row.requirement)
-        .collect();
-    seen.sort_unstable();
-    let before = seen.len();
-    seen.dedup();
-    assert_eq!(seen.len(), before, "a requirement is recorded twice");
+    test_assertions::assert_unique_requirements(
+        P13_RECORDED_CLAIMS
+            .into_iter()
+            .map(|row| row.requirement)
+            .collect(),
+    );
 
     for status in [
         ClaimStatus::Recorded,

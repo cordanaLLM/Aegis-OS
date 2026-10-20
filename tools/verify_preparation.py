@@ -890,6 +890,40 @@ def step_body(step):
     return [line.lstrip(" -") for line in step if not pattern.match(line)]
 
 
+def anchored_block(step):
+    """Return (anchor_name, block_lines) for a with: &anchor block, or (None, [])."""
+    anchor_name, block = None, []
+    recording, base_indent = False, 0
+    for line in step:
+        if not recording:
+            match = re.match(r"^(?P<indent> *)with:\s*&(?P<name>[^\s#]+)\s*(?:#.*)?$", line)
+            if match:
+                anchor_name = match.group("name")
+                base_indent = len(match.group("indent"))
+                recording = True
+                block.append(line)
+        elif line.strip() and len(line) - len(line.lstrip(" ")) <= base_indent:
+            break
+        else:
+            block.append(line)
+    return anchor_name, block
+
+
+def expand_retry_step(first, retry):
+    """Expand with: *alias in retry to the matching with: &anchor block from first."""
+    if any(re.match(r"^ *with:\s*&", line) for line in retry):
+        return None
+    anchor_name, block = anchored_block(first)
+    expanded = []
+    for line in retry:
+        match = re.match(r"^ *with:\s*\*(?P<name>[^\s#]+)\s*(?:#.*)?$", line)
+        if match and anchor_name and match.group("name") == anchor_name:
+            expanded.extend(block)
+        else:
+            expanded.append(line)
+    return expanded
+
+
 def verify_release_retry():
     """The release train runs its action, and once more only when that failed."""
     path = ROOT / RELEASE_WORKFLOW
@@ -915,7 +949,8 @@ def verify_release_retry():
         )
     if step_field(retry, "continue-on-error") is not None:
         raise ValueError(f"{RELEASE_WORKFLOW}: a failed retry must fail the run")
-    if step_body(first) != step_body(retry):
+    expanded = expand_retry_step(first, retry)
+    if expanded is None or step_body(first) != step_body(expanded):
         raise ValueError(f"{RELEASE_WORKFLOW}: the retry runs the same pin with the same inputs")
 
 

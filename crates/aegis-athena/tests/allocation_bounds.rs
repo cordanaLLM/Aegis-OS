@@ -22,6 +22,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use core::mem::size_of;
 
 use aegis_athena::{
@@ -159,10 +162,12 @@ fn an_escaped_payload_decodes_to_the_same_value() -> Fallible {
 #[test]
 fn the_payload_buffer_does_not_grow() {
     let buffer = PayloadBuffer::new();
-    assert!(buffer.is_empty());
-    assert_eq!(buffer.len(), 0);
-    assert_eq!(buffer.as_bytes(), b"");
-    assert_eq!(buffer.as_str(), Some(""));
+    test_assertions::assert_empty_buffer_view(
+        buffer.is_empty(),
+        buffer.len(),
+        buffer.as_bytes(),
+        buffer.as_str(),
+    );
     assert_eq!(
         size_of_val(&PayloadBuffer::default()),
         size_of::<PayloadBuffer>()
@@ -174,9 +179,10 @@ fn the_payload_buffer_does_not_grow() {
 /// Boundary: the buffer is exactly its bound plus its length field.
 #[test]
 fn the_payload_buffer_is_its_bound_plus_a_length() {
-    let buffer = size_of::<PayloadBuffer>();
-    assert!(buffer >= MAX_CONTRACT_PAYLOAD_BYTES);
-    assert!(buffer <= MAX_CONTRACT_PAYLOAD_BYTES.saturating_add(size_of::<usize>() * 2));
+    test_assertions::assert_bound_plus_length(
+        size_of::<PayloadBuffer>(),
+        MAX_CONTRACT_PAYLOAD_BYTES,
+    );
 }
 
 /// Boundary: a copied lifecycle and a copied gate set share nothing with their

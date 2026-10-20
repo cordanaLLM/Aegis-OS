@@ -9,6 +9,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_justitia::{
     Correlation, DIGEST_HEX_CHARS, DIGEST_LEN, Digest32, EdgeId, Identity, MAX_SIGNATURE_HEX_CHARS,
     OversightSignature, PayloadBuffer, RecordSigner, SchemaId, SignatureAlgorithm, SignatureBytes,
@@ -106,10 +109,12 @@ fn an_identifier_outside_the_charset_is_refused() {
 #[test]
 fn an_untouched_payload_buffer_holds_nothing() {
     let buffer = PayloadBuffer::default();
-    assert!(buffer.is_empty());
-    assert_eq!(buffer.len(), 0);
-    assert_eq!(buffer.as_bytes(), b"");
-    assert_eq!(buffer.as_str(), Some(""));
+    test_assertions::assert_empty_buffer_view(
+        buffer.is_empty(),
+        buffer.len(),
+        buffer.as_bytes(),
+        buffer.as_str(),
+    );
     assert_eq!(PayloadBuffer::new().len(), buffer.len());
 }
 
