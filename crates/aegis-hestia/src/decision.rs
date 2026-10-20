@@ -36,26 +36,10 @@
 //! consumes this boundary. No package is added by this milestone, and nothing
 //! here is proof about one.
 
-/// Whether a recorded decision is settled.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum DecisionState {
-    /// The decision is settled and the register names what was chosen.
-    Closed,
-    /// The decision is recorded but not settled.
-    Unresolved,
-}
+#[path = "../../decision_state.rs"]
+mod decision_state;
 
-impl DecisionState {
-    /// Returns the stable name this state is recorded under.
-    #[must_use]
-    pub const fn name(self) -> &'static str {
-        match self {
-            Self::Closed => "closed",
-            Self::Unresolved => "unresolved",
-        }
-    }
-}
+pub use decision_state::DecisionState;
 
 /// The three places D09 could have put P15.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

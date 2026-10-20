@@ -49,9 +49,11 @@
 //! path. `/var/log/aegis/checkpoint_ledger.jsonl` is named in this comment and
 //! nowhere in the code.
 
+pub use aegis_justitia::LedgerError;
+use aegis_justitia::ledger::Timestamped;
 use aegis_justitia::{
-    CanonicalBuffer, Digest32, HashAlgorithm, HashError, LedgerHasher, PreimageError, Sequence,
-    Sha256Hasher, UnixSeconds,
+    CanonicalBuffer, Chain, ChainRecord, Digest32, HashAlgorithm, LedgerHasher, PreimageError,
+    RecordBody, Sequence, Sha256Hasher, UnixSeconds,
 };
 use aegis_tellus::CandidateId;
 
@@ -65,60 +67,6 @@ pub const CHECKPOINT_DOMAIN: &[u8] = b"aegis.athena.checkpoint.v1\0";
 
 /// Scalar upper bound on the records one ledger holds.
 pub const MAX_CHECKPOINT_RECORDS: usize = 4096;
-
-/// Reasons the checkpoint ledger refuses a record or a chain.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
-#[non_exhaustive]
-pub enum LedgerError {
-    /// A record names an algorithm the ledger does not use.
-    #[error("record algorithm {found} does not match the ledger algorithm {expected}")]
-    AlgorithmMismatch {
-        /// The algorithm the ledger uses.
-        expected: HashAlgorithm,
-        /// The algorithm the record names.
-        found: HashAlgorithm,
-    },
-    /// A record does not link to its predecessor.
-    #[error("record {at} does not link to its predecessor")]
-    PreviousHashMismatch {
-        /// The sequence number of the offending record.
-        at: u64,
-    },
-    /// A record's stored digest does not match its content.
-    #[error("record {at} has a stored digest that does not match its content")]
-    DigestMismatch {
-        /// The sequence number of the offending record.
-        at: u64,
-    },
-    /// A record's sequence number is not the expected successor.
-    #[error("expected sequence {expected}, found {found}")]
-    SequenceGap {
-        /// The sequence number the chain expected.
-        expected: u64,
-        /// The sequence number observed.
-        found: u64,
-    },
-    /// The chain or the ledger exceeded its scalar bound.
-    #[error("record count exceeds the bound of {max}")]
-    LengthBoundExceeded {
-        /// The scalar bound.
-        max: usize,
-    },
-    /// A record carries a timestamp earlier than its predecessor.
-    #[error("record timestamp {observed} precedes the previous record at {last}")]
-    NonMonotonicTimestamp {
-        /// The previous record's timestamp.
-        last: u64,
-        /// The timestamp observed.
-        observed: u64,
-    },
-    /// The canonical pre-image could not be built.
-    #[error("canonical pre-image: {0}")]
-    Preimage(#[from] PreimageError),
-    /// The digest could not be produced.
-    #[error("digest: {0}")]
-    Hash(#[from] HashError),
-}
 
 /// The caller-supplied fields of one checkpoint record.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -141,16 +89,23 @@ pub struct CheckpointDraft {
     pub at: UnixSeconds,
 }
 
-/// One checkpoint record body, including its chain position.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CheckpointBody {
-    sequence: Sequence,
-    previous: Digest32,
-    algorithm: HashAlgorithm,
-    draft: CheckpointDraft,
+impl Timestamped for CheckpointDraft {
+    fn at(&self) -> UnixSeconds {
+        self.at
+    }
 }
 
+/// One checkpoint record body, including its chain position.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CheckpointBody(RecordBody<CheckpointDraft>);
+
 impl CheckpointBody {
+    /// Returns the underlying record body.
+    #[must_use]
+    pub(crate) const fn record_body(&self) -> &RecordBody<CheckpointDraft> {
+        &self.0
+    }
+
     /// Places a draft at a chain position.
     #[must_use]
     pub const fn from_parts(
@@ -159,36 +114,31 @@ impl CheckpointBody {
         algorithm: HashAlgorithm,
         draft: CheckpointDraft,
     ) -> Self {
-        Self {
-            sequence,
-            previous,
-            algorithm,
-            draft,
-        }
+        Self(RecordBody::from_parts(sequence, previous, algorithm, draft))
     }
 
     /// Returns the sequence number.
     #[must_use]
     pub const fn sequence(&self) -> Sequence {
-        self.sequence
+        self.0.sequence()
     }
 
     /// Returns the predecessor link.
     #[must_use]
     pub const fn previous(&self) -> Digest32 {
-        self.previous
+        self.0.previous()
     }
 
     /// Returns the algorithm named by the record.
     #[must_use]
     pub const fn algorithm(&self) -> HashAlgorithm {
-        self.algorithm
+        self.0.algorithm()
     }
 
     /// Returns the caller-supplied fields.
     #[must_use]
     pub const fn draft(&self) -> &CheckpointDraft {
-        &self.draft
+        self.0.draft()
     }
 
     /// Returns a copy of this body carrying a different stage.
@@ -198,9 +148,14 @@ impl CheckpointBody {
     /// is exactly what a re-walk must detect.
     #[must_use]
     pub const fn with_stage(&self, stage: Stage) -> Self {
-        let mut draft = self.draft;
+        let mut draft = *self.0.draft();
         draft.stage = stage;
-        Self { draft, ..*self }
+        Self(RecordBody::from_parts(
+            self.0.sequence(),
+            self.0.previous(),
+            self.0.algorithm(),
+            draft,
+        ))
     }
 
     /// Builds the canonical, domain-separated, length-prefixed pre-image.
@@ -214,18 +169,15 @@ impl CheckpointBody {
     /// Returns [`PreimageError::Overflow`] when the encoding would exceed the
     /// fixed buffer. The encoding never truncates.
     pub fn canonical_preimage(&self) -> Result<CanonicalBuffer, PreimageError> {
-        let mut buffer = CanonicalBuffer::new();
-        buffer.write_tag(CHECKPOINT_DOMAIN)?;
-        buffer.write_framed(CONTRACT_VERSION.as_bytes())?;
-        buffer.write_u8(self.algorithm.tag())?;
-        buffer.write_u64(self.sequence.get())?;
-        buffer.write_digest(&self.previous)?;
-        buffer.write_u64(self.draft.at.get())?;
-        buffer.write_u8(self.draft.stage.tag())?;
-        write_verdict(&mut buffer, self.draft.verdict)?;
-        write_metrics(&mut buffer, self.draft.metrics.as_ref())?;
-        write_reason(&mut buffer, self.draft.reason)?;
-        buffer.write_framed(self.draft.candidate.as_bytes())?;
+        let draft = self.0.draft();
+        let mut buffer = self
+            .0
+            .header(CHECKPOINT_DOMAIN, CONTRACT_VERSION, draft.at)?;
+        buffer.write_u8(draft.stage.tag())?;
+        write_verdict(&mut buffer, draft.verdict)?;
+        write_metrics(&mut buffer, draft.metrics.as_ref())?;
+        write_reason(&mut buffer, draft.reason)?;
+        buffer.write_framed(draft.candidate.as_bytes())?;
         Ok(buffer)
     }
 
@@ -237,7 +189,7 @@ impl CheckpointBody {
     /// backend returns an output of the wrong width.
     pub fn digest<H: LedgerHasher>(&self) -> Result<Digest32, LedgerError> {
         let preimage = self.canonical_preimage()?;
-        Ok(H::digest(preimage.as_slice())?)
+        H::digest(preimage.as_slice()).map_err(LedgerError::from)
     }
 }
 
@@ -317,17 +269,37 @@ impl CheckpointRecord {
     }
 }
 
+impl ChainRecord for CheckpointRecord {
+    type Draft = CheckpointDraft;
+
+    fn body(&self) -> &RecordBody<Self::Draft> {
+        self.body.record_body()
+    }
+
+    fn digest(&self) -> Digest32 {
+        self.digest
+    }
+
+    fn verify<H: LedgerHasher>(&self) -> Result<Digest32, LedgerError> {
+        self.body.digest::<H>()
+    }
+}
+
 /// A hash-linked checkpoint ledger over the D02 hashing trait.
 ///
 /// Dispatch is static: there is no `dyn` and no vtable on the record path.
 #[derive(Debug, Clone, PartialEq)]
-pub struct CheckpointLedger<H: LedgerHasher> {
-    records: Vec<CheckpointRecord>,
-    head: Digest32,
-    next_sequence: Sequence,
-    last_at: Option<UnixSeconds>,
-    bound: usize,
+pub struct CheckpointLedger<H: LedgerHasher = Sha256Hasher> {
+    chain: Chain<CheckpointRecord>,
     hasher: core::marker::PhantomData<H>,
+}
+
+impl<H: LedgerHasher> core::ops::Deref for CheckpointLedger<H> {
+    type Target = Chain<CheckpointRecord>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.chain
+    }
 }
 
 /// The SHA-256 checkpoint ledger, the only instantiation M05 ships (D02).
@@ -353,19 +325,9 @@ impl<H: LedgerHasher> CheckpointLedger<H> {
     #[must_use]
     pub fn with_bound(bound: usize) -> Self {
         Self {
-            records: Vec::with_capacity(bound),
-            head: Digest32::GENESIS,
-            next_sequence: Sequence::FIRST,
-            last_at: None,
-            bound,
+            chain: Chain::with_bound(bound),
             hasher: core::marker::PhantomData,
         }
-    }
-
-    /// Returns the scalar record bound.
-    #[must_use]
-    pub const fn bound(&self) -> usize {
-        self.bound
     }
 
     /// Returns the capacity reserved at construction.
@@ -373,31 +335,13 @@ impl<H: LedgerHasher> CheckpointLedger<H> {
     /// HISS-03 evidence: this value must not change while the ledger is in use.
     #[must_use]
     pub fn reserved(&self) -> usize {
-        self.records.capacity()
+        self.chain.reserved()
     }
 
-    /// Returns the digest of the most recent record, or the genesis link.
+    /// Returns the digest of the latest record, or [`Digest32::GENESIS`].
     #[must_use]
     pub const fn head(&self) -> Digest32 {
-        self.head
-    }
-
-    /// Returns the number of records held.
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.records.len()
-    }
-
-    /// Returns `true` when the ledger holds no record.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.records.is_empty()
-    }
-
-    /// Returns the records held.
-    #[must_use]
-    pub fn records(&self) -> &[CheckpointRecord] {
-        &self.records
+        self.chain.head()
     }
 
     /// Links `draft` onto the chain.
@@ -408,74 +352,21 @@ impl<H: LedgerHasher> CheckpointLedger<H> {
     /// precedes the previous record, the pre-image overflows, or the hash
     /// backend misbehaves. Nothing is committed unless every step succeeds.
     pub fn append(&mut self, draft: CheckpointDraft) -> Result<Digest32, LedgerError> {
-        if self.records.len() >= self.bound {
-            return Err(LedgerError::LengthBoundExceeded { max: self.bound });
-        }
-        if let Some(last) = self.last_at
-            && draft.at < last
-        {
-            return Err(LedgerError::NonMonotonicTimestamp {
-                last: last.get(),
-                observed: draft.at.get(),
-            });
-        }
-        let body = CheckpointBody::from_parts(self.next_sequence, self.head, H::ALGORITHM, draft);
+        let (sequence, head) = self.chain.next_link(draft.at)?;
+        let body = CheckpointBody::from_parts(sequence, head, H::ALGORITHM, draft);
         let digest = body.digest::<H>()?;
         let record = CheckpointRecord::from_parts(body, digest);
-        self.commit(&record, draft.at);
-        Ok(digest)
-    }
-
-    /// Commits a sealed record. Called only after every fallible step passed.
-    fn commit(&mut self, record: &CheckpointRecord, at: UnixSeconds) {
-        self.head = record.digest();
-        // Saturating, not wrapping: at the u64 ceiling the next append fails
-        // with a sequence gap rather than silently restarting the chain at one.
-        self.next_sequence = Sequence::new(record.body().sequence().get().saturating_add(1));
-        self.last_at = Some(at);
-        self.records.push(*record);
+        Ok(self.chain.seal(record))
     }
 
     /// Re-walks the ledger's own records.
     ///
     /// # Errors
     ///
-    /// Returns [`LedgerError`] from [`verify_chain_bounded`].
+    /// Returns [`LedgerError`] from [`Chain::verify`].
     pub fn verify(&self) -> Result<Digest32, LedgerError> {
-        verify_chain_bounded::<H>(&self.records, self.bound)
+        self.chain.verify::<H>()
     }
-}
-
-/// Verifies one link of a chain against the state that precedes it.
-fn verify_link<H: LedgerHasher>(
-    previous: Digest32,
-    expected: Sequence,
-    record: &CheckpointRecord,
-) -> Result<(), LedgerError> {
-    let body = record.body();
-    if body.algorithm() != H::ALGORITHM {
-        return Err(LedgerError::AlgorithmMismatch {
-            expected: H::ALGORITHM,
-            found: body.algorithm(),
-        });
-    }
-    if body.sequence() != expected {
-        return Err(LedgerError::SequenceGap {
-            expected: expected.get(),
-            found: body.sequence().get(),
-        });
-    }
-    if body.previous() != previous {
-        return Err(LedgerError::PreviousHashMismatch {
-            at: body.sequence().get(),
-        });
-    }
-    if body.digest::<H>()? != record.digest() {
-        return Err(LedgerError::DigestMismatch {
-            at: body.sequence().get(),
-        });
-    }
-    Ok(())
 }
 
 /// Re-walks `records` under the default bound [`MAX_CHECKPOINT_RECORDS`].
@@ -504,28 +395,5 @@ pub fn verify_chain_bounded<H: LedgerHasher>(
     records: &[CheckpointRecord],
     max: usize,
 ) -> Result<Digest32, LedgerError> {
-    if records.len() > max {
-        return Err(LedgerError::LengthBoundExceeded { max });
-    }
-    let mut previous = Digest32::GENESIS;
-    let mut expected = Sequence::FIRST;
-    let mut last_at: Option<UnixSeconds> = None;
-    for record in records.iter().take(max) {
-        verify_link::<H>(previous, expected, record)?;
-        let at = record.body().draft().at;
-        if let Some(last) = last_at
-            && at < last
-        {
-            return Err(LedgerError::NonMonotonicTimestamp {
-                last: last.get(),
-                observed: at.get(),
-            });
-        }
-        previous = record.digest();
-        expected = expected
-            .next()
-            .ok_or(LedgerError::LengthBoundExceeded { max })?;
-        last_at = Some(at);
-    }
-    Ok(previous)
+    CheckpointRecord::verify_chain_bounded::<H>(records, max)
 }
