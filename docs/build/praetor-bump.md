@@ -211,6 +211,15 @@ rm -rf "$cache"
 git worktree prune
 ```
 
+## Resources
+
+The service caps Cargo and Make at eight jobs (`CARGO_BUILD_JOBS=8`,
+`MAKEFLAGS=-j8`), reserving room for up to three builders sharing 32 cores.
+`MemoryHigh=8G` applies memory pressure before the `MemoryMax=12G` hard limit,
+and `CPUWeight=20` gives the bump a smaller CPU share under contention. These
+limits keep background verification from exhausting the workstation's shared
+CPU and memory pool; the unit comment records the common job cap.
+
 ## Limits
 
 - The linters, the Go toolchain and the Python behind the portal venv are the

@@ -19,6 +19,13 @@ ExecStart=/usr/bin/python3 @AEGIS_REPO@/tools/praetor_bump.py
 # The tools the gates start: praetorctl's replacement is prepended by the
 # script itself; cargo and rustup, gh, go, npx and lefthook are found here.
 Environment=PATH=%h/.local/bin:%h/go/bin:%h/.cargo/bin:/usr/local/bin:/usr/bin
+# Shared pool: one of at most three builders on 32 cores; conservatively round
+# 32 / 3 down to 8 jobs. Keep this job cap identical for Cargo and Make.
+Environment=CARGO_BUILD_JOBS=8
+Environment=MAKEFLAGS=-j8
+MemoryHigh=8G
+MemoryMax=12G
+CPUWeight=20
 # A oneshot has no start timeout by default. Every command the script starts
 # has its own deadline; this bounds the whole run (HISS-02).
 TimeoutStartSec=4h
