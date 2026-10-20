@@ -82,6 +82,10 @@ PROGRAMS = (
     RING_READBACK_BINARY,
 )
 
+# Admitted library version floors (M28).
+XKBCOMMON_FLOOR = "1.0.0"
+WAYLAND_CLIENT_FLOOR = "1.11.0"
+
 ATSPI_DIRS = (
     "/usr/lib",
     "/usr/libexec",
@@ -409,6 +413,36 @@ def read_versions(runner=run_command):
     dbus_ver = dbus_first_line.split()[-1] if dbus_first_line else "unknown"
 
     return {"atspi-2": atspi_ver, "dbus": dbus_ver}
+
+
+def check_library_floors(runner=run_command):
+    """Reads xkbcommon and wayland-client pkg-config versions and verifies they meet floors.
+
+    Returns (status, message, versions_dict):
+    - status == "ok": message is None, versions_dict has read values
+    - status == "skip": message is capability reason string (missing module)
+    - status == "fail": message is failure string (version below floor or unparsable)
+    """
+    versions = {}
+    for name, floor in (
+        ("xkbcommon", XKBCOMMON_FLOOR),
+        ("wayland-client", WAYLAND_CLIENT_FLOOR),
+    ):
+        code, stdout, _stderr = runner(["pkg-config", "--modversion", name], timeout=10)
+        if code != 0 or not stdout.strip():
+            return "skip", f"pkg-config module {name} is not installed", {}
+        ver = stdout.strip().splitlines()[0]
+        versions[name] = ver
+        try:
+            found_tuple = gate_common.version_tuple(ver)
+            floor_tuple = gate_common.version_tuple(floor)
+            if found_tuple < floor_tuple:
+                msg = f"FAIL: {name} version {ver} is below admitted floor {floor}"
+                return "fail", msg, versions
+        except (ValueError, TypeError, AttributeError):
+            return "fail", f"FAIL: {name} version {ver!r} is unparsable", versions
+
+    return "ok", None, versions
 
 
 def kwin_version(runner=run_command):
@@ -1844,20 +1878,47 @@ def start_services(runtime_dir, procs):
     return kwin_sock, hide_sock, drop_sock, a11y_env
 
 
-def main(argv=None):
-    """Main verification harness driver."""
-    if argv is None:
-        argv = sys.argv[1:]
+def check_prerequisites(argv, runner=run_command):
+    """Check CLI flags, capability reasons, and library floors before running."""
     timing_out, ok = parse_timing_out(argv)
     if not ok:
         sys.stdout.write("RESULT error: --timing-out requires a path argument\n")
-        return 1
+        return 1, None
 
+    # Floors are read only once pkg-config is known to exist, so a host
+    # without it skips instead of raising.
     reasons = capability_reasons()
+    status, msg, lib_versions = "skip", None, {}
+    if not reasons:
+        status, msg, lib_versions = check_library_floors(runner=runner)
+        if status == "skip":
+            reasons.append(msg)
     if reasons:
         sys.stdout.write(f"SKIP: {'; '.join(reasons)}; the native shell gate did not run.\n")
         sys.stdout.flush()
-        return 0
+        return 0, None
+    if status == "fail":
+        sys.stdout.write(f"{msg}\n")
+        sys.stdout.flush()
+        return 1, None
+
+    xkb_ver = lib_versions["xkbcommon"]
+    wl_ver = lib_versions["wayland-client"]
+    sys.stdout.write(
+        f"LIBRARY FLOORS: xkbcommon {xkb_ver} (floor {XKBCOMMON_FLOOR}), "
+        f"wayland-client {wl_ver} (floor {WAYLAND_CLIENT_FLOOR})\n"
+    )
+    sys.stdout.flush()
+    return None, timing_out
+
+
+def main(argv=None, runner=run_command):
+    """Main verification harness driver."""
+    if argv is None:
+        argv = sys.argv[1:]
+    exit_code, timing_out = check_prerequisites(argv, runner=runner)
+    if exit_code is not None:
+        return exit_code
 
     runtime_dir = Path(tempfile.mkdtemp(prefix="aegis-shell-"))
     os.chmod(runtime_dir, 0o700)
