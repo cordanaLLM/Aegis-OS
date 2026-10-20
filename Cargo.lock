@@ -142,6 +142,7 @@ dependencies = [
 name = "aegis-forum-shell-gpui"
 version = "0.1.0"
 dependencies = [
+ "accesskit 0.25.1",
  "aegis-concordia",
  "aegis-forum-shell",
  "aegis-scaena",

@@ -209,8 +209,13 @@ atspi 0.29.0. It also resolves accesskit 0.24.1, beside the 0.25.1 M16
 admitted: zed `main` still declares accesskit 0.24.0, and 0.25.1 is not
 source-compatible with 0.24.1 for `aegis-forum-shell` (`TreeInfo` and `TreeId`
 do not exist there, measured on 2026-10-17), so the two versions coexist in the
-lock and the conversion between them is M28's to write and test (criterion 1's
-second branch). `aegis-forum-shell`'s own closure still holds exactly one
+lock and M28 takes criterion 1's second branch: `to_gpui` in
+`crates/aegis-forum-shell-gpui/src/convert.rs` converts a 0.25.1 tree update
+into gpui's 0.24.1 one, pairing roles and actions by variant name (182 roles
+and 22 actions, identical in both versions on 2026-10-20) and refusing a
+non-root tree, an unpaired role or any property it does not map, and
+`crates/aegis-forum-shell-gpui/tests/convert.rs` tests it against M16's export.
+`aegis-forum-shell`'s own closure still holds exactly one
 accesskit, 0.25.1, which its manifest-hygiene test now reads from its closure
 rather than counting lock entries.
 
@@ -1023,8 +1028,8 @@ API, from zed-industries/zed or from the reference profile's package manager.
 | :--- | :--- | :--- | :--- |
 | zbus, atspi | 5.19.0 (MIT) and 0.29.0 (Apache-2.0 OR MIT), the versions accesskit_unix 0.22.1 resolves; the reader in `crates/aegis-forum-shell-gpui/src/readback.rs` uses atspi 0.29.0 (proxies only) and zbus 5.19.0 (async-io) | as the pinned accesskit_unix 0.22.1 resolves them, so the lock gains no package; atspi also for the tests that read the tree back (M28) | pure-Rust D-Bus and AT-SPI below accesskit_unix and for readback verification |
 | async-io, futures-lite | 2.6.0 and 2.6.1 (both Apache-2.0 OR MIT), resolved by zbus and accesskit_unix | as pinned in Cargo.lock, so the lock gains no package | asynchronous I/O and future combinators for readback with deadlines |
-| libxkbcommon | 1.13.2 (`libxkbcommon 1.13.2-1.1`) | the floor the pinned xkbcommon crate (0.8.0 at zed `main`) needs, read at admission (M28) | the C keymap library gpui links for Linux keyboard input |
-| libwayland-client | 1.26.0 (`wayland 1.26.0-1.1`) | read at admission (M28) | loaded by wayland-backend through `dlopen` |
+| libxkbcommon | 1.13.2 (`libxkbcommon 1.13.2-1.1`) | floor 1.0.0 (symbol `xkb_utf32_to_keysym`, `xkbcommon-0.8.0/src/xkb/ffi.rs:125`), read back by make verify-shell | the C keymap library gpui links for Linux keyboard input |
+| libwayland-client | 1.26.0 (`wayland 1.26.0-1.1`) | floor 1.11.0 (symbol `wl_proxy_create_wrapper`, `wayland-sys-0.31.11/src/client.rs:66`), read back by make verify-shell; wayland-sys gates `wl_display_set_max_buffer_size` and `wl_proxy_get_display` (client.rs:33, :62) behind feature `libwayland_client_1_23`, which the lock does not enable (`cargo tree -e features -i wayland-sys`), so 1.11.0 holds; and every ungated client symbol is declared in upstream wayland 1.11.0 `src/wayland-client-core.h` / `wayland-util.h` and `wl_proxy_create_wrapper` is absent at 1.10.0 (checked 2026-10-20 against gitlab.freedesktop.org raw tags) | loaded by wayland-backend through `dlopen` |
 | at-spi2-core | 2.60.7 (`at-spi2-core 2.60.7-1.1`), with `dbus-run-session` from `dbus 1.16.2-1.1` | recorded and read back before the AT-SPI cases run (M28) | the bus launcher and registry of the private AT-SPI session M28's tests start |
 
 What these rows do **not** claim: that any zed commit is chosen, that gpui

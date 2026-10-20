@@ -258,11 +258,11 @@ score.
 | 21 | M10 | eBPF objects re-verified against the Nucleus-pinned kernel in a VM | done | medium | yes | yes | partial | M09, M19, M23 | M12 |
 | 22 | M22 | P10 microVM sandbox measurements on KVM | done | medium | yes | no | full | M06 | - |
 | 23 | M32 | P17 Scaena subtitle timing on a fixture clip with audio and subtitles | done | medium | yes | no | full | M27 | - |
-| 24 | M25 | GPU host slices on the reference profile: DMA-BUF and VFIO | ready | medium | yes | no | full | M08, M17 | M12 |
-| 25 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | ready | large | yes | no | full | M16, M27 | M29, M30, M31 |
-| 26 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | blocked | medium | yes | no | full | M28, M27 | - |
-| 27 | M30 | P05 canvas accessibility: semantics, pointer alternatives, text scale | blocked | medium | yes | no | full | M28 | - |
-| 28 | M31 | P12 D76 heads-up theme: reduced motion, security states, flash limit | blocked | medium | yes | no | full | M28 | - |
+| 24 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | done | large | yes | no | full | M16, M27 | M29, M30, M31 |
+| 25 | M25 | GPU host slices on the reference profile: DMA-BUF and VFIO | ready | medium | yes | no | full | M08, M17 | M12 |
+| 26 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | ready | medium | yes | no | full | M28, M27 | - |
+| 27 | M30 | P05 canvas accessibility: semantics, pointer alternatives, text scale | ready | medium | yes | no | full | M28 | - |
+| 28 | M31 | P12 D76 heads-up theme: reduced motion, security states, flash limit | ready | medium | yes | no | full | M28 | - |
 | 29 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
 | 30 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
 | 31 | M33 | Consume amussis-decision in place of the in-tree decision engine | blocked | medium | no | yes | not-hardware | M02 | - |
@@ -1929,7 +1929,7 @@ Epics:
 
 ### M25 - GPU host slices on the reference profile: DMA-BUF and VFIO
 
-Rank 24. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 25. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M08, M17. Unblocks: M12.
 
@@ -3089,7 +3089,7 @@ Epics:
 
 ### M28 - P05 native shell on gpui: layer surface, AT-SPI tree, frame time
 
-Rank 25. State: ready. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
+Rank 24. State: done. Cost: large. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M16, M27. Unblocks: M29, M30, M31.
 
@@ -3242,7 +3242,7 @@ Epics:
 
 ### M29 - P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher
 
-Rank 26. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 26. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M28, M27. Unblocks: nothing.
 
@@ -3326,7 +3326,7 @@ Epics:
 
 ### M30 - P05 canvas accessibility: semantics, pointer alternatives, text scale
 
-Rank 27. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 27. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M28. Unblocks: nothing.
 
@@ -3385,7 +3385,7 @@ Epics:
 
 ### M31 - P12 D76 heads-up theme: reduced motion, security states, flash limit
 
-Rank 28. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 28. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M28. Unblocks: nothing.
 
