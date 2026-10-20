@@ -1364,6 +1364,30 @@ class UnitVerifyTests(unittest.TestCase):
         code, named = self.findings(self.render())
         self.assertEqual((code, named), (0, []))
 
+    def assert_resource_limits(self):
+        service = (self.dir / "aegis-praetor-bump.service").read_text(encoding="utf-8")
+        directives = service.split("[Service]\n", 1)[1].split("\n[", 1)[0].splitlines()
+        for directive in (
+            "Environment=CARGO_BUILD_JOBS=8",
+            "Environment=MAKEFLAGS=-j8",
+            "MemoryHigh=8G",
+            "MemoryMax=12G",
+            "CPUWeight=20",
+        ):
+            self.assertIn(directive, directives)
+
+    def test_the_rendered_service_bounds_build_resources(self):
+        self.render()
+        self.assert_resource_limits()
+
+    def test_a_missing_cargo_job_limit_is_refused(self):
+        def omit_cargo_jobs(name, text):
+            return text.replace("Environment=CARGO_BUILD_JOBS=8\n", "")
+
+        self.render(omit_cargo_jobs)
+        with self.assertRaisesRegex(AssertionError, "CARGO_BUILD_JOBS"):
+            self.assert_resource_limits()
+
     def test_an_unknown_key_is_reported_though_verify_exits_zero(self):
         def misspell(name, text):
             return text.replace("Persistent=", "PersistentX=") if name.endswith(".timer") else text
