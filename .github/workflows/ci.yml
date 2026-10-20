@@ -61,7 +61,7 @@ env:
   # Published Praetor commit that builds the praetorctl this gate pins. The
   # name is the one Praetor's hook launcher looks for under .github/workflows,
   # so local hooks and this job resolve the same engine; a full commit SHA.
-  PRAETOR_REF: "6c7e4700fcc7ebe2a2f28b02246c5d517d26ef48"
+  PRAETOR_REF: "755fd53d46d7b10b7a72a6e0ebe211a2fe3a9055"
   # D80 libva floor on this runner (maintainer decision of 2026-09-29): the
   # intel/libva release tarball, its sha256 as the GitHub release publishes it,
   # and the meson and ninja wheels that build it, each pinned by its PyPI sha256.
