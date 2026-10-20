@@ -27,21 +27,18 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use serde_json::Value;
 
+#[path = "child_deadline.rs"]
+mod child_deadline;
+
 /// How long `cargo metadata` may run.
 pub const METADATA_DEADLINE: Duration = Duration::from_secs(120);
-
-/// How often the deadline loop polls the child.
-const POLL: Duration = Duration::from_millis(25);
-
-/// The most polls one wait makes: 120 s / 25 ms.
-const MAX_POLLS: u32 = 4_800;
 
 /// Numbers each run within one test binary, so concurrent runs never share
 /// an output file.
@@ -62,23 +59,6 @@ pub const METADATA_ARGS: [&str; 6] = [
 pub fn workspace_root() -> Option<PathBuf> {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     Some(manifest.parent()?.parent()?.to_path_buf())
-}
-
-/// Waits for `child` under `deadline`, killing it past the deadline.
-fn wait(child: &mut Child, deadline: Duration) -> Result<ExitStatus, String> {
-    let started = Instant::now();
-    for _ in 0..=MAX_POLLS {
-        match child.try_wait() {
-            Ok(Some(status)) => return Ok(status),
-            Ok(None) if started.elapsed() < deadline => std::thread::sleep(POLL),
-            Ok(None) => break,
-            Err(error) => return Err(format!("waiting for cargo metadata failed: {error}")),
-        }
-    }
-    let killed = child.kill().and_then(|()| child.wait());
-    Err(format!(
-        "cargo metadata missed its {deadline:?} deadline; killed: {killed:?}"
-    ))
 }
 
 /// One `cargo metadata` invocation: which program, which arguments, where.
@@ -147,7 +127,7 @@ impl Invocation {
             .stderr(stderr)
             .spawn()
             .map_err(|error| format!("cargo metadata could not be spawned: {error}"))?;
-        let status = wait(&mut child, self.deadline)?;
+        let status = child_deadline::wait(&mut child, self.deadline, "cargo metadata")?;
         if !status.success() {
             let text = std::fs::read_to_string(&err).unwrap_or_default();
             return Err(format!(
