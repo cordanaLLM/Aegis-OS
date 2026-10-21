@@ -70,6 +70,24 @@ exceptions:
     category: D
     entered: "2026-10-21"
     expires: "2027-02-18"
+  - rule: HISS-19
+    path: ui/concordia-tokens/hiss-lint/plants/at-the-limits.js
+    reason: 'Dedupe groups e8b23910, 86a714ab, cf8c23af, bff11e2d and 84ee3427 shared with ui/concordia-tokens/hiss-lint/plants/statements.js and complexity.js: the file is a planted input of the D100 HISS ESLint gate and it sits exactly on each HISS-04 limit; the gate lints the inline statements themselves (tools/test_a11y.py counts them), so a shared helper would change what the lint sees. Recorded as debt in .standards-baseline.json, engine request cordanaLLM/praetor#1256 (decision aegis-os-2257-hiss-lint-plants, category D, 120 days)'
+    category: D
+    entered: "2026-10-22"
+    expires: "2027-02-19"
+  - rule: HISS-19
+    path: ui/concordia-tokens/hiss-lint/plants/statements.js
+    reason: 'Dedupe groups e8b23910 and 86a714ab shared with ui/concordia-tokens/hiss-lint/plants/at-the-limits.js: the file is a planted input of the D100 HISS ESLint gate and its 51 statements are one past the limit; the gate lints the inline statements themselves (tools/test_a11y.py counts them), so a shared helper would change what the lint sees. Recorded as debt in .standards-baseline.json, engine request cordanaLLM/praetor#1256 (decision aegis-os-2257-hiss-lint-plants, category D, 120 days)'
+    category: D
+    entered: "2026-10-22"
+    expires: "2027-02-19"
+  - rule: HISS-19
+    path: ui/concordia-tokens/hiss-lint/plants/complexity.js
+    reason: 'Dedupe groups cf8c23af, bff11e2d and 84ee3427 shared with ui/concordia-tokens/hiss-lint/plants/at-the-limits.js: the file is a planted input of the D100 HISS ESLint gate and its cyclomatic complexity of 11 is one past the limit; the gate lints the inline statements themselves (tools/test_a11y.py counts them), so a shared helper would change what the lint sees. Recorded as debt in .standards-baseline.json, engine request cordanaLLM/praetor#1256 (decision aegis-os-2257-hiss-lint-plants, category D, 120 days)'
+    category: D
+    entered: "2026-10-22"
+    expires: "2027-02-19"
   - rule: HISS-03
     path: crates/aegis-forum-shell-gpui/Cargo.toml
     reason: 'D115: gpui at zed commit 56934ec0560bce8929025497411de7f5322fb6ca heap-allocates every frame while the accessibility adapter is active (crates/gpui/src/window/a11y.rs, unchanged since 322cd509dc and re-read at this re-pin on 2026-10-18: mem::take of all_nodes drops the node capacity, accesskit::Node::new per node, an FxHashSet in repair_tree_update); the deviation is limited to that pinned gpui, enters through this one member (D102), grants nothing to Aegis-authored code and is reviewed at every re-pin of gpui (category A, 90 days)'
