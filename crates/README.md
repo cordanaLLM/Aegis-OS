@@ -274,6 +274,11 @@ instead of the whole lock, so P17's Wayland and VA-API crates in the shared
 closure it reads. `aegis-forum-shell` carries its own copy of the same walk
 from M16.
 
+`fixture_tamper.rs`, beside the crate directories, is not a crate: it is
+the shared fixture payload tampering helper, included by path into the
+test common modules of `aegis-compositor`, `aegis-hephaestus`,
+`aegis-ludus` and `aegis-minerva`.
+
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
 signing and no file-backed ledger sink. A signature field in a schema is a field
