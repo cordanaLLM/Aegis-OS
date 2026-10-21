@@ -26,12 +26,6 @@ use aegis_tellus::{CandidateId, CorrelationId};
 /// What every test in this suite returns.
 pub type Fallible = Result<(), Box<dyn std::error::Error>>;
 
-/// Returns this crate's `src/` directory.
-#[must_use]
-pub fn source_root() -> std::path::PathBuf {
-    source_effects::crate_source_root(env!("CARGO_MANIFEST_DIR"))
-}
-
 /// The candidate identifier the imported scaffold evaluates.
 pub const CANDIDATE: &str = "candidate-001-scx-cake-v2";
 

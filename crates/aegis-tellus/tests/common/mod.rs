@@ -17,12 +17,6 @@ use aegis_tellus::{
     SciResponseVersion, SliceName, TaskShiftDirective, TaskShiftVersion,
 };
 
-/// Returns this crate's `src/` directory.
-#[must_use]
-pub fn source_root() -> std::path::PathBuf {
-    source_effects::crate_source_root(env!("CARGO_MANIFEST_DIR"))
-}
-
 /// What every test in this suite returns.
 pub type Fallible = Result<(), Box<dyn std::error::Error>>;
 
