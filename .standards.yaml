@@ -52,6 +52,12 @@ exceptions:
     category: A
     entered: "2026-10-17"
     expires: "2027-01-15"
+  - rule: HISS-19
+    path: crates/aegis-tellus/src/id.rs
+    reason: 'CorrelationId, CandidateId and SliceName stay written out: crates/surface_scan.rs reads public declarations as text and cannot see macro-generated types (tests/public_surface.rs:26-28), so folding them by macro would hide public surface from the HISS-15 sweep; exit is macro_rules support in surface_scan.rs, then fold and drop this entry (category D, 120 days)'
+    category: D
+    entered: "2026-10-21"
+    expires: "2027-02-18"
   - rule: HISS-03
     path: crates/aegis-forum-shell-gpui/Cargo.toml
     reason: 'D115: gpui at zed commit 56934ec0560bce8929025497411de7f5322fb6ca heap-allocates every frame while the accessibility adapter is active (crates/gpui/src/window/a11y.rs, unchanged since 322cd509dc and re-read at this re-pin on 2026-10-18: mem::take of all_nodes drops the node capacity, accesskit::Node::new per node, an FxHashSet in repair_tree_update); the deviation is limited to that pinned gpui, enters through this one member (D102), grants nothing to Aegis-authored code and is reviewed at every re-pin of gpui (category A, 90 days)'

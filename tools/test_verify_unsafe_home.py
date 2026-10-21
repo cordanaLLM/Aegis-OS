@@ -71,6 +71,24 @@ class UnsafeHomeFixture(unittest.TestCase):
         )
         path.write_text(text.replace(old, new), encoding="utf-8")
 
+    def replace_in_unsafe_home_entry(self, old, new):
+        """Replaces `old` inside the live HISS-09 entry only.
+
+        Other exceptions entries may carry the same field text (another
+        category D entry, for one), so the edit is scoped to this entry.
+        """
+        path = self.root / vuh.MANIFEST
+        text = path.read_text(encoding="utf-8")
+        head, sep, tail = text.partition(f"path: {vuh.VULCAN_GPU_MANIFEST}")
+        self.assertTrue(sep, "the live HISS-09 entry is missing from .standards.yaml")
+        entry, nxt, rest = tail.partition("\n  - ")
+        self.assertEqual(
+            entry.count(old),
+            1,
+            f"Expected exactly one occurrence of {old!r} in the HISS-09 entry",
+        )
+        path.write_text(head + sep + entry.replace(old, new) + nxt + rest, encoding="utf-8")
+
     def problems(self, today=None):
         return vuh.check(self.root, today or FIXTURE_TODAY)
 
@@ -205,11 +223,7 @@ pub fn do_call() {
         self.assertRefused("expected exactly one HISS-09 exceptions entry")
 
     def test_category_c_exception_is_refused(self):
-        self.replace_in_file(
-            vuh.MANIFEST,
-            "category: D",
-            "category: C",
-        )
+        self.replace_in_unsafe_home_entry("category: D", "category: C")
         self.assertRefused("exception category must be 'D'")
 
     def test_expired_exception_is_refused(self):
@@ -256,11 +270,7 @@ pub const RAW: &str = r#"unsafe fn in a raw string"#;
             self.assertEqual(vuh.main(["verify_unsafe_home.py", str(REPO)]), 0)
         self.assertIn("PASS:", out.getvalue())
 
-        self.replace_in_file(
-            vuh.MANIFEST,
-            "category: D",
-            "category: C",
-        )
+        self.replace_in_unsafe_home_entry("category: D", "category: C")
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
             self.assertEqual(vuh.main(["verify_unsafe_home.py", str(self.root)]), 1)
