@@ -51,3 +51,23 @@ pub fn assert_encoded_names(text: &str, names: &[&str]) {
         assert!(text.contains(*name));
     }
 }
+
+/// Asserts that `plain`, with `from` respelled as the escaped `to`, still
+/// decodes to `expected`.
+#[track_caller]
+pub fn escaped_round_trip<T, E>(
+    plain: &str,
+    from: &str,
+    to: &str,
+    decode: impl FnOnce(&str) -> Result<T, E>,
+    expected: &T,
+) -> Result<(), E>
+where
+    T: PartialEq + core::fmt::Debug,
+{
+    let escaped = plain.replace(from, to);
+    assert!(escaped.contains(to));
+    assert_ne!(escaped, plain);
+    assert_eq!(&decode(&escaped)?, expected);
+    Ok(())
+}
