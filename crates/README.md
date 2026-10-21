@@ -283,8 +283,9 @@ cites, included by path into the register modules of `aegis-minerva` and
 directories, are not crates either. `correlation_id.rs` holds `CorrelationId`,
 included by path into `aegis-hestia` and `aegis-vulcan`; `bounded_id.rs` holds
 the empty, length and character-set parse behind it, included by
-`correlation_id.rs` and `aegis-minerva`; `citation.rs` holds the decision
-`Citation`, included by `aegis-hestia` and `aegis-janus-lifecycle`.
+`correlation_id.rs`, `aegis-calliope` and `aegis-minerva`; `citation.rs`
+holds the decision `Citation`, included by `aegis-hestia` and
+`aegis-janus-lifecycle`.
 
 `fixture_tamper.rs`, beside the crate directories, is not a crate either: it
 holds `tamper`, the fixture payload substitution the integration tests use,

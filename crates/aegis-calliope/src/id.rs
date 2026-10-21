@@ -17,6 +17,11 @@
 
 use core::fmt;
 
+#[path = "../../bounded_id.rs"]
+mod bounded_id;
+
+use bounded_id::parse_bounded_id;
+
 /// Scalar upper bound, in bytes, on a correlation identifier.
 pub const MAX_CORRELATION_LEN: usize = 64;
 
@@ -43,37 +48,6 @@ pub enum IdError {
     Charset,
 }
 
-/// Returns `true` for the bytes permitted inside an identifier.
-///
-/// The space is deliberately absent: it is the byte that makes the scaffold's
-/// own plugin names unrepresentable here, and admitting it would mean a label
-/// that no downstream reader can split on whitespace.
-const fn permitted(byte: u8) -> bool {
-    byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_' | b':' | b'@' | b'/')
-}
-
-/// Copies `raw` into `slot`, refusing an empty, over-long or ill-formed input.
-fn fill(raw: &str, slot: &mut [u8], max: usize) -> Result<u8, IdError> {
-    let source = raw.as_bytes();
-    if source.is_empty() {
-        return Err(IdError::Empty);
-    }
-    let len = u8::try_from(source.len())
-        .ok()
-        .filter(|_| source.len() <= max)
-        .ok_or(IdError::TooLong {
-            max,
-            actual: source.len(),
-        })?;
-    for (target, byte) in slot.iter_mut().zip(source.iter()) {
-        if !permitted(*byte) {
-            return Err(IdError::Charset);
-        }
-        *target = *byte;
-    }
-    Ok(len)
-}
-
 /// A validated correlation identifier of at most [`MAX_CORRELATION_LEN`] bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CorrelationId {
@@ -90,8 +64,15 @@ impl CorrelationId {
     /// [`MAX_CORRELATION_LEN`] bytes, or carries a byte outside the permitted
     /// character set. The input is never truncated or sanitised.
     pub fn parse(raw: &str) -> Result<Self, IdError> {
-        let mut bytes = [0u8; MAX_CORRELATION_LEN];
-        let len = fill(raw, &mut bytes, MAX_CORRELATION_LEN)?;
+        let (bytes, len) = parse_bounded_id(
+            raw,
+            || IdError::Empty,
+            |actual| IdError::TooLong {
+                max: MAX_CORRELATION_LEN,
+                actual,
+            },
+            || IdError::Charset,
+        )?;
         Ok(Self { bytes, len })
     }
 
@@ -139,8 +120,15 @@ impl Label {
     /// never truncated or sanitised, so the scaffold's own `"FabFilter Pro-Q
     /// 3"` is [`IdError::Charset`] rather than a repaired name.
     pub fn parse(raw: &str) -> Result<Self, IdError> {
-        let mut bytes = [0u8; MAX_LABEL_LEN];
-        let len = fill(raw, &mut bytes, MAX_LABEL_LEN)?;
+        let (bytes, len) = parse_bounded_id(
+            raw,
+            || IdError::Empty,
+            |actual| IdError::TooLong {
+                max: MAX_LABEL_LEN,
+                actual,
+            },
+            || IdError::Charset,
+        )?;
         Ok(Self { bytes, len })
     }
 
