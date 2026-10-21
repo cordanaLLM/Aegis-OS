@@ -274,6 +274,13 @@ instead of the whole lock, so P17's Wayland and VA-API crates in the shared
 closure it reads. `aegis-forum-shell` carries its own copy of the same walk
 from M16.
 
+`correlation_id.rs`, `bounded_id.rs` and `citation.rs`, beside the crate
+directories, are not crates either. `correlation_id.rs` holds `CorrelationId`,
+included by path into `aegis-hestia` and `aegis-vulcan`; `bounded_id.rs` holds
+the empty, length and character-set parse behind it, included by
+`correlation_id.rs` and `aegis-minerva`; `citation.rs` holds the decision
+`Citation`, included by `aegis-hestia` and `aegis-janus-lifecycle`.
+
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
 signing and no file-backed ledger sink. A signature field in a schema is a field
