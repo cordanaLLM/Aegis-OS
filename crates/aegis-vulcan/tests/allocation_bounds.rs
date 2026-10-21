@@ -25,6 +25,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use core::mem::size_of;
 
 use aegis_vulcan::{
@@ -94,13 +97,15 @@ fn driving_the_driver_changes_no_storage() -> Fallible {
 fn an_escaped_payload_decodes_to_the_same_value() -> Fallible {
     let descriptor = weight_stream(8)?;
     let mut buffer = PayloadBuffer::new();
-    let plain = descriptor.encode_into(&mut buffer)?.to_owned();
+    let plain = descriptor.encode_into(&mut buffer)?;
+    test_assertions::escaped_round_trip(
+        plain,
+        "m17-fixture",
+        "\\u006d17-fixture",
+        WeightStreamDescriptor::decode,
+        &descriptor,
+    )?;
     assert!(plain.contains(CORRELATION));
-
-    let escaped = plain.replace("m17-fixture", "\\u006d17-fixture");
-    assert!(escaped.contains("\\u006d"));
-    assert_ne!(escaped, plain);
-    assert_eq!(WeightStreamDescriptor::decode(&escaped)?, descriptor);
     Ok(())
 }
 
@@ -126,9 +131,10 @@ fn the_payload_buffer_does_not_grow() -> Fallible {
 /// Boundary: the buffer is exactly its bound plus its length field.
 #[test]
 fn the_payload_buffer_is_its_bound_plus_a_length() {
-    let buffer = size_of::<PayloadBuffer>();
-    assert!(buffer >= MAX_CONTRACT_PAYLOAD_BYTES);
-    assert!(buffer <= MAX_CONTRACT_PAYLOAD_BYTES.saturating_add(size_of::<usize>() * 2));
+    test_assertions::assert_bound_plus_length(
+        size_of::<PayloadBuffer>(),
+        MAX_CONTRACT_PAYLOAD_BYTES,
+    );
 }
 
 /// Boundary: the driver is small, and a copy of it shares nothing.
