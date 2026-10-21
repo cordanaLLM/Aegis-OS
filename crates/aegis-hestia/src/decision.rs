@@ -41,6 +41,11 @@ mod decision_state;
 
 pub use decision_state::DecisionState;
 
+#[path = "../../citation.rs"]
+mod citation;
+
+pub use citation::Citation;
+
 /// The three places D09 could have put P15.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -85,15 +90,6 @@ impl HestiaLocation {
     pub const fn includes_ui_package(self) -> bool {
         matches!(self, Self::SveltePackageOnly | Self::BothWithTypedBoundary)
     }
-}
-
-/// A private source, cited by export identifier and digest prefix only.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Citation {
-    /// The export identifier of the private source.
-    pub export: &'static str,
-    /// The first twelve hexadecimal characters of that export's sha256.
-    pub sha256_prefix: &'static str,
 }
 
 /// One recorded decision.

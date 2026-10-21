@@ -45,6 +45,11 @@ mod decision_state;
 
 pub use decision_state::DecisionState;
 
+#[path = "../../citation.rs"]
+mod citation;
+
+pub use citation::Citation;
+
 /// The two security models D13 poses against each other.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -77,15 +82,6 @@ impl ConsolidationModel {
     pub const fn permits_reopening(self) -> bool {
         matches!(self, Self::ReversibleConsolidation)
     }
-}
-
-/// A private source, cited by export identifier and digest prefix only.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Citation {
-    /// The export identifier of the private source.
-    pub export: &'static str,
-    /// The first twelve hexadecimal characters of that export's sha256.
-    pub sha256_prefix: &'static str,
 }
 
 /// One recorded decision.

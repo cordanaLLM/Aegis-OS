@@ -279,6 +279,13 @@ holds `ClaimSource`, the export identifier and digest prefix a recorded claim
 cites, included by path into the register modules of `aegis-minerva` and
 `aegis-vesta`.
 
+`correlation_id.rs`, `bounded_id.rs` and `citation.rs`, beside the crate
+directories, are not crates either. `correlation_id.rs` holds `CorrelationId`,
+included by path into `aegis-hestia` and `aegis-vulcan`; `bounded_id.rs` holds
+the empty, length and character-set parse behind it, included by
+`correlation_id.rs` and `aegis-minerva`; `citation.rs` holds the decision
+`Citation`, included by `aegis-hestia` and `aegis-janus-lifecycle`.
+
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
 signing and no file-backed ledger sink. A signature field in a schema is a field

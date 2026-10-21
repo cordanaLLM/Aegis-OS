@@ -16,6 +16,9 @@
 
 use core::fmt;
 
+#[path = "../../bounded_id.rs"]
+mod bounded_id;
+
 /// Scalar upper bound, in bytes, on a label.
 ///
 /// Thirty-two is the scaffold's own array width for `SlmExpert.name` and
@@ -43,11 +46,6 @@ pub enum IdError {
     Charset,
 }
 
-/// Returns `true` for the bytes permitted inside a label.
-const fn permitted(byte: u8) -> bool {
-    byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_' | b':' | b'@' | b'/')
-}
-
 /// A validated label of at most [`MAX_LABEL_LEN`] bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Label {
@@ -64,24 +62,15 @@ impl Label {
     /// bytes, or carries a byte outside the permitted character set. The input
     /// is never truncated or sanitised.
     pub fn parse(raw: &str) -> Result<Self, IdError> {
-        let source = raw.as_bytes();
-        if source.is_empty() {
-            return Err(IdError::Empty);
-        }
-        let len = u8::try_from(source.len())
-            .ok()
-            .filter(|_| source.len() <= MAX_LABEL_LEN)
-            .ok_or(IdError::TooLong {
+        let (bytes, len) = bounded_id::parse_bounded_id(
+            raw,
+            || IdError::Empty,
+            |actual| IdError::TooLong {
                 max: MAX_LABEL_LEN,
-                actual: source.len(),
-            })?;
-        let mut bytes = [0u8; MAX_LABEL_LEN];
-        for (slot, byte) in bytes.iter_mut().zip(source.iter()) {
-            if !permitted(*byte) {
-                return Err(IdError::Charset);
-            }
-            *slot = *byte;
-        }
+                actual,
+            },
+            || IdError::Charset,
+        )?;
         Ok(Self { bytes, len })
     }
 
