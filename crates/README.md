@@ -274,6 +274,11 @@ instead of the whole lock, so P17's Wayland and VA-API crates in the shared
 closure it reads. `aegis-forum-shell` carries its own copy of the same walk
 from M16.
 
+`claim_source.rs`, beside the crate directories, is not a crate either: it
+holds `ClaimSource`, the export identifier and digest prefix a recorded claim
+cites, included by path into the register modules of `aegis-minerva` and
+`aegis-vesta`.
+
 `correlation_id.rs`, `bounded_id.rs` and `citation.rs`, beside the crate
 directories, are not crates either. `correlation_id.rs` holds `CorrelationId`,
 included by path into `aegis-hestia` and `aegis-vulcan`; `bounded_id.rs` holds
