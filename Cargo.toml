@@ -78,3 +78,11 @@ unimplemented = "deny"
 unreachable = "deny"
 unwrap_in_result = "deny"
 unwrap_used = "deny"
+
+# Line tables keep test and panic backtraces readable (file and line) while
+# the linker writes a fraction of full debug info's bytes per test binary;
+# `cargo test` takes this through the test profile, which inherits dev. CI and
+# local builds read the same setting, and dev and test keep sharing dependency
+# artifacts.
+[profile.dev]
+debug = "line-tables-only"

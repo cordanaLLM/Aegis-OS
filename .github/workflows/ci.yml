@@ -88,12 +88,10 @@ jobs:
     # measured ceiling tools/verify_preparation.py grants this workflow alone;
     # every other job stays at 15. The cargo cache below shortens the run.
     timeout-minutes: 18
-    # A CI build is never rebuilt incrementally, and line tables keep test
-    # backtraces readable at a fraction of full debug info's build time and
-    # cache size.
+    # A CI build is never rebuilt incrementally. The line-tables debug level
+    # comes from [profile.dev] in Cargo.toml, shared with local builds.
     env:
       CARGO_INCREMENTAL: "0"
-      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
       # HISS-18: a draft stops here, before any work, and fails, so a
       # required check never reports a skipped draft as a pass. Marking the
