@@ -274,6 +274,11 @@ instead of the whole lock, so P17's Wayland and VA-API crates in the shared
 closure it reads. `aegis-forum-shell` carries its own copy of the same walk
 from M16.
 
+`claim_source.rs`, beside the crate directories, is not a crate either: it
+holds `ClaimSource`, the export identifier and digest prefix a recorded claim
+cites, included by path into the register modules of `aegis-minerva` and
+`aegis-vesta`.
+
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
 signing and no file-backed ledger sink. A signature field in a schema is a field
