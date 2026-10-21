@@ -164,6 +164,15 @@ pub fn crate_source_root(manifest_dir: &str) -> std::path::PathBuf {
     Path::new(manifest_dir).join("src")
 }
 
+/// Returns the including crate's own `src/` directory.
+///
+/// `env!` expands in the crate that includes this file, so each test binary
+/// reads its own manifest directory.
+#[must_use]
+pub fn source_root() -> std::path::PathBuf {
+    crate_source_root(env!("CARGO_MANIFEST_DIR"))
+}
+
 /// Positive assertion: the sweep reads the whole crate and several files.
 ///
 /// Asserts that at least `min_sources` files are read, and that every file in

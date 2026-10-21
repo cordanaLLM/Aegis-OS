@@ -10,6 +10,11 @@
 
 #![allow(dead_code)]
 
+#[path = "../../../fixture_tamper.rs"]
+mod fixture_tamper;
+#[allow(unused_imports)]
+pub use fixture_tamper::tamper;
+
 use aegis_justitia::{SandboxAdmissionPath, UnixSeconds};
 use aegis_vesta::{
     CandidateEvaluation, CandidateEvaluationVersion, Capability, CapabilitySet, CapsuleMemoryLimit,
@@ -172,19 +177,6 @@ pub fn encoded_evaluation(
 ) -> Result<String, Box<dyn std::error::Error>> {
     let mut buffer = PayloadBuffer::new();
     Ok(evaluation.encode_into(&mut buffer)?.to_owned())
-}
-
-/// Returns `text` with the first occurrence of `from` replaced by `to`.
-///
-/// # Errors
-///
-/// Returns a failure when `from` does not occur, so a tamper that stops
-/// applying fails the suite instead of testing the untampered payload.
-pub fn tamper(text: &str, from: &str, to: &str) -> Result<String, Box<dyn std::error::Error>> {
-    if !text.contains(from) {
-        return Err(format!("the fixture payload does not contain {from:?}").into());
-    }
-    Ok(text.replacen(from, to, 1))
 }
 
 /// The edge a payload must not claim, given the one it does.

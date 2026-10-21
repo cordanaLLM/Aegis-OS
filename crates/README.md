@@ -283,13 +283,15 @@ cites, included by path into the register modules of `aegis-minerva` and
 directories, are not crates either. `correlation_id.rs` holds `CorrelationId`,
 included by path into `aegis-hestia` and `aegis-vulcan`; `bounded_id.rs` holds
 the empty, length and character-set parse behind it, included by
-`correlation_id.rs` and `aegis-minerva`; `citation.rs` holds the decision
-`Citation`, included by `aegis-hestia` and `aegis-janus-lifecycle`.
+`correlation_id.rs`, `aegis-calliope` and `aegis-minerva`; `citation.rs`
+holds the decision `Citation`, included by `aegis-hestia` and
+`aegis-janus-lifecycle`.
 
 `fixture_tamper.rs`, beside the crate directories, is not a crate either: it
 holds `tamper`, the fixture payload substitution the integration tests use,
-included by path into the test common modules of `aegis-compositor`,
-`aegis-hephaestus`, `aegis-ludus` and `aegis-minerva`.
+included by path into the test common modules of `aegis-calliope`,
+`aegis-compositor`, `aegis-hephaestus`, `aegis-lictor`, `aegis-ludus`,
+`aegis-minerva` and `aegis-vesta`.
 
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
