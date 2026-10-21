@@ -288,8 +288,9 @@ the empty, length and character-set parse behind it, included by
 
 `fixture_tamper.rs`, beside the crate directories, is not a crate either: it
 holds `tamper`, the fixture payload substitution the integration tests use,
-included by path into the test common modules of `aegis-compositor`,
-`aegis-hephaestus`, `aegis-ludus` and `aegis-minerva`.
+included by path into the test common modules of `aegis-calliope`,
+`aegis-compositor`, `aegis-hephaestus`, `aegis-lictor`, `aegis-ludus`,
+`aegis-minerva` and `aegis-vesta`.
 
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
