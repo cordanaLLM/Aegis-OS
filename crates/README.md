@@ -293,6 +293,11 @@ included by path into the test common modules of `aegis-calliope`,
 `aegis-compositor`, `aegis-hephaestus`, `aegis-lictor`, `aegis-ludus`,
 `aegis-minerva` and `aegis-vesta`.
 
+`fixture_codec.rs` sits beside it on the same terms: it holds `correlation`,
+`label` and `encoded`, the fixture parse and encode helpers, included by path
+into the test common modules of `aegis-calliope`, `aegis-lictor` and
+`aegis-vesta`, each of which supplies its own contract types.
+
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
 signing and no file-backed ledger sink. A signature field in a schema is a field
