@@ -58,6 +58,18 @@ exceptions:
     category: D
     entered: "2026-10-21"
     expires: "2027-02-18"
+  - rule: HISS-19
+    path: crates/aegis-hephaestus/tests/common/mod.rs
+    reason: 'Dedupe group 3bad6437 residue shared with crates/aegis-ludus/tests/common/mod.rs: the encode_into(..).to_owned() tail of the last fixture encoder plus the #[path = "../../../source_effects.rs"] include and its re-export, which every includer of the shared file must carry; source_root already moved into crates/source_effects.rs, the remaining seven lines have no shared form (decision aegis-os-qwb-2137-residuals, category D, 120 days)'
+    category: D
+    entered: "2026-10-21"
+    expires: "2027-02-18"
+  - rule: HISS-19
+    path: crates/aegis-ludus/tests/common/mod.rs
+    reason: 'Dedupe group 3bad6437 residue shared with crates/aegis-hephaestus/tests/common/mod.rs: the encode_into(..).to_owned() tail of the last fixture encoder plus the #[path = "../../../source_effects.rs"] include and its re-export, which every includer of the shared file must carry; source_root already moved into crates/source_effects.rs, the remaining seven lines have no shared form (decision aegis-os-qwb-2137-residuals, category D, 120 days)'
+    category: D
+    entered: "2026-10-21"
+    expires: "2027-02-18"
   - rule: HISS-03
     path: crates/aegis-forum-shell-gpui/Cargo.toml
     reason: 'D115: gpui at zed commit 56934ec0560bce8929025497411de7f5322fb6ca heap-allocates every frame while the accessibility adapter is active (crates/gpui/src/window/a11y.rs, unchanged since 322cd509dc and re-read at this re-pin on 2026-10-18: mem::take of all_nodes drops the node capacity, accesskit::Node::new per node, an FxHashSet in repair_tree_update); the deviation is limited to that pinned gpui, enters through this one member (D102), grants nothing to Aegis-authored code and is reviewed at every re-pin of gpui (category A, 90 days)'

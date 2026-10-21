@@ -151,10 +151,6 @@ pub fn encoded_request(
 #[path = "../../../source_effects.rs"]
 mod source_effects;
 #[allow(unused_imports)]
-pub use source_effects::{LINE_BOUND, WALK_BOUND, hits, rust_sources, scan_sources, scan_text};
-
-/// Returns the crate's own `src/` directory.
-#[must_use]
-pub fn source_root() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
-}
+pub use source_effects::{
+    LINE_BOUND, WALK_BOUND, hits, rust_sources, scan_sources, scan_text, source_root,
+};
