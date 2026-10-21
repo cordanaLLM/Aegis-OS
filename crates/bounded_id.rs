@@ -7,8 +7,9 @@
 //! inline array (`#[path = "../../bounded_id.rs"]` from a crate, or
 //! `#[path = "bounded_id.rs"]` from `correlation_id.rs`), so the empty,
 //! length and character-set refusals have one definition. Included by
-//! `correlation_id.rs` and `aegis-minerva`. It is not a crate: a member enters
-//! every dependency closure and carries a permanent name.
+//! `correlation_id.rs`, `aegis-calliope` and `aegis-minerva`. It is not a
+//! crate: a member enters every dependency closure and carries a permanent
+//! name.
 
 #![allow(dead_code)]
 
