@@ -233,18 +233,10 @@ pub fn budget(milliwatts: u32) -> Built<PowerEnvelope> {
     Ok(PowerEnvelope::new(milliwatts)?)
 }
 
-/// Returns `text` with the first occurrence of `from` replaced by `to`.
-///
-/// # Errors
-///
-/// Returns a failure when `from` does not occur, so a tamper that stops
-/// applying fails the suite instead of testing the untampered payload.
-pub fn tamper(text: &str, from: &str, to: &str) -> Built<String> {
-    if !text.contains(from) {
-        return Err(format!("the fixture payload does not contain {from:?}").into());
-    }
-    Ok(text.replacen(from, to, 1))
-}
+#[path = "../../../fixture_tamper.rs"]
+mod fixture_tamper;
+#[allow(unused_imports)]
+pub use fixture_tamper::tamper;
 
 #[path = "../../../source_effects.rs"]
 mod source_effects;
