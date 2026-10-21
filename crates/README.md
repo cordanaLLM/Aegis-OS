@@ -262,7 +262,7 @@ needs, and `aegis-vesta`'s own closure stays free of it and of rustix. Its
 guest init is built statically, refuses to run as anything but process 1, and
 restarts only the microVM it runs in.
 
-`dependency_closure.rs`, beside the crate directories, is not a crate either: it is
+`dependency_closure.rs`, beside the crate directories, is not a crate: it is
 the one definition of decision D78's closure rule, included by path into the
 manifest-hygiene tests of `aegis-athena`, `aegis-justitia`, `aegis-calliope`,
 `aegis-compositor`, `aegis-lictor`, `aegis-tellus`, `aegis-scaena`,
@@ -279,10 +279,10 @@ holds `ClaimSource`, the export identifier and digest prefix a recorded claim
 cites, included by path into the register modules of `aegis-minerva` and
 `aegis-vesta`.
 
-`fixture_tamper.rs`, beside the crate directories, is not a crate either: it is
-the shared fixture payload tampering helper, included by path into the
-test common modules of `aegis-compositor`, `aegis-hephaestus`,
-`aegis-ludus` and `aegis-minerva`.
+`fixture_tamper.rs`, beside the crate directories, is not a crate either: it
+holds `tamper`, the fixture payload substitution the integration tests use,
+included by path into the test common modules of `aegis-compositor`,
+`aegis-hephaestus`, `aegis-ludus` and `aegis-minerva`.
 
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
