@@ -425,17 +425,43 @@ impl SimulatedWattage {
             RaplZone::Psys => (SIMULATED_PACKAGE0_WATTS, Provenance::Modelled),
         }
     }
+}
 
-    /// Refuses a deadline shorter than the declared service time.
-    const fn admit(&self, deadline: SampleDeadline) -> Result<(), TellusError> {
-        if deadline.millis() < self.service.millis() {
-            return Err(TellusError::WouldBlock {
-                needed: self.service.millis(),
-                offered: deadline.millis(),
-            });
-        }
-        Ok(())
+/// Validates that `zones` contains `zone`.
+///
+/// # Errors
+///
+/// Returns [`TellusError::ZoneAbsent`] when `zone` is not in `zones`.
+pub(crate) fn check_zone_present(zones: &ZoneList, zone: RaplZone) -> Result<(), TellusError> {
+    if !zones.contains(zone) {
+        return Err(TellusError::ZoneAbsent {
+            zone: zone.name(),
+            carried: zones.len(),
+        });
     }
+    Ok(())
+}
+
+/// Validates that `zones` contains `zone` and that `deadline` satisfies `service`.
+///
+/// # Errors
+///
+/// Returns [`TellusError::ZoneAbsent`] when `zone` is absent from `zones`,
+/// and [`TellusError::WouldBlock`] when `deadline` is shorter than `service`.
+pub(crate) fn check_sample_admission(
+    zones: &ZoneList,
+    zone: RaplZone,
+    service: SampleDeadline,
+    deadline: SampleDeadline,
+) -> Result<(), TellusError> {
+    check_zone_present(zones, zone)?;
+    if deadline.millis() < service.millis() {
+        return Err(TellusError::WouldBlock {
+            needed: service.millis(),
+            offered: deadline.millis(),
+        });
+    }
+    Ok(())
 }
 
 /// Returns the default service time, one millisecond.
@@ -444,27 +470,40 @@ fn default_service_time() -> SampleDeadline {
         .unwrap_or(SampleDeadline::from_millis(NonZeroU32::MIN))
 }
 
-impl WattageSource for SimulatedWattage {
-    fn zones(&self) -> ZoneList {
-        self.zones
-    }
+/// Implements [`WattageSource`] for a type with `zones` and `service` fields.
+///
+/// `sample` checks the zone and the deadline first; `$body` then reads the
+/// admitted zone, with `$this` bound to `self`. Trait methods add no public
+/// name, so the public-surface sweep reads the same surface either way.
+macro_rules! admitted_wattage_source {
+    ($source:ty, |$this:ident, $zone:ident| $body:expr) => {
+        impl WattageSource for $source {
+            fn zones(&self) -> ZoneList {
+                self.zones
+            }
 
-    fn service_time(&self) -> SampleDeadline {
-        self.service
-    }
+            fn service_time(&self) -> SampleDeadline {
+                self.service
+            }
 
-    fn sample(&self, zone: RaplZone, deadline: SampleDeadline) -> Result<ZoneSample, TellusError> {
-        if !self.zones.contains(zone) {
-            return Err(TellusError::ZoneAbsent {
-                zone: zone.name(),
-                carried: self.zones.len(),
-            });
+            fn sample(
+                &self,
+                $zone: RaplZone,
+                deadline: SampleDeadline,
+            ) -> Result<ZoneSample, TellusError> {
+                check_sample_admission(&self.zones, $zone, self.service, deadline)?;
+                let $this = self;
+                $body
+            }
         }
-        self.admit(deadline)?;
-        let (watts, provenance) = Self::recorded(zone);
-        Ok(ZoneSample::new(zone, Watts::new(watts)?, provenance))
-    }
+    };
 }
+pub(crate) use admitted_wattage_source;
+
+admitted_wattage_source!(SimulatedWattage, |_this, zone| {
+    let (watts, provenance) = Self::recorded(zone);
+    Ok(ZoneSample::new(zone, Watts::new(watts)?, provenance))
+});
 
 /// One cgroup slice's attributed draw.
 #[derive(Debug, Clone, Copy, PartialEq)]

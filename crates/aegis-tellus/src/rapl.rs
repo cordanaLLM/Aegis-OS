@@ -56,7 +56,10 @@ use core::fmt;
 use core::num::NonZeroU64;
 
 use crate::error::TellusError;
-use crate::power::{Provenance, RaplZone, SampleDeadline, WattageSource, ZoneList, ZoneSample};
+use crate::power::{
+    Provenance, RaplZone, SampleDeadline, WattageSource, ZoneList, ZoneSample,
+    admitted_wattage_source, check_sample_admission, check_zone_present,
+};
 use crate::register::REFERENCE_MAX_ENERGY_RANGE_UJ;
 use crate::sci::{EnergyKwh, JOULES_PER_KWH, MAX_SECONDS, Seconds, Watts};
 
@@ -439,42 +442,13 @@ impl MeasuredWattage {
 /// Returns the one-zone list a measured source carries, refusing an absent zone.
 fn measured_zone_list(zone: RaplZone) -> Result<ZoneList, TellusError> {
     let profile = ZoneList::reference_profile();
-    if !profile.contains(zone) {
-        return Err(TellusError::ZoneAbsent {
-            zone: zone.name(),
-            carried: profile.len(),
-        });
-    }
+    check_zone_present(&profile, zone)?;
     let mut zones = ZoneList::new();
     zones.push(zone)?;
     Ok(zones)
 }
 
-impl WattageSource for MeasuredWattage {
-    fn zones(&self) -> ZoneList {
-        self.zones
-    }
-
-    fn service_time(&self) -> SampleDeadline {
-        self.service
-    }
-
-    fn sample(&self, zone: RaplZone, deadline: SampleDeadline) -> Result<ZoneSample, TellusError> {
-        if !self.zones.contains(zone) {
-            return Err(TellusError::ZoneAbsent {
-                zone: zone.name(),
-                carried: self.zones.len(),
-            });
-        }
-        if deadline.millis() < self.service.millis() {
-            return Err(TellusError::WouldBlock {
-                needed: self.service.millis(),
-                offered: deadline.millis(),
-            });
-        }
-        Ok(self.sample)
-    }
-}
+admitted_wattage_source!(MeasuredWattage, |this, _zone| Ok(this.sample));
 
 impl fmt::Display for EnergyDelta {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
