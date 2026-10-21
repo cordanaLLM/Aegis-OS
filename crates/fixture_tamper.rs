@@ -4,7 +4,8 @@
 //! Shared fixture payload tampering helper for integration tests.
 //!
 //! One file, included by path into the integration test common modules of
-//! `aegis-compositor`, `aegis-hephaestus`, `aegis-ludus` and `aegis-minerva`
+//! `aegis-calliope`, `aegis-compositor`, `aegis-hephaestus`, `aegis-lictor`,
+//! `aegis-ludus`, `aegis-minerva` and `aegis-vesta`
 //! (`#[path = "../../../fixture_tamper.rs"] mod fixture_tamper;`), extending D78 and D116
 //! precedents to test helpers. It is not a crate and has no manifest: a test helper
 //! made a workspace member would enter every dependency closure.
