@@ -16,11 +16,12 @@
 
 use aegis_justitia::{
     ActionIntent, ActionProposal, ActionProposalVersion, ActionType, AgentId, AuditRecordVersion,
-    ClockError, DIGEST_LEN, DecisionRequest, DecisionRequestVersion, Digest32, EngineConfig,
-    EventId, FixedClock, HashAlgorithm, Identity, InMemorySink, IntentId, IntentSpec, IoDeadline,
-    JustitiaEngine, JustitiaError, MAX_SIGNATURE_BYTES, MakerId, OversightClass,
-    OversightSignature, PayloadBuffer, RecordSigner, RecordStatus, RequestId, RequiredApproval,
-    RiskTier, Sequence, Sha256Hasher, SignError, Signature, SignatureAlgorithm, SignedAuditRecord,
+    ClockError, ContractError, Correlation, DIGEST_LEN, DecisionRequest, DecisionRequestVersion,
+    Digest32, EngineConfig, EventId, FixedClock, HashAlgorithm, Identity, IdentityError,
+    InMemorySink, IntentId, IntentSpec, IoDeadline, JustitiaEngine, JustitiaError, KillswitchState,
+    MAX_CONTRACT_PAYLOAD_BYTES, MAX_SIGNATURE_BYTES, MakerId, OversightClass, OversightSignature,
+    PayloadBuffer, RecordDraft, RecordSigner, RecordStatus, RequestId, RequiredApproval, RiskTier,
+    SchemaId, Sequence, Sha256Hasher, SignError, Signature, SignatureAlgorithm, SignedAuditRecord,
     SignerBinding, SignerKeyId, TargetResource, Ttl, UnixSeconds,
 };
 
@@ -273,6 +274,65 @@ pub fn seal() -> Fallible<OversightSignature> {
 /// The correlation identifier every contract fixture threads through.
 pub const CORRELATION: &str = "intent-0001";
 
+/// Default fixture agent identifier ("agent-01").
+///
+/// # Errors
+///
+/// Propagates an agent identifier parse failure.
+pub fn fixture_agent() -> Result<AgentId, IdentityError> {
+    AgentId::parse("agent-01")
+}
+
+/// Default fixture maker identifier ("maker-alice").
+///
+/// # Errors
+///
+/// Propagates a maker identifier parse failure.
+pub fn fixture_maker() -> Result<MakerId, IdentityError> {
+    MakerId::parse("maker-alice")
+}
+
+/// Default fixture target resource ("/var/lib/aegis/example").
+///
+/// # Errors
+///
+/// Propagates a target resource parse failure.
+pub fn fixture_target() -> Result<TargetResource, IdentityError> {
+    TargetResource::parse("/var/lib/aegis/example")
+}
+
+/// Builds an approved record draft for `id` at `at` seconds.
+///
+/// # Errors
+///
+/// Propagates an intent identifier parse failure.
+pub fn record_draft(id: &str, at: u64) -> Result<RecordDraft, JustitiaError> {
+    Ok(RecordDraft {
+        intent_id: IntentId::parse(id)?,
+        agent: fixture_agent()?,
+        action_type: ActionType::FileModification,
+        status: RecordStatus::Approved,
+        block_reason: None,
+        killswitch: KillswitchState::Armed,
+        at: UnixSeconds::new(at),
+    })
+}
+
+/// Asserts that a payload one byte over [`MAX_CONTRACT_PAYLOAD_BYTES`] is refused
+/// with [`ContractError::PayloadTooLong`].
+#[track_caller]
+pub fn assert_action_proposal_over_bound_refused() {
+    let over_bound = filler(MAX_CONTRACT_PAYLOAD_BYTES.saturating_add(1));
+    assert_eq!(
+        ActionProposal::decode(&over_bound),
+        Err(ContractError::PayloadTooLong {
+            correlation: Correlation::new(SchemaId::ActionProposal, None),
+            max: MAX_CONTRACT_PAYLOAD_BYTES,
+        }),
+        "one byte past the bound is refused before it is parsed"
+    );
+}
+
 /// A well-formed, signed action proposal from P09 Minerva.
 ///
 /// # Errors
@@ -284,10 +344,10 @@ pub fn proposal() -> Fallible<ActionProposal> {
         edge: ActionProposal::EDGE,
         direction: ActionProposal::DIRECTION,
         correlation_id: Identity::parse(CORRELATION)?,
-        agent_id: AgentId::parse("agent-01")?,
-        maker: MakerId::parse("maker-alice")?,
+        agent_id: fixture_agent()?,
+        maker: fixture_maker()?,
         action_type: ActionType::FileDeletion,
-        target: TargetResource::parse("/var/lib/aegis/example")?,
+        target: fixture_target()?,
         declared_tier: RiskTier::TierAConsequential,
         oversight: OversightClass::Standard,
         payload_hash: Digest32::from_bytes([3u8; DIGEST_LEN]),
@@ -312,10 +372,10 @@ pub fn decision_request(
         edge: DecisionRequest::EDGE,
         correlation_id: Identity::parse(CORRELATION)?,
         request_id: RequestId::parse("request-0001")?,
-        agent_id: AgentId::parse("agent-01")?,
-        maker: MakerId::parse("maker-alice")?,
+        agent_id: fixture_agent()?,
+        maker: fixture_maker()?,
         proposed_action: ActionType::FileDeletion,
-        target: TargetResource::parse("/var/lib/aegis/example")?,
+        target: fixture_target()?,
         risk_tier: tier,
         oversight: class,
         required_approval: RequiredApproval::for_action(tier, class),

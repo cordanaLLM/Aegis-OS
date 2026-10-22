@@ -22,16 +22,15 @@
 mod common;
 
 use aegis_justitia::{
-    ActionProposal, ActionType, ApprovalTicket, AuditRecord, BlockReason, ContractError,
-    Correlation, DecisionRequest, InterceptorOutcome, MAX_CONTRACT_PAYLOAD_BYTES,
-    MAX_LEDGER_RECORDS, MAX_PENDING_REQUESTS, MAX_RETAINED_AUDIT_BYTES, MAX_SIGNATURE_BYTES,
-    MAX_TARGET_LEN, OversightClass, RequestState, RiskTier, SchemaId, SignedAuditRecord,
-    TargetResource,
+    ActionProposal, ActionType, ApprovalTicket, AuditRecord, BlockReason, DecisionRequest,
+    InterceptorOutcome, MAX_CONTRACT_PAYLOAD_BYTES, MAX_LEDGER_RECORDS, MAX_PENDING_REQUESTS,
+    MAX_RETAINED_AUDIT_BYTES, MAX_SIGNATURE_BYTES, MAX_TARGET_LEN, OversightClass, RequestState,
+    RiskTier, SignedAuditRecord, TargetResource,
 };
 
 use common::{
-    CORRELATION, FIXTURE_AUDIT_BOUND, Fallible, audit_record, decision_request, encoded, engine,
-    filler, intent, proposal,
+    CORRELATION, FIXTURE_AUDIT_BOUND, Fallible, assert_action_proposal_over_bound_refused,
+    audit_record, decision_request, encoded, engine, intent, proposal,
 };
 
 // --- Positive -------------------------------------------------------------
@@ -390,14 +389,6 @@ fn no_decoder_scratch_can_exceed_the_contract_payload_bound() -> Fallible<()> {
     );
     assert!(decoded.target.len() <= MAX_CONTRACT_PAYLOAD_BYTES);
 
-    let over_bound = filler(MAX_CONTRACT_PAYLOAD_BYTES.saturating_add(1));
-    assert_eq!(
-        ActionProposal::decode(&over_bound),
-        Err(ContractError::PayloadTooLong {
-            correlation: Correlation::new(SchemaId::ActionProposal, None),
-            max: MAX_CONTRACT_PAYLOAD_BYTES
-        }),
-        "one byte past the bound is refused before it is parsed"
-    );
+    assert_action_proposal_over_bound_refused();
     Ok(())
 }

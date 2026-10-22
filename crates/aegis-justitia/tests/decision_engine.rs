@@ -9,12 +9,12 @@
 mod common;
 
 use aegis_justitia::{
-    ActionType, Adjudication, BlockReason, CheckerId, CheckerSet, HaltReason, InterceptorOutcome,
-    JustitiaError, MakerId, OversightClass, OversightError, RequestId, RequiredApproval, RiskTier,
-    UnixSeconds, Vote,
+    ActionType, Adjudication, ApprovalTicket, BlockReason, CheckerId, CheckerSet, HaltReason,
+    InterceptorOutcome, JustitiaError, MakerId, OversightClass, OversightError, RequestId,
+    RequiredApproval, RiskTier, UnixSeconds, Vote,
 };
 
-use common::{Fallible, FixtureError, engine, intent};
+use common::{Fallible, FixtureError, TestEngine, engine, intent};
 
 // --- Positive -------------------------------------------------------------
 
@@ -61,20 +61,27 @@ fn tier_c_is_allowed_and_two_distinct_non_maker_checkers_are_accepted() -> Falli
 
 // --- Negative -------------------------------------------------------------
 
-/// E02-2 negative: maker as checker is rejected, and a duplicate checker is
-/// rejected.
-#[test]
-fn maker_as_checker_is_rejected_and_duplicate_checker_is_rejected() -> Fallible<()> {
-    let mut engine = engine(60, 8)?;
+/// Submits an escalation proposal and returns the resulting approval ticket.
+fn hold_escalation(engine: &mut TestEngine, id: &str, maker: &str) -> Fallible<ApprovalTicket> {
     let escalation = intent(
-        "intent-sep",
-        "principal-dana",
+        id,
+        maker,
         ActionType::PermissionEscalation,
         RiskTier::TierAConsequential,
         OversightClass::Standard,
     )?;
     let held = engine.decide(&escalation);
-    let ticket = held.ticket().copied().ok_or(FixtureError::NoTicket)?;
+    held.ticket()
+        .copied()
+        .ok_or_else(|| FixtureError::NoTicket.into())
+}
+
+/// E02-2 negative: maker as checker is rejected, and a duplicate checker is
+/// rejected.
+#[test]
+fn maker_as_checker_is_rejected_and_duplicate_checker_is_rejected() -> Fallible<()> {
+    let mut engine = engine(60, 8)?;
+    let ticket = hold_escalation(&mut engine, "intent-sep", "principal-dana")?;
     assert_eq!(ticket.required(), RequiredApproval::SingleChecker);
 
     let self_panel = CheckerSet::single(CheckerId::parse("principal-dana")?);
@@ -150,15 +157,7 @@ fn due_equal_to_now_and_now_minus_one_fail_closed_and_killswitch_blocks_tier_c()
 /// advances the engine's own clock to `at` and adjudicates.
 fn adjudicate_at(at: u64) -> Fallible<Result<Adjudication, JustitiaError>> {
     let mut engine = engine(1, 8)?;
-    let escalation = intent(
-        "intent-window",
-        "maker-frank",
-        ActionType::PermissionEscalation,
-        RiskTier::TierAConsequential,
-        OversightClass::Standard,
-    )?;
-    let held = engine.decide(&escalation);
-    let ticket = held.ticket().copied().ok_or(FixtureError::NoTicket)?;
+    let ticket = hold_escalation(&mut engine, "intent-window", "maker-frank")?;
     assert_eq!(ticket.deadline().due_at().get(), 1_001);
     engine.clock_mut().set(UnixSeconds::new(at));
     let panel = CheckerSet::single(CheckerId::parse("checker-gina")?);
@@ -183,15 +182,7 @@ fn an_unknown_request_identifier_is_refused() -> Fallible<()> {
 #[test]
 fn a_decided_request_cannot_be_replayed() -> Fallible<()> {
     let mut engine = engine(60, 8)?;
-    let escalation = intent(
-        "intent-replay",
-        "maker-ines",
-        ActionType::PermissionEscalation,
-        RiskTier::TierAConsequential,
-        OversightClass::Standard,
-    )?;
-    let held = engine.decide(&escalation);
-    let ticket = held.ticket().copied().ok_or(FixtureError::NoTicket)?;
+    let ticket = hold_escalation(&mut engine, "intent-replay", "maker-ines")?;
     let panel = CheckerSet::single(CheckerId::parse("checker-jo")?);
     let first = engine.adjudicate(ticket.request_id(), panel, Vote::Reject)?;
     assert!(matches!(first, Adjudication::Rejected { .. }));
@@ -236,15 +227,7 @@ fn a_single_checker_panel_is_refused_where_two_are_required() -> Fallible<()> {
 #[test]
 fn the_maker_compared_against_is_the_one_the_engine_registered() -> Fallible<()> {
     let mut engine = engine(60, 8)?;
-    let escalation = intent(
-        "intent-authority",
-        "maker-mona",
-        ActionType::PermissionEscalation,
-        RiskTier::TierAConsequential,
-        OversightClass::Standard,
-    )?;
-    let held = engine.decide(&escalation);
-    let ticket = held.ticket().copied().ok_or(FixtureError::NoTicket)?;
+    let ticket = hold_escalation(&mut engine, "intent-authority", "maker-mona")?;
     assert_eq!(ticket.maker(), &MakerId::parse("maker-mona")?);
     Ok(())
 }
