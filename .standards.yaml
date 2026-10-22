@@ -53,12 +53,6 @@ exceptions:
     entered: "2026-10-17"
     expires: "2027-01-15"
   - rule: HISS-19
-    path: crates/aegis-tellus/src/id.rs
-    reason: 'CorrelationId, CandidateId and SliceName stay written out: crates/surface_scan.rs reads public declarations as text and cannot see macro-generated types (tests/public_surface.rs:26-28), so folding them by macro would hide public surface from the HISS-15 sweep; exit is macro_rules support in surface_scan.rs, then fold and drop this entry (category D, 120 days)'
-    category: D
-    entered: "2026-10-21"
-    expires: "2027-02-18"
-  - rule: HISS-19
     path: crates/aegis-hephaestus/tests/common/mod.rs
     reason: 'Dedupe group 3bad6437 residue shared with crates/aegis-ludus/tests/common/mod.rs: the encode_into(..).to_owned() tail of the last fixture encoder plus the #[path = "../../../source_effects.rs"] include and its re-export, which every includer of the shared file must carry; source_root already moved into crates/source_effects.rs, the remaining seven lines have no shared form (decision aegis-os-qwb-2137-residuals, category D, 120 days)'
     category: D
