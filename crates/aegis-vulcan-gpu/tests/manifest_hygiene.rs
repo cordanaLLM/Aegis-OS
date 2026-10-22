@@ -7,8 +7,12 @@
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
 
+#[path = "../../manifest_hygiene.rs"]
+mod manifest_hygiene;
+
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+
+use manifest_hygiene::read;
 
 /// This crate's package name, the start of its closure.
 const PACKAGE: &str = "aegis-vulcan-gpu";
@@ -29,55 +33,6 @@ const UNSAFE_SOURCE: &str = "sys.rs";
 /// nodes, but executes no child processes, opens no sockets and uses no sudo;
 /// `unsafe` appears in [`UNSAFE_SOURCE`] only.
 const WATCHED: [&str; 5] = ["Command", "UnixStream", "TcpStream", "sudo", "unsafe"];
-
-/// Returns the crate directory.
-fn crate_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf()
-}
-
-/// Reads a file relative to the workspace root.
-fn read(name: &str) -> String {
-    dependency_closure::workspace_root()
-        .and_then(|root| std::fs::read_to_string(root.join(name)).ok())
-        .unwrap_or_default()
-}
-
-/// Returns every `.rs` file under `src/`, bounded, with its text.
-fn sources() -> Vec<(PathBuf, String)> {
-    let mut found = Vec::new();
-    let mut pending = vec![crate_dir().join("src")];
-    for _ in 0..16 {
-        let Some(directory) = pending.pop() else {
-            break;
-        };
-        let Ok(entries) = std::fs::read_dir(&directory) else {
-            continue;
-        };
-        for entry in entries.flatten().take(64) {
-            let path = entry.path();
-            if path.is_dir() {
-                pending.push(path);
-            } else if path.extension().is_some_and(|ext| ext == "rs") {
-                let text = std::fs::read_to_string(&path).unwrap_or_default();
-                found.push((path, text));
-            }
-        }
-    }
-    found
-}
-
-/// Returns the watched identifiers `text` names outside comments.
-fn hits(text: &str) -> Vec<&'static str> {
-    let code: Vec<&str> = text
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.starts_with("//") && !line.starts_with("/*") && !line.starts_with('*'))
-        .collect();
-    WATCHED
-        .into_iter()
-        .filter(|needle| code.iter().any(|line| line.contains(needle)))
-        .collect()
-}
 
 /// Parses key-value pairs of a simple TOML table.
 fn extract_table(content: &str, header: &str) -> BTreeMap<String, String> {
@@ -119,31 +74,25 @@ fn the_crate_is_a_locked_member() {
 /// Positive: the sweep reads the library and all module sources.
 #[test]
 fn the_sweep_reads_every_source() {
-    let names: Vec<String> = sources()
-        .iter()
-        .filter_map(|(path, _)| path.file_name()?.to_str().map(str::to_owned))
-        .collect();
-    for expected in [
-        "lib.rs",
-        "error.rs",
-        "render_nodes.rs",
-        "drm_sched.rs",
-        "rebar.rs",
-        "heap.rs",
-        "reader.rs",
-        "vfio.rs",
-        "gpus.rs",
-        "record.rs",
-        "dmabuf.rs",
-        "live.rs",
-        "sys.rs",
-        "aegis-vulcan-gpu.rs",
-    ] {
-        assert!(
-            names.iter().any(|name| name == expected),
-            "missing {expected} in {names:?}"
-        );
-    }
+    manifest_hygiene::assert_sweep_reads_sources(
+        &manifest_hygiene::sources(),
+        &[
+            "lib.rs",
+            "error.rs",
+            "render_nodes.rs",
+            "drm_sched.rs",
+            "rebar.rs",
+            "heap.rs",
+            "reader.rs",
+            "vfio.rs",
+            "gpus.rs",
+            "record.rs",
+            "dmabuf.rs",
+            "live.rs",
+            "sys.rs",
+            "aegis-vulcan-gpu.rs",
+        ],
+    );
 }
 
 /// Positive: lints tables equal root workspace.lints except `unsafe_code` = "deny".
@@ -207,8 +156,8 @@ fn the_closure_resolves_no_forbidden_crate() -> Result<(), String> {
 #[test]
 fn no_source_performs_banned_action_or_unsafe() {
     let mut unsafe_home_seen = false;
-    for (path, text) in sources() {
-        let mut found = hits(&text);
+    for (path, text) in manifest_hygiene::sources() {
+        let mut found = manifest_hygiene::token_hits(&text, &WATCHED);
         if path.file_name().is_some_and(|name| name == UNSAFE_SOURCE) {
             unsafe_home_seen = found.contains(&"unsafe");
             found.retain(|needle| *needle != "unsafe");
@@ -225,8 +174,14 @@ fn no_source_performs_banned_action_or_unsafe() {
 #[test]
 fn the_sweep_detects_a_planted_token() {
     let planted = "let stream = std::net::TcpStream::connect(addr);";
-    assert_eq!(hits(planted), vec!["TcpStream"]);
-    assert_eq!(hits("// TcpStream is named in a comment"), [] as [&str; 0]);
+    assert_eq!(
+        manifest_hygiene::token_hits(planted, &WATCHED),
+        vec!["TcpStream"]
+    );
+    assert_eq!(
+        manifest_hygiene::token_hits("// TcpStream is named in a comment", &WATCHED),
+        [] as [&str; 0]
+    );
 }
 
 // --- Boundary -------------------------------------------------------------

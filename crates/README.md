@@ -317,6 +317,12 @@ path into the contracts encoding modules of `aegis-calliope`, `aegis-hestia`,
 and its serde macro `impl_u64_bounded_serde!`, included by path into the
 contracts encoding modules of `aegis-calliope` and `aegis-lictor`.
 
+`manifest_hygiene.rs`, beside the crate directories, is not a crate either: it
+holds `crate_dir`, `read`, the bounded `sources` and `relative_sources` walkers,
+the comment-skipping `token_hits` scanner, and `assert_sweep_reads_sources`,
+included by path into the manifest-hygiene tests of `aegis-justitia`,
+`aegis-tellus-rapl`, `aegis-vesta-sandbox` and `aegis-vulcan-gpu`.
+
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
 signing and no file-backed ledger sink. A signature field in a schema is a field
