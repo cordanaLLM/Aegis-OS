@@ -46,23 +46,12 @@ pub const CAPTURE_WIDTH: u32 = 2560;
 /// The capture height the scaffold asks for.
 pub const CAPTURE_HEIGHT: u32 = 1440;
 
-/// Returns the fixture correlation identifier.
-///
-/// # Errors
-///
-/// Propagates [`CorrelationId::parse`].
-pub fn correlation() -> Result<CorrelationId, Box<dyn std::error::Error>> {
-    Ok(CorrelationId::parse(CORRELATION)?)
-}
+#[path = "../../../fixture_codec.rs"]
+mod fixture_codec;
 
-/// Returns a label, so a fixture that stops parsing fails the suite.
-///
-/// # Errors
-///
-/// Propagates [`Label::parse`].
-pub fn label(raw: &str) -> Result<Label, Box<dyn std::error::Error>> {
-    Ok(Label::parse(raw)?)
-}
+use fixture_codec::encoded;
+#[allow(unused_imports)]
+pub use fixture_codec::{correlation, label};
 
 /// Returns a host holding `count` plugins, each in `Recognition`.
 ///
@@ -161,8 +150,7 @@ pub fn descriptor(
 ///
 /// Propagates the contract refusal.
 pub fn encoded_grant(value: &RealtimeGrant) -> Result<String, Box<dyn std::error::Error>> {
-    let mut buffer = PayloadBuffer::new();
-    Ok(value.encode_into(&mut buffer)?.to_owned())
+    encoded(value, RealtimeGrant::encode_into)
 }
 
 /// Renders a descriptor to owned text.
@@ -173,8 +161,7 @@ pub fn encoded_grant(value: &RealtimeGrant) -> Result<String, Box<dyn std::error
 pub fn encoded_descriptor(
     value: &DmaBufStreamDescriptor,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let mut buffer = PayloadBuffer::new();
-    Ok(value.encode_into(&mut buffer)?.to_owned())
+    encoded(value, DmaBufStreamDescriptor::encode_into)
 }
 
 /// The edge a payload must not claim, given the one it does.
