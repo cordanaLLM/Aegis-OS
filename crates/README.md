@@ -83,6 +83,16 @@ Activation covers the crate gate only: `cargo fmt`, `cargo build --locked`,
 `cargo test` and `cargo clippy -D warnings` on the pinned toolchain. No native
 pass is claimed by this directory.
 
+For local cargo builds and test runs on a shared host, `python3
+tools/cargo_scope.py run -- make verify-all` (or any cargo command) starts the
+command in a systemd user scope with `MemoryHigh=16G` and `IOWeight=50`. It
+picks the build jobs at start: 4 while `/proc/pressure/io` full avg60 is above
+25, otherwise 8. It also names itself as cargo's linker, so each link caps
+rust-lld at that many threads and, while the pressure stays above 25, waits on
+a `flock` so one binary links at a time. `CARGO_SCOPE_PRESSURE_FILE`,
+`CARGO_SCOPE_LINK_LOCK` and `CARGO_SCOPE_CC` override the pressure source, the
+lock path and the cc driver; `tools/test_cargo_scope.py` covers both modes.
+
 `aegis-tellus` and `aegis-athena` carry their components' names and sit at their
 components' proposed paths, and **P13 and P16 remain proposals all the same**.
 The P13 subsystem is a Kepler eBPF telemetry daemon and this crate compiles no
