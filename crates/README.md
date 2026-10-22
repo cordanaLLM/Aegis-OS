@@ -336,8 +336,10 @@ shared assertions `assert_sweep_reads_sources`, `assert_workspace_names_crate`,
 `assert_lock_carries_entry`, `assert_member_list_is_written_out_and_not_globbed`,
 `assert_workspace_lists_every_crate_with_a_manifest`,
 `assert_inherits_workspace_lints`,
-`assert_inherits_workspace_lints_and_toolchain` and
-`assert_crate_declares_no_binary_target`, included by path into the
+`assert_inherits_workspace_lints_and_toolchain`,
+`assert_crate_declares_no_binary_target`,
+`assert_manifest_contains` and
+`assert_no_excluded_dependencies`, included by path into the
 manifest-hygiene tests of `aegis-calliope`, `aegis-compositor`,
 `aegis-hephaestus`, `aegis-hestia`, `aegis-justitia`, `aegis-lictor`,
 `aegis-ludus`, `aegis-minerva`, `aegis-tellus-rapl`, `aegis-vesta`,

@@ -309,3 +309,33 @@ pub fn assert_crate_declares_no_binary_target(manifest_path: &str) {
     assert!(manifest.contains("[lib]"));
     assert!(manifest.contains("publish = false"));
 }
+
+/// Asserts that a crate manifest contains every expected dependency or declaration snippet.
+#[track_caller]
+pub fn assert_manifest_contains(manifest: &str, expected: &[&str]) {
+    for needle in expected.iter().take(TOKEN_BOUND) {
+        assert!(manifest.contains(*needle), "manifest missing {needle}");
+    }
+}
+
+/// Asserts that a crate manifest declares none of the `excluded` dependencies.
+#[track_caller]
+pub fn assert_no_excluded_dependencies(manifest_path: &str, excluded: &[&str], reason: &str) {
+    let manifest = read(manifest_path);
+    assert!(!manifest.is_empty(), "the crate manifest must exist");
+    let declarations: Vec<&str> = manifest
+        .lines()
+        .take(LINE_BOUND)
+        .map(str::trim)
+        .filter(|line| line.contains(" = ") || line.ends_with(".workspace = true"))
+        .collect();
+    for name in excluded.iter().take(TOKEN_BOUND) {
+        assert!(
+            !declarations
+                .iter()
+                .any(|line| line.starts_with(&format!("{name} "))
+                    || line.starts_with(&format!("{name}."))),
+            "{name} {reason}"
+        );
+    }
+}

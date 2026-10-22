@@ -75,16 +75,11 @@ const NOT_WATCHED: [&str; 3] = ["OpenFOAM", "CalculiX", "agent-solver.slice"];
 /// `stubbed_effects.rs` sweeps them; the walk here then read 8.
 #[test]
 fn the_sweep_reads_the_whole_crate() -> Fallible {
-    let sources = common::rust_sources(&common::source_root())?;
-    assert!(
-        sources.len() >= 8,
-        "the sweep read only {} sources; it is reading nothing, not finding nothing",
-        sources.len()
-    );
-    assert!(sources.iter().any(|(name, _)| name == "lib.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "register.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "verification.rs"));
-    Ok(())
+    common::assert_sweep_reads_sources(
+        &common::source_root(),
+        8,
+        &["lib.rs", "register.rs", "verification.rs"],
+    )
 }
 
 // --- Negative -------------------------------------------------------------
@@ -92,12 +87,7 @@ fn the_sweep_reads_the_whole_crate() -> Fallible {
 /// Negative: no watched identifier appears in library code.
 #[test]
 fn no_watched_identifier_appears_in_library_code() -> Fallible {
-    let found = common::scan_sources(&common::source_root(), &WATCHED)?;
-    assert!(
-        found.is_empty(),
-        "effect identifiers in library code: {found:?}"
-    );
-    Ok(())
+    common::assert_no_watched_code(&common::source_root(), &WATCHED)
 }
 
 /// Negative: the sweep would notice one, so a pass means something.
@@ -129,24 +119,14 @@ fn the_sweep_detects_a_planted_identifier() {
 /// duplicate, so the count in the documentation is the count that is swept.
 #[test]
 fn the_watched_list_is_its_recorded_length() {
-    assert_eq!(WATCHED.len(), 22);
-    let mut names = WATCHED.to_vec();
-    names.sort_unstable();
-    names.dedup();
-    assert_eq!(names.len(), 22);
-    assert!(names.iter().all(|needle| !needle.is_empty()));
+    common::assert_watched_list_exact(&WATCHED, 22);
 }
 
 /// Boundary: a comment naming a watched identifier is not a finding.
 #[test]
 fn a_comment_naming_an_identifier_is_not_a_finding() {
     let comment = "//! no truck kernel, no gmsh mesher, no z3:: solver, no Command:: dispatch";
-    assert!(comment.trim().starts_with("//"));
-    assert!(WATCHED.iter().any(|needle| comment.contains(needle)));
-    assert_eq!(
-        common::scan_text("lib.rs", comment, &WATCHED),
-        [] as [std::string::String; 0]
-    );
+    common::assert_comment_naming_identifier_is_not_finding(comment, &WATCHED);
 }
 
 /// Boundary: the solver tags and the slice name are deliberately outside the

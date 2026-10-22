@@ -42,11 +42,16 @@ fn the_lock_file_carries_an_entry_for_this_crate() {
 fn the_crate_declares_the_producer_and_identifier_crates() {
     let manifest = read("crates/aegis-hephaestus/Cargo.toml");
     assert!(!manifest.is_empty(), "the crate manifest must exist");
-    assert!(manifest.contains("aegis-minerva = { path = \"../aegis-minerva\" }"));
-    assert!(manifest.contains("aegis-justitia = { path = \"../aegis-justitia\" }"));
-    for expected in ["serde", "serde_json", "thiserror"] {
-        assert!(manifest.contains(expected));
-    }
+    manifest_hygiene::assert_manifest_contains(
+        &manifest,
+        &[
+            "aegis-minerva = { path = \"../aegis-minerva\" }",
+            "aegis-justitia = { path = \"../aegis-justitia\" }",
+            "serde",
+            "serde_json",
+            "thiserror",
+        ],
+    );
 }
 
 // --- Negative -------------------------------------------------------------
@@ -68,41 +73,31 @@ fn the_member_list_is_written_out_and_not_globbed() {
 /// sentence that makes the claim.
 #[test]
 fn the_crate_manifest_declares_no_deferred_dependency() {
+    manifest_hygiene::assert_no_excluded_dependencies(
+        "crates/aegis-hephaestus/Cargo.toml",
+        &[
+            "truck",
+            "truck-modeling",
+            "opencascade",
+            "occt-sys",
+            "manifold3d",
+            "csgrs",
+            "gmsh",
+            "gmsh-sys",
+            "z3",
+            "z3-sys",
+            "bindgen",
+            "cc",
+            "cgroups-rs",
+            "nix",
+            "tokio",
+            "libc",
+            "chrono",
+            "time",
+        ],
+        "is deferred past milestone M08",
+    );
     let manifest = read("crates/aegis-hephaestus/Cargo.toml");
-    assert!(!manifest.is_empty(), "the crate manifest must exist");
-    let declarations: Vec<&str> = manifest
-        .lines()
-        .map(str::trim)
-        .filter(|line| line.contains(" = ") || line.ends_with(".workspace = true"))
-        .collect();
-    for excluded in [
-        "truck",
-        "truck-modeling",
-        "opencascade",
-        "occt-sys",
-        "manifold3d",
-        "csgrs",
-        "gmsh",
-        "gmsh-sys",
-        "z3",
-        "z3-sys",
-        "bindgen",
-        "cc",
-        "cgroups-rs",
-        "nix",
-        "tokio",
-        "libc",
-        "chrono",
-        "time",
-    ] {
-        assert!(
-            !declarations
-                .iter()
-                .any(|line| line.starts_with(&format!("{excluded} "))
-                    || line.starts_with(&format!("{excluded}."))),
-            "{excluded} is deferred past milestone M08"
-        );
-    }
     assert!(
         !manifest.contains("[build-dependencies]"),
         "a build script is how a foreign kernel or solver would arrive"

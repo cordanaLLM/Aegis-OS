@@ -20,6 +20,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use core::mem::size_of;
 
 use aegis_minerva::{
@@ -130,11 +133,10 @@ fn an_escaped_payload_still_decodes_into_an_inline_value() -> Fallible {
 #[test]
 fn the_payload_stays_inside_the_contract_bound() -> Fallible {
     let text = encoded(&verification(ScreenOutcome::NotRejected)?)?;
-    assert!(text.len() < MAX_CONTRACT_PAYLOAD_BYTES);
-    assert!(text.len().saturating_mul(2) < MAX_CONTRACT_PAYLOAD_BYTES);
-    assert_eq!(
+    test_assertions::assert_payload_inside_contract_bound(
+        text.len(),
+        MAX_CONTRACT_PAYLOAD_BYTES,
         size_of::<PayloadBuffer>(),
-        MAX_CONTRACT_PAYLOAD_BYTES + size_of::<usize>()
     );
     Ok(())
 }

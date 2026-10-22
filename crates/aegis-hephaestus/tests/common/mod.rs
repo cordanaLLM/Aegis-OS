@@ -151,6 +151,4 @@ pub fn encoded_request(
 #[path = "../../../source_effects.rs"]
 mod source_effects;
 #[allow(unused_imports)]
-pub use source_effects::{
-    LINE_BOUND, WALK_BOUND, hits, rust_sources, scan_sources, scan_text, source_root,
-};
+pub use source_effects::*;

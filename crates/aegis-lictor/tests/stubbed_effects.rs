@@ -139,24 +139,14 @@ fn the_sweep_detects_a_planted_identifier() {
 /// duplicate, so the count in the documentation is the count that is swept.
 #[test]
 fn the_watched_list_is_its_recorded_length() {
-    assert_eq!(WATCHED.len(), 27);
-    let mut names = WATCHED.to_vec();
-    names.sort_unstable();
-    names.dedup();
-    assert_eq!(names.len(), 27);
-    assert!(names.iter().all(|needle| !needle.is_empty()));
+    common::assert_watched_list_exact(&WATCHED, 27);
 }
 
 /// Boundary: a comment naming a watched identifier is not a finding.
 #[test]
 fn a_comment_naming_an_identifier_is_not_a_finding() {
     let comment = "//! no aya::, no libbpf, no tokio, no libc and no Instant:: read";
-    assert!(comment.trim().starts_with("//"));
-    assert!(WATCHED.iter().any(|needle| comment.contains(needle)));
-    assert_eq!(
-        common::scan_text("lib.rs", comment, &WATCHED),
-        [] as [std::string::String; 0]
-    );
+    common::assert_comment_naming_identifier_is_not_finding(comment, &WATCHED);
 }
 
 /// Boundary: the recorded scheduler and transport names are deliberately
