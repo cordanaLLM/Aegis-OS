@@ -97,30 +97,8 @@ impl SchemaId {
 #[path = "../../../contract_scaffold.rs"]
 mod contract_scaffold;
 
-/// What a refusal is about: the contract, and the payload when it could be read.
-pub type Correlation = contract_scaffold::Correlation<SchemaId, CorrelationId>;
+#[macro_use]
+#[path = "../../../contract_edge_scaffold.rs"]
+mod contract_edge_scaffold;
 
-/// A fixed buffer holding one encoded payload.
-pub type PayloadBuffer = contract_scaffold::PayloadBuffer<MAX_CONTRACT_PAYLOAD_BYTES>;
-
-define_contract_error! {
-    SchemaId, CorrelationId;
-    /// Reasons a contract payload is refused.
-    ///
-    /// Every variant carries its [`Correlation`], so no refusal is anonymous.
-    pub enum ContractError {
-        /// The payload travels on an edge this schema does not carry.
-        #[error("{correlation}: this schema does not travel on the edge the payload names")]
-        WrongEdge {
-            /// What the refusal is about.
-            correlation: Correlation,
-        },
-    }
-}
-
-scaffold_contract!(
-    SchemaId,
-    CorrelationId,
-    MAX_CONTRACT_PAYLOAD_BYTES,
-    ContractError
-);
+scaffold_edge_contract!(SchemaId, CorrelationId, MAX_CONTRACT_PAYLOAD_BYTES);
