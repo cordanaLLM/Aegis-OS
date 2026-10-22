@@ -44,23 +44,12 @@ pub const GUEST_MIB: u32 = 4;
 /// The capsule memory limit the scaffold asks for, in bytes.
 pub const CAPSULE_BYTES: u64 = 16 * 1024 * 1024;
 
-/// Returns the fixture correlation identifier.
-///
-/// # Errors
-///
-/// Propagates [`CorrelationId::parse`].
-pub fn correlation() -> Result<CorrelationId, Box<dyn std::error::Error>> {
-    Ok(CorrelationId::parse(CORRELATION)?)
-}
+#[path = "../../../fixture_codec.rs"]
+mod fixture_codec;
 
-/// Returns a label, so a fixture that stops parsing fails the suite.
-///
-/// # Errors
-///
-/// Propagates [`Label::parse`].
-pub fn label(raw: &str) -> Result<Label, Box<dyn std::error::Error>> {
-    Ok(Label::parse(raw)?)
-}
+use fixture_codec::encoded;
+#[allow(unused_imports)]
+pub use fixture_codec::{correlation, label};
 
 /// Returns the scaffold's sandbox request under `vmm`.
 ///
@@ -163,8 +152,7 @@ pub fn evaluation(
 ///
 /// Propagates the contract refusal.
 pub fn encoded_request(request: &CapsuleRequest) -> Result<String, Box<dyn std::error::Error>> {
-    let mut buffer = PayloadBuffer::new();
-    Ok(request.encode_into(&mut buffer)?.to_owned())
+    encoded(request, CapsuleRequest::encode_into)
 }
 
 /// Renders a candidate evaluation to owned text.
@@ -175,8 +163,7 @@ pub fn encoded_request(request: &CapsuleRequest) -> Result<String, Box<dyn std::
 pub fn encoded_evaluation(
     evaluation: &CandidateEvaluation,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let mut buffer = PayloadBuffer::new();
-    Ok(evaluation.encode_into(&mut buffer)?.to_owned())
+    encoded(evaluation, CandidateEvaluation::encode_into)
 }
 
 /// The edge a payload must not claim, given the one it does.

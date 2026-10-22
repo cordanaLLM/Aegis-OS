@@ -24,9 +24,10 @@
 //!   explicitly, so a field reordering or a renamed variant is a visible
 //!   change to this file.
 
-use core::fmt;
+#[macro_use]
+#[path = "../../../contract_encoding.rs"]
+mod contract_encoding;
 
-use serde::de::{Error as DeError, Unexpected, Visitor};
 use serde::ser::Error as SerError;
 use serde::{Deserializer, Serializer};
 
@@ -48,62 +49,8 @@ fn to_hex<'b>(bytes: &[u8], buffer: &'b mut [u8; MAX_SIGNATURE_HEX_CHARS]) -> Op
     base16ct::lower::encode_str(bytes, slot).ok()
 }
 
-/// Serialises a validated byte string as a UTF-8 string.
-fn serialize_text<S: Serializer>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error> {
-    let text = core::str::from_utf8(bytes).map_err(S::Error::custom)?;
-    serializer.serialize_str(text)
-}
-
-/// A visitor that parses one string field through a validating constructor.
-struct Parsed<T> {
-    label: &'static str,
-    parse: fn(&str) -> Option<T>,
-}
-
-impl<T> Visitor<'_> for Parsed<T> {
-    type Value = T;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(self.label)
-    }
-
-    fn visit_str<E: DeError>(self, value: &str) -> Result<T, E> {
-        match (self.parse)(value) {
-            Some(parsed) => Ok(parsed),
-            None => Err(E::invalid_value(Unexpected::Str(value), &self)),
-        }
-    }
-}
-
-impl serde::Serialize for Identity {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serialize_text(self.as_bytes(), serializer)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for Identity {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
-            label: "a bounded identifier",
-            parse: |text| Self::parse(text).ok(),
-        })
-    }
-}
-
-impl serde::Serialize for TargetResource {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serialize_text(self.as_bytes(), serializer)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for TargetResource {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
-            label: "a bounded target resource",
-            parse: |text| Self::parse(text).ok(),
-        })
-    }
-}
+impl_str_serde!(Identity, "a bounded identifier");
+impl_str_serde!(TargetResource, "a bounded target resource");
 
 impl serde::Serialize for Digest32 {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -115,7 +62,7 @@ impl serde::Serialize for Digest32 {
 
 impl<'de> serde::Deserialize<'de> for Digest32 {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
+        deserializer.deserialize_str(contract_encoding::Parsed {
             label: "a 64-character lower-case hexadecimal digest",
             parse: |text| Self::parse_hex(text).ok(),
         })
@@ -206,7 +153,7 @@ impl serde::Serialize for SignatureBytes {
 
 impl<'de> serde::Deserialize<'de> for SignatureBytes {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
+        deserializer.deserialize_str(contract_encoding::Parsed {
             label: "lower-case hexadecimal signature bytes",
             parse: Self::parse_hex,
         })

@@ -44,23 +44,12 @@ pub const AGENT: &str = "aegis-minerva-slm";
 /// The control-group slice a focus switch names.
 pub const SLICE: &str = "app-aegis-compositor.slice";
 
-/// Returns the fixture correlation identifier.
-///
-/// # Errors
-///
-/// Propagates [`CorrelationId::parse`].
-pub fn correlation() -> Result<CorrelationId, Box<dyn std::error::Error>> {
-    Ok(CorrelationId::parse(CORRELATION)?)
-}
+#[path = "../../../fixture_codec.rs"]
+mod fixture_codec;
 
-/// Returns a label, so a fixture that stops parsing fails the suite.
-///
-/// # Errors
-///
-/// Propagates [`Label::parse`].
-pub fn label(raw: &str) -> Result<Label, Box<dyn std::error::Error>> {
-    Ok(Label::parse(raw)?)
-}
+use fixture_codec::encoded;
+#[allow(unused_imports)]
+pub use fixture_codec::{correlation, label};
 
 /// Returns a validated process identifier.
 ///
@@ -131,8 +120,7 @@ pub fn report(raw_pid: u32) -> Result<FocusSwitchReport, Box<dyn std::error::Err
 ///
 /// Propagates the contract refusal.
 pub fn encoded_report(value: &FocusSwitchReport) -> Result<String, Box<dyn std::error::Error>> {
-    let mut buffer = PayloadBuffer::new();
-    Ok(value.encode_into(&mut buffer)?.to_owned())
+    encoded(value, FocusSwitchReport::encode_into)
 }
 
 /// The edge a payload must not claim, given the one it does.
