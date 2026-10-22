@@ -125,6 +125,8 @@ pub type PayloadBuffer = contract_scaffold::PayloadBuffer<MAX_CONTRACT_PAYLOAD_B
 /// What a refusal is about: the contract, and the payload when it could be read.
 pub type Correlation = contract_scaffold::Correlation<SchemaId, Identity>;
 
+pub(crate) use contract_scaffold::decode_validated;
+
 define_contract_error! {
     SchemaId, Identity;
     /// Reasons a contract payload is refused.
@@ -202,3 +204,19 @@ scaffold_contract!(
     MAX_CONTRACT_PAYLOAD_BYTES,
     ContractError
 );
+
+/// Verifies that `edge` matches `expected` for a contract payload.
+///
+/// # Errors
+///
+/// Returns [`ContractError::Malformed`] when `edge` does not match `expected`.
+pub(crate) fn check_edge(
+    edge: graph::EdgeId,
+    expected: graph::EdgeId,
+    correlation: Correlation,
+) -> Result<(), ContractError> {
+    if edge != expected {
+        return Err(ContractError::Malformed { correlation });
+    }
+    Ok(())
+}
