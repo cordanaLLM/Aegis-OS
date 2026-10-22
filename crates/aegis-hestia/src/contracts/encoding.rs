@@ -20,63 +20,11 @@
 //!   here sees it, so an escaped field costs a transient copy bounded by
 //!   [`super::MAX_CONTRACT_PAYLOAD_BYTES`]. See `tests/allocation_bounds.rs`.
 
-use core::fmt;
-
-use serde::de::{Error as DeError, Unexpected, Visitor};
-use serde::ser::Error as SerError;
-use serde::{Deserializer, Serializer};
+#[macro_use]
+#[path = "../../../contract_encoding.rs"]
+mod contract_encoding;
 
 use crate::id::{CorrelationId, SurfaceId};
 
-/// A visitor that parses one string field through a validating constructor.
-struct Parsed<T> {
-    label: &'static str,
-    parse: fn(&str) -> Option<T>,
-}
-
-impl<T> Visitor<'_> for Parsed<T> {
-    type Value = T;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(self.label)
-    }
-
-    fn visit_str<E: DeError>(self, value: &str) -> Result<T, E> {
-        match (self.parse)(value) {
-            Some(parsed) => Ok(parsed),
-            None => Err(E::invalid_value(Unexpected::Str(value), &self)),
-        }
-    }
-}
-
-impl serde::Serialize for CorrelationId {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(S::Error::custom)?;
-        serializer.serialize_str(text)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for CorrelationId {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
-            label: "a bounded correlation identifier",
-            parse: |text| Self::parse(text).ok(),
-        })
-    }
-}
-
-impl serde::Serialize for SurfaceId {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(S::Error::custom)?;
-        serializer.serialize_str(text)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for SurfaceId {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
-            label: "a bounded surface identifier",
-            parse: |text| Self::parse(text).ok(),
-        })
-    }
-}
+impl_str_serde!(CorrelationId, "a bounded correlation identifier");
+impl_str_serde!(SurfaceId, "a bounded surface identifier");
