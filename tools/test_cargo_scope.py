@@ -256,6 +256,10 @@ class LinkTests(unittest.TestCase):
         self.fake_cc = pathlib.Path(self.temp_dir.name) / "fakecc.py"
         self.fake_cc.write_text(FAKE_CC_SCRIPT, encoding="utf-8")
         self.fake_cc.chmod(0o755)
+        if sys.platform == "win32":
+            cmd_file = pathlib.Path(self.temp_dir.name) / "fakecc.cmd"
+            cmd_file.write_text(f'@"{sys.executable}" "{self.fake_cc}" %*\n', encoding="utf-8")
+            self.fake_cc = cmd_file
 
     def tearDown(self):
         """Clean up temporary test resources."""
