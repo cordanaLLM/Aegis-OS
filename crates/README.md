@@ -293,6 +293,11 @@ included by path into the test common modules of `aegis-calliope`,
 `aegis-compositor`, `aegis-hephaestus`, `aegis-lictor`, `aegis-ludus`,
 `aegis-minerva` and `aegis-vesta`.
 
+`fixture_codec.rs` sits beside it on the same terms: it holds `correlation`,
+`label` and `encoded`, the fixture parse and encode helpers, included by path
+into the test common modules of `aegis-calliope`, `aegis-lictor` and
+`aegis-vesta`, each of which supplies its own contract types.
+
 `contract_encoding.rs` and `contract_encoding_u64.rs`, beside the crate
 directories, are not crates either: `contract_encoding.rs` holds the text
 field helpers (`Parsed`, `serialize_text` and `impl_str_serde!`), included by
