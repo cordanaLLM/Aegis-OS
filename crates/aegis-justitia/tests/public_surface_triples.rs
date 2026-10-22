@@ -19,19 +19,19 @@ mod common;
 
 use aegis_justitia::effects::SystemClock;
 use aegis_justitia::{
-    ActionType, AgentId, AuditLedger, AuditRecord, BlockReason, CONTRACT_VERSION, CheckerId,
-    CheckerSet, Clock, ClockError, DEFAULT_APPROVAL_TTL_SECS, DEFAULT_SINK_SERVICE_MILLIS,
-    DIGEST_LEN, Digest32, EngineConfig, HaltReason, HashAlgorithm, HashError, Identity,
-    InMemorySink, IntentError, IntentId, InterceptorOutcome, IoDeadline, JustitiaError,
-    KillswitchState, LedgerError, LedgerHasher, LedgerSink, MAX_IDENTITY_LEN, MAX_PREIMAGE_BYTES,
-    OversightClass, OversightError, PreimageError, RecordBody, RecordDraft, RecordStatus,
-    RegistryError, RequestId, RequestState, RequiredApproval, RiskTier, Sequence, Sha256Hasher,
-    Sha256Ledger, SignError, SignerBinding, SinkError, Ttl, UnavailableSink, UnixSeconds,
-    VerifiedCheckerSet, Vote, verify_chain,
+    ActionType, AuditLedger, AuditRecord, BlockReason, CONTRACT_VERSION, CheckerId, CheckerSet,
+    Clock, ClockError, DEFAULT_APPROVAL_TTL_SECS, DEFAULT_SINK_SERVICE_MILLIS, DIGEST_LEN,
+    Digest32, EngineConfig, HaltReason, HashAlgorithm, HashError, Identity, InMemorySink,
+    IntentError, IntentId, InterceptorOutcome, IoDeadline, JustitiaError, LedgerError,
+    LedgerHasher, LedgerSink, MAX_IDENTITY_LEN, MAX_PREIMAGE_BYTES, OversightClass, OversightError,
+    PreimageError, RecordBody, RecordDraft, RecordStatus, RegistryError, RequestId, RequestState,
+    RequiredApproval, RiskTier, Sequence, Sha256Hasher, Sha256Ledger, SignError, SignerBinding,
+    SinkError, Ttl, UnavailableSink, UnixSeconds, VerifiedCheckerSet, Vote, verify_chain,
 };
 
 use common::{
     FIXTURE_AUDIT_BOUND, Fallible, FixtureError, FixtureSigner, START, engine, intent, io_deadline,
+    record_draft,
 };
 
 /// Builds an empty fixture ledger through the concrete SHA-256 alias.
@@ -46,15 +46,7 @@ fn ledger() -> Result<Sha256Ledger<FixtureSigner, InMemorySink>, JustitiaError> 
 
 /// Builds an approved draft for `id` at `at` seconds.
 fn sample_draft(id: &str, at: u64) -> Result<RecordDraft, JustitiaError> {
-    Ok(RecordDraft {
-        intent_id: IntentId::parse(id)?,
-        agent: AgentId::parse("agent-01")?,
-        action_type: ActionType::FileModification,
-        status: RecordStatus::Approved,
-        block_reason: None,
-        killswitch: KillswitchState::Armed,
-        at: UnixSeconds::new(at),
-    })
+    record_draft(id, at)
 }
 
 /// Seals one record and returns it.

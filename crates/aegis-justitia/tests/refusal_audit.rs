@@ -12,14 +12,33 @@
 mod common;
 
 use aegis_justitia::{
-    ActionType, BlockReason, CheckerId, CheckerSet, ClockError, HaltReason, JustitiaError,
-    LedgerError, OversightClass, RecordStatus, RegistryError, RiskTier, UnixSeconds, Vote,
+    ActionType, AuditRecord, BlockReason, CheckerId, CheckerSet, ClockError, HaltReason,
+    JustitiaError, LedgerError, OversightClass, RecordStatus, RegistryError, RiskTier, UnixSeconds,
+    Vote,
 };
 
 use common::{
     Fallible, FixtureError, START, engine, engine_with_audit_bound, faulty_clock_engine, intent,
     unsigned_engine,
 };
+
+/// Asserts that the record at `index` has `status` and `reason`, and returns it.
+#[track_caller]
+fn assert_refusal_record(
+    records: &[AuditRecord],
+    index: usize,
+    status: RecordStatus,
+    reason: BlockReason,
+) -> Fallible<AuditRecord> {
+    let record = records.get(index).copied().ok_or(FixtureError::NoRecord)?;
+    assert_eq!(record.body().draft().status, status);
+    assert_eq!(
+        record.body().draft().block_reason,
+        Some(reason),
+        "the record names the reason the action was refused"
+    );
+    Ok(record)
+}
 
 // --- Positive -------------------------------------------------------------
 
@@ -51,18 +70,12 @@ fn an_engine_refusal_is_recorded_with_its_reason() -> Fallible<()> {
         2,
         "the refusal produced an audit record of its own"
     );
-    let record = engine
-        .ledger()
-        .records()
-        .get(1)
-        .copied()
-        .ok_or(FixtureError::NoRecord)?;
-    assert_eq!(record.body().draft().status, RecordStatus::Blocked);
-    assert_eq!(
-        record.body().draft().block_reason,
-        Some(BlockReason::RegistryFull),
-        "the record names the reason the action was refused"
-    );
+    let record = assert_refusal_record(
+        engine.ledger().records(),
+        1,
+        RecordStatus::Blocked,
+        BlockReason::RegistryFull,
+    )?;
     assert_eq!(
         record.body().draft().intent_id.to_string(),
         "intent-audited-2"
@@ -89,16 +102,12 @@ fn a_halted_refusal_is_recorded_with_the_halt_reason() -> Fallible<()> {
         blocked.block_reason(),
         Some(BlockReason::KillswitchEngaged(HaltReason::OperatorStop))
     );
-    let record = engine
-        .ledger()
-        .records()
-        .first()
-        .ok_or(FixtureError::NoRecord)?;
-    assert_eq!(record.body().draft().status, RecordStatus::Halted);
-    assert_eq!(
-        record.body().draft().block_reason,
-        Some(BlockReason::KillswitchEngaged(HaltReason::OperatorStop))
-    );
+    assert_refusal_record(
+        engine.ledger().records(),
+        0,
+        RecordStatus::Halted,
+        BlockReason::KillswitchEngaged(HaltReason::OperatorStop),
+    )?;
     Ok(())
 }
 
@@ -131,16 +140,12 @@ fn a_clock_fault_fails_closed_and_halts_the_unit() -> Fallible<()> {
         Some(HaltReason::ClockUnavailable),
         "the clock fault engages the halt latch"
     );
-    let record = engine
-        .ledger()
-        .records()
-        .first()
-        .ok_or(FixtureError::NoRecord)?;
-    assert_eq!(record.body().draft().status, RecordStatus::Blocked);
-    assert_eq!(
-        record.body().draft().block_reason,
-        Some(BlockReason::ClockUnavailable)
-    );
+    assert_refusal_record(
+        engine.ledger().records(),
+        0,
+        RecordStatus::Blocked,
+        BlockReason::ClockUnavailable,
+    )?;
     Ok(())
 }
 
