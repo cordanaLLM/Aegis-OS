@@ -301,7 +301,7 @@ class LinkTests(unittest.TestCase):
         self.assertIn("-Wl,--threads=8", content)
 
     def test_unreadable_pressure_serializes_and_silent_stdout(self):
-        """Boundary case: unreadable pressure serializes and writes zero stdout."""
+        """Boundary case: unreadable pressure serializes; an unlockable host fails closed."""
         log_file = pathlib.Path(self.temp_dir.name) / "fakecc.log"
         out = io.StringIO()
         with mock.patch("sys.stdout", out), mock.patch.dict(
@@ -313,7 +313,12 @@ class LinkTests(unittest.TestCase):
             },
         ):
             rc = cargo_scope.main(["link", "-o", "out_binary"])
-        self.assertEqual(rc, 0)
+        if cargo_scope.fcntl is None:
+            # No lock primitive: the link must refuse rather than run unserialized.
+            self.assertEqual(rc, 2)
+            self.assertFalse(log_file.exists())
+        else:
+            self.assertEqual(rc, 0)
         self.assertEqual(out.getvalue(), "")
 
     def _run_concurrent_links(self, pressure_file, log_path, lock_path):
