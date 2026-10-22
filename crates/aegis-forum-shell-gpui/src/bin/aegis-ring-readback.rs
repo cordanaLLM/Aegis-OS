@@ -20,6 +20,11 @@ use std::io::Write;
 use std::process::ExitCode;
 use std::str::FromStr;
 
+#[path = "common/mod.rs"]
+mod common;
+
+use common::finish_readback;
+
 use aegis_concordia::tokens::COLOR_SURFACE;
 use aegis_forum_shell_gpui::capture::{
     CaptureError, capture_area, session_connection, wait_for_pixel,
@@ -91,13 +96,8 @@ fn main() -> ExitCode {
         return ExitCode::from(64);
     };
 
-    match async_io::block_on(run_readback(&geom, variant, &mut out)) {
-        Ok(true) => ExitCode::SUCCESS,
-        Ok(false) => ExitCode::from(1),
-        Err(err) => {
-            let _ = writeln!(out, "ERROR {err}");
-            let _ = out.flush();
-            ExitCode::from(3)
-        }
-    }
+    finish_readback(
+        async_io::block_on(run_readback(&geom, variant, &mut out)),
+        out,
+    )
 }
