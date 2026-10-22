@@ -29,106 +29,100 @@ use std::str::FromStr;
 
 use aegis_forum_shell_gpui::fixture::{Variant, run_fixture};
 use aegis_forum_shell_gpui::ring_fixture::{RingVariant, run_ring_fixture};
-use aegis_forum_shell_gpui::surface::{decode_canvas, exit_code, outcome_line, run_surface};
+use aegis_forum_shell_gpui::surface::{
+    Outcome, decode_canvas, exit_code, outcome_line, run_surface,
+};
 
 const USAGE: &str = "usage: aegis-forum-shell-gpui surface <request-line> | aegis-forum-shell-gpui a11y <request-line> <variant> | aegis-forum-shell-gpui ring <request-line> <variant> | aegis-forum-shell-gpui timing <request-line> <seeded-count>";
 
-fn handle_surface(request_line: &str, mut out: impl Write) -> ExitCode {
+fn write_outcome(outcome: &Outcome, mut out: impl Write) -> std::io::Result<()> {
+    let formatted = outcome_line(outcome);
+    writeln!(out, "{formatted}").and_then(|()| out.flush())
+}
+
+/// Writes a subcommand's usage line best-effort and exits 64.
+fn usage_error(mut out: impl Write, usage: &str) -> ExitCode {
+    let _ = writeln!(out, "{usage}");
+    ExitCode::from(64)
+}
+
+/// Writes the outcome line; an unwritable line exits 3.
+fn emit_outcome(outcome: &Outcome, out: impl Write) -> ExitCode {
+    if write_outcome(outcome, out).is_err() {
+        return ExitCode::from(3);
+    }
+
+    ExitCode::from(exit_code(outcome))
+}
+
+/// Writes a refusal line best-effort; the refusal's own exit code wins.
+fn emit_refusal(refused: &Outcome, out: impl Write) -> ExitCode {
+    let _ = write_outcome(refused, out);
+    ExitCode::from(exit_code(refused))
+}
+
+fn handle_surface(request_line: &str, out: impl Write) -> ExitCode {
     let outcome = match decode_canvas(request_line.as_bytes()) {
         Ok(canvas) => run_surface(&canvas),
         Err(refused_outcome) => refused_outcome,
     };
 
-    let formatted = outcome_line(&outcome);
-    let written = writeln!(out, "{formatted}").and_then(|()| out.flush());
-    if written.is_err() {
-        return ExitCode::from(3);
-    }
-
-    ExitCode::from(exit_code(&outcome))
+    emit_outcome(&outcome, out)
 }
 
-fn handle_a11y(request_line: &str, variant_str: &str, mut out: impl Write) -> ExitCode {
+fn handle_a11y(request_line: &str, variant_str: &str, out: impl Write) -> ExitCode {
     let canvas = match decode_canvas(request_line.as_bytes()) {
         Ok(canvas) => canvas,
-        Err(refused) => {
-            let formatted = outcome_line(&refused);
-            let _ = writeln!(out, "{formatted}").and_then(|()| out.flush());
-            return ExitCode::from(exit_code(&refused));
-        }
+        Err(refused) => return emit_refusal(&refused, out),
     };
 
     let Ok(variant) = Variant::from_str(variant_str) else {
-        let _ = writeln!(
+        return usage_error(
             out,
-            "usage: aegis-forum-shell-gpui a11y <request-line> <variant>"
+            "usage: aegis-forum-shell-gpui a11y <request-line> <variant>",
         );
-        return ExitCode::from(64);
     };
 
     let outcome = run_fixture(&canvas, variant, std::io::stdout());
-    let formatted = outcome_line(&outcome);
-    let written = writeln!(out, "{formatted}").and_then(|()| out.flush());
-    if written.is_err() {
-        return ExitCode::from(3);
-    }
-
-    ExitCode::from(exit_code(&outcome))
+    emit_outcome(&outcome, out)
 }
 
-fn handle_ring(request_line: &str, variant_str: &str, mut out: impl Write) -> ExitCode {
+fn handle_ring(request_line: &str, variant_str: &str, out: impl Write) -> ExitCode {
     let canvas = match decode_canvas(request_line.as_bytes()) {
         Ok(canvas) => canvas,
-        Err(refused) => {
-            let formatted = outcome_line(&refused);
-            let _ = writeln!(out, "{formatted}").and_then(|()| out.flush());
-            return ExitCode::from(exit_code(&refused));
-        }
+        Err(refused) => return emit_refusal(&refused, out),
     };
 
     let Ok(variant) = RingVariant::from_str(variant_str) else {
-        let _ = writeln!(
+        return usage_error(
             out,
-            "usage: aegis-forum-shell-gpui ring <request-line> <variant>"
+            "usage: aegis-forum-shell-gpui ring <request-line> <variant>",
         );
-        return ExitCode::from(64);
     };
 
     let outcome = run_ring_fixture(&canvas, variant, std::io::stdout());
-    let formatted = outcome_line(&outcome);
-    let written = writeln!(out, "{formatted}").and_then(|()| out.flush());
-    if written.is_err() {
-        return ExitCode::from(3);
-    }
-
-    ExitCode::from(exit_code(&outcome))
+    emit_outcome(&outcome, out)
 }
 
 #[cfg(feature = "timing")]
-fn handle_timing(request_line: &str, count_str: &str, mut out: impl Write) -> ExitCode {
+fn handle_timing(request_line: &str, count_str: &str, out: impl Write) -> ExitCode {
     let canvas = match decode_canvas(request_line.as_bytes()) {
         Ok(canvas) => canvas,
-        Err(refused) => {
-            let formatted = outcome_line(&refused);
-            let _ = writeln!(out, "{formatted}").and_then(|()| out.flush());
-            return ExitCode::from(exit_code(&refused));
-        }
+        Err(refused) => return emit_refusal(&refused, out),
     };
 
     let Ok(count) = count_str.parse::<usize>() else {
-        let _ = writeln!(
+        return usage_error(
             out,
-            "usage: aegis-forum-shell-gpui timing <request-line> <seeded-count>"
+            "usage: aegis-forum-shell-gpui timing <request-line> <seeded-count>",
         );
-        return ExitCode::from(64);
     };
 
     if !(1..=5000).contains(&count) {
-        let _ = writeln!(
+        return usage_error(
             out,
-            "usage: aegis-forum-shell-gpui timing <request-line> <seeded-count>"
+            "usage: aegis-forum-shell-gpui timing <request-line> <seeded-count>",
         );
-        return ExitCode::from(64);
     }
 
     let outcome = aegis_forum_shell_gpui::timing_fixture::run_timing_fixture(
@@ -136,13 +130,7 @@ fn handle_timing(request_line: &str, count_str: &str, mut out: impl Write) -> Ex
         count,
         std::io::stdout(),
     );
-    let formatted = outcome_line(&outcome);
-    let written = writeln!(out, "{formatted}").and_then(|()| out.flush());
-    if written.is_err() {
-        return ExitCode::from(3);
-    }
-
-    ExitCode::from(exit_code(&outcome))
+    emit_outcome(&outcome, out)
 }
 
 fn main() -> ExitCode {
