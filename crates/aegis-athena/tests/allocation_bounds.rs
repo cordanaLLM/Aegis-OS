@@ -150,11 +150,14 @@ fn an_escaped_payload_decodes_to_the_same_value() -> Fallible {
             .ok_or("an invalidated lifecycle justifies a trigger")?;
 
     let mut buffer = PayloadBuffer::new();
-    let plain = payload.encode_into(&mut buffer)?.to_owned();
-    let escaped = plain.replace("m05-fixture", "\\u006d05-fixture");
-    assert!(escaped.contains("\\u006d"));
-    assert_ne!(escaped, plain);
-    assert_eq!(PromotionTrigger::decode(&escaped)?, payload);
+    let plain = payload.encode_into(&mut buffer)?;
+    test_assertions::escaped_round_trip(
+        plain,
+        "m05-fixture",
+        "\\u006d05-fixture",
+        PromotionTrigger::decode,
+        &payload,
+    )?;
     Ok(())
 }
 
