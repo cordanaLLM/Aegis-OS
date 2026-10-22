@@ -14,7 +14,10 @@
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
 
-use std::path::{Path, PathBuf};
+#[path = "../../manifest_hygiene.rs"]
+mod manifest_hygiene;
+
+use manifest_hygiene::{dependency_table, read};
 
 /// This crate's package name, the start of its closure (D78).
 const PACKAGE: &str = "aegis-lictor";
@@ -32,82 +35,18 @@ const FORBIDDEN: [&str; 8] = [
     "memmap2",
 ];
 
-/// Returns the workspace root, two directories above this crate's manifest.
-fn workspace_root() -> Option<PathBuf> {
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    Some(manifest.parent()?.parent()?.to_path_buf())
-}
-
-/// Reads a workspace file, returning an empty string when it is missing.
-fn read(name: &str) -> String {
-    workspace_root()
-        .and_then(|root| std::fs::read_to_string(root.join(name)).ok())
-        .unwrap_or_default()
-}
-
-/// The member list is checked against this rather than against a literal
-/// count. A count has to be edited every time a milestone activates a crate,
-/// and hard-coding it in several crates at once is what made three of them
-/// fail when milestone M05 added two members. What actually needs holding is
-/// the invariant behind the count: every crate directory that has a manifest
-/// is a workspace member, and nothing else is.
-fn crate_directories_with_a_manifest() -> Vec<String> {
-    let Some(root) = workspace_root() else {
-        return Vec::new();
-    };
-    let Ok(entries) = std::fs::read_dir(root.join("crates")) else {
-        return Vec::new();
-    };
-    let mut found: Vec<String> = entries
-        .flatten()
-        .take(64)
-        .filter(|entry| entry.path().join("Cargo.toml").is_file())
-        .map(|entry| entry.file_name().to_string_lossy().into_owned())
-        .collect();
-    found.sort_unstable();
-    found
-}
-
-/// Returns the manifest's `[dependencies]` table, and only that table.
-///
-/// The check below is about what the crate *depends on*, not about which words
-/// appear in its manifest: the package description names the very libraries the
-/// crate says it does not use, and a whole-file substring search would fail on
-/// that sentence. Scoping the search to the dependency table is what makes the
-/// check mean what it says.
-fn dependency_table(manifest: &str) -> String {
-    let mut inside = false;
-    let mut out = String::new();
-    for line in manifest.lines().take(512) {
-        let text = line.trim();
-        if text.starts_with('[') {
-            inside = text == "[dependencies]" || text == "[dev-dependencies]";
-            continue;
-        }
-        if inside {
-            out.push_str(text);
-            out.push('\n');
-        }
-    }
-    out
-}
-
 // --- Positive -------------------------------------------------------------
 
 /// Positive: the workspace names this crate as a member.
 #[test]
 fn the_workspace_names_this_crate() {
-    let manifest = read("Cargo.toml");
-    assert!(!manifest.is_empty(), "the workspace manifest must exist");
-    assert!(manifest.contains("\"crates/aegis-lictor\""));
+    manifest_hygiene::assert_workspace_names_crate(PACKAGE);
 }
 
 /// Positive: the lock file carries an entry for it.
 #[test]
 fn the_lock_file_carries_an_entry() {
-    let lock = read("Cargo.lock");
-    assert!(!lock.is_empty(), "Cargo.lock must be committed");
-    assert!(lock.contains("name = \"aegis-lictor\""));
+    manifest_hygiene::assert_lock_carries_entry(PACKAGE);
 }
 
 /// Positive: the crate declares the two consumed-contract path dependencies
@@ -138,13 +77,7 @@ fn the_crate_declares_the_consumed_contract_dependencies() {
 /// Negative: the member list is written out, never globbed.
 #[test]
 fn the_member_list_is_written_out_and_not_globbed() {
-    let manifest = read("Cargo.toml");
-    for glob in ["crates/*", "crates/**", "\"*\""] {
-        assert!(
-            !manifest.contains(glob),
-            "the member list must be written out, not globbed with {glob}"
-        );
-    }
+    manifest_hygiene::assert_member_list_is_written_out_and_not_globbed();
 }
 
 /// Negative: the exit criterion's dependency half, asserted against the
@@ -201,10 +134,7 @@ fn the_crate_manifest_declares_no_kernel_or_bus_dependency() {
 /// Negative: milestone M07 ships libraries, so there is no binary target.
 #[test]
 fn the_crate_declares_no_binary_target() {
-    let manifest = read("crates/aegis-lictor/Cargo.toml");
-    assert!(!manifest.contains("[[bin]]"));
-    assert!(manifest.contains("[lib]"));
-    assert!(manifest.contains("publish = false"));
+    manifest_hygiene::assert_crate_declares_no_binary_target("crates/aegis-lictor/Cargo.toml");
 }
 
 /// Negative: this crate's own dependency closure resolves no multimedia or
@@ -218,13 +148,8 @@ fn the_crate_declares_no_binary_target() {
 /// sweep carried.
 #[test]
 fn the_lock_resolves_no_multimedia_or_async_crate() -> Result<(), String> {
-    let names = dependency_closure::own_closure(PACKAGE)?;
+    let names = dependency_closure::assert_closure_forbids(PACKAGE, &FORBIDDEN)?;
     assert!(names.contains(PACKAGE), "the closure starts at {PACKAGE}");
-    let found = dependency_closure::hits(&names, &FORBIDDEN);
-    assert!(
-        found.is_empty(),
-        "the closure of {PACKAGE} resolves {found:?}"
-    );
     Ok(())
 }
 
@@ -239,32 +164,11 @@ fn the_lock_resolves_no_multimedia_or_async_crate() -> Result<(), String> {
 /// without being named, and a named member cannot vanish from the tree.
 #[test]
 fn the_workspace_lists_every_crate_with_a_manifest() {
-    let manifest = read("Cargo.toml");
-    let members: Vec<String> = manifest
-        .lines()
-        .map(str::trim)
-        .filter(|line| line.starts_with("\"crates/"))
-        .map(|line| line.trim_matches(|c| c == '"' || c == ',').to_owned())
-        .collect();
-    let directories = crate_directories_with_a_manifest();
-    assert!(!directories.is_empty(), "crates/ must hold manifests");
-    assert_eq!(
-        members.len(),
-        directories.len(),
-        "members {members:?} against directories {directories:?}"
-    );
-    for name in &directories {
-        assert!(
-            members
-                .iter()
-                .any(|member| member == &format!("crates/{name}")),
-            "the member list must name {name}"
-        );
-    }
+    manifest_hygiene::assert_workspace_lists_every_crate_with_a_manifest();
 }
 
 /// Boundary: the crate inherits the workspace lints rather than restating them.
 #[test]
 fn the_crate_inherits_the_workspace_lints() {
-    dependency_closure::assert_inherits_workspace_lints("crates/aegis-lictor/Cargo.toml");
+    manifest_hygiene::assert_inherits_workspace_lints("crates/aegis-lictor/Cargo.toml");
 }

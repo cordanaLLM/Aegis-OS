@@ -10,48 +10,13 @@
 //! compositor or user-interface dependency, because it reaches none of them.
 //! Each is asserted here rather than left as prose.
 
-use std::path::{Path, PathBuf};
-
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
 
-/// Returns the workspace root, two directories above this crate's manifest.
-fn workspace_root() -> Option<PathBuf> {
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    Some(manifest.parent()?.parent()?.to_path_buf())
-}
+#[path = "../../manifest_hygiene.rs"]
+mod manifest_hygiene;
 
-/// Reads a workspace file, returning an empty string when it is missing.
-fn read(name: &str) -> String {
-    workspace_root()
-        .and_then(|root| std::fs::read_to_string(root.join(name)).ok())
-        .unwrap_or_default()
-}
-
-/// Returns every directory under `crates/` that carries a manifest, sorted.
-///
-/// The member list is checked against this rather than against a literal
-/// count. A count has to be edited every time a milestone activates a crate,
-/// and hard-coding it in several crates at once is what made three of them
-/// fail when milestone M05 added two members. What actually needs holding is
-/// the invariant behind the count: every crate directory that has a manifest
-/// is a workspace member, and nothing else is.
-fn crate_directories_with_a_manifest() -> Vec<String> {
-    let Some(root) = workspace_root() else {
-        return Vec::new();
-    };
-    let Ok(entries) = std::fs::read_dir(root.join("crates")) else {
-        return Vec::new();
-    };
-    let mut found: Vec<String> = entries
-        .flatten()
-        .take(64)
-        .filter(|entry| entry.path().join("Cargo.toml").is_file())
-        .map(|entry| entry.file_name().to_string_lossy().into_owned())
-        .collect();
-    found.sort_unstable();
-    found
-}
+use manifest_hygiene::read;
 
 // --- Positive -------------------------------------------------------------
 
@@ -73,10 +38,8 @@ fn the_workspace_names_this_crate_as_a_member() {
 /// Positive: the lock file carries an entry for this crate.
 #[test]
 fn the_lock_file_carries_an_entry_for_this_crate() {
-    let lock = read("Cargo.lock");
-    assert!(!lock.is_empty(), "Cargo.lock must be committed");
-    assert!(lock.contains("name = \"aegis-hestia\""));
-    assert!(lock.contains("name = \"aegis-vulcan\""));
+    manifest_hygiene::assert_lock_carries_entry("aegis-hestia");
+    manifest_hygiene::assert_lock_carries_entry("aegis-vulcan");
 }
 
 // --- Negative -------------------------------------------------------------
@@ -87,13 +50,7 @@ fn the_lock_file_carries_an_entry_for_this_crate() {
 /// manifest, which is exactly the bar `crates/README.md` sets against.
 #[test]
 fn the_member_list_is_written_out_and_not_globbed() {
-    let manifest = read("Cargo.toml");
-    for glob in ["crates/*", "crates/**", "\"*\""] {
-        assert!(
-            !manifest.contains(glob),
-            "the member list must be written out, not globbed with {glob}"
-        );
-    }
+    manifest_hygiene::assert_member_list_is_written_out_and_not_globbed();
 }
 
 /// Negative: this crate declares no store, compositor or interface dependency.
@@ -125,10 +82,7 @@ fn the_crate_manifest_declares_no_mapping_dependency() {
 /// Negative: milestone M17 ships a library, so there is no binary target.
 #[test]
 fn the_crate_declares_no_binary_target() {
-    let manifest = read("crates/aegis-hestia/Cargo.toml");
-    assert!(!manifest.contains("[[bin]]"));
-    assert!(manifest.contains("[lib]"));
-    assert!(manifest.contains("publish = false"));
+    manifest_hygiene::assert_crate_declares_no_binary_target("crates/aegis-hestia/Cargo.toml");
 }
 
 // --- Boundary -------------------------------------------------------------
@@ -142,28 +96,7 @@ fn the_crate_declares_no_binary_target() {
 /// without being named, and a named member cannot vanish from the tree.
 #[test]
 fn the_workspace_lists_every_crate_with_a_manifest() {
-    let manifest = read("Cargo.toml");
-    let members: Vec<String> = manifest
-        .lines()
-        .map(str::trim)
-        .filter(|line| line.starts_with("\"crates/"))
-        .map(|line| line.trim_matches(|c| c == '"' || c == ',').to_owned())
-        .collect();
-    let directories = crate_directories_with_a_manifest();
-    assert!(!directories.is_empty(), "crates/ must hold manifests");
-    assert_eq!(
-        members.len(),
-        directories.len(),
-        "members {members:?} against directories {directories:?}"
-    );
-    for name in &directories {
-        assert!(
-            members
-                .iter()
-                .any(|member| member == &format!("crates/{name}")),
-            "the member list must name {name}"
-        );
-    }
+    manifest_hygiene::assert_workspace_lists_every_crate_with_a_manifest();
 }
 
 /// Boundary: the crate inherits the workspace lints rather than restating them.
@@ -172,5 +105,5 @@ fn the_workspace_lists_every_crate_with_a_manifest() {
 /// root declares, `unsafe_code = "forbid"` among them.
 #[test]
 fn the_crate_inherits_the_workspace_lints() {
-    dependency_closure::assert_inherits_workspace_lints("crates/aegis-hestia/Cargo.toml");
+    manifest_hygiene::assert_inherits_workspace_lints("crates/aegis-hestia/Cargo.toml");
 }

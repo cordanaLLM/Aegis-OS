@@ -318,10 +318,19 @@ and its serde macro `impl_u64_bounded_serde!`, included by path into the
 contracts encoding modules of `aegis-calliope` and `aegis-lictor`.
 
 `manifest_hygiene.rs`, beside the crate directories, is not a crate either: it
-holds `crate_dir`, `read`, the bounded `sources` and `relative_sources` walkers,
-the comment-skipping `token_hits` scanner, and `assert_sweep_reads_sources`,
-included by path into the manifest-hygiene tests of `aegis-justitia`,
-`aegis-tellus-rapl`, `aegis-vesta-sandbox` and `aegis-vulcan-gpu`.
+holds `crate_dir`, `read`, `workspace_root`, `crate_directories_with_a_manifest`,
+`dependency_table`, `declared_dependencies`, the bounded `sources` and
+`relative_sources` walkers, the comment-skipping `token_hits` scanner, and the
+shared assertions `assert_sweep_reads_sources`, `assert_workspace_names_crate`,
+`assert_lock_carries_entry`, `assert_member_list_is_written_out_and_not_globbed`,
+`assert_workspace_lists_every_crate_with_a_manifest`,
+`assert_inherits_workspace_lints`,
+`assert_inherits_workspace_lints_and_toolchain` and
+`assert_crate_declares_no_binary_target`, included by path into the
+manifest-hygiene tests of `aegis-calliope`, `aegis-compositor`,
+`aegis-hephaestus`, `aegis-hestia`, `aegis-justitia`, `aegis-lictor`,
+`aegis-ludus`, `aegis-minerva`, `aegis-tellus-rapl`, `aegis-vesta`,
+`aegis-vesta-sandbox` and `aegis-vulcan-gpu`.
 
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
