@@ -20,6 +20,11 @@
 use std::io::Write;
 use std::process::ExitCode;
 
+#[path = "common/mod.rs"]
+mod common;
+
+use common::finish_readback;
+
 use aegis_forum_shell_gpui::fixture::BUTTON_LABEL;
 use aegis_forum_shell_gpui::judge::{judge_tree, line};
 use aegis_forum_shell_gpui::readback::{
@@ -74,13 +79,5 @@ fn main() -> ExitCode {
         }
     };
 
-    match async_io::block_on(run_readback(read_only, &mut out)) {
-        Ok(true) => ExitCode::SUCCESS,
-        Ok(false) => ExitCode::from(1),
-        Err(err) => {
-            let _ = writeln!(out, "ERROR {err}");
-            let _ = out.flush();
-            ExitCode::from(3)
-        }
-    }
+    finish_readback(async_io::block_on(run_readback(read_only, &mut out)), out)
 }
