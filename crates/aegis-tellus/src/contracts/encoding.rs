@@ -22,6 +22,10 @@
 //!   so an escaped field costs a transient copy bounded by
 //!   [`super::MAX_CONTRACT_PAYLOAD_BYTES`]. See `tests/allocation_bounds.rs`.
 
+#[macro_use]
+#[path = "../../../contract_encoding.rs"]
+mod contract_encoding;
+
 use core::fmt;
 
 use serde::de::{Error as DeError, SeqAccess, Unexpected, Visitor};
@@ -32,27 +36,6 @@ use crate::contracts::sci_query::{CandidateList, MAX_QUERY_CANDIDATES, RateEntry
 use crate::id::{CandidateId, CorrelationId, SliceName};
 use crate::power::Provenance;
 use crate::sci::{EnergyKwh, GridIntensity, SciRate, Seconds, Watts};
-
-/// A visitor that parses one string field through a validating constructor.
-struct Parsed<T> {
-    label: &'static str,
-    parse: fn(&str) -> Option<T>,
-}
-
-impl<T> Visitor<'_> for Parsed<T> {
-    type Value = T;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(self.label)
-    }
-
-    fn visit_str<E: DeError>(self, value: &str) -> Result<T, E> {
-        match (self.parse)(value) {
-            Some(parsed) => Ok(parsed),
-            None => Err(E::invalid_value(Unexpected::Str(value), &self)),
-        }
-    }
-}
 
 /// A visitor that parses one numeric field through a validating constructor.
 struct Quantity<T> {
@@ -97,53 +80,9 @@ impl<T> Visitor<'_> for Quantity<T> {
     }
 }
 
-impl serde::Serialize for CorrelationId {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(S::Error::custom)?;
-        serializer.serialize_str(text)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for CorrelationId {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
-            label: "a bounded correlation identifier",
-            parse: |text| Self::parse(text).ok(),
-        })
-    }
-}
-
-impl serde::Serialize for CandidateId {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(S::Error::custom)?;
-        serializer.serialize_str(text)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for CandidateId {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
-            label: "a bounded candidate identifier",
-            parse: |text| Self::parse(text).ok(),
-        })
-    }
-}
-
-impl serde::Serialize for SliceName {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(S::Error::custom)?;
-        serializer.serialize_str(text)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for SliceName {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
-            label: "a bounded cgroup slice name",
-            parse: |text| Self::parse(text).ok(),
-        })
-    }
-}
+impl_str_serde!(CorrelationId, "a bounded correlation identifier");
+impl_str_serde!(CandidateId, "a bounded candidate identifier");
+impl_str_serde!(SliceName, "a bounded cgroup slice name");
 
 impl serde::Serialize for Provenance {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -153,7 +92,7 @@ impl serde::Serialize for Provenance {
 
 impl<'de> serde::Deserialize<'de> for Provenance {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
+        deserializer.deserialize_str(contract_encoding::Parsed {
             label: "one of simulated, modelled or measured",
             parse: |text| Self::ALL.into_iter().find(|kind| kind.name() == text),
         })
@@ -235,6 +174,45 @@ impl<'de> serde::Deserialize<'de> for Seconds {
     }
 }
 
+fn collect_bounded_seq<'de, A, T, E>(
+    mut access: A,
+    expected: &E,
+    mut append: impl FnMut(T) -> Result<(), super::ContractError>,
+) -> Result<(), A::Error>
+where
+    A: SeqAccess<'de>,
+    T: serde::Deserialize<'de>,
+    E: Visitor<'de>,
+{
+    for _ in 0..MAX_QUERY_CANDIDATES {
+        let Some(item) = access.next_element::<T>()? else {
+            return Ok(());
+        };
+        append(item).map_err(A::Error::custom)?;
+    }
+    match access.next_element::<T>()? {
+        Some(_) => Err(A::Error::invalid_length(
+            MAX_QUERY_CANDIDATES.saturating_add(1),
+            expected,
+        )),
+        None => Ok(()),
+    }
+}
+
+fn serialize_indexed_seq<S: Serializer, T: serde::Serialize>(
+    len: usize,
+    serializer: S,
+    err_msg: &'static str,
+    get: impl Fn(usize) -> Option<T>,
+) -> Result<S::Ok, S::Error> {
+    let mut seq = serializer.serialize_seq(Some(len))?;
+    for index in 0..len {
+        let item = get(index).ok_or_else(|| S::Error::custom(err_msg))?;
+        seq.serialize_element(&item)?;
+    }
+    seq.end()
+}
+
 /// A visitor that reads a bounded sequence of candidate identifiers.
 struct CandidateSeq;
 
@@ -248,34 +226,21 @@ impl<'de> Visitor<'de> for CandidateSeq {
         )
     }
 
-    fn visit_seq<A: SeqAccess<'de>>(self, mut access: A) -> Result<CandidateList, A::Error> {
+    fn visit_seq<A: SeqAccess<'de>>(self, access: A) -> Result<CandidateList, A::Error> {
         let mut list = CandidateList::new();
-        for _ in 0..MAX_QUERY_CANDIDATES {
-            let Some(candidate) = access.next_element::<CandidateId>()? else {
-                return Ok(list);
-            };
-            list.push(candidate).map_err(A::Error::custom)?;
-        }
-        match access.next_element::<CandidateId>()? {
-            Some(_) => Err(A::Error::invalid_length(
-                MAX_QUERY_CANDIDATES.saturating_add(1),
-                &self,
-            )),
-            None => Ok(list),
-        }
+        collect_bounded_seq::<A, CandidateId, _>(access, &self, |item| list.push(item))?;
+        Ok(list)
     }
 }
 
 impl serde::Serialize for CandidateList {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(self.len()))?;
-        for index in 0..self.len() {
-            let candidate = self.get(index).ok_or_else(|| {
-                S::Error::custom("the candidate list reported a length it cannot produce")
-            })?;
-            seq.serialize_element(&candidate)?;
-        }
-        seq.end()
+        serialize_indexed_seq(
+            self.len(),
+            serializer,
+            "the candidate list reported a length it cannot produce",
+            |index| self.get(index),
+        )
     }
 }
 
@@ -295,34 +260,21 @@ impl<'de> Visitor<'de> for RateSeq {
         write!(formatter, "at most {MAX_QUERY_CANDIDATES} rate entries")
     }
 
-    fn visit_seq<A: SeqAccess<'de>>(self, mut access: A) -> Result<RateList, A::Error> {
+    fn visit_seq<A: SeqAccess<'de>>(self, access: A) -> Result<RateList, A::Error> {
         let mut list = RateList::new();
-        for _ in 0..MAX_QUERY_CANDIDATES {
-            let Some(entry) = access.next_element::<RateEntry>()? else {
-                return Ok(list);
-            };
-            list.push(entry).map_err(A::Error::custom)?;
-        }
-        match access.next_element::<RateEntry>()? {
-            Some(_) => Err(A::Error::invalid_length(
-                MAX_QUERY_CANDIDATES.saturating_add(1),
-                &self,
-            )),
-            None => Ok(list),
-        }
+        collect_bounded_seq::<A, RateEntry, _>(access, &self, |item| list.push(item))?;
+        Ok(list)
     }
 }
 
 impl serde::Serialize for RateList {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(self.len()))?;
-        for index in 0..self.len() {
-            let entry = self.get(index).ok_or_else(|| {
-                S::Error::custom("the rate list reported a length it cannot produce")
-            })?;
-            seq.serialize_element(&entry)?;
-        }
-        seq.end()
+        serialize_indexed_seq(
+            self.len(),
+            serializer,
+            "the rate list reported a length it cannot produce",
+            |index| self.get(index),
+        )
     }
 }
 

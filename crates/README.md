@@ -298,6 +298,15 @@ included by path into the test common modules of `aegis-calliope`,
 into the test common modules of `aegis-calliope`, `aegis-lictor` and
 `aegis-vesta`, each of which supplies its own contract types.
 
+`contract_encoding.rs` and `contract_encoding_u64.rs`, beside the crate
+directories, are not crates either: `contract_encoding.rs` holds the text
+field helpers (`Parsed`, `serialize_text` and `impl_str_serde!`), included by
+path into the contracts encoding modules of `aegis-calliope`, `aegis-hestia`,
+`aegis-justitia`, `aegis-lictor`, `aegis-tellus` and `aegis-vulcan`;
+`contract_encoding_u64.rs` holds the bounded integer field visitor `Bounded`
+and its serde macro `impl_u64_bounded_serde!`, included by path into the
+contracts encoding modules of `aegis-calliope` and `aegis-lictor`.
+
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2
 signing and no file-backed ledger sink. A signature field in a schema is a field
