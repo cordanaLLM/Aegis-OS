@@ -23,10 +23,14 @@
 //!   an unadmitted name is refused rather than carried -- which is the
 //!   scaffold's `0x34325641` defect made undecodable.
 
-use core::fmt;
+#[macro_use]
+#[path = "../../../contract_encoding.rs"]
+mod contract_encoding;
 
-use serde::de::{Error as DeError, Unexpected, Visitor};
-use serde::ser::Error as SerError;
+#[macro_use]
+#[path = "../../../contract_encoding_u64.rs"]
+mod contract_encoding_u64;
+
 use serde::{Deserializer, Serializer};
 
 use crate::dmabuf::PixelFormat;
@@ -34,132 +38,28 @@ use crate::id::{CorrelationId, Label};
 use crate::latency::{Quantum, SampleRate};
 use crate::rtprio::GrantedRtPrio;
 
-/// A visitor that parses one string field through a validating constructor.
-struct Parsed<T> {
-    label: &'static str,
-    parse: fn(&str) -> Option<T>,
-}
+impl_str_serde!(CorrelationId, "a bounded correlation identifier");
+impl_str_serde!(Label, "a bounded plugin, thread or stream label");
 
-impl<T> Visitor<'_> for Parsed<T> {
-    type Value = T;
+impl_u64_bounded_serde!(
+    GrantedRtPrio,
+    "a real-time priority the source authorises",
+    |value| u8::try_from(value).ok().and_then(|raw| Self::new(raw).ok())
+);
 
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(self.label)
-    }
+impl_u64_bounded_serde!(
+    Quantum,
+    "a graph quantum inside the declared range",
+    |value| u32::try_from(value)
+        .ok()
+        .and_then(|raw| Self::new(raw).ok())
+);
 
-    fn visit_str<E: DeError>(self, value: &str) -> Result<T, E> {
-        match (self.parse)(value) {
-            Some(parsed) => Ok(parsed),
-            None => Err(E::invalid_value(Unexpected::Str(value), &self)),
-        }
-    }
-}
-
-/// A visitor that parses one unsigned field through a validating constructor.
-struct Bounded<T> {
-    label: &'static str,
-    parse: fn(u64) -> Option<T>,
-}
-
-impl<T> Visitor<'_> for Bounded<T> {
-    type Value = T;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(self.label)
-    }
-
-    fn visit_u64<E: DeError>(self, value: u64) -> Result<T, E> {
-        match (self.parse)(value) {
-            Some(parsed) => Ok(parsed),
-            None => Err(E::invalid_value(Unexpected::Unsigned(value), &self)),
-        }
-    }
-}
-
-impl serde::Serialize for CorrelationId {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(S::Error::custom)?;
-        serializer.serialize_str(text)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for CorrelationId {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
-            label: "a bounded correlation identifier",
-            parse: |text| Self::parse(text).ok(),
-        })
-    }
-}
-
-impl serde::Serialize for Label {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(S::Error::custom)?;
-        serializer.serialize_str(text)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for Label {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
-            label: "a bounded plugin, thread or stream label",
-            parse: |text| Self::parse(text).ok(),
-        })
-    }
-}
-
-impl serde::Serialize for GrantedRtPrio {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_u64(u64::from(self.get()))
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for GrantedRtPrio {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_u64(Bounded {
-            label: "a real-time priority the source authorises",
-            parse: |value| u8::try_from(value).ok().and_then(|raw| Self::new(raw).ok()),
-        })
-    }
-}
-
-impl serde::Serialize for Quantum {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_u64(u64::from(self.get()))
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for Quantum {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_u64(Bounded {
-            label: "a graph quantum inside the declared range",
-            parse: |value| {
-                u32::try_from(value)
-                    .ok()
-                    .and_then(|raw| Self::new(raw).ok())
-            },
-        })
-    }
-}
-
-impl serde::Serialize for SampleRate {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_u64(u64::from(self.get()))
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for SampleRate {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_u64(Bounded {
-            label: "an admitted sample rate",
-            parse: |value| {
-                u32::try_from(value)
-                    .ok()
-                    .and_then(|raw| Self::new(raw).ok())
-            },
-        })
-    }
-}
+impl_u64_bounded_serde!(SampleRate, "an admitted sample rate", |value| {
+    u32::try_from(value)
+        .ok()
+        .and_then(|raw| Self::new(raw).ok())
+});
 
 impl serde::Serialize for PixelFormat {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -169,7 +69,7 @@ impl serde::Serialize for PixelFormat {
 
 impl<'de> serde::Deserialize<'de> for PixelFormat {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_str(Parsed {
+        deserializer.deserialize_str(contract_encoding::Parsed {
             label: "an admitted pixel format name",
             parse: Self::from_tag,
         })
