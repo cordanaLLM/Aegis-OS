@@ -146,3 +146,166 @@ pub fn assert_sweep_reads_sources(sources: &[(PathBuf, String)], expected: &[&st
         );
     }
 }
+
+/// Returns the workspace root, two directories above this crate's manifest.
+#[must_use]
+pub fn workspace_root() -> Option<PathBuf> {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    Some(manifest.parent()?.parent()?.to_path_buf())
+}
+
+/// Returns every directory under `crates/` that carries a `Cargo.toml` manifest, sorted.
+#[must_use]
+pub fn crate_directories_with_a_manifest() -> Vec<String> {
+    let Some(root) = workspace_root() else {
+        return Vec::new();
+    };
+    let Ok(entries) = std::fs::read_dir(root.join("crates")) else {
+        return Vec::new();
+    };
+    let mut found: Vec<String> = entries
+        .flatten()
+        .take(ENTRY_BOUND)
+        .filter(|entry| entry.path().join("Cargo.toml").is_file())
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .collect();
+    found.sort_unstable();
+    found
+}
+
+/// Returns the manifest's `[dependencies]` and `[dev-dependencies]` tables.
+#[must_use]
+pub fn dependency_table(manifest: &str) -> String {
+    let mut inside = false;
+    let mut out = String::new();
+    for line in manifest.lines().take(LINE_BOUND) {
+        let text = line.trim();
+        if text.starts_with('[') {
+            inside = text == "[dependencies]" || text == "[dev-dependencies]";
+            continue;
+        }
+        if inside {
+            out.push_str(text);
+            out.push('\n');
+        }
+    }
+    out
+}
+
+/// Returns the names the `[dependencies]` table declares, sorted and deduped.
+#[must_use]
+pub fn declared_dependencies(manifest: &str) -> Vec<String> {
+    let mut names: Vec<String> = Vec::new();
+    let mut inside = false;
+    for line in manifest.lines().take(LINE_BOUND) {
+        let line = line.trim();
+        if line.starts_with('[') {
+            inside = line == "[dependencies]";
+        } else if inside
+            && !line.is_empty()
+            && !line.starts_with('#')
+            && let Some((name, _)) = line.split_once(['=', '.'])
+        {
+            names.push(name.trim().to_owned());
+        }
+    }
+    names.sort_unstable();
+    names.dedup();
+    names
+}
+
+/// Asserts that the workspace manifest names `crate_name` as a member.
+#[track_caller]
+pub fn assert_workspace_names_crate(crate_name: &str) {
+    let manifest = read("Cargo.toml");
+    assert!(!manifest.is_empty(), "the workspace manifest must exist");
+    assert!(manifest.contains(&format!("\"crates/{crate_name}\"")));
+}
+
+/// Asserts that `Cargo.lock` exists and carries an entry for `package`.
+#[track_caller]
+pub fn assert_lock_carries_entry(package: &str) {
+    let lock = read("Cargo.lock");
+    assert!(!lock.is_empty(), "Cargo.lock must be committed");
+    let entry = format!("name = \"{package}\"");
+    assert!(lock.contains(&entry));
+}
+
+/// Asserts that the workspace member list is written out rather than globbed.
+#[track_caller]
+pub fn assert_member_list_is_written_out_and_not_globbed() {
+    let manifest = read("Cargo.toml");
+    for glob in ["crates/*", "crates/**", "\"*\""] {
+        assert!(
+            !manifest.contains(glob),
+            "the member list must be written out, not globbed with {glob}"
+        );
+    }
+}
+
+/// Asserts that the workspace manifest lists every crate directory with a manifest.
+#[track_caller]
+pub fn assert_workspace_lists_every_crate_with_a_manifest() {
+    let manifest = read("Cargo.toml");
+    let members: Vec<String> = manifest
+        .lines()
+        .take(LINE_BOUND)
+        .map(str::trim)
+        .filter(|line| line.starts_with("\"crates/"))
+        .map(|line| line.trim_matches(|c| c == '"' || c == ',').to_owned())
+        .collect();
+    let directories = crate_directories_with_a_manifest();
+    assert!(!directories.is_empty(), "crates/ must hold manifests");
+    assert_eq!(
+        members.len(),
+        directories.len(),
+        "members {members:?} against directories {directories:?}"
+    );
+    for name in &directories {
+        assert!(
+            members
+                .iter()
+                .any(|member| member == &format!("crates/{name}")),
+            "the member list must name {name}"
+        );
+    }
+}
+
+/// Asserts that a crate manifest inherits the workspace lints.
+#[track_caller]
+pub fn assert_inherits_workspace_lints(manifest_path: &str) {
+    let manifest = read(manifest_path);
+    assert!(manifest.contains("[lints]"));
+    assert!(manifest.contains("workspace = true"));
+    assert!(!manifest.contains("[lints.rust]"));
+    assert!(!manifest.contains("[lints.clippy]"));
+    let root = read("Cargo.toml");
+    assert!(root.contains("unsafe_code = \"forbid\""));
+}
+
+/// Asserts that a crate manifest inherits workspace lints and the pinned toolchain.
+#[track_caller]
+pub fn assert_inherits_workspace_lints_and_toolchain(manifest_path: &str) {
+    assert_inherits_workspace_lints(manifest_path);
+    let manifest = read(manifest_path);
+    assert!(manifest.contains("rust-version.workspace = true"));
+    let root = read("Cargo.toml");
+    assert!(
+        root.contains("rust-version = \"1.99.1\""),
+        "D111: the workspace rust-version is the rust-toolchain.toml pin"
+    );
+    let pinned = read("rust-toolchain.toml");
+    assert!(
+        pinned.contains("channel = \"1.99.1\""),
+        "M08 admits no new toolchain: the pin stays the one M02 admitted"
+    );
+}
+
+/// Asserts that a crate manifest declares a library target and no binary target.
+#[track_caller]
+pub fn assert_crate_declares_no_binary_target(manifest_path: &str) {
+    let manifest = read(manifest_path);
+    assert!(!manifest.contains("[[bin]]"));
+    assert!(manifest.contains("[lib]"));
+    assert!(manifest.contains("publish = false"));
+}
