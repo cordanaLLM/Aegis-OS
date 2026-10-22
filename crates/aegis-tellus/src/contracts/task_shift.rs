@@ -22,7 +22,7 @@
 use crate::contracts::graph::EdgeId;
 use crate::contracts::{
     ContractError, Correlation, PayloadBuffer, SchemaId, decode_text, decode_validated,
-    encode_into, ensure_edge,
+    encode_into, ensure_own_edge,
 };
 use crate::id::{CorrelationId, SliceName};
 use crate::sci::{DEFER_THRESHOLD_G_PER_KWH, GridIntensity, SciEngine};
@@ -96,12 +96,7 @@ impl TaskShiftDirective {
     /// the intensity the payload itself carries.
     pub fn validate(&self) -> Result<(), ContractError> {
         let correlation = self.correlation();
-        ensure_edge(self.edge, Self::EDGE, correlation, |c, found| {
-            ContractError::WrongEdge {
-                correlation: c,
-                found,
-            }
-        })?;
+        ensure_own_edge(self.edge, Self::EDGE, correlation)?;
         if self.defer != (self.intensity.get() > Self::THRESHOLD) {
             return Err(ContractError::Malformed { correlation });
         }

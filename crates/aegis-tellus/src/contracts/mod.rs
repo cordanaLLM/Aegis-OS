@@ -127,7 +127,8 @@ pub type Correlation = contract_scaffold::Correlation<SchemaId, CorrelationId>;
 /// A fixed buffer holding one encoded payload.
 pub type PayloadBuffer = contract_scaffold::PayloadBuffer<MAX_CONTRACT_PAYLOAD_BYTES>;
 
-pub(crate) use contract_scaffold::{decode_validated, ensure_edge};
+pub(crate) use contract_scaffold::decode_validated;
+use contract_scaffold::ensure_edge;
 
 define_contract_error! {
     SchemaId, CorrelationId;
@@ -173,3 +174,21 @@ scaffold_contract!(
     MAX_CONTRACT_PAYLOAD_BYTES,
     ContractError
 );
+
+/// Validates that an edge matches the expected edge for a P13 contract.
+///
+/// # Errors
+///
+/// Returns [`ContractError::WrongEdge`] if `found != expected`.
+pub(crate) fn ensure_own_edge(
+    found: graph::EdgeId,
+    expected: graph::EdgeId,
+    correlation: Correlation,
+) -> Result<(), ContractError> {
+    ensure_edge(found, expected, correlation, |c, found| {
+        ContractError::WrongEdge {
+            correlation: c,
+            found,
+        }
+    })
+}
