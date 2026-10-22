@@ -25,6 +25,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use core::mem::size_of;
 
 use aegis_hephaestus::{
@@ -88,17 +91,11 @@ fn planning_at_the_bound_changes_no_storage() -> Fallible {
 #[test]
 fn encoding_writes_into_the_callers_buffer() -> Fallible {
     let descriptor = scaffold_viewport()?;
-    let mut buffer = PayloadBuffer::new();
-    let written = descriptor.encode_into(&mut buffer)?.len();
-    assert!(written > 0);
-    assert!(written <= MAX_CONTRACT_PAYLOAD_BYTES);
-    assert_eq!(size_of_val(&buffer), size_of::<PayloadBuffer>());
-    assert_eq!(buffer.len(), written);
-    assert_eq!(buffer.as_bytes().len(), written);
-    assert_eq!(buffer.as_str().map(str::len), Some(written));
-    assert!(!buffer.is_empty());
-    assert_eq!(PayloadBuffer::default().len(), 0);
-    assert_eq!(PayloadBuffer::new().as_str(), Some(""));
+    test_assertions::assert_encoding_writes_into_payload_buffer!(
+        PayloadBuffer,
+        |buffer| descriptor.encode_into(buffer).map(str::len),
+        MAX_CONTRACT_PAYLOAD_BYTES,
+    )?;
     Ok(())
 }
 
@@ -126,11 +123,10 @@ fn an_escaped_payload_still_decodes_into_an_inline_value() -> Fallible {
 #[test]
 fn the_payload_stays_inside_the_contract_bound() -> Fallible {
     let text = encoded_viewport(&scaffold_viewport()?)?;
-    assert!(text.len() < MAX_CONTRACT_PAYLOAD_BYTES);
-    assert!(text.len().saturating_mul(2) < MAX_CONTRACT_PAYLOAD_BYTES);
-    assert_eq!(
+    test_assertions::assert_payload_inside_contract_bound(
+        text.len(),
+        MAX_CONTRACT_PAYLOAD_BYTES,
         size_of::<PayloadBuffer>(),
-        MAX_CONTRACT_PAYLOAD_BYTES + size_of::<usize>()
     );
     Ok(())
 }

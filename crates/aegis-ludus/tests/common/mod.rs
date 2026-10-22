@@ -140,6 +140,4 @@ pub fn encoded_receipt(value: &TransactionReceipt) -> Result<String, Box<dyn std
 mod source_effects;
 
 #[allow(unused_imports)]
-pub use source_effects::{
-    LINE_BOUND, WALK_BOUND, hits, rust_sources, scan_sources, scan_text, source_root,
-};
+pub use source_effects::*;

@@ -78,16 +78,11 @@ const NOT_WATCHED: [&str; 3] = [
 /// Positive: the sweep reads the crate's sources, and reads several of them.
 #[test]
 fn the_sweep_reads_the_whole_crate() -> Fallible {
-    let sources = common::rust_sources(&common::source_root())?;
-    assert!(
-        sources.len() >= 10,
-        "the sweep read only {} sources; it is reading nothing, not finding nothing",
-        sources.len()
-    );
-    assert!(sources.iter().any(|(name, _)| name == "lib.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "launch.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "decision.rs"));
-    Ok(())
+    common::assert_sweep_reads_sources(
+        &common::source_root(),
+        10,
+        &["lib.rs", "launch.rs", "decision.rs"],
+    )
 }
 
 // --- Negative -------------------------------------------------------------
@@ -129,12 +124,7 @@ fn the_sweep_detects_a_planted_spelling() {
 /// duplicate, so the count in the documentation is the count that is swept.
 #[test]
 fn the_watched_list_is_its_recorded_length() {
-    assert_eq!(WATCHED.len(), 12);
-    let mut names = WATCHED.to_vec();
-    names.sort_unstable();
-    names.dedup();
-    assert_eq!(names.len(), 12);
-    assert!(names.iter().all(|needle| !needle.is_empty()));
+    common::assert_watched_list_exact(&WATCHED, 12);
 }
 
 /// Boundary: the register's own names are outside the list, and the library
@@ -160,10 +150,5 @@ fn the_register_names_are_deliberately_not_watched() -> Fallible {
 #[test]
 fn a_comment_naming_a_spelling_is_not_a_finding() {
     let comment = "//! no steamworks:: crate, no bindgen build.rs, no libsteam_api";
-    assert!(comment.trim().starts_with("//"));
-    assert!(WATCHED.iter().any(|needle| comment.contains(needle)));
-    assert_eq!(
-        common::scan_text("lib.rs", comment, &WATCHED),
-        [] as [std::string::String; 0]
-    );
+    common::assert_comment_naming_identifier_is_not_finding(comment, &WATCHED);
 }

@@ -151,24 +151,14 @@ fn the_sweep_detects_a_planted_identifier() {
 /// duplicate, so the count in the documentation is the count that is swept.
 #[test]
 fn the_watched_list_is_its_recorded_length() {
-    assert_eq!(WATCHED.len(), 28);
-    let mut names = WATCHED.to_vec();
-    names.sort_unstable();
-    names.dedup();
-    assert_eq!(names.len(), 28);
-    assert!(names.iter().all(|needle| !needle.is_empty()));
+    common::assert_watched_list_exact(&WATCHED, 28);
 }
 
 /// Boundary: a comment naming a watched identifier is not a finding.
 #[test]
 fn a_comment_naming_an_identifier_is_not_a_finding() {
     let comment = "//! no smithay::, no wlroots::, no zenoh:: session and no Duration:: sleep";
-    assert!(comment.trim().starts_with("//"));
-    assert!(WATCHED.iter().any(|needle| comment.contains(needle)));
-    assert_eq!(
-        common::scan_text("lib.rs", comment, &WATCHED),
-        [] as [std::string::String; 0]
-    );
+    common::assert_comment_naming_identifier_is_not_finding(comment, &WATCHED);
 }
 
 /// Boundary: the recorded prose spellings are deliberately outside the list,

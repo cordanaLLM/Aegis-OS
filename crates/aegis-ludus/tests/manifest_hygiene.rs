@@ -37,10 +37,15 @@ fn the_lock_file_carries_an_entry_for_this_crate() {
 fn the_crate_declares_the_shared_identifier_crate() {
     let manifest = read("crates/aegis-ludus/Cargo.toml");
     assert!(!manifest.is_empty(), "the crate manifest must exist");
-    assert!(manifest.contains("aegis-justitia = { path = \"../aegis-justitia\" }"));
-    for expected in ["serde", "serde_json", "thiserror"] {
-        assert!(manifest.contains(expected));
-    }
+    manifest_hygiene::assert_manifest_contains(
+        &manifest,
+        &[
+            "aegis-justitia = { path = \"../aegis-justitia\" }",
+            "serde",
+            "serde_json",
+            "thiserror",
+        ],
+    );
 }
 
 // --- Negative -------------------------------------------------------------
@@ -61,39 +66,29 @@ fn the_member_list_is_written_out_and_not_globbed() {
 /// claim.
 #[test]
 fn the_crate_manifest_declares_no_excluded_dependency() {
+    manifest_hygiene::assert_no_excluded_dependencies(
+        "crates/aegis-ludus/Cargo.toml",
+        &[
+            "steamworks",
+            "steamworks-rs",
+            "steamworks-sys",
+            "bindgen",
+            "cc",
+            "discord-rich-presence",
+            "discord-sdk",
+            "tss-esapi",
+            "tpm2-tss",
+            "ctap-hid-fido2",
+            "authenticator",
+            "pipewire",
+            "wayland-client",
+            "drm",
+            "tokio",
+            "libc",
+        ],
+        "is excluded from milestone M08",
+    );
     let manifest = read("crates/aegis-ludus/Cargo.toml");
-    assert!(!manifest.is_empty(), "the crate manifest must exist");
-    let declarations: Vec<&str> = manifest
-        .lines()
-        .map(str::trim)
-        .filter(|line| line.contains(" = ") || line.ends_with(".workspace = true"))
-        .collect();
-    for excluded in [
-        "steamworks",
-        "steamworks-rs",
-        "steamworks-sys",
-        "bindgen",
-        "cc",
-        "discord-rich-presence",
-        "discord-sdk",
-        "tss-esapi",
-        "tpm2-tss",
-        "ctap-hid-fido2",
-        "authenticator",
-        "pipewire",
-        "wayland-client",
-        "drm",
-        "tokio",
-        "libc",
-    ] {
-        assert!(
-            !declarations
-                .iter()
-                .any(|line| line.starts_with(&format!("{excluded} "))
-                    || line.starts_with(&format!("{excluded}."))),
-            "{excluded} is excluded from milestone M08"
-        );
-    }
     assert!(
         !manifest.contains("[build-dependencies]"),
         "a build script is how a binding generator would arrive"

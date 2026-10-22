@@ -101,12 +101,7 @@ fn the_sweep_detects_a_planted_identifier() {
 /// duplicate, so the count in the documentation is the count that is swept.
 #[test]
 fn the_watched_list_is_its_recorded_length() {
-    assert_eq!(WATCHED.len(), 22);
-    let mut names = WATCHED.to_vec();
-    names.sort_unstable();
-    names.dedup();
-    assert_eq!(names.len(), 22);
-    assert!(names.iter().all(|needle| !needle.is_empty()));
+    common::assert_watched_list_exact(&WATCHED, 22);
 }
 
 /// Boundary: a comment naming a watched identifier is not a finding.

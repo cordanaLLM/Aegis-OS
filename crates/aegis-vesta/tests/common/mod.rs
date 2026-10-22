@@ -179,4 +179,4 @@ pub fn other_edge(edge: EdgeId) -> EdgeId {
 mod source_effects;
 
 #[allow(unused_imports)]
-pub use source_effects::{LINE_BOUND, WALK_BOUND, hits, rust_sources, scan_sources, scan_text};
+pub use source_effects::*;

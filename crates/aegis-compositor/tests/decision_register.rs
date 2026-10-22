@@ -24,6 +24,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_compositor::{
     AdmittedBackend, COMPOSITOR_LIBRARY_CHECK, Citation, ClaimSource, ClaimStatus,
     CompositorImplementation, D08_COMPOSITOR_IMPLEMENTATION, DecisionRecord, DecisionState,
@@ -228,9 +231,7 @@ fn every_recorded_claim_is_complete() {
         assert_ne!(row.summary, "");
         assert_ne!(row.settled_by, "");
         let source: ClaimSource = row.source;
-        assert!(source.export.starts_with("export-"));
-        assert_eq!(source.sha256_prefix.len(), 12);
-        assert!(source.sha256_prefix.chars().all(|c| c.is_ascii_hexdigit()));
+        test_assertions::assert_claim_source(source.export, source.sha256_prefix);
     }
 }
 
