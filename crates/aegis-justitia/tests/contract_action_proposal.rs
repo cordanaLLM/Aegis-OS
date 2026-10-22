@@ -17,7 +17,10 @@ use aegis_justitia::{
     TargetResource, UnixSeconds,
 };
 
-use common::{CORRELATION, Fallible, encoded, filler, proposal, render, seal, tamper};
+use common::{
+    CORRELATION, Fallible, assert_action_proposal_over_bound_refused, encoded, filler, proposal,
+    render, seal, tamper,
+};
 
 /// The exact payload the fixture proposal encodes to.
 ///
@@ -344,12 +347,5 @@ fn one_byte_over_the_payload_bound_is_refused() {
         "at the bound the payload is parsed, and refused on its content"
     );
 
-    let over_bound = filler(MAX_CONTRACT_PAYLOAD_BYTES.saturating_add(1));
-    assert_eq!(
-        ActionProposal::decode(&over_bound),
-        Err(ContractError::PayloadTooLong {
-            correlation: Correlation::new(SchemaId::ActionProposal, None),
-            max: MAX_CONTRACT_PAYLOAD_BYTES
-        })
-    );
+    assert_action_proposal_over_bound_refused();
 }

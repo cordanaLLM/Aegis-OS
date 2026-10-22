@@ -171,51 +171,8 @@ fn the_toolchain_pin_is_an_exact_version() {
 /// else is -- is what is held here.
 #[test]
 fn the_workspace_activates_only_the_promoted_crates() {
-    let root = read("Cargo.toml").unwrap_or_default();
-    assert!(!root.is_empty(), "the workspace root manifest must exist");
-    let members: Vec<String> = root
-        .lines()
-        .map(str::trim)
-        .filter(|line| line.starts_with("\"crates/"))
-        .map(|line| line.trim_matches(|c| c == '"' || c == ',').to_owned())
-        .collect();
-    let directories = crate_directories_with_a_manifest();
-    assert!(!directories.is_empty(), "crates/ must hold manifests");
-    assert_eq!(
-        members.len(),
-        directories.len(),
-        "the member list must name only the activated crates, found {members:?}"
-    );
-    for promoted in &directories {
-        assert!(
-            members
-                .iter()
-                .any(|member| member == &format!("crates/{promoted}")),
-            "the member list must name {promoted}"
-        );
-    }
-    assert!(
-        !root.contains("crates/*"),
-        "the member list must be written out, never globbed"
-    );
-}
-
-/// Returns every directory under `crates/` that carries a manifest, sorted.
-fn crate_directories_with_a_manifest() -> Vec<String> {
-    let Some(root) = workspace_root() else {
-        return Vec::new();
-    };
-    let Ok(entries) = std::fs::read_dir(root.join("crates")) else {
-        return Vec::new();
-    };
-    let mut found: Vec<String> = entries
-        .flatten()
-        .take(64)
-        .filter(|entry| entry.path().join("Cargo.toml").is_file())
-        .map(|entry| entry.file_name().to_string_lossy().into_owned())
-        .collect();
-    found.sort_unstable();
-    found
+    manifest_hygiene::assert_workspace_lists_every_crate_with_a_manifest();
+    manifest_hygiene::assert_member_list_is_written_out_and_not_globbed();
 }
 
 /// The workspace's own package metadata is pinned.

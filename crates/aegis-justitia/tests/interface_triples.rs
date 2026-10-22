@@ -9,14 +9,16 @@ mod common;
 use aegis_justitia::{
     ActionIntent, ActionType, AgentId, ApprovalTicket, CheckerId, CheckerSet, Clock, ClockError,
     Deadline, DeadlineError, DeadlineStatus, Digest32, FixedClock, HaltReason, HashError, Identity,
-    IdentityError, InMemorySink, IntentError, IntentId, IntentSpec, IoDeadline, JustitiaError,
-    Killswitch, KillswitchState, LedgerSink, MAX_IDENTITY_LEN, MAX_SIGNATURE_BYTES, MAX_TARGET_LEN,
-    MakerId, MonotonicGuard, OversightClass, OversightError, PendingRegistry, RecordStatus,
-    RegistryError, RequestId, RequestState, RequiredApproval, RiskTier, SignError, Signature,
-    SignerBinding, SignerKeyId, SinkError, TargetResource, Ttl, UnavailableSink, UnixSeconds,
+    IdentityError, InMemorySink, IntentError, IntentId, IntentSpec, IoDeadline, Killswitch,
+    KillswitchState, LedgerSink, MAX_IDENTITY_LEN, MAX_SIGNATURE_BYTES, MAX_TARGET_LEN, MakerId,
+    MonotonicGuard, OversightClass, OversightError, PendingRegistry, RecordStatus, RegistryError,
+    RequestId, RequestState, RequiredApproval, RiskTier, SignError, Signature, SignerBinding,
+    SignerKeyId, SinkError, TargetResource, Ttl, UnavailableSink, UnixSeconds,
 };
 
-use common::{FIXTURE_AUDIT_BOUND, Fallible, FixtureError, FixtureSigner, io_deadline};
+use common::{
+    FIXTURE_AUDIT_BOUND, Fallible, FixtureError, FixtureSigner, io_deadline, record_draft,
+};
 
 // --- Identity -------------------------------------------------------------
 
@@ -432,6 +434,19 @@ fn fixture_ticket(id: &str, ttl_secs: u32) -> Fallible<ApprovalTicket> {
     ))
 }
 
+/// Builds a registry populated with one inserted ticket.
+fn fixture_registry_with_ticket(
+    bound: usize,
+    request_id: &str,
+    ttl: u32,
+    now: UnixSeconds,
+) -> Fallible<(PendingRegistry, ApprovalTicket)> {
+    let ticket = fixture_ticket(request_id, ttl)?;
+    let mut registry = PendingRegistry::with_bound(bound);
+    registry.insert(ticket, now)?;
+    Ok((registry, ticket))
+}
+
 /// The registry holds, bounds and labels: a live duplicate is a duplicate and a
 /// distinct request past the bound is full.
 #[test]
@@ -469,10 +484,8 @@ fn pending_registry_positive_negative_and_boundary() -> Fallible<()> {
 #[test]
 fn pending_registry_decision_reclaims_the_bound() -> Fallible<()> {
     let now = UnixSeconds::new(1_000);
-    let first = fixture_ticket("request-1", 60)?;
+    let (mut registry, first) = fixture_registry_with_ticket(1, "request-1", 60, now)?;
     let second = fixture_ticket("request-2", 60)?;
-    let mut registry = PendingRegistry::with_bound(1);
-    registry.insert(first, now)?;
 
     registry.mark_decided(first.request_id(), RecordStatus::Approved)?;
     assert_eq!(
@@ -543,34 +556,26 @@ fn registry_reclamation_positive_negative_and_boundary() -> Fallible<()> {
 
 // --- Sinks -----------------------------------------------------------------
 
+/// Builds a fixture audit ledger whose in-memory sink holds `sink_bound` records.
+fn fixture_ledger(
+    sink_bound: usize,
+) -> Fallible<aegis_justitia::Sha256Ledger<FixtureSigner, InMemorySink>> {
+    Ok(aegis_justitia::AuditLedger::with_bound(
+        SignerBinding::Bound(FixtureSigner::new()?),
+        InMemorySink::with_bound(sink_bound),
+        io_deadline(),
+        FIXTURE_AUDIT_BOUND,
+    ))
+}
+
 /// The in-memory sink is bounded, refuses a record past its bound, refuses a
 /// deadline shorter than its service time, and never reallocates.
 #[test]
 fn in_memory_sink_positive_negative_and_boundary() -> Fallible<()> {
-    let mut ledger: aegis_justitia::AuditLedger<
-        aegis_justitia::Sha256Hasher,
-        FixtureSigner,
-        InMemorySink,
-    > = aegis_justitia::AuditLedger::with_bound(
-        SignerBinding::Bound(FixtureSigner::new()?),
-        InMemorySink::with_bound(1),
-        io_deadline(),
-        FIXTURE_AUDIT_BOUND,
-    );
-    let draft = |id: &str, at: u64| -> Result<aegis_justitia::RecordDraft, JustitiaError> {
-        Ok(aegis_justitia::RecordDraft {
-            intent_id: IntentId::parse(id)?,
-            agent: AgentId::parse("agent-01")?,
-            action_type: ActionType::FileModification,
-            status: RecordStatus::Approved,
-            block_reason: None,
-            killswitch: KillswitchState::Armed,
-            at: UnixSeconds::new(at),
-        })
-    };
-    ledger.append(draft("intent-1", 100)?)?;
+    let mut ledger = fixture_ledger(1)?;
+    ledger.append(record_draft("intent-1", 100)?)?;
     assert_eq!(
-        ledger.append(draft("intent-2", 101)?),
+        ledger.append(record_draft("intent-2", 101)?),
         Err(aegis_justitia::LedgerError::Sink(SinkError::Full {
             max: 1
         })),
@@ -646,26 +651,9 @@ fn unavailable_sink_positive_negative_and_boundary() -> Fallible<()> {
 /// A chain longer than its scalar bound is refused before it is walked.
 #[test]
 fn verify_chain_bound_positive_negative_and_boundary() -> Fallible<()> {
-    let mut ledger: aegis_justitia::AuditLedger<
-        aegis_justitia::Sha256Hasher,
-        FixtureSigner,
-        InMemorySink,
-    > = aegis_justitia::AuditLedger::with_bound(
-        SignerBinding::Bound(FixtureSigner::new()?),
-        InMemorySink::with_bound(FIXTURE_AUDIT_BOUND),
-        io_deadline(),
-        FIXTURE_AUDIT_BOUND,
-    );
+    let mut ledger = fixture_ledger(FIXTURE_AUDIT_BOUND)?;
     for step in 0u64..3 {
-        ledger.append(aegis_justitia::RecordDraft {
-            intent_id: IntentId::parse("intent-bound")?,
-            agent: AgentId::parse("agent-01")?,
-            action_type: ActionType::FileModification,
-            status: RecordStatus::Approved,
-            block_reason: None,
-            killswitch: KillswitchState::Armed,
-            at: UnixSeconds::new(step.saturating_add(100)),
-        })?;
+        ledger.append(record_draft("intent-bound", step.saturating_add(100))?)?;
     }
     assert_eq!(ledger.len(), 3);
     aegis_justitia::verify_chain_bounded::<aegis_justitia::Sha256Hasher>(ledger.records(), 3)?;
