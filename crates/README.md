@@ -312,10 +312,11 @@ it holds the shared contract scaffolding (`Correlation`, `PayloadBuffer`,
 `define_contract_error!` and `scaffold_contract!`), included by path into the
 contracts modules of `aegis-athena`, `aegis-calliope`, `aegis-hephaestus`,
 `aegis-hestia`, `aegis-justitia`, `aegis-lictor`, `aegis-ludus`,
-`aegis-minerva`, `aegis-tellus`, `aegis-vesta` and `aegis-vulcan`. Its
-`scaffold_edge_contract!` declares the whole contract surface of a crate
-whose only own refusal is `WrongEdge`, as in `aegis-calliope` and
-`aegis-vesta`.
+`aegis-minerva`, `aegis-tellus`, `aegis-vesta` and `aegis-vulcan`.
+`contract_edge_scaffold.rs` beside it holds `scaffold_edge_contract!`, which
+declares the whole contract surface of a crate whose only own refusal is
+`WrongEdge`; only `aegis-calliope` and `aegis-vesta` include it, so no other
+crate's public surface carries that variant.
 
 Deliberately outside `aegis-justitia` at this milestone: every transport. There
 is no D-Bus connection, no socket, no eBPF compilation or verifier load, no TPM2

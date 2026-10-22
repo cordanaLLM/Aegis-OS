@@ -97,4 +97,8 @@ impl SchemaId {
 #[path = "../../../contract_scaffold.rs"]
 mod contract_scaffold;
 
+#[macro_use]
+#[path = "../../../contract_edge_scaffold.rs"]
+mod contract_edge_scaffold;
+
 scaffold_edge_contract!(SchemaId, CorrelationId, MAX_CONTRACT_PAYLOAD_BYTES);

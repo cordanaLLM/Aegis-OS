@@ -17,8 +17,6 @@
 //!   [`classify`], [`decode_text`], [`encode_into`].
 //! - [`define_contract_error!`]: macro defining the common refusal variants
 //!   and their correlation projection.
-//! - [`scaffold_edge_contract!`]: macro scaffolding contract boilerplate and
-//!   refusals for contracts carrying only a `WrongEdge` refusal variant.
 //! - Contract validation helpers: [`ensure_edge`], [`decode_validated`].
 
 #![allow(dead_code)]
@@ -430,36 +428,5 @@ macro_rules! scaffold_contract {
                 self.name()
             }
         }
-    };
-}
-
-/// Scaffolds contract boilerplate and refusal enum for twin contracts whose
-/// only extra refusal variant is `WrongEdge`.
-// Crates that include this file but declare their own refusals leave it unused.
-#[allow(unused_macros)]
-macro_rules! scaffold_edge_contract {
-    ($schema:ident, $id:ident, $max_bytes:ident) => {
-        /// What a refusal is about: the contract, and the payload when it could be read.
-        pub type Correlation = contract_scaffold::Correlation<$schema, $id>;
-
-        /// A fixed buffer holding one encoded contract payload.
-        pub type PayloadBuffer = contract_scaffold::PayloadBuffer<$max_bytes>;
-
-        define_contract_error! {
-            $schema, $id;
-            /// Reasons a contract payload is refused.
-            ///
-            /// Every variant carries its [`Correlation`], so no refusal is anonymous.
-            pub enum ContractError {
-                /// The payload travels on an edge this schema does not carry.
-                #[error("{correlation}: this schema does not travel on the edge the payload names")]
-                WrongEdge {
-                    /// What the refusal is about.
-                    correlation: Correlation,
-                },
-            }
-        }
-
-        scaffold_contract!($schema, $id, $max_bytes, ContractError);
     };
 }
