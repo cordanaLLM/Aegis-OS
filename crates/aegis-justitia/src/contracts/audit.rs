@@ -36,7 +36,8 @@
 use crate::contracts::encoding::OversightSignature;
 use crate::contracts::graph::EdgeId;
 use crate::contracts::{
-    ContractError, Correlation, PayloadBuffer, SchemaId, decode_text, encode_into,
+    ContractError, Correlation, PayloadBuffer, SchemaId, check_edge, decode_text, decode_validated,
+    encode_into,
 };
 use crate::identity::{AgentId, EventId, Identity};
 use crate::ledger::hash::{Digest32, HashAlgorithm};
@@ -131,9 +132,7 @@ impl SignedAuditRecord {
     /// carries no seal or an empty one.
     pub fn validate(&self) -> Result<(), ContractError> {
         let correlation = self.correlation();
-        if self.edge != Self::EDGE {
-            return Err(ContractError::Malformed { correlation });
-        }
+        check_edge(self.edge, Self::EDGE, correlation)?;
         self.validate_link(correlation)?;
         self.validate_reason(correlation)?;
         match self.oversight_signature {
@@ -183,8 +182,6 @@ impl SignedAuditRecord {
     /// contract version, [`ContractError::PayloadTooLong`] past the byte bound,
     /// and otherwise whatever [`Self::validate`] refuses.
     pub fn decode(text: &str) -> Result<Self, ContractError> {
-        let decoded: Self = decode_text(Self::SCHEMA, text)?;
-        decoded.validate()?;
-        Ok(decoded)
+        decode_validated(decode_text(Self::SCHEMA, text), Self::validate)
     }
 }

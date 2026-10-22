@@ -27,7 +27,8 @@
 use crate::contracts::encoding::OversightSignature;
 use crate::contracts::graph::{EdgeId, GateDirection};
 use crate::contracts::{
-    ContractError, Correlation, PayloadBuffer, SchemaId, decode_text, encode_into,
+    ContractError, Correlation, PayloadBuffer, SchemaId, check_edge, decode_text, decode_validated,
+    encode_into,
 };
 use crate::identity::{AgentId, Identity, MakerId, TargetResource};
 use crate::ledger::hash::Digest32;
@@ -102,9 +103,7 @@ impl ActionProposal {
     /// carries no seal or an empty one.
     pub fn validate(&self) -> Result<(), ContractError> {
         let correlation = self.correlation();
-        if self.edge != Self::EDGE {
-            return Err(ContractError::Malformed { correlation });
-        }
+        check_edge(self.edge, Self::EDGE, correlation)?;
         match self.signature {
             Some(seal) if !seal.is_empty() => Ok(()),
             _ => Err(ContractError::Unsigned { correlation }),
@@ -131,8 +130,6 @@ impl ActionProposal {
     /// schema refuses, [`ContractError::PayloadTooLong`] past the byte bound,
     /// and [`ContractError::Unsigned`] for an unsealed proposal.
     pub fn decode(text: &str) -> Result<Self, ContractError> {
-        let decoded: Self = decode_text(Self::SCHEMA, text)?;
-        decoded.validate()?;
-        Ok(decoded)
+        decode_validated(decode_text(Self::SCHEMA, text), Self::validate)
     }
 }
