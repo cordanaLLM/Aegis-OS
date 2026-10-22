@@ -30,7 +30,7 @@
 use crate::contracts::graph::EdgeId;
 use crate::contracts::{
     ContractError, Correlation, PayloadBuffer, SchemaId, decode_text, decode_validated,
-    encode_into, ensure_edge,
+    encode_into, ensure_own_edge,
 };
 use crate::id::{CandidateId, CorrelationId};
 use crate::sci::{EnergyKwh, GridIntensity, SciRate};
@@ -205,6 +205,21 @@ pub struct CandidateSciQuery {
     pub functional_units: f64,
 }
 
+/// Shared invariants of the query and the response: the edge of record and a
+/// non-empty subject list.
+fn validate_candidate_exchange(
+    edge: EdgeId,
+    expected: EdgeId,
+    correlation: Correlation,
+    is_empty: bool,
+) -> Result<(), ContractError> {
+    ensure_own_edge(edge, expected, correlation)?;
+    if is_empty {
+        return Err(ContractError::EmptyCandidateList { correlation });
+    }
+    Ok(())
+}
+
 impl CandidateSciQuery {
     /// The contract this type instantiates.
     pub const SCHEMA: SchemaId = SchemaId::CandidateSciQuery;
@@ -225,17 +240,12 @@ impl CandidateSciQuery {
     /// Returns [`ContractError::WrongEdge`] for a payload naming another edge
     /// and [`ContractError::EmptyCandidateList`] for a query with no subject.
     pub fn validate(&self) -> Result<(), ContractError> {
-        let correlation = self.correlation();
-        ensure_edge(self.edge, Self::EDGE, correlation, |c, found| {
-            ContractError::WrongEdge {
-                correlation: c,
-                found,
-            }
-        })?;
-        if self.candidates.is_empty() {
-            return Err(ContractError::EmptyCandidateList { correlation });
-        }
-        Ok(())
+        validate_candidate_exchange(
+            self.edge,
+            Self::EDGE,
+            self.correlation(),
+            self.candidates.is_empty(),
+        )
     }
 
     /// Encodes a validated query into `buffer`.
@@ -309,17 +319,12 @@ impl CandidateSciResponse {
     /// Returns [`ContractError::WrongEdge`] for a payload naming another edge
     /// and [`ContractError::EmptyCandidateList`] for a response with no rate.
     pub fn validate(&self) -> Result<(), ContractError> {
-        let correlation = self.correlation();
-        ensure_edge(self.edge, Self::EDGE, correlation, |c, found| {
-            ContractError::WrongEdge {
-                correlation: c,
-                found,
-            }
-        })?;
-        if self.rates.is_empty() {
-            return Err(ContractError::EmptyCandidateList { correlation });
-        }
-        Ok(())
+        validate_candidate_exchange(
+            self.edge,
+            Self::EDGE,
+            self.correlation(),
+            self.rates.is_empty(),
+        )
     }
 
     /// Checks this response against the query it claims to answer.
