@@ -10,6 +10,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_hephaestus::{
     ClaimSource, ClaimStatus, P14_RECORDED_CLAIMS, RecordedClaim, SolverTarget,
     UNPINNED_DEPENDENCIES, UnpinnedDependency,
@@ -28,9 +31,7 @@ fn the_four_claims_are_recorded() {
         assert_ne!(claim.summary, "");
         assert_ne!(claim.settled_by, "");
         let source: ClaimSource = claim.source;
-        assert!(source.export.starts_with("export-"));
-        assert_eq!(source.sha256_prefix.len(), 12);
-        assert!(source.sha256_prefix.chars().all(|c| c.is_ascii_hexdigit()));
+        test_assertions::assert_claim_source(source.export, source.sha256_prefix);
     }
 }
 

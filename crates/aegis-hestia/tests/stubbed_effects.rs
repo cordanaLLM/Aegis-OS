@@ -54,15 +54,7 @@ const WATCHED: [&str; 20] = [
 #[test]
 fn the_sweep_reads_the_whole_crate() -> Fallible {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let sources = common::rust_sources(&root)?;
-    assert!(
-        sources.len() >= 9,
-        "the sweep read only {} sources; it is reading nothing, not finding nothing",
-        sources.len()
-    );
-    assert!(sources.iter().any(|(name, _)| name == "lib.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "store.rs"));
-    Ok(())
+    common::assert_sweep_reads_sources(&root, 9, &["lib.rs", "store.rs"])
 }
 
 // --- Negative -------------------------------------------------------------
@@ -97,12 +89,7 @@ fn the_sweep_detects_a_planted_identifier() {
 /// duplicate, so the count in the documentation is the count that is swept.
 #[test]
 fn the_watched_list_is_its_recorded_length() {
-    assert_eq!(WATCHED.len(), 20);
-    let mut names = WATCHED.to_vec();
-    names.sort_unstable();
-    names.dedup();
-    assert_eq!(names.len(), 20);
-    assert!(names.iter().all(|needle| !needle.is_empty()));
+    common::assert_watched_list_exact(&WATCHED, 20);
 }
 
 /// Boundary: a comment naming a watched identifier is not a finding.

@@ -275,6 +275,22 @@ pub fn assert_structural_sweep_detects_reach(watched_code: &[&str]) {
     }
 }
 
+/// Boundary assertion: watched list is its recorded length, with no duplicates.
+///
+/// The list is exactly its recorded length, with no duplicate and no empty string,
+/// so the count in the documentation is the count that is swept.
+#[track_caller]
+pub fn assert_watched_list_exact(watched: &[&str], expected_len: usize) {
+    assert_eq!(watched.len(), expected_len);
+    let mut names = watched.to_vec();
+    names.sort_unstable();
+    let before = names.len();
+    names.dedup();
+    assert_eq!(before, names.len(), "an identifier is watched twice");
+    assert_eq!(names.len(), expected_len);
+    assert!(names.iter().all(|needle| !needle.is_empty()));
+}
+
 /// Boundary assertion: watched lists are their recorded lengths, with no duplicate or overlap.
 ///
 /// Both lists are exactly their recorded lengths, with no duplicate

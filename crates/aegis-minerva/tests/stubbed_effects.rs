@@ -64,16 +64,7 @@ const WATCHED: [&str; 22] = [
 #[test]
 fn the_sweep_reads_the_whole_crate() -> Fallible {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let sources = common::rust_sources(&root)?;
-    assert!(
-        sources.len() >= 12,
-        "the sweep read only {} sources; it is reading nothing, not finding nothing",
-        sources.len()
-    );
-    assert!(sources.iter().any(|(name, _)| name == "lib.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "expert.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "chain.rs"));
-    Ok(())
+    common::assert_sweep_reads_sources(&root, 12, &["lib.rs", "expert.rs", "chain.rs"])
 }
 
 // --- Negative -------------------------------------------------------------
@@ -82,12 +73,7 @@ fn the_sweep_reads_the_whole_crate() -> Fallible {
 #[test]
 fn no_watched_identifier_appears_in_library_code() -> Fallible {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let found = common::scan_sources(&root, &WATCHED)?;
-    assert!(
-        found.is_empty(),
-        "effect identifiers in library code: {found:?}"
-    );
-    Ok(())
+    common::assert_no_watched_code(&root, &WATCHED)
 }
 
 /// Negative: the sweep would notice one, so a pass means something.
@@ -112,12 +98,7 @@ fn the_sweep_detects_a_planted_identifier() {
 /// duplicate, so the count in the documentation is the count that is swept.
 #[test]
 fn the_watched_list_is_its_recorded_length() {
-    assert_eq!(WATCHED.len(), 22);
-    let mut names = WATCHED.to_vec();
-    names.sort_unstable();
-    names.dedup();
-    assert_eq!(names.len(), 22);
-    assert!(names.iter().all(|needle| !needle.is_empty()));
+    common::assert_watched_list_exact(&WATCHED, 22);
 }
 
 /// Boundary: a comment naming a watched identifier is not a finding.
@@ -128,10 +109,5 @@ fn the_watched_list_is_its_recorded_length() {
 #[test]
 fn a_comment_naming_an_identifier_is_not_a_finding() {
     let comment = "//! no z3:: solver, no dbus connection, no Instant:: timer";
-    assert!(comment.trim().starts_with("//"));
-    assert!(WATCHED.iter().any(|needle| comment.contains(needle)));
-    assert_eq!(
-        common::scan_text("lib.rs", comment, &WATCHED),
-        [] as [std::string::String; 0]
-    );
+    common::assert_comment_naming_identifier_is_not_finding(comment, &WATCHED);
 }

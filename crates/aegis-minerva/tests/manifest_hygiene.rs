@@ -63,38 +63,28 @@ fn the_member_list_is_written_out_and_not_globbed() {
 /// that makes the claim.
 #[test]
 fn the_crate_manifest_declares_no_deferred_dependency() {
+    manifest_hygiene::assert_no_excluded_dependencies(
+        "crates/aegis-minerva/Cargo.toml",
+        &[
+            "cust",
+            "cuda",
+            "nvml",
+            "z3",
+            "zbus",
+            "dbus",
+            "tokio",
+            "libc",
+            "wasmtime",
+            "kvm-ioctls",
+            "candle",
+            "ort",
+            "tch",
+            "chrono",
+            "time",
+        ],
+        "is deferred past milestone M06",
+    );
     let manifest = read("crates/aegis-minerva/Cargo.toml");
-    assert!(!manifest.is_empty(), "the crate manifest must exist");
-    let declarations: Vec<&str> = manifest
-        .lines()
-        .map(str::trim)
-        .filter(|line| line.contains(" = ") || line.ends_with(".workspace = true"))
-        .collect();
-    for deferred in [
-        "cust",
-        "cuda",
-        "nvml",
-        "z3",
-        "zbus",
-        "dbus",
-        "tokio",
-        "libc",
-        "wasmtime",
-        "kvm-ioctls",
-        "candle",
-        "ort",
-        "tch",
-        "chrono",
-        "time",
-    ] {
-        assert!(
-            !declarations
-                .iter()
-                .any(|line| line.starts_with(&format!("{deferred} "))
-                    || line.starts_with(&format!("{deferred}."))),
-            "{deferred} is deferred past milestone M06"
-        );
-    }
     assert!(
         !manifest.contains("[build-dependencies]"),
         "a build script is how a foreign solver would arrive"

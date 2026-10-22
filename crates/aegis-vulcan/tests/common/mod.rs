@@ -139,4 +139,4 @@ pub fn media_ingest(blocks: u32) -> Result<MediaIngestDescriptor, Box<dyn std::e
 mod source_effects;
 
 #[allow(unused_imports)]
-pub use source_effects::{LINE_BOUND, WALK_BOUND, hits, rust_sources, scan_sources, scan_text};
+pub use source_effects::*;
