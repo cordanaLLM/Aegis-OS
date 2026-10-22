@@ -11,7 +11,10 @@
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
 
-use std::path::{Path, PathBuf};
+#[path = "../../manifest_hygiene.rs"]
+mod manifest_hygiene;
+
+use manifest_hygiene::read;
 
 /// This crate's package name, the start of its closure.
 const PACKAGE: &str = "aegis-tellus-rapl";
@@ -34,55 +37,6 @@ const WATCHED: [&str; 9] = [
     "sudo",
 ];
 
-/// Returns the crate directory.
-fn crate_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf()
-}
-
-/// Reads a file relative to the workspace root.
-fn read(name: &str) -> String {
-    dependency_closure::workspace_root()
-        .and_then(|root| std::fs::read_to_string(root.join(name)).ok())
-        .unwrap_or_default()
-}
-
-/// Returns every `.rs` file under `src/`, bounded, with its text.
-fn sources() -> Vec<(PathBuf, String)> {
-    let mut found = Vec::new();
-    let mut pending = vec![crate_dir().join("src")];
-    for _ in 0..16 {
-        let Some(directory) = pending.pop() else {
-            break;
-        };
-        let Ok(entries) = std::fs::read_dir(&directory) else {
-            continue;
-        };
-        for entry in entries.flatten().take(64) {
-            let path = entry.path();
-            if path.is_dir() {
-                pending.push(path);
-            } else if path.extension().is_some_and(|ext| ext == "rs") {
-                let text = std::fs::read_to_string(&path).unwrap_or_default();
-                found.push((path, text));
-            }
-        }
-    }
-    found
-}
-
-/// Returns the watched identifiers `text` names outside comments.
-fn hits(text: &str) -> Vec<&'static str> {
-    let code: Vec<&str> = text
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.starts_with("//"))
-        .collect();
-    WATCHED
-        .into_iter()
-        .filter(|needle| code.iter().any(|line| line.contains(needle)))
-        .collect()
-}
-
 // --- Positive -------------------------------------------------------------
 
 /// Positive: the crate is a written-out member with a lock entry.
@@ -99,13 +53,10 @@ fn the_crate_is_a_locked_member() {
 /// Positive: the sweep reads the library and the binary.
 #[test]
 fn the_sweep_reads_every_source() {
-    let names: Vec<String> = sources()
-        .iter()
-        .filter_map(|(path, _)| path.file_name()?.to_str().map(str::to_owned))
-        .collect();
-    for expected in ["lib.rs", "cases.rs", "input.rs", "aegis-tellus-rapl.rs"] {
-        assert!(names.iter().any(|name| name == expected), "{names:?}");
-    }
+    manifest_hygiene::assert_sweep_reads_sources(
+        &manifest_hygiene::sources(),
+        &["lib.rs", "cases.rs", "input.rs", "aegis-tellus-rapl.rs"],
+    );
 }
 
 // --- Negative -------------------------------------------------------------
@@ -113,12 +64,7 @@ fn the_sweep_reads_every_source() {
 /// Negative (D78): the closure resolves no reader, socket or bus crate.
 #[test]
 fn the_closure_resolves_no_reader() -> Result<(), String> {
-    let names = dependency_closure::own_closure(PACKAGE)?;
-    let found = dependency_closure::hits(&names, &FORBIDDEN);
-    assert!(
-        found.is_empty(),
-        "the closure of {PACKAGE} resolves {found:?}"
-    );
+    let names = dependency_closure::assert_closure_forbids(PACKAGE, &FORBIDDEN)?;
     assert!(names.contains("aegis-tellus"));
     Ok(())
 }
@@ -126,8 +72,8 @@ fn the_closure_resolves_no_reader() -> Result<(), String> {
 /// Negative: no source names a file, process, socket or sudo call.
 #[test]
 fn no_source_performs_a_read() {
-    for (path, text) in sources() {
-        let found = hits(&text);
+    for (path, text) in manifest_hygiene::sources() {
+        let found = manifest_hygiene::token_hits(&text, &WATCHED);
         assert!(found.is_empty(), "{} names {found:?}", path.display());
     }
 }
@@ -136,8 +82,29 @@ fn no_source_performs_a_read() {
 #[test]
 fn the_sweep_detects_a_planted_read() {
     let planted = "let text = std::fs::read_to_string(path)?;";
-    assert_eq!(hits(planted), vec!["std::fs", "read_to_string"]);
-    assert_eq!(hits("// std::fs is named in a comment"), [] as [&str; 0]);
+    assert_eq!(
+        manifest_hygiene::token_hits(planted, &WATCHED),
+        vec!["std::fs", "read_to_string"]
+    );
+    assert_eq!(
+        manifest_hygiene::token_hits("// std::fs is named in a comment", &WATCHED),
+        [] as [&str; 0]
+    );
+    assert_eq!(
+        manifest_hygiene::token_hits(" * std::fs in a block comment", &WATCHED),
+        [] as [&str; 0]
+    );
+    assert_eq!(
+        manifest_hygiene::token_hits("*slot = std::fs::metadata(path);", &WATCHED),
+        vec!["std::fs"]
+    );
+}
+
+/// Negative: the sweep would notice a missing source file.
+#[test]
+#[should_panic(expected = "missing nonexistent.rs")]
+fn the_sweep_detects_a_missing_source() {
+    manifest_hygiene::assert_sweep_reads_sources(&manifest_hygiene::sources(), &["nonexistent.rs"]);
 }
 
 // --- Boundary -------------------------------------------------------------

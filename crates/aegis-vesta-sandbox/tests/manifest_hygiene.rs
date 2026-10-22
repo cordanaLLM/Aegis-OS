@@ -15,6 +15,11 @@
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
 
+#[path = "../../manifest_hygiene.rs"]
+mod manifest_hygiene;
+
+use manifest_hygiene::read;
+
 /// This crate's package name, the start of its closure.
 const PACKAGE: &str = "aegis-vesta-sandbox";
 
@@ -31,13 +36,6 @@ const FORBIDDEN: [&str; 9] = [
     "wasmer",
     "vm-memory",
 ];
-
-/// Reads a file relative to the workspace root.
-fn read(name: &str) -> String {
-    dependency_closure::workspace_root()
-        .and_then(|root| std::fs::read_to_string(root.join(name)).ok())
-        .unwrap_or_default()
-}
 
 // --- Positive -------------------------------------------------------------
 
@@ -78,12 +76,7 @@ fn saeptum_microvm_is_pinned_and_carries_socket2() {
 /// engine.
 #[test]
 fn the_closure_resolves_no_runtime_or_binding() -> Result<(), String> {
-    let names = dependency_closure::own_closure(PACKAGE)?;
-    let found = dependency_closure::hits(&names, &FORBIDDEN);
-    assert!(
-        found.is_empty(),
-        "the closure of {PACKAGE} resolves {found:?}"
-    );
+    let names = dependency_closure::assert_closure_forbids(PACKAGE, &FORBIDDEN)?;
     assert!(names.contains("socket2"));
     Ok(())
 }

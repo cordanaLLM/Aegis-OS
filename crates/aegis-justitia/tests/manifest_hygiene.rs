@@ -10,6 +10,9 @@
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
 
+#[path = "../../manifest_hygiene.rs"]
+mod manifest_hygiene;
+
 use std::path::{Path, PathBuf};
 
 /// This crate's package name, the start of its closure (D78).
@@ -329,74 +332,25 @@ fn the_unwrap_or_inventory_is_exact() {
 /// The crate documents its own exclusions, so a naive token scan would be
 /// satisfied by the prose that promises the token is absent.
 fn code_only(body: &str) -> String {
-    body.lines()
-        .filter(|line| !line.trim_start().starts_with("//"))
-        .collect::<Vec<&str>>()
-        .join("\n")
+    manifest_hygiene::code_only(body)
 }
 
 /// Reads every `.rs` file under the crate's `src/`, relative path and body.
-///
-/// The walk is iterative and doubly bounded: at most 64 directories and at most
-/// 64 entries per directory.
 fn crate_sources() -> Vec<(String, String)> {
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let mut out: Vec<(String, String)> = Vec::new();
-    let mut stack: Vec<PathBuf> = vec![src.clone()];
-    for _ in 0..64 {
-        let Some(directory) = stack.pop() else { break };
-        let Ok(entries) = std::fs::read_dir(&directory) else {
-            continue;
-        };
-        for entry in entries.flatten().take(64) {
-            let path = entry.path();
-            if path.is_dir() {
-                stack.push(path);
-                continue;
-            }
-            if path.extension().is_none_or(|ext| ext != "rs") {
-                continue;
-            }
-            let relative = path
-                .strip_prefix(&src)
-                .unwrap_or(&path)
-                .display()
-                .to_string();
-            out.push((relative, std::fs::read_to_string(&path).unwrap_or_default()));
-        }
-    }
-    out
+    manifest_hygiene::relative_sources()
 }
 
 /// The library names the host environment in exactly one module.
 #[test]
 fn host_effects_are_confined_to_the_effects_module() {
-    let root = workspace_root().unwrap_or_default();
-    let src = root.join("crates/aegis-justitia/src");
+    let src = manifest_hygiene::crate_dir().join("src");
     let mut offenders: Vec<String> = Vec::new();
-    let mut stack: Vec<PathBuf> = vec![src.clone()];
-    // Bounded walk: the crate has fewer than 64 source entries.
-    for _ in 0..64 {
-        let Some(directory) = stack.pop() else { break };
-        let Ok(entries) = std::fs::read_dir(&directory) else {
+    for (path, body) in manifest_hygiene::sources() {
+        if path.starts_with(src.join("effects")) {
             continue;
-        };
-        for entry in entries.flatten().take(64) {
-            let path = entry.path();
-            if path.is_dir() {
-                stack.push(path);
-                continue;
-            }
-            if path.extension().is_none_or(|ext| ext != "rs") {
-                continue;
-            }
-            if path.starts_with(src.join("effects")) {
-                continue;
-            }
-            let body = std::fs::read_to_string(&path).unwrap_or_default();
-            if body.contains("SystemTime") || body.contains("std::fs") {
-                offenders.push(path.display().to_string());
-            }
+        }
+        if body.contains("SystemTime") || body.contains("std::fs") {
+            offenders.push(path.display().to_string());
         }
     }
     assert!(
