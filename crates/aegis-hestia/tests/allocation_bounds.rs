@@ -107,13 +107,15 @@ fn taking_a_snapshot_changes_nothing() -> Fallible {
 fn an_escaped_payload_decodes_to_the_same_value() -> Fallible {
     let payload = registration()?;
     let mut buffer = PayloadBuffer::new();
-    let plain = payload.encode_into(&mut buffer)?.to_owned();
-    assert!(plain.contains(CORRELATION));
-
-    let escaped = plain.replace("m17-fixture", "\\u006d17-fixture");
-    assert!(escaped.contains("\\u006d"));
-    assert_ne!(escaped, plain);
-    assert_eq!(OverlayRegistration::decode(&escaped)?, payload);
+    let plain = payload.encode_into(&mut buffer)?;
+    test_assertions::assert_encoded_names(plain, &[CORRELATION]);
+    test_assertions::escaped_round_trip(
+        plain,
+        "m17-fixture",
+        "\\u006d17-fixture",
+        OverlayRegistration::decode,
+        &payload,
+    )?;
     Ok(())
 }
 
