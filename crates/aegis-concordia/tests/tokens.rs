@@ -62,12 +62,7 @@ fn forced_colours_name_system_colours() {
 /// Negative (D78, D101): the closure resolves no toolkit, accessibility or bus crate.
 #[test]
 fn the_closure_resolves_no_toolkit() -> Result<(), String> {
-    let names = dependency_closure::own_closure(PACKAGE)?;
-    let found = dependency_closure::hits(&names, &FORBIDDEN);
-    assert!(
-        found.is_empty(),
-        "the closure of {PACKAGE} resolves {found:?}"
-    );
+    let names = dependency_closure::assert_closure_forbids(PACKAGE, &FORBIDDEN)?;
     assert!(names.contains(PACKAGE));
     Ok(())
 }
