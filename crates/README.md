@@ -286,16 +286,18 @@ from M16.
 
 `claim_source.rs`, beside the crate directories, is not a crate either: it
 holds `ClaimSource`, the export identifier and digest prefix a recorded claim
-cites, included by path into the register modules of `aegis-minerva` and
-`aegis-vesta`.
+cites, included by path into the register modules of `aegis-calliope`,
+`aegis-compositor`, `aegis-hephaestus`, `aegis-lictor`, `aegis-ludus`,
+`aegis-minerva` and `aegis-vesta`.
 
 `correlation_id.rs`, `bounded_id.rs` and `citation.rs`, beside the crate
 directories, are not crates either. `correlation_id.rs` holds `CorrelationId`,
-included by path into `aegis-hestia` and `aegis-vulcan`; `bounded_id.rs` holds
-the empty, length and character-set parse behind it, included by
-`correlation_id.rs`, `aegis-calliope` and `aegis-minerva`; `citation.rs`
-holds the decision `Citation`, included by `aegis-hestia` and
-`aegis-janus-lifecycle`.
+included by path into `aegis-hestia` and `aegis-vulcan`;
+`bounded_id.rs` holds the empty, length and character-set parse behind it,
+included by `correlation_id.rs`, `aegis-calliope`, `aegis-compositor`,
+`aegis-lictor` and `aegis-minerva`; `citation.rs` holds the decision
+`Citation`, included by `aegis-calliope`, `aegis-compositor`, `aegis-hestia`,
+`aegis-janus-lifecycle` and `aegis-vesta`.
 
 `fixture_tamper.rs`, beside the crate directories, is not a crate either: it
 holds `tamper`, the fixture payload substitution the integration tests use,

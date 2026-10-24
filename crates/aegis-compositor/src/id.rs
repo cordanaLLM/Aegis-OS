@@ -15,6 +15,11 @@
 
 use core::fmt;
 
+#[path = "../../bounded_id.rs"]
+mod bounded_id;
+
+use bounded_id::InlineId;
+
 /// Scalar upper bound, in bytes, on a surface title or application identifier.
 ///
 /// Thirty-two. The bound is deliberately tight: the registry is a fixed array
@@ -51,11 +56,6 @@ pub enum IdError {
     EmptyKeySegment,
 }
 
-/// Returns `true` for the bytes permitted inside a label.
-const fn permitted(byte: u8) -> bool {
-    byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_' | b':' | b'@' | b'/')
-}
-
 /// Returns `true` for the bytes permitted inside a key expression.
 ///
 /// The separator is excluded here and handled by the segment walk, and `*` is
@@ -81,33 +81,10 @@ const fn key_step(byte: u8, segment_len: usize) -> Result<usize, IdError> {
     Err(IdError::Charset)
 }
 
-/// Copies `raw` into `slot`, refusing an empty, over-long or ill-formed input.
-fn fill(raw: &str, slot: &mut [u8], max: usize) -> Result<u8, IdError> {
-    let source = raw.as_bytes();
-    if source.is_empty() {
-        return Err(IdError::Empty);
-    }
-    let len = u8::try_from(source.len())
-        .ok()
-        .filter(|_| source.len() <= max)
-        .ok_or(IdError::TooLong {
-            max,
-            actual: source.len(),
-        })?;
-    for (target, byte) in slot.iter_mut().zip(source.iter()) {
-        if !permitted(*byte) {
-            return Err(IdError::Charset);
-        }
-        *target = *byte;
-    }
-    Ok(len)
-}
-
 /// A validated surface title or application identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Label {
-    bytes: [u8; MAX_LABEL_LEN],
-    len: u8,
+    inner: InlineId<MAX_LABEL_LEN>,
 }
 
 impl Label {
@@ -121,34 +98,40 @@ impl Label {
     /// `"Forum Desktop Shell"` is [`IdError::Charset`] rather than a repaired
     /// title.
     pub fn parse(raw: &str) -> Result<Self, IdError> {
-        let mut bytes = [0u8; MAX_LABEL_LEN];
-        let len = fill(raw, &mut bytes, MAX_LABEL_LEN)?;
-        Ok(Self { bytes, len })
+        InlineId::parse(
+            raw,
+            || IdError::Empty,
+            |actual| IdError::TooLong {
+                max: MAX_LABEL_LEN,
+                actual,
+            },
+            || IdError::Charset,
+        )
+        .map(|inner| Self { inner })
     }
 
     /// Returns the validated bytes, without the trailing padding.
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
-        self.bytes.get(..usize::from(self.len)).unwrap_or(&[])
+        self.inner.as_bytes()
     }
 
     /// Returns the length in bytes.
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.len as usize
+        self.inner.len()
     }
 
     /// Returns `false`; a label is never empty by construction.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.len == 0
+        self.inner.is_empty()
     }
 }
 
 impl fmt::Display for Label {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(|_| fmt::Error)?;
-        f.write_str(text)
+        self.inner.fmt(f)
     }
 }
 
@@ -160,8 +143,7 @@ impl fmt::Display for Label {
 /// scaffold accepts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct KeyExpr {
-    bytes: [u8; MAX_KEY_EXPR_LEN],
-    len: u8,
+    inner: InlineId<MAX_KEY_EXPR_LEN>,
 }
 
 impl KeyExpr {
@@ -175,45 +157,45 @@ impl KeyExpr {
     /// separator, and [`IdError::Charset`] for any other byte outside the
     /// permitted set.
     pub fn parse(raw: &str) -> Result<Self, IdError> {
-        let source = raw.as_bytes();
-        if source.is_empty() {
-            return Err(IdError::Empty);
-        }
-        let len = u8::try_from(source.len())
-            .ok()
-            .filter(|_| source.len() <= MAX_KEY_EXPR_LEN)
-            .ok_or(IdError::TooLong {
+        let len = bounded_id::validate_bounded_len(
+            raw,
+            MAX_KEY_EXPR_LEN,
+            || IdError::Empty,
+            |actual| IdError::TooLong {
                 max: MAX_KEY_EXPR_LEN,
-                actual: source.len(),
-            })?;
+                actual,
+            },
+        )?;
         let mut bytes = [0u8; MAX_KEY_EXPR_LEN];
         let mut segment_len = 0usize;
-        for (target, byte) in bytes.iter_mut().zip(source.iter()) {
+        for (target, byte) in bytes.iter_mut().zip(raw.as_bytes().iter()) {
             segment_len = key_step(*byte, segment_len)?;
             *target = *byte;
         }
         if segment_len == 0 {
             return Err(IdError::EmptyKeySegment);
         }
-        Ok(Self { bytes, len })
+        Ok(Self {
+            inner: InlineId::from_parts(bytes, len),
+        })
     }
 
     /// Returns the validated bytes, without the trailing padding.
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
-        self.bytes.get(..usize::from(self.len)).unwrap_or(&[])
+        self.inner.as_bytes()
     }
 
     /// Returns the length in bytes.
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.len as usize
+        self.inner.len()
     }
 
     /// Returns `false`; a key expression is never empty by construction.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.len == 0
+        self.inner.is_empty()
     }
 
     /// Returns how many segments the expression carries.
@@ -231,7 +213,6 @@ impl KeyExpr {
 
 impl fmt::Display for KeyExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(|_| fmt::Error)?;
-        f.write_str(text)
+        self.inner.fmt(f)
     }
 }

@@ -117,3 +117,21 @@ fn the_correlation_bound_is_exact() {
     );
     assert_eq!(MAX_CORRELATION_LEN, 64);
 }
+
+/// Boundary: the calliope identifier error display texts are exact.
+#[test]
+fn the_calliope_id_error_display_texts_are_exact() {
+    assert_eq!(IdError::Empty.to_string(), "an identifier is empty");
+    assert_eq!(
+        IdError::TooLong {
+            max: 64,
+            actual: 65,
+        }
+        .to_string(),
+        "an identifier of 65 bytes exceeds the bound of 64"
+    );
+    assert_eq!(
+        IdError::Charset.to_string(),
+        "an identifier carries a byte outside the permitted character set"
+    );
+}

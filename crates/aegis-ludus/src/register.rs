@@ -26,14 +26,10 @@
 //! there is nothing to write code against and no amount of work in this
 //! repository changes it. `src/probe.rs` records what each probe returned.
 
-/// A source, cited by export identifier and digest prefix only.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ClaimSource {
-    /// The export identifier of the source.
-    pub export: &'static str,
-    /// The first twelve hexadecimal characters of that export's sha256.
-    pub sha256_prefix: &'static str,
-}
+#[path = "../../claim_source.rs"]
+mod claim_source;
+
+pub use claim_source::ClaimSource;
 
 /// What standing a recorded claim has.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
