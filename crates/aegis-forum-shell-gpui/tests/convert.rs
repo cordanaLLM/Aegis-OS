@@ -118,17 +118,21 @@ fn missing_tree_info_fails_with_exact_variant() {
     assert_eq!(to_gpui(&update).err(), Some(ConvertError::MissingTreeInfo));
 }
 
+fn single_node_update(node: Node) -> TreeUpdate {
+    TreeUpdate {
+        nodes: vec![(ROOT_ID, node)],
+        tree: Some(TreeInfo::new(ROOT_ID)),
+        tree_id: TreeId::ROOT,
+        focus: ROOT_ID,
+    }
+}
+
 /// Negative: node with `html_id` (unsupported in 0.24.1) returns [`ConvertError::UnsupportedProperty`].
 #[test]
 fn unsupported_property_fails_with_exact_variant() {
     let mut node = Node::new(Role::Window);
     node.set_html_id("main-window");
-    let update = TreeUpdate {
-        nodes: vec![(ROOT_ID, node)],
-        tree: Some(TreeInfo::new(ROOT_ID)),
-        tree_id: TreeId::ROOT,
-        focus: ROOT_ID,
-    };
+    let update = single_node_update(node);
 
     assert_eq!(
         to_gpui(&update).err(),
@@ -145,12 +149,7 @@ fn graft_node_non_root_tree_id_fails() {
     let non_root = TreeId(Uuid::from_u128(0xbeef_cafe_0000_1111));
     let mut node = Node::new(Role::Group);
     node.set_tree_id(non_root);
-    let update = TreeUpdate {
-        nodes: vec![(ROOT_ID, node)],
-        tree: Some(TreeInfo::new(ROOT_ID)),
-        tree_id: TreeId::ROOT,
-        focus: ROOT_ID,
-    };
+    let update = single_node_update(node);
 
     assert_eq!(
         to_gpui(&update).err(),
@@ -193,12 +192,7 @@ fn single_root_node_converts_cleanly() -> Result<(), Box<dyn std::error::Error>>
         x1: 800.0,
         y1: 600.0,
     });
-    let update = TreeUpdate {
-        nodes: vec![(ROOT_ID, root)],
-        tree: Some(TreeInfo::new(ROOT_ID)),
-        tree_id: TreeId::ROOT,
-        focus: ROOT_ID,
-    };
+    let update = single_node_update(root);
 
     let converted = to_gpui(&update)?;
 
@@ -231,18 +225,8 @@ fn largest_one_thousand_node_fixture_converts_cleanly() -> Result<(), Box<dyn st
 
 // --- Allow-list roundtrip and Role Pair Invariants ------------------------
 
-/// Negative: node with an unmapped property (`value`) fails allow-list round-trip check.
-#[test]
-fn unmapped_property_value_fails_roundtrip_check() {
-    let mut node = Node::new(Role::Window);
-    node.set_value("unexpected-value");
-    let update = TreeUpdate {
-        nodes: vec![(ROOT_ID, node)],
-        tree: Some(TreeInfo::new(ROOT_ID)),
-        tree_id: TreeId::ROOT,
-        focus: ROOT_ID,
-    };
-
+fn assert_unmapped_property_fails(node: Node) {
+    let update = single_node_update(node);
     assert_eq!(
         to_gpui(&update).err(),
         Some(ConvertError::UnsupportedProperty {
@@ -252,25 +236,20 @@ fn unmapped_property_value_fails_roundtrip_check() {
     );
 }
 
+/// Negative: node with an unmapped property (`value`) fails allow-list round-trip check.
+#[test]
+fn unmapped_property_value_fails_roundtrip_check() {
+    let mut node = Node::new(Role::Window);
+    node.set_value("unexpected-value");
+    assert_unmapped_property_fails(node);
+}
+
 /// Negative: node with an unmapped property (`description`) fails allow-list round-trip check.
 #[test]
 fn unmapped_property_description_fails_roundtrip_check() {
     let mut node = Node::new(Role::Window);
     node.set_description("unexpected-description");
-    let update = TreeUpdate {
-        nodes: vec![(ROOT_ID, node)],
-        tree: Some(TreeInfo::new(ROOT_ID)),
-        tree_id: TreeId::ROOT,
-        focus: ROOT_ID,
-    };
-
-    assert_eq!(
-        to_gpui(&update).err(),
-        Some(ConvertError::UnsupportedProperty {
-            node_id: ROOT_ID,
-            property: "unmapped property",
-        })
-    );
+    assert_unmapped_property_fails(node);
 }
 
 /// Positive: every pair in `ROLE_PAIRS` maps 0.25.1 variant to identical 0.24.1 Debug name.
