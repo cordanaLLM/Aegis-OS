@@ -39,6 +39,11 @@ mod decision_state;
 
 pub use decision_state::DecisionState;
 
+#[path = "../../citation.rs"]
+mod citation;
+
+pub use citation::Citation;
+
 /// The three runtimes D06 could have chosen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -133,15 +138,6 @@ impl AdmittedRuntime {
             Self::RustNativeComponentModel => WasmRuntimeChoice::RustNativeRuntime,
         }
     }
-}
-
-/// A private source, cited by export identifier and digest prefix only.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Citation {
-    /// The export identifier, or the tracked path for a public source.
-    pub export: &'static str,
-    /// The first twelve hexadecimal characters of that source's sha256.
-    pub sha256_prefix: &'static str,
 }
 
 /// One recorded decision.

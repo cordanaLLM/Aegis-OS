@@ -5,7 +5,9 @@
 //!
 //! One file, included by path into every crate whose register cites claim
 //! sources (`#[path = "../../claim_source.rs"]`), so the type has one
-//! definition rather than one per crate. It is not a crate: a member enters
+//! definition rather than one per crate. Included by `aegis-calliope`,
+//! `aegis-compositor`, `aegis-hephaestus`, `aegis-lictor`, `aegis-ludus`,
+//! `aegis-minerva` and `aegis-vesta`. It is not a crate: a member enters
 //! every dependency closure and carries a permanent name.
 
 #![allow(dead_code)]
