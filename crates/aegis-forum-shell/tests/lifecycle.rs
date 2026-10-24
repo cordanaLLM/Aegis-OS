@@ -63,6 +63,16 @@ fn table() -> Fallible<ProcessTable> {
     Ok(table)
 }
 
+/// A managed process table with process `id` driven into quarantine.
+fn quarantined(id: ProcessId) -> Fallible<ProcessTable> {
+    let mut table = table()?;
+    table.apply(Input::SurfaceMapped(id))?;
+    for _ in 0..QUARANTINE_LIMIT {
+        table.apply(Input::Window(id, OverBudget))?;
+    }
+    Ok(table)
+}
+
 // --- Positive -------------------------------------------------------------
 
 /// Positive: the forward chain in the source's order, one transition at a
@@ -137,12 +147,8 @@ fn stubbed_producers_drive_a_process_into_quarantine() -> Fallible {
 /// focus slice travels with it (REQ-P04-07), and P04 reports its exit.
 #[test]
 fn stubbed_producers_release_refocus_and_end_a_process() -> Fallible {
-    let mut table = table()?;
     let id = ProcessId(7);
-    table.apply(Input::SurfaceMapped(id))?;
-    for _ in 0..QUARANTINE_LIMIT {
-        table.apply(Input::Window(id, OverBudget))?;
-    }
+    let mut table = quarantined(id)?;
     assert_eq!(table.apply(Input::Released(id))?, EligibleButInactive);
     assert_eq!(table.apply(Input::SurfaceMapped(id))?, Activated);
     let slice = table.focus_slice(id).map(|slice| slice.to_string());
@@ -159,12 +165,8 @@ fn stubbed_producers_release_refocus_and_end_a_process() -> Fallible {
 /// Positive: P06's delete decision takes a quarantined process to Deleted.
 #[test]
 fn a_delete_decision_deletes_a_quarantined_process() -> Fallible {
-    let mut table = table()?;
     let id = ProcessId(7);
-    table.apply(Input::SurfaceMapped(id))?;
-    for _ in 0..QUARANTINE_LIMIT {
-        table.apply(Input::Window(id, OverBudget))?;
-    }
+    let mut table = quarantined(id)?;
     assert_eq!(table.state(id), Some(Quarantined));
     assert_eq!(table.apply(Input::DeleteApproved(id))?, Deleted);
     Ok(())

@@ -93,11 +93,7 @@ fn the_seeded_canvas_passes() -> Fallible {
         "five chrome nodes, 1,000 canvas nodes, one decision, three levels"
     );
     for (_, node) in &update.nodes {
-        assert!(!matches!(
-            node.role(),
-            Role::Unknown | Role::GenericContainer
-        ));
-        assert!(node.label().is_some_and(|name| !name.trim().is_empty()));
+        common::assert_labelled_role(node);
     }
     Ok(())
 }

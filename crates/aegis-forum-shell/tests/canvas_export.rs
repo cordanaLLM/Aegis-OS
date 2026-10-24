@@ -14,7 +14,7 @@
 
 mod common;
 
-use accesskit::{NodeId, Role, TreeUpdate};
+use accesskit::{NodeId, TreeUpdate};
 use aegis_forum_shell::a11y::{
     CANVAS_ID, EMPTY_STATE_ID, ExportError, TreeError, check_canvas_export, check_tree, export,
     node_id,
@@ -60,6 +60,27 @@ fn all_nodes(state: &ShellState) -> Vec<NodeId> {
         .iter()
         .map(|node| node_id(node.key))
         .collect()
+}
+
+/// Seeded shell state alongside its visible node IDs, all node IDs, and initial tree export.
+struct ExportContext {
+    state: ShellState,
+    visible: Vec<NodeId>,
+    every: Vec<NodeId>,
+    update: TreeUpdate,
+}
+
+fn export_context() -> Fallible<ExportContext> {
+    let state = seeded_shell()?;
+    let visible = painted(&state.canvas)?.into_iter().map(node_id).collect();
+    let every = all_nodes(&state);
+    let update = export(&state);
+    Ok(ExportContext {
+        state,
+        visible,
+        every,
+        update,
+    })
 }
 
 /// A plain node at `rect` with key `key`.
@@ -115,11 +136,7 @@ fn culling_leaves_all_one_thousand_nodes_in_the_tree_in_focus_order() -> Fallibl
             .find(|(node, _)| node == id)
             .map(|(_, node)| node);
         let node = found.ok_or("a listed node is missing")?;
-        assert!(!matches!(
-            node.role(),
-            Role::Unknown | Role::GenericContainer
-        ));
-        assert!(node.label().is_some_and(|name| !name.trim().is_empty()));
+        common::assert_labelled_role(node);
         assert!(node.bounds().is_some());
         assert!(!node.is_hidden());
     }
@@ -157,10 +174,12 @@ fn a_culled_node_is_placed_off_screen_and_a_painted_one_on_it() -> Fallible {
 /// and fails the 1,000-node check, naming the count.
 #[test]
 fn culling_by_dropping_nodes_fails_the_check() -> Fallible {
-    let state = seeded_shell()?;
-    let visible: Vec<NodeId> = painted(&state.canvas)?.into_iter().map(node_id).collect();
-    let every = all_nodes(&state);
-    let mut update = export(&state);
+    let ExportContext {
+        state,
+        visible,
+        every,
+        mut update,
+    } = export_context()?;
     update
         .nodes
         .retain(|(id, _)| !every.contains(id) || visible.contains(id));
@@ -187,10 +206,12 @@ fn culling_by_dropping_nodes_fails_the_check() -> Fallible {
 /// adapter drops a hidden node from the tree it presents.
 #[test]
 fn culling_by_hiding_nodes_fails_the_check() -> Fallible {
-    let state = seeded_shell()?;
-    let visible: Vec<NodeId> = painted(&state.canvas)?.into_iter().map(node_id).collect();
-    let every = all_nodes(&state);
-    let mut update = export(&state);
+    let ExportContext {
+        state,
+        visible,
+        every,
+        mut update,
+    } = export_context()?;
     for (id, node) in &mut update.nodes {
         if every.contains(id) && !visible.contains(id) {
             node.set_hidden();
