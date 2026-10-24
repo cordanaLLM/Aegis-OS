@@ -161,10 +161,14 @@ python3 tools/praetor_bump.py --plain-adopt
 ```
 
 Every other step is the timer's: the files in `HAND_MAINTAINED` go back to
-`main`, and each remaining change is reverted unless a Praetor gate fails
-without it. The commit message and the pull request body name the adopt that
-ran. Before this mode, the files to revert after a plain adopt were picked by
-hand (pull requests #262 and #264), and the list could drift from the timer's.
+`main`, and each remaining change is reverted unless a trim gate fails without
+it. The trim gates are the Praetor gates plus the portal's `mkdocs build
+--strict`. Changes that only work together, listed in `COUPLED`
+(`tools/figures/player.lock.json` with `tools/figures/player/`), are reverted or
+kept as one unit. Without a portal venv they are kept untried, with a `SKIP`
+line. The commit message and the pull request body name the adopt that ran.
+Before this mode, the files to revert after a plain adopt were picked by hand
+(pull requests #262 and #264), and the list could drift from the timer's.
 
 ## Failure notice
 

@@ -345,6 +345,40 @@ class MinimiseTests(unittest.TestCase):
         self.assertEqual(bump.minimise(paths, try_revert), paths[-2:])
         self.assertEqual(len(reverted), bump.MAX_CANDIDATES)
 
+    def test_the_lock_and_player_group_is_never_split(self):
+        """Split-pair: gates fail iff exactly one of lock/player is reverted.
+
+        Positive and negative: revert both or keep both, never split.
+        """
+        lock = "tools/figures/player.lock.json"
+        p1 = "tools/figures/player/loader.js"
+        p2 = "tools/figures/player/player.js"
+        group = {lock, p1, p2}
+
+        # Negative: when one player file is needed, keep all members; never split.
+        reverted, calls = set(), []
+        needed = {p2}
+
+        def try_revert(paths):
+            calls.append(tuple(paths))
+            if set(paths) & needed:
+                return False
+            state = reverted | set(paths)
+            if len(state & group) == 1:
+                return False
+            reverted.update(paths)
+            return True
+
+        kept = bump.minimise([lock, p1, p2], try_revert)
+        self.assertEqual(kept, [lock, p1, p2])
+
+        # Positive: when none is needed, both/all are reverted together.
+        reverted.clear()
+        needed.clear()
+        kept = bump.minimise([lock, p1, p2], try_revert)
+        self.assertEqual(kept, [])
+        self.assertEqual(reverted, {lock, p1, p2})
+
 
 class MessageTests(unittest.TestCase):
     """The commit message and pull request body the bump writes."""
@@ -458,6 +492,33 @@ class HookSnapshotTests(unittest.TestCase):
             self.assertEqual(bump.capture(path)[0], b"content")
             bump.put_back(path, None)
             self.assertIsNone(bump.capture(path))
+
+    def test_put_back_removes_empty_parent_directories_up_to_root(self):
+        """Empty-dir: put_back(None) on last file in dir removes dir; another file keeps it.
+
+        Positive, negative, and boundary: root is never removed.
+        """
+        with tempfile.TemporaryDirectory() as base:
+            root = Path(base) / "root"
+            sub = root / "tools" / "figures" / "player"
+            sub.mkdir(parents=True)
+            f1 = sub / "loader.js"
+            f2 = sub / "player.js"
+            f1.write_text("loader", encoding="utf-8")
+            f2.write_text("player", encoding="utf-8")
+
+            # A dir with another file stays (negative):
+            bump.put_back(f1, None, root=root)
+            self.assertFalse(f1.exists())
+            self.assertTrue(f2.exists())
+            self.assertTrue(sub.is_dir())
+
+            # Last file in dir removes the dir (positive) and never removes root (boundary):
+            bump.put_back(f2, None, root=root)
+            self.assertFalse(f2.exists())
+            self.assertFalse(sub.exists())
+            self.assertFalse((root / "tools").exists())
+            self.assertTrue(root.is_dir())
 
 
 class EvaluatorRefreshTests(unittest.TestCase):
@@ -599,7 +660,7 @@ class AdoptModeTests(unittest.TestCase):
         report = bump.Report(["x"], [], (1, ["abc1234 one"]), [], "")
         for plain, command in ((False, "praetorctl adopt --force"), (True, "praetorctl adopt")):
             with self.subTest(plain=plain):
-                kept = f"Kept from {command} (a Praetor gate"
+                kept = f"Kept from {command} (a trim gate"
                 self.assertIn(kept, bump.commit_message(PLAN, (0, []), [], [], plain))
                 self.assertIn(kept, bump.pr_body(PLAN, report, plain))
 
@@ -614,10 +675,10 @@ class AdoptModeTests(unittest.TestCase):
         left = {path: adopted[path] for path in ("Makefile", "engine.mk")}
         reverted = set()
 
-        def gates(session, tree, quiet=False):
+        def gates(session, tree, quiet=False, mkdocs=None):
             return "Makefile" not in reverted, ""
 
-        def put_back(path, state):
+        def put_back(path, state, root=None):
             reverted.discard(Path(path).name)
 
         with tempfile.TemporaryDirectory() as base:
@@ -1000,6 +1061,67 @@ class GateListTests(unittest.TestCase):
                 run.assert_not_called()
             (tree / bump.DOCS_REQUIREMENTS).unlink()
             self.assertIsNone(bump.mkdocs_python(session, tree)[0])
+
+    def test_portal_gate_in_trim_keeps_lock_when_portal_fails(self):
+        """Positive: fake run where only the portal gate fails on reverting lock -> lock kept."""
+        with tempfile.TemporaryDirectory() as base:
+            tree = Path(base) / "tree"
+            tree.mkdir(parents=True)
+            lock_path = tree / "tools" / "figures" / "player.lock.json"
+            lock_path.parent.mkdir(parents=True)
+            lock_path.write_text("{}", encoding="utf-8")
+
+            session = bump.Session(args(cache=str(Path(base) / "cache")), stream=io.StringIO())
+            session.binary = Path("praetorctl")
+            fake_python = Path(base) / "venv" / "bin" / "python"
+            changes = {"tools/figures/player.lock.json": "??"}
+
+            def fake_run(argv, deadline, cwd=None, env=None):
+                if "mkdocs" in argv and not lock_path.is_file():
+                    return bump.Result(tuple(argv), 1, "", "ERROR: lock is missing\n")
+                return bump.Result(tuple(argv), 0, "", "")
+
+            with mock.patch.object(bump, "status", return_value=changes), mock.patch.object(
+                bump, "mkdocs_python", return_value=(fake_python, None)
+            ), mock.patch.object(bump, "run", side_effect=fake_run):
+                kept, reverted = bump.reconcile(session, tree)
+
+            self.assertEqual(kept, ["tools/figures/player.lock.json"])
+            self.assertEqual(reverted, [])
+            self.assertTrue(lock_path.is_file())
+
+    def test_no_venv_keeps_coupled_group_untried_with_skip_reason(self):
+        """No-venv: coupled group kept untried, skip reason present."""
+        with tempfile.TemporaryDirectory() as base:
+            tree = Path(base) / "tree"
+            tree.mkdir(parents=True)
+            lock_path = tree / "tools" / "figures" / "player.lock.json"
+            lock_path.parent.mkdir(parents=True)
+            lock_path.write_text("{}", encoding="utf-8")
+            other_path = tree / "other.txt"
+            other_path.write_text("other", encoding="utf-8")
+
+            session = bump.Session(args(cache=str(Path(base) / "cache")), stream=io.StringIO())
+            session.binary = Path("praetorctl")
+            changes = {
+                "tools/figures/player.lock.json": "??",
+                "other.txt": "??",
+            }
+            ok = bump.Result((), 0, "", "")
+
+            with mock.patch.object(bump, "status", return_value=changes), mock.patch.object(
+                bump, "mkdocs_python", return_value=(None, "no venv available")
+            ), mock.patch.object(bump, "run", return_value=ok):
+                kept, reverted = bump.reconcile(session, tree)
+
+            self.assertIn("tools/figures/player.lock.json", kept)
+            self.assertEqual(reverted, [("other.txt", "no gate needs it")])
+            self.assertTrue(
+                any(
+                    line.startswith("SKIP:") and "no venv available" in line
+                    for line in session.entries
+                )
+            )
 
     def test_the_first_clone_only_borrows_from_the_shared_checkout(self):
         with tempfile.TemporaryDirectory() as base:
