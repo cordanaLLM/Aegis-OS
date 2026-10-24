@@ -197,6 +197,39 @@ This check is narrower than the axe-core scan D91 first planned, and ADR-0004
 records it as a negative consequence: it asserts a role and a name on every
 node and the labelled empty state, not the WCAG 2.2 AA rule set.
 
+## Pointer alternatives (M30 E30-2, model half)
+
+`src/pointer.rs` checks the display-free half of REQ-P05-14;
+`tests/pointer_alternatives.rs` holds its positive, negative and boundary cases.
+
+- Operations: `Pan`, `Zoom`, `NodeMove`, `NodeResize` and `HandleRotate`.
+  REQ-P05-14 also names lens drag; the canvas model holds no lens, so none is
+  modelled here.
+- `check_operations` refuses a drag operation without click-only step controls
+  (`PointerError::DragOnly`) or without a keyboard command bound in `Shortcuts`
+  (`PointerError::NoKeyboard`).
+- Keyboard: each step is a focus `Command` on a single-letter shortcut: pan
+  `h`/`l`/`k`/`j`, zoom `i`/`o`, move `a`/`d`/`w`/`s`, resize `g`/`p`, rotate
+  `r`/`c`. Move and resize act on the focused node, rotate on the focused node
+  or level, pan and zoom on the camera. A node-bound command with no focused
+  node is `KeyOutcome::Ignored`.
+- One step size per operation: `GRID_STEP`, `RESIZE_STEP`, `ROTATE_STEP_DEGREES`
+  and `ZOOM_FACTOR` (2.0) serve drag, click and keyboard alike. For every
+  operation, N drag steps, N clicks and N key presses end in the same canvas
+  state.
+- Single-pointer activation: `PointerTracker` takes press, move and release for
+  canvas nodes (`PressTarget::Node`) and step controls (`PressTarget::Control`).
+  Press never activates; release on the pressed target activates; release
+  elsewhere aborts with no state change.
+- Target size: `target_report` compares each node's screen bounds with
+  `MIN_TARGET_CSS_PX` (24). A smaller node is `Inert` while it stays in focus
+  order with keyboard actions, and `Canvas::hit_test` skips it; with
+  `InertPolicy::Forbidden` it is a `Defect`. At `MIN_SCALE` no seeded node is a
+  `Defect`.
+
+The live half (pointer events on the running shell) is part B and has not run
+yet.
+
 ## What the dependency closure holds (D78)
 
 `tests/manifest_hygiene.rs` runs `cargo metadata --format-version 1 --locked

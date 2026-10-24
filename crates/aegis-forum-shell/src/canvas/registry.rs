@@ -134,6 +134,8 @@ pub struct ActionState {
     pub pinned: bool,
     /// The target's value, within `-MAX_VALUE..=MAX_VALUE`.
     pub value: i8,
+    /// The target's handle angle in whole degrees, within `0..360`.
+    pub angle: i16,
 }
 
 impl ActionState {
@@ -147,6 +149,13 @@ impl ActionState {
                 self.value = self.value.saturating_sub(1).max(MAX_VALUE.saturating_neg());
             }
         }
+    }
+
+    /// Rotates the handle angle by `delta_degrees`, wrapping within `0..360`.
+    pub fn rotate(&mut self, delta_degrees: i16) {
+        let sum = i32::from(self.angle).saturating_add(i32::from(delta_degrees));
+        let new_angle = sum.rem_euclid(360);
+        self.angle = i16::try_from(new_angle).unwrap_or(0);
     }
 }
 

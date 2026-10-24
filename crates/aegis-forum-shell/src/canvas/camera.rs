@@ -8,7 +8,7 @@
 //! export reads the camera only to place each node's screen bounds; it never
 //! reads it to decide whether a node is exported (REQ-P05-11).
 
-use super::geometry::{GeometryError, Viewport, WorldRect};
+use super::geometry::{GeometryError, MAX_COORDINATE, Viewport, WorldRect};
 
 /// The smallest camera scale: one screen pixel shows eight canvas units.
 pub const MIN_SCALE: f64 = 0.125;
@@ -144,6 +144,15 @@ impl Camera {
     pub fn zoom_by(&mut self, factor: f64) {
         if factor.is_finite() && factor > 0.0 {
             self.scale = clamp_scale(self.scale * factor);
+        }
+    }
+
+    /// Moves the camera centre by `(dx, dy)` in canvas units, clamped to the
+    /// admitted range.
+    pub fn pan_by(&mut self, dx: f64, dy: f64) {
+        if dx.is_finite() && dy.is_finite() {
+            self.center_x = (self.center_x + dx).clamp(-MAX_COORDINATE, MAX_COORDINATE);
+            self.center_y = (self.center_y + dy).clamp(-MAX_COORDINATE, MAX_COORDINATE);
         }
     }
 
