@@ -2751,15 +2751,9 @@
       "id": "M33",
       "title": "Consume amussis-decision in place of the in-tree decision engine",
       "rank": 31,
-      "state": "blocked",
+      "state": "ready",
       "blocked_by": [
         "M02"
-      ],
-      "external_blockers": [
-        {
-          "release": "amussis v0.1.0",
-          "source": "cordanaLLM/Aegis-OS issue #225"
-        }
       ],
       "unblocks": [],
       "cost": "medium",
@@ -2772,20 +2766,20 @@
       "reference_profile": {
         "support": "not-hardware",
         "requires": [],
-        "rationale": "Planned on 2026-10-17 from issue #225: once amussis releases v0.1.0 with amussis-decision, Aegis uses it in place of the decision engine M02 built in crates/aegis-justitia. It waits on that release, which external_blockers records, and docs/integration/stack.md is not changed until the release pins the contract."
+        "rationale": "Planned on 2026-10-17 from issue #225: Aegis uses amussis-decision in place of the decision engine M02 built in crates/aegis-justitia. The release it waited on is out: amussis v0.1.0 (2026-10-11) and v0.2.0 (2026-10-16), and ADR-0006 pins amussis-decision exactly at 0.2.0 from crates.io, so no external blocker remains."
       },
       "exit_criteria": [
-        "A recorded decision adopts amussis-decision at the released v0.1.0 tag, read back from the amussis repository, and docs/integration/stack.md names amussis as a producer in the same change.",
+        "ADR-0006 adopts amussis-decision at the crates.io release 0.2.0, pinned exactly as =0.2.0; docs/integration/stack.md names amussis as a producer in the change that adds that pin.",
         "An adapter crate maps P06's decision interface onto amussis-decision, the M14 consumer contracts keep passing unchanged, and the in-tree engine is removed only after they pass against the adapter.",
         "Positive, negative and boundary cases for the adapter run inside make verify-all (HISS-15)."
       ],
-      "cheapest_exit": "Pin amussis v0.1.0, route one M14 consumer contract test through an adapter onto amussis-decision, and keep it green.",
+      "cheapest_exit": "Pin amussis-decision =0.2.0, route one M14 consumer contract test through an adapter onto amussis-decision, and keep it green.",
       "epics": [
         {
           "id": "E33-1",
           "title": "amussis-decision adapter and removal of the in-tree engine",
           "requirement_ids": [],
-          "acceptance": "Positive: the M14 consumer contract tests pass through the adapter. Negative: an amussis version other than the pinned tag is refused. Boundary: the in-tree engine's removal leaves every contract test passing."
+          "acceptance": "Positive: the M14 consumer contract tests pass through the adapter. Negative: an amussis-decision version other than the pinned =0.2.0 is refused. Boundary: the in-tree engine's removal leaves every contract test passing."
         }
       ]
     }
