@@ -10,18 +10,11 @@ mod common;
 
 use core::time::Duration;
 
-use aegis_scaena::{Cue, parse_srt};
-use common::Fallible;
+use aegis_scaena::parse_srt;
+use common::{Fallible, check_cue};
 
 /// The committed `SubRip` subtitle fixture for milestone M32.
 const COMMITTED_SRT: &str = include_str!("../fixtures/subtitle-clip-90.srt");
-
-fn check_cue(cue: &Cue, index: u32, start: Duration, end: Duration, text: &str) {
-    assert_eq!(cue.index, index);
-    assert_eq!(cue.start, start);
-    assert_eq!(cue.end, end);
-    assert_eq!(cue.text, text);
-}
 
 /// Positive: the committed subtitle fixture parses into exactly 3 cues with expected timing.
 #[test]

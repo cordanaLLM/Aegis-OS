@@ -20,9 +20,9 @@ use core::fmt::Write as _;
 use core::time::Duration;
 
 use aegis_scaena::{
-    Cue, MAX_CUE_TEXT_BYTES, MAX_CUES, MAX_SRT_BYTES, Offset, SubtitleError, judge, parse_srt,
+    MAX_CUE_TEXT_BYTES, MAX_CUES, MAX_SRT_BYTES, Offset, SubtitleError, judge, parse_srt,
 };
-use common::Fallible;
+use common::{Fallible, check_cue};
 
 /// Builds a valid `SubRip` stream containing `count` sequential cues with monotonic start times.
 fn make_cues_srt(count: usize) -> String {
@@ -38,13 +38,6 @@ fn make_cues_srt(count: usize) -> String {
 }
 
 // --- Positive -------------------------------------------------------------
-
-fn check_cue(cue: &Cue, index: u32, start: Duration, end: Duration, text: &str) {
-    assert_eq!(cue.index, index);
-    assert_eq!(cue.start, start);
-    assert_eq!(cue.end, end);
-    assert_eq!(cue.text, text);
-}
 
 /// Positive: a 3-cue `SubRip` document parses into exact start, end durations and text.
 #[test]

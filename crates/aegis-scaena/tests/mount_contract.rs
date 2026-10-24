@@ -23,20 +23,19 @@ use core::mem::MaybeUninit;
 use std::os::fd::AsFd;
 use std::time::Instant;
 
-use aegis_scaena::line::body;
 use aegis_scaena::mount::{
     MAX_EXTENT, MAX_NAMESPACE_BYTES, decode_request, decode_response, encode_request,
     encode_response,
 };
 use aegis_scaena::{
-    Anchor, Edge, JsonCategory, KeyboardInteractivity, Layer, LineBuffer, LineError,
-    MAX_LINE_BYTES, Margin, MountCanvas, MountError, MountRequest, MountSchema, Namespace, Refusal,
-    Response, TransportError, control_pair,
+    Anchor, Edge, JsonCategory, KeyboardInteractivity, Layer, LineBuffer, LineError, Margin,
+    MountCanvas, MountError, MountRequest, MountSchema, Namespace, Refusal, Response,
+    TransportError, control_pair,
 };
 use rustix::io::IoSlice;
 use rustix::net::{SendAncillaryBuffer, SendAncillaryMessage, SendFlags, sendmsg};
 
-use common::{DEADLINES, Fallible, memfd};
+use common::{DEADLINES, Fallible, assert_line_length_boundary, line, memfd, request_line_string};
 
 /// A top bar: anchored top, left and right, with every optional member set.
 fn bar() -> Result<MountCanvas, MountError> {
@@ -67,14 +66,7 @@ const fn request(canvas: MountCanvas) -> MountRequest {
 
 /// The bar's request line, without its newline.
 fn valid() -> Result<String, Box<dyn std::error::Error>> {
-    let mut buffer = LineBuffer::new();
-    let line = encode_request(&request(bar()?), &mut buffer)?;
-    Ok(String::from_utf8(body(line)?.to_vec())?)
-}
-
-/// `text` with one newline appended.
-fn line(text: &str) -> Vec<u8> {
-    format!("{text}\n").into_bytes()
+    request_line_string(&request(bar()?), encode_request)
 }
 
 /// Decodes the bar's line with `from` replaced by `to` once.
@@ -312,23 +304,7 @@ fn a_silent_peer_fails_the_receive_at_its_deadline() -> Fallible {
 /// accepted, and one byte longer is refused before it is parsed.
 #[test]
 fn a_line_at_the_byte_bound_is_accepted_and_one_byte_longer_refused() -> Fallible {
-    let text = valid()?;
-    let pad = MAX_LINE_BYTES
-        .checked_sub(text.len())
-        .and_then(|room| room.checked_sub(1))
-        .ok_or("the fixture line leaves no room to pad")?;
-    // JSON admits whitespace between tokens; it pads without changing meaning.
-    let at_bound = line(&text.replacen('{', &format!("{{{}", " ".repeat(pad)), 1));
-    assert_eq!(at_bound.len(), MAX_LINE_BYTES);
-    assert_eq!(decode_request(&at_bound)?, request(bar()?));
-    let over = line(&text.replacen('{', &format!("{{{}", " ".repeat(pad.saturating_add(1))), 1));
-    assert_eq!(
-        decode_request(&over),
-        Err(LineError::TooLong {
-            length: MAX_LINE_BYTES.saturating_add(1)
-        })
-    );
-    Ok(())
+    assert_line_length_boundary(&valid()?, &request(bar()?), decode_request)
 }
 
 /// Boundary: a namespace of `MAX_NAMESPACE_BYTES` is accepted on the wire and
