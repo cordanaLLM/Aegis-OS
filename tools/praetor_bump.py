@@ -20,7 +20,7 @@ One run:
    `praetorctl adopt` without `--force` for an engine refresh (`--plain-adopt`);
 4. puts back every hand-maintained file adopt rewrote (`HAND_MAINTAINED`),
    restores AGENTS.md and recompiles its projections, then reverts each other
-   change no Praetor gate needs (`minimise`);
+   change no trim gate needs (`minimise`);
 5. moves the pin in ci.yml and in docs/roadmap/toolchain-admission.md;
 6. runs the repository's gates with the pinned praetorctl first on PATH;
 7. GREEN: commits with sign-off and force-pushes the one rolling branch,
@@ -133,6 +133,15 @@ HAND_MAINTAINED = (
     "*.bak",
 )
 
+# Change units that must stay together: reverting one without the others breaks
+# the repository. Each entry is a tuple of file paths or directory prefixes
+# (ending with "/"). minimise() and reduce_pairs() treat them as a single
+# candidate: reverted together or kept together, never split.
+# tools/figures/mkdocs_hook.py expects tools/figures/player/ to exist if
+# tools/figures/player.lock.json is absent, and locked_player_files() warns
+# if player.lock.json is missing while player/ files are deleted.
+COUPLED = (("tools/figures/player.lock.json", "tools/figures/player/"),)
+
 # The file, relative to the git common directory, where `lefthook install`
 # records which configuration the shared hooks were written from.
 LEFTHOOK_CHECKSUM = "info/lefthook.checksum"
@@ -140,7 +149,8 @@ LEFTHOOK_CHECKSUM = "info/lefthook.checksum"
 # with them and `mkdocs build --strict` on every pull request touching docs/.
 DOCS_REQUIREMENTS = "docs/requirements.txt"
 
-# The gates that decide whether adopt's version of a file is needed (#130).
+# The Praetor gates that, with the portal build, decide whether adopt's
+# version of a file is needed in reconcile (#130).
 PRAETOR_GATES = (
     ("compile-context --verify", ("compile-context", "--verify")),
     ("audit", ("audit",)),
@@ -168,6 +178,7 @@ DEADLINE_DRAIN = 10
 MAX_CANDIDATES = 256
 MAX_PAIR_FILES = 24
 MAX_PAIR_ROUNDS = 12
+MAX_DIR_DEPTH = 32
 MAX_STATUS_ENTRIES = 4096
 MAX_HOOK_FILES = 64
 MAX_STALE_WORKTREES = 64
@@ -496,6 +507,39 @@ def hand_maintained(paths):
     return sorted(path for path in paths if is_hand_maintained(path))
 
 
+def is_coupled_match(path, pattern):
+    """Return True when `path` matches `pattern` (prefix if pattern ends with '/', else exact)."""
+    if pattern.endswith("/"):
+        return path.startswith(pattern)
+    return path == pattern
+
+
+def is_coupled(path):
+    """Return True when `path` belongs to any group in `COUPLED`."""
+    return any(is_coupled_match(path, pattern) for group in COUPLED for pattern in group)
+
+
+def candidate_units(candidates):
+    """Group `candidates` into units per `COUPLED`; each unit is a tuple of paths."""
+    matched_groups = {}
+    singles = []
+    for path in candidates:
+        group_idx = next(
+            (
+                i
+                for i, group in enumerate(COUPLED)
+                if any(is_coupled_match(path, pat) for pat in group)
+            ),
+            None,
+        )
+        if group_idx is not None:
+            matched_groups.setdefault(group_idx, []).append(path)
+        else:
+            singles.append((path,))
+    coupled = [tuple(matched_groups[i]) for i in sorted(matched_groups)]
+    return coupled + singles
+
+
 def stamp_only(before, after):
     """Return True when two baselines differ in `BASELINE_STAMP_KEYS` at most."""
     try:
@@ -524,35 +568,50 @@ def parse_status(text):
     return changes
 
 
+def flatten(units):
+    """Return a flat list of paths from an iterable of path tuples."""
+    paths = []
+    for unit in units:
+        paths.extend(unit)
+    return paths
+
+
 def minimise(candidates, try_revert):
-    """Return the candidates to keep: those some Praetor gate fails without.
+    """Return the candidates to keep: those some trim gate fails without.
 
     `try_revert(paths)` puts `paths` back to main's content and runs the gates;
     it returns True when they pass (the revert stands) and otherwise restores
     adopt's content and returns False. All candidates are tried together first,
-    then one at a time, then in pairs, because some files only pass together
+    then one unit at a time, then in pairs, because some files only pass together
     (.paperclip/harness.json with the register digest in .standards.yaml).
     Candidates past `MAX_CANDIDATES` are kept untried.
     """
-    examined = list(candidates)[:MAX_CANDIDATES]
-    untried = list(candidates)[MAX_CANDIDATES:]
-    if not examined or try_revert(examined):
-        return untried
-    kept = [path for path in examined if not try_revert([path])]
-    return reduce_pairs(kept, try_revert) + untried
+    units = candidate_units(candidates)
+    examined = units[:MAX_CANDIDATES]
+    untried = units[MAX_CANDIDATES:]
+    if not examined:
+        return flatten(untried)
+    if try_revert(flatten(examined)):
+        return flatten(untried)
+    kept = [unit for unit in examined if not try_revert(list(unit))]
+    kept = reduce_pairs(kept, try_revert)
+    return flatten(kept + untried)
 
 
 def first_pair(kept, try_revert):
     """Revert the first pair of `kept` whose revert passes; return it, or None."""
-    return next((pair for pair in itertools.combinations(kept, 2) if try_revert(list(pair))), None)
+    for pair in itertools.combinations(kept, 2):
+        if try_revert(flatten(pair)):
+            return pair
+    return None
 
 
 def reduce_pairs(kept, try_revert):
-    """Revert pairs of kept files that pass only together; return what is left.
+    """Revert pairs of kept units that pass only together; return what is left.
 
-    After a pair goes, each remaining file is retried alone, since a file may
+    After a pair goes, each remaining unit is retried alone, since a unit may
     have been needed only by the pair. Past `MAX_PAIR_FILES` the quadratic
-    search is not attempted and every kept file stays.
+    search is not attempted and every kept unit stays.
     """
     for _ in range(MAX_PAIR_ROUNDS):
         if not 2 <= len(kept) <= MAX_PAIR_FILES:
@@ -560,7 +619,7 @@ def reduce_pairs(kept, try_revert):
         pair = first_pair(kept, try_revert)
         if pair is None:
             return kept
-        kept = [path for path in kept if path not in pair and not try_revert([path])]
+        kept = [unit for unit in kept if unit not in pair and not try_revert(list(unit))]
     return kept
 
 
@@ -589,7 +648,7 @@ def adopt_command(plain):
 
 def change_lines(kept, reverted, plain=False):
     """Return the commit message's account of adopt's rewrite."""
-    lines = [f"Kept from {adopt_command(plain)} (a Praetor gate fails without it):"]
+    lines = [f"Kept from {adopt_command(plain)} (a trim gate fails without it):"]
     lines += [f"- {path}" for path in kept] or ["- nothing beyond the pin"]
     lines += ["", "Reverted to the content on main:"]
     lines += [f"- {path} ({why})" for path, why in reverted] or ["- nothing"]
@@ -727,10 +786,26 @@ def capture(path):
     return path.read_bytes(), path.stat().st_mode & 0o777
 
 
-def put_back(path, state):
+def prune_empty_dirs(directory, root=None):
+    """Remove now-empty parent directories up to, but not including, `root`."""
+    current = directory
+    for _ in range(MAX_DIR_DEPTH):
+        if root is not None and current == root:
+            break
+        if current.parent == current:
+            break
+        try:
+            current.rmdir()
+        except OSError:
+            break
+        current = current.parent
+
+
+def put_back(path, state, root=None):
     """Restore a file captured by `capture`, removing it when it did not exist."""
     if state is None:
         path.unlink(missing_ok=True)
+        prune_empty_dirs(path.parent, root=root)
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(state[0])
@@ -960,7 +1035,9 @@ def status(session, tree):
 def revert(session, tree, path, code):
     """Put one path back to main's content: delete it when adopt created it."""
     if code == "??":
-        (tree / path).unlink(missing_ok=True)
+        target = tree / path
+        target.unlink(missing_ok=True)
+        prune_empty_dirs(target.parent, root=tree)
         return
     session.must(["git", "-C", tree, "checkout", "HEAD", "--", path], DEADLINE_QUICK)
 
@@ -972,26 +1049,37 @@ def praetor_argv(binary, arguments):
     return [binary, *arguments]
 
 
-def praetor_gates(session, tree, quiet=False):
-    """Run the Praetor gates; return (all passed, the failing lines)."""
+def portal_argv(mkdocs, site):
+    """Return the command line for mkdocs build --strict."""
+    return [mkdocs, "-m", "mkdocs", "build", "--strict", "-d", site]
+
+
+def praetor_gates(session, tree, quiet=False, mkdocs=None):
+    """Run the Praetor gates and optional portal build; return (all passed, the failing lines)."""
     failures = []
     for name, arguments in PRAETOR_GATES:
         argv = praetor_argv(session.binary, arguments)
         result = session.run(argv, DEADLINE_QUICK, cwd=tree, quiet=quiet)
         if result.code != 0:
             failures.append(failure_lines(name, result))
+    if mkdocs is not None:
+        site = session.cache / "trim-site"
+        argv = portal_argv(mkdocs, site)
+        result = session.run(argv, DEADLINE_LINT, cwd=tree, quiet=quiet)
+        if result.code != 0:
+            failures.append(failure_lines("mkdocs build --strict", result))
     return not failures, "\n".join(failures)
 
 
-def try_revert(session, tree, changes, paths):
-    """Revert `paths`; keep the revert when the Praetor gates pass, else undo it."""
+def try_revert(session, tree, changes, paths, mkdocs=None):
+    """Revert `paths`; keep the revert when the trim gates pass, else undo it."""
     saved = {path: capture(tree / path) for path in paths}
     for path in paths:
         revert(session, tree, path, changes[path])
-    passed, _ = praetor_gates(session, tree, quiet=True)
+    passed, _ = praetor_gates(session, tree, quiet=True, mkdocs=mkdocs)
     if not passed:
         for path, state in saved.items():
-            put_back(tree / path, state)
+            put_back(tree / path, state, root=tree)
     return passed
 
 
@@ -1009,11 +1097,21 @@ def restore_fixed(session, tree, changes):
     return reverted
 
 
+def untried_coupled(candidates, reason, session):
+    """Keep coupled candidates untried when no portal venv exists; note the skip."""
+    coupled_paths = [p for p in candidates if is_coupled(p)]
+    if coupled_paths:
+        session.note(public_line(f"SKIP: coupled files kept untried: {reason}"))
+    remaining = [p for p in candidates if p not in coupled_paths]
+    return remaining, coupled_paths
+
+
 def reconcile(session, tree):
-    """Keep of adopt's rewrite only what a Praetor gate needs; return (kept, reverted)."""
+    """Keep of adopt's rewrite only what a trim gate needs; return (kept, reverted)."""
     adopted = status(session, tree)
     reverted = restore_fixed(session, tree, adopted)
-    passed, failing = praetor_gates(session, tree)
+    mkdocs, reason = mkdocs_python(session, tree)
+    passed, failing = praetor_gates(session, tree, mkdocs=mkdocs)
     if not passed:
         raise BumpError(
             "the Praetor gates fail on adopt's output with the hand-maintained files restored",
@@ -1021,12 +1119,18 @@ def reconcile(session, tree):
         )
     changes = status(session, tree)
     candidates = sorted(changes)
-    kept = minimise(candidates, lambda paths: try_revert(session, tree, changes, paths))
+    coupled_paths = []
+    if mkdocs is None:
+        candidates, coupled_paths = untried_coupled(candidates, reason, session)
+    kept = (
+        minimise(candidates, lambda paths: try_revert(session, tree, changes, paths, mkdocs=mkdocs))
+        + coupled_paths
+    )
     reverted += [(path, "no gate needs it") for path in candidates if path not in kept]
     if AGENTS in adopted and AGENTS not in changes:
         reverted.append((AGENTS, "restored from main; its projections recompiled"))
     session.note(f"adopt reconciled: {len(kept)} kept, {len(reverted)} reverted")
-    return kept, sorted(reverted)
+    return sorted(kept), sorted(reverted)
 
 
 def apply_pin(tree, plan, today):
@@ -1062,8 +1166,7 @@ def gate_commands(binary, mkdocs=None, site=None):
     )
     if mkdocs is None:
         return gates
-    portal = [mkdocs, "-m", "mkdocs", "build", "--strict", "-d", site]
-    return gates + (("mkdocs build --strict", portal, DEADLINE_LINT),)
+    return gates + (("mkdocs build --strict", portal_argv(mkdocs, site), DEADLINE_LINT),)
 
 
 # Where `python -m venv` puts the interpreter: bin/python on POSIX, Scripts\python.exe on
