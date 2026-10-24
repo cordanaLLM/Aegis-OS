@@ -5,8 +5,9 @@
 //!
 //! One file, included by path into the contracts modules of `aegis-calliope`
 //! and `aegis-vesta` (`#[path = "../../../contract_edge_scaffold.rs"] #[macro_use]
-//! mod contract_edge_scaffold;`), after `contract_scaffold.rs`, whose
-//! `define_contract_error!` and `scaffold_contract!` it calls. It lives apart
+//! mod contract_edge_scaffold;`), after `contract_scaffold.rs` and
+//! `contract_codec_scaffold.rs`, whose `define_contract_error!` and
+//! `scaffold_contract!` it calls. It lives apart
 //! from `contract_scaffold.rs` so the crates that declare their own refusals
 //! never see its `WrongEdge` variant.
 

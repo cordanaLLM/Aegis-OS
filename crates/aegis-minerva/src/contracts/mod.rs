@@ -77,6 +77,10 @@ impl SchemaId {
 #[path = "../../../contract_scaffold.rs"]
 mod contract_scaffold;
 
+#[macro_use]
+#[path = "../../../contract_codec_scaffold.rs"]
+mod contract_codec_scaffold;
+
 /// What a refusal is about: the contract, and the payload when it could be read.
 pub type Correlation = contract_scaffold::Correlation<SchemaId, Identity>;
 

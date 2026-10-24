@@ -114,149 +114,83 @@ impl core::fmt::Display for SchemaId {
     }
 }
 
+#[macro_use]
+#[path = "../../../contract_scaffold.rs"]
+mod contract_scaffold;
+
 /// What a refusal is about: the contract, and the payload when it could be read.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Correlation {
-    schema: SchemaId,
-    id: Option<Identity>,
-}
+pub type Correlation = contract_scaffold::Correlation<SchemaId, Identity>;
 
-impl Correlation {
-    /// Builds a correlation from a schema and the identifier, if one was read.
-    #[must_use]
-    pub const fn new(schema: SchemaId, id: Option<Identity>) -> Self {
-        Self { schema, id }
-    }
+pub(crate) use contract_scaffold::decode_validated;
 
-    /// Returns the contract the payload claimed to satisfy.
-    #[must_use]
-    pub const fn schema(&self) -> SchemaId {
-        self.schema
-    }
-
-    /// Returns the correlation identifier, when the decoder could read one.
-    #[must_use]
-    pub const fn id(&self) -> Option<Identity> {
-        self.id
-    }
-}
-
-impl core::fmt::Display for Correlation {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match &self.id {
-            Some(id) => write!(f, "{} [{}]", self.schema, id),
-            None => write!(f, "{} [uncorrelated]", self.schema),
-        }
-    }
-}
-
-/// Reasons a contract payload is refused.
-///
-/// Every variant carries its [`Correlation`], so no refusal is anonymous.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
-#[non_exhaustive]
-pub enum ContractError {
-    /// The payload names a contract version this build does not admit.
-    #[error("{correlation}: the payload names a contract version this build does not admit")]
-    UnknownVersion {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// The payload is not a well-formed instance of its contract.
-    #[error("{correlation}: the payload is not a well-formed instance of this contract")]
-    Malformed {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// The payload does not fit the contract's scalar byte bound.
-    #[error("{correlation}: the payload does not fit the {max}-byte contract bound")]
-    PayloadTooLong {
-        /// What the refusal is about.
-        correlation: Correlation,
-        /// The scalar bound in bytes.
-        max: usize,
-    },
-    /// An action proposal arrived without an oversight signature.
-    #[error("{correlation}: the action proposal carries no oversight signature")]
-    Unsigned {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// The approval window is outside the declared bounds.
-    #[error("{correlation}: an approval window of {seconds}s is outside {min}s..={max}s")]
-    WindowOutOfRange {
-        /// What the refusal is about.
-        correlation: Correlation,
-        /// The window the payload declared, in seconds.
-        seconds: u64,
-        /// The shortest admissible window, in seconds.
-        min: u32,
-        /// The longest admissible window, in seconds.
-        max: u32,
-    },
-    /// A genesis previous-link appeared on a record that is not the first.
-    #[error(
-        "{correlation}: a genesis previous link is admissible only at sequence 1, not {sequence}"
-    )]
-    GenesisLinkOutOfPlace {
-        /// What the refusal is about.
-        correlation: Correlation,
-        /// The sequence number the payload declared.
-        sequence: u64,
-    },
-    /// The first record in a chain did not carry the genesis previous-link.
-    #[error("{correlation}: the record at sequence 1 must carry the genesis previous link")]
-    MissingGenesisLink {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// A refusal was recorded without the reason that produced it.
-    #[error("{correlation}: a refused action must record the reason it was refused")]
-    RefusalWithoutReason {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// A decision that refused nothing still carried a refusal reason.
-    #[error("{correlation}: a decision that refused nothing must record no reason")]
-    ReasonWithoutRefusal {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-    /// The declared approval is not the one the tier and class demand.
-    #[error("{correlation}: declared approval {declared:?} is not the demanded {demanded:?}")]
-    ApprovalMismatch {
-        /// What the refusal is about.
-        correlation: Correlation,
-        /// The approval the payload declared.
-        declared: RequiredApproval,
-        /// The approval the tier and oversight class demand.
-        demanded: RequiredApproval,
-    },
-    /// A decision request was raised where no human decision is demanded.
-    #[error("{correlation}: this tier and oversight class demand no human decision")]
-    NoApprovalRequired {
-        /// What the refusal is about.
-        correlation: Correlation,
-    },
-}
-
-impl ContractError {
-    /// Returns what the refusal is about.
-    #[must_use]
-    pub const fn correlation(&self) -> Correlation {
-        match self {
-            Self::UnknownVersion { correlation }
-            | Self::Malformed { correlation }
-            | Self::PayloadTooLong { correlation, .. }
-            | Self::Unsigned { correlation }
-            | Self::WindowOutOfRange { correlation, .. }
-            | Self::GenesisLinkOutOfPlace { correlation, .. }
-            | Self::MissingGenesisLink { correlation }
-            | Self::RefusalWithoutReason { correlation }
-            | Self::ReasonWithoutRefusal { correlation }
-            | Self::ApprovalMismatch { correlation, .. }
-            | Self::NoApprovalRequired { correlation } => *correlation,
-        }
+define_contract_error! {
+    SchemaId, Identity;
+    /// Reasons a contract payload is refused.
+    ///
+    /// Every variant carries its [`Correlation`], so no refusal is anonymous.
+    pub enum ContractError {
+        /// An action proposal arrived without an oversight signature.
+        #[error("{correlation}: the action proposal carries no oversight signature")]
+        Unsigned {
+            /// What the refusal is about.
+            correlation: Correlation,
+        },
+        /// The approval window is outside the declared bounds.
+        #[error("{correlation}: an approval window of {seconds}s is outside {min}s..={max}s")]
+        WindowOutOfRange {
+            /// What the refusal is about.
+            correlation: Correlation,
+            /// The window the payload declared, in seconds.
+            seconds: u64,
+            /// The shortest admissible window, in seconds.
+            min: u32,
+            /// The longest admissible window, in seconds.
+            max: u32,
+        },
+        /// A genesis previous-link appeared on a record that is not the first.
+        #[error(
+            "{correlation}: a genesis previous link is admissible only at sequence 1, not {sequence}"
+        )]
+        GenesisLinkOutOfPlace {
+            /// What the refusal is about.
+            correlation: Correlation,
+            /// The sequence number the payload declared.
+            sequence: u64,
+        },
+        /// The first record in a chain did not carry the genesis previous-link.
+        #[error("{correlation}: the record at sequence 1 must carry the genesis previous link")]
+        MissingGenesisLink {
+            /// What the refusal is about.
+            correlation: Correlation,
+        },
+        /// A refusal was recorded without the reason that produced it.
+        #[error("{correlation}: a refused action must record the reason it was refused")]
+        RefusalWithoutReason {
+            /// What the refusal is about.
+            correlation: Correlation,
+        },
+        /// A decision that refused nothing still carried a refusal reason.
+        #[error("{correlation}: a decision that refused nothing must record no reason")]
+        ReasonWithoutRefusal {
+            /// What the refusal is about.
+            correlation: Correlation,
+        },
+        /// The declared approval is not the one the tier and class demand.
+        #[error("{correlation}: declared approval {declared:?} is not the demanded {demanded:?}")]
+        ApprovalMismatch {
+            /// What the refusal is about.
+            correlation: Correlation,
+            /// The approval the payload declared.
+            declared: RequiredApproval,
+            /// The approval the tier and oversight class demand.
+            demanded: RequiredApproval,
+        },
+        /// A decision request was raised where no human decision is demanded.
+        #[error("{correlation}: this tier and oversight class demand no human decision")]
+        NoApprovalRequired {
+            /// What the refusal is about.
+            correlation: Correlation,
+        },
     }
 }
 
@@ -303,13 +237,10 @@ pub(crate) fn encode_into<'b, T: serde::Serialize>(
         .map_err(|err| map_encoding_error(correlation.schema(), err))
 }
 
-pub(crate) fn decode_validated<T, E>(
-    decoded: Result<T, E>,
-    validate: impl FnOnce(&T) -> Result<(), E>,
-) -> Result<T, E> {
-    let value = decoded?;
-    validate(&value)?;
-    Ok(value)
+impl contract_scaffold::EdgeName for graph::EdgeId {
+    fn edge_name(&self) -> &'static str {
+        self.name()
+    }
 }
 
 /// Verifies that `edge` matches `expected` for a contract payload.
@@ -322,8 +253,7 @@ pub(crate) fn check_edge(
     expected: graph::EdgeId,
     correlation: Correlation,
 ) -> Result<(), ContractError> {
-    if edge != expected {
-        return Err(ContractError::Malformed { correlation });
-    }
-    Ok(())
+    contract_scaffold::ensure_edge(edge, expected, correlation, |correlation, _| {
+        ContractError::Malformed { correlation }
+    })
 }
