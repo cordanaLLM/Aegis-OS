@@ -43,13 +43,7 @@ fn test_resize_bitmask_zero_mask_malformed() -> Fallible {
 #[test]
 fn test_resource_line_missing_error() -> Fallible {
     let fix = TempSysfs::new()?;
-    let dev_dir = fix
-        .sysfs
-        .join("bus")
-        .join("pci")
-        .join("devices")
-        .join("0000:f6:00.0");
-    std::fs::create_dir_all(&dev_dir)?;
+    let dev_dir = fix.pci_device_dir("0000:f6:00.0")?;
     // Create resize file for BAR 3
     std::fs::write(dev_dir.join("resource3_resize"), "0000000000000020\n")?;
     // But resource file only has 1 line (BAR 0)
@@ -76,12 +70,7 @@ fn test_device_rebar_measured_positive() -> Fallible {
         0x0000_00f0_0000_0000,
         0x0000_00f7_ffff_ffff,
     )?;
-    let dev_dir = fix
-        .sysfs
-        .join("bus")
-        .join("pci")
-        .join("devices")
-        .join("0000:f6:00.0");
+    let dev_dir = fix.pci_device_dir("0000:f6:00.0")?;
     let records = inspect_device_rebar(&dev_dir)?;
     assert_eq!(records.len(), 1);
     let Some(bar1) = records.first() else {
@@ -100,13 +89,7 @@ fn test_device_rebar_measured_positive() -> Fallible {
 #[test]
 fn test_oversize_resource_file_malformed() -> Fallible {
     let fix = TempSysfs::new()?;
-    let dev_dir = fix
-        .sysfs
-        .join("bus")
-        .join("pci")
-        .join("devices")
-        .join("0000:f6:00.0");
-    std::fs::create_dir_all(&dev_dir)?;
+    let dev_dir = fix.pci_device_dir("0000:f6:00.0")?;
     std::fs::write(dev_dir.join("resource0_resize"), "0000000000000010\n")?;
     // Plant an oversize resource file (> 4096 bytes)
     let oversize = "0x00000000db000000 0x00000000dbffffff 0x0000000000040200\n".repeat(100);

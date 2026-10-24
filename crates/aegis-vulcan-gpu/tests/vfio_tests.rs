@@ -18,20 +18,71 @@ use aegis_vulcan_gpu::vfio::{
 };
 use common::{Fallible, TempSysfs};
 
+fn sample_candidate(
+    address: &str,
+    driver: &str,
+    iommu_group: &str,
+    group_members: &[&str],
+    connectors: &[(&str, &str)],
+    boot_vga: bool,
+) -> VfioCandidateInput {
+    let mut conn_map = BTreeMap::new();
+    for &(name, status) in connectors {
+        conn_map.insert(name.to_string(), status.to_string());
+    }
+    VfioCandidateInput {
+        address: address.to_string(),
+        driver: driver.to_string(),
+        iommu_group: iommu_group.to_string(),
+        group_members: group_members.iter().map(|s| (*s).to_string()).collect(),
+        connectors: conn_map,
+        boot_vga,
+    }
+}
+
+fn assert_single_refusal(input: &VfioCandidateInput) -> Result<String, Box<dyn std::error::Error>> {
+    match evaluate_candidate(input) {
+        VfioDecision::Refused(reasons) => {
+            assert_eq!(reasons.len(), 1);
+            let first = reasons.first().ok_or("missing reason")?;
+            Ok(first.clone())
+        }
+        VfioDecision::Admitted => Err(format!(
+            "expected candidate at {} to be refused, but was admitted",
+            input.address
+        )
+        .into()),
+    }
+}
+
+fn assert_candidate_refused_output(
+    sysfs: &std::path::Path,
+    dev: &std::path::Path,
+    addr: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let run = run_map_bar(sysfs, dev, addr);
+    assert!(run.failed, "run must fail for refused candidate");
+    let line = run.lines.first().ok_or("missing line")?;
+    assert!(
+        line.starts_with("FAIL: candidate: refused: "),
+        "unexpected: {line}"
+    );
+    Ok(line.clone())
+}
+
 #[test]
 fn sole_occupant_headless_admitted() {
-    let mut connectors = BTreeMap::new();
-    connectors.insert("card1-DP-1".to_string(), "disconnected".to_string());
-    connectors.insert("card1-HDMI-A-1".to_string(), "disconnected".to_string());
-
-    let input = VfioCandidateInput {
-        address: "0000:f3:00.0".to_string(),
-        driver: "amdgpu".to_string(),
-        iommu_group: "925".to_string(),
-        group_members: vec!["0000:f3:00.0".to_string()],
-        connectors,
-        boot_vga: false,
-    };
+    let input = sample_candidate(
+        "0000:f3:00.0",
+        "amdgpu",
+        "925",
+        &["0000:f3:00.0"],
+        &[
+            ("card1-DP-1", "disconnected"),
+            ("card1-HDMI-A-1", "disconnected"),
+        ],
+        false,
+    );
 
     let decision = evaluate_candidate(&input);
     assert_eq!(decision, VfioDecision::Admitted);
@@ -43,99 +94,67 @@ fn sole_occupant_headless_admitted() {
 
 #[test]
 fn group_with_two_functions_refused() -> Fallible {
-    let input = VfioCandidateInput {
-        address: "0000:f3:00.0".to_string(),
-        driver: "amdgpu".to_string(),
-        iommu_group: "925".to_string(),
-        group_members: vec!["0000:f3:00.0".to_string(), "0000:f3:00.1".to_string()],
-        connectors: BTreeMap::new(),
-        boot_vga: false,
-    };
+    let input = sample_candidate(
+        "0000:f3:00.0",
+        "amdgpu",
+        "925",
+        &["0000:f3:00.0", "0000:f3:00.1"],
+        &[],
+        false,
+    );
 
-    let decision = evaluate_candidate(&input);
-    match decision {
-        VfioDecision::Refused(reasons) => {
-            assert_eq!(reasons.len(), 1);
-            let first = reasons.first().ok_or("missing reason")?;
-            assert!(
-                first.contains("shares IOMMU group 925 with 0000:f3:00.1"),
-                "unexpected reason: {first:?}"
-            );
-            Ok(())
-        }
-        VfioDecision::Admitted => Err("expected refused for shared IOMMU group".into()),
-    }
+    let first = assert_single_refusal(&input)?;
+    assert!(
+        first.contains("shares IOMMU group 925 with 0000:f3:00.1"),
+        "unexpected reason: {first:?}"
+    );
+    Ok(())
 }
 
 #[test]
 fn connected_output_refused() -> Fallible {
-    let mut connectors = BTreeMap::new();
-    connectors.insert("card0-DP-1".to_string(), "connected".to_string());
-    connectors.insert("card0-HDMI-A-1".to_string(), "disconnected".to_string());
+    let input = sample_candidate(
+        "0000:f0:02.0",
+        "i915",
+        "900",
+        &["0000:f0:02.0"],
+        &[
+            ("card0-DP-1", "connected"),
+            ("card0-HDMI-A-1", "disconnected"),
+        ],
+        false,
+    );
 
-    let input = VfioCandidateInput {
-        address: "0000:f0:02.0".to_string(),
-        driver: "i915".to_string(),
-        iommu_group: "900".to_string(),
-        group_members: vec!["0000:f0:02.0".to_string()],
-        connectors,
-        boot_vga: false,
-    };
-
-    let decision = evaluate_candidate(&input);
-    match decision {
-        VfioDecision::Refused(reasons) => {
-            assert_eq!(reasons.len(), 1);
-            let first = reasons.first().ok_or("missing reason")?;
-            assert!(
-                first.contains("card0-DP-1 (connected)"),
-                "unexpected reason: {first:?}"
-            );
-            Ok(())
-        }
-        VfioDecision::Admitted => Err("expected refused for connected output".into()),
-    }
+    let first = assert_single_refusal(&input)?;
+    assert!(
+        first.contains("card0-DP-1 (connected)"),
+        "unexpected reason: {first:?}"
+    );
+    Ok(())
 }
 
 #[test]
 fn boot_vga_refused() -> Fallible {
-    let input = VfioCandidateInput {
-        address: "0000:f0:02.0".to_string(),
-        driver: "xe".to_string(),
-        iommu_group: "900".to_string(),
-        group_members: vec!["0000:f0:02.0".to_string()],
-        connectors: BTreeMap::new(),
-        boot_vga: true,
-    };
+    let input = sample_candidate("0000:f0:02.0", "xe", "900", &["0000:f0:02.0"], &[], true);
 
-    let decision = evaluate_candidate(&input);
-    match decision {
-        VfioDecision::Refused(reasons) => {
-            assert_eq!(reasons.len(), 1);
-            let first = reasons.first().ok_or("missing reason")?;
-            assert!(
-                first.contains("is the boot VGA device"),
-                "unexpected reason: {first:?}"
-            );
-            Ok(())
-        }
-        VfioDecision::Admitted => Err("expected refused for boot VGA".into()),
-    }
+    let first = assert_single_refusal(&input)?;
+    assert!(
+        first.contains("is the boot VGA device"),
+        "unexpected reason: {first:?}"
+    );
+    Ok(())
 }
 
 #[test]
 fn multiple_refusal_reasons_accumulate() -> Fallible {
-    let mut connectors = BTreeMap::new();
-    connectors.insert("card0-DP-1".to_string(), "connected".to_string());
-
-    let input = VfioCandidateInput {
-        address: "0000:f0:02.0".to_string(),
-        driver: "xe".to_string(),
-        iommu_group: "900".to_string(),
-        group_members: vec!["0000:f0:02.0".to_string(), "0000:f0:02.1".to_string()],
-        connectors,
-        boot_vga: true,
-    };
+    let input = sample_candidate(
+        "0000:f0:02.0",
+        "xe",
+        "900",
+        &["0000:f0:02.0", "0000:f0:02.1"],
+        &[("card0-DP-1", "connected")],
+        true,
+    );
 
     let decision = evaluate_candidate(&input);
     match decision {
@@ -158,109 +177,86 @@ fn multiple_refusal_reasons_accumulate() -> Fallible {
 
 #[test]
 fn empty_iommu_group_refused() -> Fallible {
-    let mut connectors = BTreeMap::new();
-    connectors.insert("card1-DP-1".to_string(), "disconnected".to_string());
+    let input = sample_candidate(
+        "0000:f3:00.0",
+        "amdgpu",
+        "",
+        &["0000:f3:00.0"],
+        &[("card1-DP-1", "disconnected")],
+        false,
+    );
 
-    let input = VfioCandidateInput {
-        address: "0000:f3:00.0".to_string(),
-        driver: "amdgpu".to_string(),
-        iommu_group: String::new(),
-        group_members: vec!["0000:f3:00.0".to_string()],
-        connectors,
-        boot_vga: false,
-    };
-
-    let decision = evaluate_candidate(&input);
-    match decision {
-        VfioDecision::Refused(reasons) => {
-            assert_eq!(reasons.len(), 1);
-            let first = reasons.first().ok_or("missing reason")?;
-            assert_eq!(
-                first,
-                "0000:f3:00.0 has no IOMMU group: the IOMMU is off or the device is not isolated"
-            );
-            Ok(())
-        }
-        VfioDecision::Admitted => Err("expected refused for empty IOMMU group".into()),
-    }
+    let first = assert_single_refusal(&input)?;
+    assert_eq!(
+        first,
+        "0000:f3:00.0 has no IOMMU group: the IOMMU is off or the device is not isolated"
+    );
+    Ok(())
 }
 
 #[test]
 fn unknown_connector_status_refused() -> Fallible {
-    let mut connectors = BTreeMap::new();
-    connectors.insert("card1-DP-1".to_string(), "unknown".to_string());
-    connectors.insert("card1-HDMI-A-1".to_string(), "disconnected".to_string());
+    let input = sample_candidate(
+        "0000:f3:00.0",
+        "amdgpu",
+        "925",
+        &["0000:f3:00.0"],
+        &[
+            ("card1-DP-1", "unknown"),
+            ("card1-HDMI-A-1", "disconnected"),
+        ],
+        false,
+    );
 
-    let input = VfioCandidateInput {
-        address: "0000:f3:00.0".to_string(),
-        driver: "amdgpu".to_string(),
-        iommu_group: "925".to_string(),
-        group_members: vec!["0000:f3:00.0".to_string()],
-        connectors,
-        boot_vga: false,
-    };
-
-    let decision = evaluate_candidate(&input);
-    match decision {
-        VfioDecision::Refused(reasons) => {
-            assert_eq!(reasons.len(), 1);
-            let first = reasons.first().ok_or("missing reason")?;
-            assert!(
-                first.contains("card1-DP-1") && first.contains("unknown"),
-                "unexpected reason: {first:?}"
-            );
-            Ok(())
-        }
-        VfioDecision::Admitted => Err("expected refused for unknown connector status".into()),
-    }
+    let first = assert_single_refusal(&input)?;
+    assert!(
+        first.contains("card1-DP-1") && first.contains("unknown"),
+        "unexpected reason: {first:?}"
+    );
+    Ok(())
 }
 
 #[test]
 fn group_with_only_itself_boundary_admitted() {
-    let input = VfioCandidateInput {
-        address: "0000:f3:00.0".to_string(),
-        driver: "amdgpu".to_string(),
-        iommu_group: "42".to_string(),
-        group_members: vec!["0000:f3:00.0".to_string()],
-        connectors: BTreeMap::new(),
-        boot_vga: false,
-    };
+    let input = sample_candidate(
+        "0000:f3:00.0",
+        "amdgpu",
+        "42",
+        &["0000:f3:00.0"],
+        &[],
+        false,
+    );
     let decision = evaluate_candidate(&input);
     assert_eq!(decision, VfioDecision::Admitted);
 }
 
 #[test]
 fn writeback_connector_is_no_display_output() {
-    let mut connectors = BTreeMap::new();
-    connectors.insert("card0-Writeback-1".to_string(), "unknown".to_string());
-    connectors.insert("card0-DP-4".to_string(), "disconnected".to_string());
-
-    let input = VfioCandidateInput {
-        address: "0000:fd:00.0".to_string(),
-        driver: "amdgpu".to_string(),
-        iommu_group: "31".to_string(),
-        group_members: vec!["0000:fd:00.0".to_string()],
-        connectors,
-        boot_vga: false,
-    };
+    let input = sample_candidate(
+        "0000:fd:00.0",
+        "amdgpu",
+        "31",
+        &["0000:fd:00.0"],
+        &[
+            ("card0-Writeback-1", "unknown"),
+            ("card0-DP-4", "disconnected"),
+        ],
+        false,
+    );
 
     assert_eq!(evaluate_candidate(&input), VfioDecision::Admitted);
 }
 
 #[test]
 fn writeback_beside_an_unknown_output_still_refuses_that_output() -> Fallible {
-    let mut connectors = BTreeMap::new();
-    connectors.insert("card0-Writeback-1".to_string(), "unknown".to_string());
-    connectors.insert("card0-DP-4".to_string(), "unknown".to_string());
-
-    let input = VfioCandidateInput {
-        address: "0000:fd:00.0".to_string(),
-        driver: "amdgpu".to_string(),
-        iommu_group: "31".to_string(),
-        group_members: vec!["0000:fd:00.0".to_string()],
-        connectors,
-        boot_vga: false,
-    };
+    let input = sample_candidate(
+        "0000:fd:00.0",
+        "amdgpu",
+        "31",
+        &["0000:fd:00.0"],
+        &[("card0-Writeback-1", "unknown"), ("card0-DP-4", "unknown")],
+        false,
+    );
 
     match evaluate_candidate(&input) {
         VfioDecision::Refused(reasons) => {
@@ -277,14 +273,9 @@ fn writeback_beside_an_unknown_output_still_refuses_that_output() -> Fallible {
 
 #[test]
 fn positive_pre_open_admits_and_fails_on_missing_group_node() -> Fallible {
-    let fix = TempSysfs::new()?;
     let addr = "0000:f3:00.0";
-    fix.add_gpu(addr, "0x8086", "0x56a5", "vfio-pci", "0", "42", &[addr])?;
-
-    // Create container /dev/vfio/vfio in the fake dev tree
-    let vfio_dir = fix.dev.join("vfio");
-    std::fs::create_dir_all(&vfio_dir)?;
-    std::fs::write(vfio_dir.join("vfio"), "")?;
+    let fix = TempSysfs::new_with_arc_gpu(addr, None)?;
+    fix.add_vfio_container()?;
     // fix.dev/vfio/42 is deliberately absent.
 
     let run = run_map_bar(&fix.sysfs, &fix.dev, addr);
@@ -303,20 +294,13 @@ fn positive_pre_open_admits_and_fails_on_missing_group_node() -> Fallible {
 fn negative_driver_xe_refused_naming_xe_opens_nothing() -> Fallible {
     let fix = TempSysfs::new()?;
     let addr = "0000:f3:00.0";
-    fix.add_gpu(addr, "0x8086", "0x56a5", "xe", "0", "917", &[addr])?;
+    fix.add_arc_gpu(addr, "xe", "917", &[addr])?;
 
+    fix.add_vfio_container()?;
     let vfio_dir = fix.dev.join("vfio");
-    std::fs::create_dir_all(&vfio_dir)?;
-    std::fs::write(vfio_dir.join("vfio"), "")?;
     std::fs::write(vfio_dir.join("917"), "")?;
 
-    let run = run_map_bar(&fix.sysfs, &fix.dev, addr);
-    assert!(run.failed, "run must fail for driver xe");
-    let line = run.lines.first().ok_or("missing line")?;
-    assert!(
-        line.starts_with("FAIL: candidate: refused: "),
-        "unexpected: {line}"
-    );
+    let line = assert_candidate_refused_output(&fix.sysfs, &fix.dev, addr)?;
     assert!(line.contains("xe"), "must name driver xe: {line}");
     assert!(
         line.contains("expected vfio-pci"),
@@ -330,23 +314,9 @@ fn negative_group_shared_refused() -> Fallible {
     let fix = TempSysfs::new()?;
     let addr = "0000:f3:00.0";
     let other = "0000:f3:00.1";
-    fix.add_gpu(
-        addr,
-        "0x8086",
-        "0x56a5",
-        "vfio-pci",
-        "0",
-        "925",
-        &[addr, other],
-    )?;
+    fix.add_arc_gpu(addr, "vfio-pci", "925", &[addr, other])?;
 
-    let run = run_map_bar(&fix.sysfs, &fix.dev, addr);
-    assert!(run.failed, "run must fail for shared group");
-    let line = run.lines.first().ok_or("missing line")?;
-    assert!(
-        line.starts_with("FAIL: candidate: refused: "),
-        "unexpected: {line}"
-    );
+    let line = assert_candidate_refused_output(&fix.sysfs, &fix.dev, addr)?;
     assert!(
         line.contains("shares IOMMU group 925 with 0000:f3:00.1"),
         "unexpected: {line}"
@@ -356,20 +326,11 @@ fn negative_group_shared_refused() -> Fallible {
 
 #[test]
 fn negative_connected_connector_refused() -> Fallible {
-    let fix = TempSysfs::new()?;
     let addr = "0000:f3:00.0";
-    fix.add_gpu(addr, "0x8086", "0x56a5", "vfio-pci", "0", "42", &[addr])?;
-    let dev_dir = fix.sysfs.join("bus").join("pci").join("devices").join(addr);
-    std::fs::create_dir_all(dev_dir.join("drm").join("card0"))?;
+    let fix = TempSysfs::new_with_arc_gpu(addr, Some("card0"))?;
     fix.add_connector("card0", "DP-1", "connected")?;
 
-    let run = run_map_bar(&fix.sysfs, &fix.dev, addr);
-    assert!(run.failed, "run must fail for connected connector");
-    let line = run.lines.first().ok_or("missing line")?;
-    assert!(
-        line.starts_with("FAIL: candidate: refused: "),
-        "unexpected: {line}"
-    );
+    let line = assert_candidate_refused_output(&fix.sysfs, &fix.dev, addr)?;
     assert!(
         line.contains("card0-DP-1 (connected)"),
         "unexpected: {line}"
@@ -379,17 +340,11 @@ fn negative_connected_connector_refused() -> Fallible {
 
 #[test]
 fn boundary_writeback_unknown_status_admitted() -> Fallible {
-    let fix = TempSysfs::new()?;
     let addr = "0000:f3:00.0";
-    fix.add_gpu(addr, "0x8086", "0x56a5", "vfio-pci", "0", "42", &[addr])?;
-    let dev_dir = fix.sysfs.join("bus").join("pci").join("devices").join(addr);
-    std::fs::create_dir_all(dev_dir.join("drm").join("card0"))?;
+    let fix = TempSysfs::new_with_arc_gpu(addr, Some("card0"))?;
     fix.add_connector("card0", "Writeback-1", "unknown")?;
     fix.add_connector("card0", "DP-1", "disconnected")?;
-
-    let vfio_dir = fix.dev.join("vfio");
-    std::fs::create_dir_all(&vfio_dir)?;
-    std::fs::write(vfio_dir.join("vfio"), "")?;
+    fix.add_vfio_container()?;
 
     let run = run_map_bar(&fix.sysfs, &fix.dev, addr);
     assert!(run.failed);
