@@ -39,7 +39,7 @@ use aegis_tellus::CarbonTelemetry;
 
 use crate::canvas::camera::ScreenRect;
 use crate::canvas::registry::{
-    ActionKind, CanvasNode, InstrumentLevel, LevelKind, NodeKey, NodeKind,
+    ActionKind, CanvasNode, InstrumentLevel, LevelKind, MAX_VALUE, NodeKey, NodeKind,
 };
 use crate::canvas::{Canvas, Target};
 use crate::focus::{Focus, Region};
@@ -193,8 +193,19 @@ fn export_node(out: &mut Vec<(NodeId, Node)>, canvas: &Canvas, found: &CanvasNod
 
 /// One open instrument level.
 fn level_node(level: &InstrumentLevel, rect: Rect, child: Option<NodeId>) -> Node {
-    let mut node = labelled(Role::Group, &level.label, rect);
+    let slidable = level
+        .actions
+        .iter()
+        .any(|a| matches!(a.kind, ActionKind::Increment | ActionKind::Decrement));
+    let role = if slidable { Role::Slider } else { Role::Group };
+    let mut node = labelled(role, &level.label, rect);
     node.set_role_description(level_description(level.kind));
+    if slidable {
+        node.set_numeric_value(f64::from(level.state.value));
+        node.set_min_numeric_value(f64::from(-MAX_VALUE));
+        node.set_max_numeric_value(f64::from(MAX_VALUE));
+        node.set_numeric_value_step(1.0);
+    }
     add_actions(&mut node, &level.actions);
     if let Some(child) = child {
         node.set_children(vec![child]);
@@ -398,6 +409,40 @@ pub enum TreeError {
     /// Focus is on a node the tree does not carry.
     #[error("focus is on {}, which the tree does not carry", describe(.0))]
     FocusAbsent(NodeId),
+    /// A slider or spin button is missing its numeric value, minimum, or maximum.
+    #[error("{} ({role:?}) is missing its numeric value, minimum or maximum", describe(.id))]
+    MissingNumericValue {
+        /// The node.
+        id: NodeId,
+        /// Its role.
+        role: Role,
+    },
+    /// A slider or spin button has an inverted range where minimum exceeds maximum.
+    #[error("{} ({role:?}) has minimum {min} exceeding maximum {max}", describe(.id))]
+    InvertedRange {
+        /// The node.
+        id: NodeId,
+        /// Its role.
+        role: Role,
+        /// The minimum bound.
+        min: f64,
+        /// The maximum bound.
+        max: f64,
+    },
+    /// A slider or spin button has a value outside its [min, max] range.
+    #[error("{} ({role:?}) has value {value} outside [{min}, {max}]", describe(.id))]
+    OutOfRange {
+        /// The node.
+        id: NodeId,
+        /// Its role.
+        role: Role,
+        /// The current value.
+        value: f64,
+        /// The minimum bound.
+        min: f64,
+        /// The maximum bound.
+        max: f64,
+    },
     /// The canvas has no child at all: no nodes and no empty state.
     #[error("the canvas exports neither nodes nor a labelled empty state")]
     EmptyCanvasUnlabelled,
@@ -423,7 +468,34 @@ fn index(update: &TreeUpdate) -> Result<BTreeMap<NodeId, &Node>, TreeError> {
     Ok(map)
 }
 
-/// Checks one node's role, name and visibility.
+/// Checks a slider or spin button's numeric value and bounds.
+fn check_numeric_range(id: NodeId, role: Role, node: &Node) -> Result<(), TreeError> {
+    if !matches!(role, Role::Slider | Role::SpinButton) {
+        return Ok(());
+    }
+    let (Some(value), Some(min), Some(max)) = (
+        node.numeric_value(),
+        node.min_numeric_value(),
+        node.max_numeric_value(),
+    ) else {
+        return Err(TreeError::MissingNumericValue { id, role });
+    };
+    if min > max || min.is_nan() || max.is_nan() {
+        return Err(TreeError::InvertedRange { id, role, min, max });
+    }
+    if value < min || value > max || value.is_nan() {
+        return Err(TreeError::OutOfRange {
+            id,
+            role,
+            value,
+            min,
+            max,
+        });
+    }
+    Ok(())
+}
+
+/// Checks one node's role, name, visibility and numeric range.
 fn check_node(id: NodeId, node: &Node) -> Result<(), TreeError> {
     let role = node.role();
     if matches!(role, Role::Unknown | Role::GenericContainer) {
@@ -435,7 +507,7 @@ fn check_node(id: NodeId, node: &Node) -> Result<(), TreeError> {
     if node.is_hidden() {
         return Err(TreeError::Hidden(id));
     }
-    Ok(())
+    check_numeric_range(id, role, node)
 }
 
 /// Walks the tree from `root` with an explicit stack, checking every node
