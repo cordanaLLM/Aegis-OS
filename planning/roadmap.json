@@ -1663,7 +1663,7 @@
     {
       "id": "M25",
       "title": "GPU host slices on the reference profile: DMA-BUF and VFIO",
-      "rank": 25,
+      "rank": 26,
       "state": "ready",
       "blocked_by": [
         "M08",
@@ -1991,7 +1991,7 @@
     {
       "id": "M29",
       "title": "P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher",
-      "rank": 26,
+      "rank": 27,
       "state": "ready",
       "blocked_by": [
         "M28",
@@ -2152,7 +2152,7 @@
     {
       "id": "M11",
       "title": "Minimal image build with artifact, signature and boot evidence",
-      "rank": 29,
+      "rank": 30,
       "state": "ready",
       "blocked_by": [
         "M09",
@@ -2377,7 +2377,7 @@
     {
       "id": "M20",
       "title": "TPM2 attestation slice on swtpm: audit-record signing and /var unseal",
-      "rank": 30,
+      "rank": 31,
       "state": "blocked",
       "blocked_by": [
         "M11",
@@ -2584,7 +2584,7 @@
     {
       "id": "M30",
       "title": "P05 canvas accessibility: semantics, pointer alternatives, text scale",
-      "rank": 27,
+      "rank": 28,
       "state": "ready",
       "blocked_by": [
         "M28"
@@ -2643,7 +2643,7 @@
     {
       "id": "M31",
       "title": "P12 D76 heads-up theme: reduced motion, security states, flash limit",
-      "rank": 28,
+      "rank": 29,
       "state": "ready",
       "blocked_by": [
         "M28"
@@ -2750,8 +2750,14 @@
     {
       "id": "M33",
       "title": "Consume amussis-decision in place of the in-tree decision engine",
-      "rank": 31,
-      "state": "ready",
+      "rank": 25,
+      "state": "done",
+      "evidence": [
+        "Criterion 1 (2026-10-24): PR #488 (merge 990d2ca, step 1) pins amussis-decision = \"=0.2.0\" under [workspace.dependencies] in Cargo.toml, locked with its crates.io checksum, and adds the admission row in docs/roadmap/toolchain-admission.md; docs/integration/stack.md names amussis as the producer of the decision engine in the same change. ADR-0006 records the pin strategy.",
+        "Criterion 2 (2026-10-24): crates/aegis-justitia is the adapter. PR #490 (merge a54130f, steps 2 and 3) drops the in-tree engine, ledger, hashing and field encoding and re-exports them from amussis_decision, with DecisionEngine as JustitiaEngine and DecisionError as JustitiaError; Aegis keeps only src/contracts/ and src/ledger/chain.rs. The five M14 consumer contract files (tests/contract_action_proposal.rs, contract_audit_record.rs, contract_decision_request.rs, contract_graph_decisions.rs, contract_unit.rs) are byte-identical from 2dfa28d to cbeca7a and pass against the adapter: 57 tests, 0 failed, under cargo test -p aegis-justitia --all-features on cbeca7a.",
+        "Criterion 3 (2026-10-24): crates/aegis-justitia/tests/manifest_hygiene.rs holds the pin triple inside make verify-all: positive the_workspace_pins_amussis_decision_and_lock_holds_it, negative planted_amussis_decision_pins_are_refused, boundary near_miss_amussis_decision_pins_are_refused. tests/public_surface.rs sweeps every keyword-declared item of the adapter. PR #495 (merge e1a2ec2, step 4) deleted the tests that only exercised upstream behaviour, each listed beside its amussis-decision 0.2.0 counterpart; PR #497 (merge cbeca7a, step 6, ADR-0007) settled the shared test helpers and deleted tests/public_surface_triples.rs. The crate's suite on cbeca7a: 99 tests, 0 failed.",
+        "Scope: step 5 of ADR-0006 moved no code (aegis-hephaestus keeps its own tests). No exit criterion, epic or the cheapest exit was rewritten. A pass here closes no hardware, image or release gate."
+      ],
       "blocked_by": [
         "M02"
       ],

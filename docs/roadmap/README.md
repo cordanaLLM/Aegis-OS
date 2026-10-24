@@ -259,13 +259,13 @@ score.
 | 22 | M22 | P10 microVM sandbox measurements on KVM | done | medium | yes | no | full | M06 | - |
 | 23 | M32 | P17 Scaena subtitle timing on a fixture clip with audio and subtitles | done | medium | yes | no | full | M27 | - |
 | 24 | M28 | P05 native shell on gpui: layer surface, AT-SPI tree, frame time | done | large | yes | no | full | M16, M27 | M29, M30, M31 |
-| 25 | M25 | GPU host slices on the reference profile: DMA-BUF and VFIO | ready | medium | yes | no | full | M08, M17 | M12 |
-| 26 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | ready | medium | yes | no | full | M28, M27 | - |
-| 27 | M30 | P05 canvas accessibility: semantics, pointer alternatives, text scale | ready | medium | yes | no | full | M28 | - |
-| 28 | M31 | P12 D76 heads-up theme: reduced motion, security states, flash limit | ready | medium | yes | no | full | M28 | - |
-| 29 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
-| 30 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
-| 31 | M33 | Consume amussis-decision in place of the in-tree decision engine | ready | medium | no | yes | not-hardware | M02 | - |
+| 25 | M33 | Consume amussis-decision in place of the in-tree decision engine | done | medium | no | yes | not-hardware | M02 | - |
+| 26 | M25 | GPU host slices on the reference profile: DMA-BUF and VFIO | ready | medium | yes | no | full | M08, M17 | M12 |
+| 27 | M29 | P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher | ready | medium | yes | no | full | M28, M27 | - |
+| 28 | M30 | P05 canvas accessibility: semantics, pointer alternatives, text scale | ready | medium | yes | no | full | M28 | - |
+| 29 | M31 | P12 D76 heads-up theme: reduced motion, security states, flash limit | ready | medium | yes | no | full | M28 | - |
+| 30 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
+| 31 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
 | 32 | M12 | GPU component paths in the booted image: DMA-BUF, VFIO, P2PDMA | blocked | large | yes | yes | partial | M25, M10, M11 | - |
 | 33 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
 
@@ -1929,7 +1929,7 @@ Epics:
 
 ### M25 - GPU host slices on the reference profile: DMA-BUF and VFIO
 
-Rank 25. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 26. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M08, M17. Unblocks: M12.
 
@@ -3242,7 +3242,7 @@ Epics:
 
 ### M29 - P05 live session in a VM: portal, AT-SPI2 and StatusNotifierWatcher
 
-Rank 26. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 27. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M28, M27. Unblocks: nothing.
 
@@ -3326,7 +3326,7 @@ Epics:
 
 ### M30 - P05 canvas accessibility: semantics, pointer alternatives, text scale
 
-Rank 27. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 28. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M28. Unblocks: nothing.
 
@@ -3385,7 +3385,7 @@ Epics:
 
 ### M31 - P12 D76 heads-up theme: reduced motion, security states, flash limit
 
-Rank 28. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 29. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: no. Reference profile: full.
 Blocked by: M28. Unblocks: nothing.
 
@@ -3806,7 +3806,7 @@ Epics:
 
 ### M11 - Minimal image build with artifact, signature and boot evidence
 
-Rank 29. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 30. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: partial.
 Blocked by: M09, M24, M04. Unblocks: M13, M20, M12.
 
@@ -4364,7 +4364,7 @@ Epics:
 
 ### M20 - TPM2 attestation slice on swtpm: audit-record signing and /var unseal
 
-Rank 30. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 31. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: yes. Needs external contract: yes. Reference profile: full.
 Blocked by: M11, M14. Unblocks: nothing.
 
@@ -4505,7 +4505,7 @@ Epics:
 
 ### M33 - Consume amussis-decision in place of the in-tree decision engine
 
-Rank 31. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 25. State: done. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: yes. Reference profile: not-hardware.
 Blocked by: M02. Unblocks: nothing.
 
