@@ -27,6 +27,8 @@ gpui.workspace = true
 gpui_linux.workspace = true
 log = "0.4.34"
 thiserror.workspace = true
+wayland-client = "0.31.15"
+wayland-protocols-plasma = { version = "0.3.12", features = ["client"] }
 zbus = { workspace = true, features = ["p2p"] }
 
 [features]

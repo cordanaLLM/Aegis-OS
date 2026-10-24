@@ -11,7 +11,7 @@ operator's display or session bus).
 
 
 Drives the Rust binaries `aegis-forum-shell-gpui`, `aegis-atspi-readback`, and
-`aegis-ring-readback` through twenty-five cases:
+`aegis-ring-readback` through twenty-nine cases:
 1. surface/first-configure: direct connection maps layer shell and receives first configure;
 2. surface/filter-control: verify wayland-info sees layer shell filtered out or preserved;
 3. surface/layer-shell-missing: compositor lacking layer shell reports LayerShellNotSupportedError;
@@ -28,17 +28,22 @@ Drives the Rust binaries `aegis-forum-shell-gpui`, `aegis-atspi-readback`, and
 12. atspi/negative-unlabelled: planted unlabelled node fails and is named;
 13. atspi/negative-culled: culling that removes nodes fails 1000-node check;
 14. atspi/negative-hidden-shown: unhidden hidden subtree fails;
-15. ring/min: minimum camera scale focus ring >= 2.0 px and >= 3:1 contrast;
-16. ring/unit: unit camera scale focus ring >= 2.0 px and >= 3:1 contrast;
-17. ring/max: maximum camera scale focus ring >= 2.0 px and >= 3:1 contrast;
-18. ring/partly-covered: partly covered focused node passes;
-19. ring/width-2-0: boundary 2.0 px ring passes;
-20. ring/scaled-layer: ring drawn inside scaled layer (1.5 px) fails width floor;
-21. ring/under-panel: focused node fully under panel fails;
-22. ring/width-1-9: boundary 1.9 px ring fails;
-23. timing/1000-nodes: 1000 seeded nodes measured over 600 frames with a11y active;
-24. timing/999-nodes: 994 seeded rows (998 tree nodes, < 1000) refused as TooFewNodes;
-25. timing/adapter-inactive: fixture run without active a11y adapter refused as AdapterInactive.
+15. atspi/slider-sound: sound slider role, name, range -8..8, value 0;
+   Ctrl+= updates to 1 with notification;
+16. atspi/negative-slider-no-role: slider missing Role::Slider fails and names role;
+17. atspi/slider-at-max: slider starting at max 8; Ctrl+= clamps at 8 without exceeding max;
+18. atspi/slider-at-min: slider starting at min -8; Ctrl+- clamps at -8 without going below min;
+19. ring/min: minimum camera scale focus ring >= 2.0 px and >= 3:1 contrast;
+20. ring/unit: unit camera scale focus ring >= 2.0 px and >= 3:1 contrast;
+21. ring/max: maximum camera scale focus ring >= 2.0 px and >= 3:1 contrast;
+22. ring/partly-covered: partly covered focused node passes;
+23. ring/width-2-0: boundary 2.0 px ring passes;
+24. ring/scaled-layer: ring drawn inside scaled layer (1.5 px) fails width floor;
+25. ring/under-panel: focused node fully under panel fails;
+26. ring/width-1-9: boundary 1.9 px ring fails;
+27. timing/1000-nodes: 1000 seeded nodes measured over 600 frames with a11y active;
+28. timing/999-nodes: 994 seeded rows (998 tree nodes, < 1000) refused as TooFewNodes;
+29. timing/adapter-inactive: fixture run without active a11y adapter refused as AdapterInactive.
 
 Every pass is development evidence for the client half only (D79).
 """
@@ -116,7 +121,7 @@ REFERENCE_REQUEST = {
 }
 # The binary takes exactly one newline-terminated line, as the socket would carry it.
 REFERENCE_LINE = json.dumps(REFERENCE_REQUEST) + "\n"
-CASE_COUNT = 25
+CASE_COUNT = 29
 
 # The read-back compositor: its own socket, log and dbus-run-session, so the debug log
 # never slows the timing cases on the main KWin.
@@ -140,6 +145,13 @@ ATSPI_CASES = (
     ("atspi/negative-unlabelled", "unlabelled", False, 0.0),
     ("atspi/negative-culled", "culled", False, 0.0),
     ("atspi/negative-hidden-shown", "hidden-shown", False, 0.0),
+)
+
+SLIDER_CASES = (
+    ("atspi/slider-sound", "sound"),
+    ("atspi/negative-slider-no-role", "no-role"),
+    ("atspi/slider-at-max", "at-max"),
+    ("atspi/slider-at-min", "at-min"),
 )
 
 RING_CASES = (
@@ -244,6 +256,21 @@ NEGATIVE_EXPECT = {
 }
 READY_TIMEOUT = 30.0
 CLICK_EVENT_TIMEOUT = 5.0
+
+SLIDER_READBACK_CASES = (
+    "atspi/slider-role",
+    "atspi/slider-name",
+    "atspi/slider-range",
+    "atspi/slider-value",
+    "atspi/slider-update",
+)
+SLIDER_BOUNDARY_READBACK_CASES = (
+    *SLIDER_READBACK_CASES,
+    "atspi/slider-clamp",
+)
+SLIDER_NEGATIVE_EXPECT = {
+    "no-role": ({"atspi/slider-role"}, "atspi/slider-role", "role"),
+}
 
 
 class GateError(Exception):
@@ -497,6 +524,7 @@ def kwin_env(runtime_dir, dbus_addr=None):
     env.pop("DISPLAY", None)
     env["XDG_RUNTIME_DIR"] = str(runtime_dir)
     env["XDG_CONFIG_HOME"] = str(write_kwin_config(runtime_dir))
+    env["XKB_DEFAULT_LAYOUT"] = "us"
     if dbus_addr is not None:
         env["DBUS_SESSION_BUS_ADDRESS"] = dbus_addr
     return env
@@ -930,6 +958,115 @@ def judge_atspi_negative(variant, code, stdout):
     return True, ""
 
 
+def judge_slider_readback_lines(stdout, expected_fail, required_cases=SLIDER_READBACK_CASES):
+    """Every slider readback case ran; exactly `expected_fail` failed."""
+    verdicts = case_verdicts(stdout)
+    for name in required_cases:
+        if name not in verdicts:
+            return False, f"readback printed no {name} line"
+        passed, line = verdicts[name]
+        if name in expected_fail and passed:
+            return False, f"{name} passed, want fail"
+        if name not in expected_fail and not passed:
+            return False, f"readback case failed: {line}"
+    return True, ""
+
+
+def judge_slider_sound(code, stdout, event_seen):
+    """Judges atspi/slider-sound."""
+    if code != 0:
+        return False, f"readback exited {code}, want 0: {stdout.strip()[:100]}"
+    ok, why = judge_slider_readback_lines(stdout, expected_fail=set())
+    if not ok:
+        return ok, why
+    if not event_seen:
+        return False, "fixture did not emit EVENT value 1"
+    return True, ""
+
+
+def judge_slider_negative(variant, code, stdout):
+    """Judges AT-SPI slider negative cases: planted defect caught and named."""
+    if variant not in SLIDER_NEGATIVE_EXPECT:
+        return False, f"unknown negative slider variant {variant}"
+    if code == 0:
+        return False, f"readback unexpectedly passed for negative variant {variant}"
+    if code != 1:
+        return False, f"readback exited {code}, want 1 (a CASE failure): {stdout.strip()[:100]}"
+    expected_fail, case_name, token = SLIDER_NEGATIVE_EXPECT[variant]
+    ok, why = judge_slider_readback_lines(stdout, expected_fail)
+    if not ok:
+        return ok, why
+    line = case_verdicts(stdout)[case_name][1]
+    msg = line.split("fail: ", 1)[1] if "fail: " in line else line
+    if token not in msg:
+        return False, f"failure message did not contain '{token}': {line}"
+    return True, ""
+
+
+def extract_fixture_events(fixture_output):
+    """Extracts all 'EVENT value <n>' occurrences in order."""
+    if isinstance(fixture_output, (list, tuple)):
+        lines = []
+        for item in fixture_output:
+            if isinstance(item, int):
+                lines.append(f"EVENT value {item}")
+            else:
+                lines.append(str(item).strip())
+        return lines
+    return [
+        line.strip()
+        for line in str(fixture_output).splitlines()
+        if line.strip().startswith("EVENT value ")
+    ]
+
+
+def judge_slider_boundary_events(events, clamped_val, opposite_val):
+    """Judges that both clamped and opposite EVENT value lines arrived in order."""
+    lines = extract_fixture_events(events)
+    clamped_line = f"EVENT value {clamped_val}"
+    opposite_line = f"EVENT value {opposite_val}"
+    if clamped_line not in lines:
+        return False, f"fixture did not emit clamped-key line '{clamped_line}'"
+    if opposite_line not in lines:
+        return False, f"fixture did not emit opposite-key line '{opposite_line}'"
+    clamped_idx = lines.index(clamped_line)
+    opposite_idx = lines.index(opposite_line)
+    if clamped_idx >= opposite_idx:
+        return (
+            False,
+            f"fixture emitted '{clamped_line}' and '{opposite_line}' out of order",
+        )
+    return True, ""
+
+
+def judge_slider_at_max(code, stdout, events):
+    """Judges atspi/slider-at-max."""
+    if code != 0:
+        return False, f"readback exited {code}, want 0: {stdout.strip()[:100]}"
+    ok, why = judge_slider_readback_lines(
+        stdout,
+        expected_fail=set(),
+        required_cases=SLIDER_BOUNDARY_READBACK_CASES,
+    )
+    if not ok:
+        return ok, why
+    return judge_slider_boundary_events(events, 8, 7)
+
+
+def judge_slider_at_min(code, stdout, events):
+    """Judges atspi/slider-at-min."""
+    if code != 0:
+        return False, f"readback exited {code}, want 0: {stdout.strip()[:100]}"
+    ok, why = judge_slider_readback_lines(
+        stdout,
+        expected_fail=set(),
+        required_cases=SLIDER_BOUNDARY_READBACK_CASES,
+    )
+    if not ok:
+        return ok, why
+    return judge_slider_boundary_events(events, -8, -7)
+
+
 def read_until(stream, token, timeout, select_fn=select.select, read_fn=os.read):
     """Reads a binary pipe until a line holds `token`, EOF or the deadline; (found, text)."""
     deadline = time.monotonic() + timeout
@@ -1106,6 +1243,82 @@ def run_atspi_cases(
             env,
             read_only=read_only,
             delay=delay,
+            runner=runner,
+        )
+        results.append((name, passed, why))
+    return results
+
+
+def run_slider_case(
+    shell_bin,
+    readback_bin,
+    variant,
+    env,
+    popen_fn=subprocess.Popen,
+    runner=run_child,
+):
+    """Runs slider fixture with given variant, then runs readback and judges outcome."""
+    cmd = [str(shell_bin), "slider", REFERENCE_LINE, variant]
+    fixture_proc = popen_fn(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        bufsize=0,
+        env=env,
+        start_new_session=True,
+    )
+    ready, _ = read_until(fixture_proc.stdout, "READY", READY_TIMEOUT)
+    if not ready:
+        teardown_process(fixture_proc)
+        return False, "fixture failed to announce READY"
+
+    rb_cmd = [str(readback_bin), "--slider", variant]
+    code, stdout = runner(rb_cmd, env=env)
+
+    target_last_event = {
+        "sound": "EVENT value 1",
+        "at-max": "EVENT value 7",
+        "at-min": "EVENT value -7",
+    }
+
+    fixture_output = ""
+    if variant in target_last_event and code == 0:
+        _, fixture_output = read_until(
+            fixture_proc.stdout,
+            target_last_event[variant],
+            CLICK_EVENT_TIMEOUT,
+        )
+
+    teardown_process(fixture_proc)
+
+    if variant == "sound":
+        events = extract_fixture_events(fixture_output)
+        event_seen = "EVENT value 1" in events
+        return judge_slider_sound(code, stdout, event_seen)
+    if variant == "no-role":
+        return judge_slider_negative(variant, code, stdout)
+    if variant == "at-max":
+        return judge_slider_at_max(code, stdout, fixture_output)
+    if variant == "at-min":
+        return judge_slider_at_min(code, stdout, fixture_output)
+    return False, f"unknown slider variant {variant}"
+
+
+def run_slider_cases(
+    shell_bin,
+    readback_bin,
+    env,
+    runner=run_child,
+    case_runner=run_slider_case,
+):
+    """Runs the 4 AT-SPI slider test cases and returns list of (name, passed, why)."""
+    results = []
+    for name, variant in SLIDER_CASES:
+        passed, why = case_runner(
+            shell_bin,
+            readback_bin,
+            variant,
+            env,
             runner=runner,
         )
         results.append((name, passed, why))
@@ -1746,6 +1959,31 @@ def run_timing_cases(
     return results
 
 
+def _run_a11y_group(
+    binary,
+    readback_bin,
+    a11y_env,
+    runner=run_child,
+    atspi_runner=run_atspi_case,
+    slider_runner=run_slider_case,
+):
+    """Runs AT-SPI tree and slider case suites when readback binary is present."""
+    if readback_bin is None or a11y_env is None:
+        return []
+    atspi = run_atspi_cases(binary, readback_bin, a11y_env, runner=runner, case_runner=atspi_runner)
+    slider = run_slider_cases(
+        binary, readback_bin, a11y_env, runner=runner, case_runner=slider_runner
+    )
+    return atspi + slider
+
+
+def _run_ring_group(binary, ring_bin, ring_env, runner, ring_runner):
+    """Runs focus-ring cases when ring readback binary and environment are present."""
+    if ring_bin is None or ring_env is None:
+        return []
+    return run_ring_cases(binary, ring_bin, ring_env, runner=runner, case_runner=ring_runner)
+
+
 def run_all_cases(
     binary,
     kwin_sock,
@@ -1755,6 +1993,7 @@ def run_all_cases(
     readback_bin=None,
     a11y_env=None,
     atspi_case_runner=run_atspi_case,
+    slider_case_runner=run_slider_case,
     ring_readback_bin=None,
     ring_env=None,
     ring_case_runner=run_ring_case,
@@ -1767,27 +2006,28 @@ def run_all_cases(
     timing_out=None,
     read_back_runner=run_read_back_case,
 ):
-    """Runs all test cases (8 surface + 6 AT-SPI + 8 focus-ring + 3 timing)."""
+    """Runs all test cases (8 surface + 6 AT-SPI + 4 slider + 8 focus-ring + 3 timing)."""
     results = run_surface_cases(binary, kwin_sock, hide_sock, drop_sock, runner=runner)
     results.append(read_back_runner(binary, runtime_dir, runner))
-    if readback_bin is not None and a11y_env is not None:
-        atspi_results = run_atspi_cases(
+    results.extend(
+        _run_a11y_group(
             binary,
             readback_bin,
             a11y_env,
             runner=runner,
-            case_runner=atspi_case_runner,
+            atspi_runner=atspi_case_runner,
+            slider_runner=slider_case_runner,
         )
-        results.extend(atspi_results)
-    if ring_readback_bin is not None and ring_env is not None:
-        ring_results = run_ring_cases(
+    )
+    results.extend(
+        _run_ring_group(
             binary,
             ring_readback_bin,
             ring_env,
             runner=runner,
-            case_runner=ring_case_runner,
+            ring_runner=ring_case_runner,
         )
-        results.extend(ring_results)
+    )
     t_bin = timing_bin if timing_bin is not None else binary
     if a11y_env is not None:
         timing_results = run_timing_cases(

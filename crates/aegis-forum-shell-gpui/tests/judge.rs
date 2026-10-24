@@ -9,7 +9,9 @@ use aegis_forum_shell_gpui::fixture::{
 };
 use aegis_forum_shell_gpui::judge::{
     ReadNode, atspi_button_exposed, atspi_every_node_named, atspi_focus_reported,
-    atspi_hidden_subtree_hidden, atspi_seeded_reachable, judge_tree, line,
+    atspi_hidden_subtree_hidden, atspi_seeded_reachable, atspi_slider_clamp, atspi_slider_name,
+    atspi_slider_range, atspi_slider_role, atspi_slider_update, atspi_slider_value, judge_tree,
+    line,
 };
 
 fn build_sound_tree(seeded_count: usize) -> Vec<ReadNode> {
@@ -252,4 +254,26 @@ fn application_object_unnamed_ignored() {
         app.name.clear();
     }
     assert!(atspi_every_node_named(&tree).passed);
+}
+
+/// Positive: slider semantics evaluation passes on matching metrics.
+#[test]
+fn slider_semantics_positive() {
+    assert!(atspi_slider_role("slider").passed);
+    assert!(atspi_slider_name("Settings instrument for node 100").passed);
+    assert!(atspi_slider_range(-8.0, 8.0, 1.0).passed);
+    assert!(atspi_slider_value(0.0, 0.0).passed);
+    assert!(atspi_slider_clamp(8.0, 8.0).passed);
+    assert!(atspi_slider_clamp(-8.0, -8.0).passed);
+    assert!(atspi_slider_update(1.0, 1.0, true, true).passed);
+    assert!(atspi_slider_update(7.0, 7.0, true, true).passed);
+}
+
+/// Negative: slider semantics evaluation catches role, clamp, and notification mismatches.
+#[test]
+fn slider_semantics_negative() {
+    assert!(!atspi_slider_role("unknown").passed);
+    assert!(!atspi_slider_clamp(7.0, 8.0).passed);
+    assert!(!atspi_slider_update(7.0, 7.0, false, true).passed);
+    assert!(!atspi_slider_update(6.0, 7.0, true, true).passed);
 }

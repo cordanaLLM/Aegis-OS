@@ -274,3 +274,128 @@ pub fn judge_tree(nodes: &[ReadNode]) -> Vec<CaseResult> {
         atspi_hidden_subtree_hidden(nodes),
     ]
 }
+
+/// Accessible name of the seeded slider instrument for node 99 (node 100).
+pub const SLIDER_LABEL: &str = "Settings instrument for node 100";
+
+/// Evaluates whether the slider node exposes `role == "slider"`.
+#[must_use]
+pub fn atspi_slider_role(role: &str) -> CaseResult {
+    if role == "slider" {
+        CaseResult {
+            name: "atspi/slider-role",
+            passed: true,
+            why: String::new(),
+        }
+    } else {
+        CaseResult {
+            name: "atspi/slider-role",
+            passed: false,
+            why: format!("role {role}, want slider"),
+        }
+    }
+}
+
+/// Evaluates whether the slider node exposes its expected accessible name.
+#[must_use]
+pub fn atspi_slider_name(name: &str) -> CaseResult {
+    if name == SLIDER_LABEL {
+        CaseResult {
+            name: "atspi/slider-name",
+            passed: true,
+            why: String::new(),
+        }
+    } else {
+        CaseResult {
+            name: "atspi/slider-name",
+            passed: false,
+            why: format!("name '{name}', want '{SLIDER_LABEL}'"),
+        }
+    }
+}
+
+/// Evaluates whether the slider node exposes the expected numeric range (-8..=8, step 1).
+#[must_use]
+pub fn atspi_slider_range(min: f64, max: f64, step: f64) -> CaseResult {
+    let min_ok = (min - -8.0).abs() < f64::EPSILON;
+    let max_ok = (max - 8.0).abs() < f64::EPSILON;
+    let step_ok = (step - 1.0).abs() < f64::EPSILON;
+    if min_ok && max_ok && step_ok {
+        CaseResult {
+            name: "atspi/slider-range",
+            passed: true,
+            why: String::new(),
+        }
+    } else {
+        CaseResult {
+            name: "atspi/slider-range",
+            passed: false,
+            why: format!("range min={min}, max={max}, step={step}, want min=-8, max=8, step=1"),
+        }
+    }
+}
+
+/// Evaluates whether the slider node exposes its expected initial numeric value.
+#[must_use]
+pub fn atspi_slider_value(value: f64, expected: f64) -> CaseResult {
+    if (value - expected).abs() < f64::EPSILON {
+        CaseResult {
+            name: "atspi/slider-value",
+            passed: true,
+            why: String::new(),
+        }
+    } else {
+        CaseResult {
+            name: "atspi/slider-value",
+            passed: false,
+            why: format!("value {value}, want {expected}"),
+        }
+    }
+}
+
+/// Evaluates whether the slider value remained clamped at its boundary.
+#[must_use]
+pub fn atspi_slider_clamp(value: f64, expected: f64) -> CaseResult {
+    if (value - expected).abs() < f64::EPSILON {
+        CaseResult {
+            name: "atspi/slider-clamp",
+            passed: true,
+            why: String::new(),
+        }
+    } else {
+        CaseResult {
+            name: "atspi/slider-clamp",
+            passed: false,
+            why: format!("clamped value {value}, want {expected}"),
+        }
+    }
+}
+
+/// Evaluates whether the slider update succeeded: notification (if required) and new value.
+#[must_use]
+pub fn atspi_slider_update(
+    new_value: f64,
+    expected: f64,
+    notification_seen: bool,
+    require_notification: bool,
+) -> CaseResult {
+    if require_notification && !notification_seen {
+        return CaseResult {
+            name: "atspi/slider-update",
+            passed: false,
+            why: "did not receive accessible-value notification".to_owned(),
+        };
+    }
+    if (new_value - expected).abs() >= f64::EPSILON {
+        return CaseResult {
+            name: "atspi/slider-update",
+            passed: false,
+            why: format!("updated value {new_value}, want {expected}"),
+        };
+    }
+    CaseResult {
+        name: "atspi/slider-update",
+        passed: true,
+        why: String::new(),
+    }
+}

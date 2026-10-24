@@ -241,6 +241,50 @@ window, the button, the list, 1,000 rows and the shown panel. The hidden
 subtree was absent. The `hidden-shown` variant read 1,008 nodes, three more:
 the panel and its two children. The `culled` variant read 15 nodes.
 
+## The AT-SPI slider cases
+
+Milestone M30 epic E30-1 verifies accessible slider semantics (REQ-P05-12) on
+the running shell layer surface.
+
+### Slider cases and variants
+
+The verification binary `aegis-atspi-readback --slider <variant>` and fixture
+binary `aegis-forum-shell-gpui slider <request-line> <variant>` run across four
+cases:
+
+| Case | Variant | Passes when |
+| :--- | :--- | :--- |
+| `atspi/slider-sound` | `sound` | The slider node has role slider, accessible name "Settings instrument for node 100", range -8..8 (step 1), initial value 0; Ctrl+= keystroke mutates value to 1, emits D-Bus `PropertyChange` notification on `accessible-value`, and fixture emits `EVENT value 1`. |
+| `atspi/negative-slider-no-role` | `no-role` | Planted defect: slider exported with `Role::Unknown`; readback exits 1, fails only `atspi/slider-role`, and names "role". |
+| `atspi/slider-at-max` | `at-max` | Slider starts at boundary maximum value 8; Ctrl+= keystroke attempts increment; value remains clamped at 8 without exceeding max; fixture emits `EVENT value 8`. |
+| `atspi/slider-at-min` | `at-min` | Slider starts at boundary minimum value -8; Ctrl+- keystroke attempts decrement; value remains clamped at -8 without falling below min; fixture emits `EVENT value -8`. |
+
+`SLIDER_NEGATIVE_EXPECT` in `tools/verify_shell.py` defines the expected failure
+set. A negative that fails for any other reason or on a transport error fails
+the case.
+
+### Key injection over KWin fake input
+
+Interactive verification of the slider requires keyboard shortcuts (`Ctrl+=` to
+increment, `Ctrl+-` to decrement) delivered directly to the Wayland compositor.
+The gate injects evdev keystrokes (`KEY_LEFTCTRL=29`, `KEY_EQUAL=13`, `KEY_MINUS=12`)
+via KWin's `org_kde_kwin_fake_input` protocol interface (`wayland-protocols-plasma`
+0.3.12 / `wayland-client` 0.31.15).
+
+1. The client checks that KWin advertises `org_kde_kwin_fake_input`; if missing,
+   the case fails with a named error.
+2. The client binds the interface, authenticates, and dispatches press and release
+   events.
+3. Every roundtrip and D-Bus call runs under a scalar deadline (HISS-02).
+
+### D79 labelling
+
+A pass is development evidence for the client half only (D79). The gate drives
+the slider fixture on headless KWin (`kwin_wayland --virtual`) inside a private
+D-Bus session; this provides development evidence for gpui's AccessKit bridge
+and KWin fake input handling, but is not evidence of final P04 compositor or
+hardware accessibility behavior.
+
 ## The theme
 
 The shell paints only with the Concordia tokens (E28-5, D05, D101).

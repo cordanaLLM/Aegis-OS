@@ -39,6 +39,10 @@ from verify_shell import (  # noqa: E402
     judge_refused_line,
     judge_ring_negative,
     judge_ring_positive,
+    judge_slider_at_max,
+    judge_slider_at_min,
+    judge_slider_negative,
+    judge_slider_sound,
     judge_timing,
     main,
     nearest_rank,
@@ -47,6 +51,8 @@ from verify_shell import (  # noqa: E402
     read_until,
     read_versions,
     read_zed_commit,
+    run_slider_case,
+    run_slider_cases,
     run_timing_cases,
     timing_argv,
     write_no_activation_config,
@@ -59,6 +65,25 @@ def readback_output(failures=None, nodes=1005, update=True, drop=()):
     lines = [f"NODES {nodes}"]
     names = verify_shell.READBACK_CASES + ((verify_shell.UPDATE_CASE,) if update else ())
     for name in names:
+        if name in drop:
+            continue
+        if name in failures:
+            lines.append(f"CASE {name} fail: {failures[name]}")
+        else:
+            lines.append(f"CASE {name} pass")
+    return "\n".join(lines) + "\n"
+
+
+def slider_readback_output(failures=None, drop=(), boundary=False):
+    """Builds readback stdout as aegis-atspi-readback --slider prints it."""
+    failures = failures or {}
+    lines = []
+    cases = (
+        verify_shell.SLIDER_BOUNDARY_READBACK_CASES
+        if boundary
+        else verify_shell.SLIDER_READBACK_CASES
+    )
+    for name in cases:
         if name in drop:
             continue
         if name in failures:
@@ -182,6 +207,179 @@ class TestAtspiJudges(unittest.TestCase):
         passed, why = judge_atspi_negative("unlabelled", 1, readback_output(failures))
         self.assertFalse(passed)
         self.assertIn("atspi/seeded-reachable passed, want fail", why)
+
+
+class TestSliderJudges(unittest.TestCase):
+    """Positive, negative and boundary cases for the AT-SPI slider gate judges."""
+
+    def test_sound_passes(self):
+        self.assertEqual(judge_slider_sound(0, slider_readback_output(), True), (True, ""))
+
+    def test_at_max_passes(self):
+        self.assertEqual(
+            judge_slider_at_max(
+                0,
+                slider_readback_output(boundary=True),
+                ["EVENT value 8", "EVENT value 7"],
+            ),
+            (True, ""),
+        )
+
+    def test_at_min_passes(self):
+        self.assertEqual(
+            judge_slider_at_min(
+                0,
+                slider_readback_output(boundary=True),
+                ["EVENT value -8", "EVENT value -7"],
+            ),
+            (True, ""),
+        )
+
+    def test_negative_no_role_passes(self):
+        out = slider_readback_output({"atspi/slider-role": "role unknown, want slider"})
+        self.assertEqual(judge_slider_negative("no-role", 1, out), (True, ""))
+
+    def test_sound_fails_on_empty_output(self):
+        passed, why = judge_slider_sound(0, "", True)
+        self.assertFalse(passed)
+        self.assertIn("no atspi/slider-role line", why)
+
+    def test_sound_fails_when_a_case_line_is_missing(self):
+        out = slider_readback_output(drop=("atspi/slider-role",))
+        passed, why = judge_slider_sound(0, out, True)
+        self.assertFalse(passed)
+        self.assertIn("no atspi/slider-role line", why)
+
+    def test_sound_fails_when_a_case_fails(self):
+        out = slider_readback_output(failures={"atspi/slider-value": "value 0, want 1"})
+        passed, why = judge_slider_sound(0, out, True)
+        self.assertFalse(passed)
+        self.assertIn("readback case failed", why)
+
+    def test_sound_fails_without_event(self):
+        passed, why = judge_slider_sound(0, slider_readback_output(), False)
+        self.assertFalse(passed)
+        self.assertIn("EVENT value 1", why)
+
+    def test_sound_fails_on_nonzero_exit(self):
+        passed, why = judge_slider_sound(3, "ERROR D-Bus", True)
+        self.assertFalse(passed)
+        self.assertIn("exited 3", why)
+
+    def test_at_max_fails_when_clamped_event_missing(self):
+        passed, why = judge_slider_at_max(
+            0, slider_readback_output(boundary=True), ["EVENT value 7"]
+        )
+        self.assertFalse(passed)
+        self.assertIn("clamped-key line 'EVENT value 8'", why)
+
+    def test_at_max_fails_when_opposite_event_missing(self):
+        passed, why = judge_slider_at_max(
+            0, slider_readback_output(boundary=True), ["EVENT value 8"]
+        )
+        self.assertFalse(passed)
+        self.assertIn("opposite-key line 'EVENT value 7'", why)
+
+    def test_at_max_fails_when_events_out_of_order(self):
+        passed, why = judge_slider_at_max(
+            0,
+            slider_readback_output(boundary=True),
+            ["EVENT value 7", "EVENT value 8"],
+        )
+        self.assertFalse(passed)
+        self.assertIn("out of order", why)
+
+    def test_at_max_fails_when_clamp_case_line_missing(self):
+        out = slider_readback_output(boundary=True, drop=("atspi/slider-clamp",))
+        passed, why = judge_slider_at_max(0, out, ["EVENT value 8", "EVENT value 7"])
+        self.assertFalse(passed)
+        self.assertIn("atspi/slider-clamp", why)
+
+    def test_at_min_fails_when_clamped_event_missing(self):
+        passed, why = judge_slider_at_min(
+            0, slider_readback_output(boundary=True), ["EVENT value -7"]
+        )
+        self.assertFalse(passed)
+        self.assertIn("clamped-key line 'EVENT value -8'", why)
+
+    def test_at_min_fails_when_opposite_event_missing(self):
+        passed, why = judge_slider_at_min(
+            0, slider_readback_output(boundary=True), ["EVENT value -8"]
+        )
+        self.assertFalse(passed)
+        self.assertIn("opposite-key line 'EVENT value -7'", why)
+
+    def test_at_min_fails_when_events_out_of_order(self):
+        passed, why = judge_slider_at_min(
+            0,
+            slider_readback_output(boundary=True),
+            ["EVENT value -7", "EVENT value -8"],
+        )
+        self.assertFalse(passed)
+        self.assertIn("out of order", why)
+
+    def test_negative_fails_when_readback_passes(self):
+        passed, why = judge_slider_negative("no-role", 0, slider_readback_output())
+        self.assertFalse(passed)
+        self.assertIn("unexpectedly passed", why)
+
+    def test_negative_fails_on_read_error_exit(self):
+        passed, why = judge_slider_negative("no-role", 3, "ERROR D-Bus call timed out\n")
+        self.assertFalse(passed)
+        self.assertIn("want 1", why)
+
+    def test_negative_fails_when_another_case_also_fails(self):
+        failures = {
+            "atspi/slider-role": "role unknown, want slider",
+            "atspi/slider-name": "bad name",
+        }
+        passed, why = judge_slider_negative("no-role", 1, slider_readback_output(failures))
+        self.assertFalse(passed)
+        self.assertIn("atspi/slider-name", why)
+
+    def test_negative_fails_when_named_case_lacks_token(self):
+        failures = {"atspi/slider-role": "wrong element type"}
+        passed, why = judge_slider_negative("no-role", 1, slider_readback_output(failures))
+        self.assertFalse(passed)
+        self.assertIn("did not contain 'role'", why)
+
+    def test_negative_fails_for_unknown_variant(self):
+        passed, why = judge_slider_negative("sound", 1, slider_readback_output())
+        self.assertFalse(passed)
+        self.assertIn("unknown negative slider variant", why)
+
+    def test_run_slider_cases_returns_all_four(self):
+        def fake_slider_case(shell_bin, readback_bin, variant, env, runner=None):
+            return True, ""
+
+        results = run_slider_cases("/bin/shell", "/bin/readback", {}, case_runner=fake_slider_case)
+        self.assertEqual(len(results), 4)
+        self.assertEqual(
+            [r[0] for r in results],
+            [
+                "atspi/slider-sound",
+                "atspi/negative-slider-no-role",
+                "atspi/slider-at-max",
+                "atspi/slider-at-min",
+            ],
+        )
+
+    def test_run_slider_case_handles_ready_failure(self):
+        class FakeProc:
+            def __init__(self):
+                self.stdout = FakePipe([b"ERROR\n"])
+                self.pid = 12345
+
+        def fake_popen(cmd, **kwargs):
+            return FakeProc()
+
+        with patch.object(verify_shell, "read_until", return_value=(False, "ERROR\n")):
+            with patch.object(verify_shell, "teardown_process"):
+                passed, why = run_slider_case(
+                    "/bin/shell", "/bin/readback", "sound", {}, popen_fn=fake_popen
+                )
+                self.assertFalse(passed)
+                self.assertIn("failed to announce READY", why)
 
 
 class TestReadUntil(unittest.TestCase):
@@ -436,24 +634,27 @@ class TestVerifyShellBoundary(unittest.TestCase):
 
     def test_summary_with_one_fail(self):
         results = [("surface/first-configure", False, "exited 1")] + [
-            (f"case-{n}", True, "") for n in range(24)
+            (f"case-{n}", True, "") for n in range(28)
         ]
         self.assertEqual(verify_shell.summary(results), "RESULT fail: 1 case(s) failed")
 
     def test_summary_of_zero_cases_fails(self):
-        self.assertEqual(verify_shell.summary([]), "RESULT fail: 0 of 25 cases ran")
+        self.assertEqual(verify_shell.summary([]), "RESULT fail: 0 of 29 cases ran")
 
-    def test_summary_of_twenty_five_passes(self):
-        results = [(f"case-{n}", True, "") for n in range(25)]
+    def test_summary_of_twenty_nine_passes(self):
+        results = [(f"case-{n}", True, "") for n in range(29)]
         self.assertEqual(verify_shell.summary(results), "RESULT pass")
 
-    def test_run_all_cases_runs_25_cases(self):
+    def test_run_all_cases_runs_29_cases(self):
         def fake_runner(argv, env):
             return 0, "OUTCOME configured 1280x48\n"
 
         def fake_atspi_runner(
             shell_bin, readback_bin, variant, env, read_only=False, delay=0.0, runner=None
         ):
+            return True, ""
+
+        def fake_slider_runner(shell_bin, readback_bin, variant, env, runner=None):
             return True, ""
 
         def fake_ring_runner(shell_bin, ring_readback_bin, variant, is_positive, env, runner=None):
@@ -474,13 +675,14 @@ class TestVerifyShellBoundary(unittest.TestCase):
             readback_bin="/bin/readback",
             a11y_env={},
             atspi_case_runner=fake_atspi_runner,
+            slider_case_runner=fake_slider_runner,
             ring_readback_bin="/bin/ring-readback",
             ring_env={},
             ring_case_runner=fake_ring_runner,
             timing_case_runner=fake_timing_runner,
             read_back_runner=fake_read_back_runner,
         )
-        self.assertEqual(len(results), 25)
+        self.assertEqual(len(results), 29)
 
 
 class TestNoActivationConfig(unittest.TestCase):
@@ -1059,7 +1261,7 @@ class TestTimingCases(unittest.TestCase):
     """Tests for timing cases execution and judgements."""
 
     def test_case_count_and_timing_cases_structure(self):
-        self.assertEqual(verify_shell.CASE_COUNT, 25)
+        self.assertEqual(verify_shell.CASE_COUNT, 29)
         self.assertEqual(len(TIMING_CASES), 3)
         names = [c[0] for c in TIMING_CASES]
         self.assertIn("timing/1000-nodes", names)

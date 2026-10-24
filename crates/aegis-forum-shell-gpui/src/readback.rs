@@ -8,6 +8,7 @@
 //! interactive action triggering with deadline enforcement on every remote call.
 
 use std::collections::VecDeque;
+use std::io::Write;
 use std::time::Duration;
 
 use atspi::object_ref::ObjectRefOwned;
@@ -15,10 +16,17 @@ use atspi::proxy::accessible::AccessibleProxy;
 use atspi::proxy::action::ActionProxy;
 use atspi::proxy::bus::BusProxy;
 use atspi::proxy::component::ComponentProxy;
+use atspi::proxy::value::ValueProxy;
+use futures_lite::StreamExt;
 use zbus::names::BusName;
 
 use crate::fixture::{BUTTON_LABEL_AFTER, FIXTURE_TITLE};
-use crate::judge::{CaseResult, ReadNode};
+use crate::judge::{
+    CaseResult, ReadNode, SLIDER_LABEL, atspi_slider_clamp, atspi_slider_name, atspi_slider_range,
+    atspi_slider_role, atspi_slider_update, atspi_slider_value, line,
+};
+use crate::key_injection::{SliderAction, inject_slider_action};
+use crate::slider_fixture::{SLIDER_FIXTURE_TITLE, SliderVariant};
 
 /// Maximum duration permitted for an individual D-Bus roundtrip.
 pub const CALL_DEADLINE: Duration = Duration::from_secs(2);
@@ -163,6 +171,25 @@ async fn make_component_proxy<'a>(
     with_deadline("component_proxy_build", CALL_DEADLINE, builder.build()).await
 }
 
+async fn make_value_proxy<'a>(
+    conn: &'a zbus::Connection,
+    obj: &ObjectRefOwned,
+) -> Result<ValueProxy<'a>, ReadError> {
+    let name: BusName = obj
+        .name()
+        .ok_or_else(|| ReadError::Bus("missing bus name on ObjectRef".to_owned()))?
+        .clone()
+        .into();
+    let path = obj.path();
+    let builder = ValueProxy::builder(conn)
+        .destination(name)
+        .map_err(|e| ReadError::Bus(e.to_string()))?
+        .path(path)
+        .map_err(|e| ReadError::Bus(e.to_string()))?
+        .cache_properties(zbus::proxy::CacheProperties::No);
+    with_deadline("value_proxy_build", CALL_DEADLINE, builder.build()).await
+}
+
 async fn check_win_for_fixture(conn: &zbus::Connection, win_ref: &ObjectRefOwned) -> bool {
     let Ok(win_proxy) = make_accessible_proxy(conn, win_ref).await else {
         return false;
@@ -170,7 +197,7 @@ async fn check_win_for_fixture(conn: &zbus::Connection, win_ref: &ObjectRefOwned
     let Ok(title) = with_deadline("win_name", CALL_DEADLINE, win_proxy.name()).await else {
         return false;
     };
-    title == FIXTURE_TITLE
+    title == FIXTURE_TITLE || title == SLIDER_FIXTURE_TITLE
 }
 
 async fn check_app_for_fixture(
@@ -424,4 +451,215 @@ pub async fn click_and_await_update(
         passed: false,
         why: format!("name was still '{last_name}', want '{BUTTON_LABEL_AFTER}'"),
     })
+}
+
+fn is_accessible_value_event(msg: &zbus::message::Message) -> bool {
+    msg.body()
+        .deserialize::<atspi::events::EventBodyOwned>()
+        .is_ok_and(|body| body.kind == "accessible-value")
+}
+
+async fn await_value_notification(stream: &mut zbus::MessageStream, timeout: Duration) -> bool {
+    let Some(deadline) = std::time::Instant::now().checked_add(timeout) else {
+        return false;
+    };
+    for _ in 0..100 {
+        let now = std::time::Instant::now();
+        let Some(remaining) = deadline.checked_duration_since(now) else {
+            break;
+        };
+        if remaining.is_zero() {
+            break;
+        }
+        let next_fut = with_deadline("next_event", remaining, async {
+            stream
+                .next()
+                .await
+                .ok_or_else(|| "stream ended".to_string())
+        });
+        match next_fut.await {
+            Ok(Ok(msg)) => {
+                if is_accessible_value_event(&msg) {
+                    return true;
+                }
+            }
+            Ok(Err(_)) | Err(_) => break,
+        }
+    }
+    false
+}
+
+async fn subscribe_slider_events(
+    conn: &zbus::Connection,
+) -> Result<zbus::MessageStream, ReadError> {
+    let rule = zbus::MatchRule::builder()
+        .msg_type(zbus::message::Type::Signal)
+        .interface("org.a11y.atspi.Event.Object")
+        .map_err(|e| ReadError::Bus(e.to_string()))?
+        .member("PropertyChange")
+        .map_err(|e| ReadError::Bus(e.to_string()))?
+        .build();
+    zbus::MessageStream::for_match_rule(rule, conn, Some(32))
+        .await
+        .map_err(|e| ReadError::Bus(e.to_string()))
+}
+
+struct SliderMetrics {
+    role: String,
+    name: String,
+    current: f64,
+    min: f64,
+    max: f64,
+    step: f64,
+}
+
+async fn read_slider_metrics(
+    conn: &zbus::Connection,
+    node: &ObjectRefOwned,
+) -> Result<SliderMetrics, ReadError> {
+    let acc_proxy = make_accessible_proxy(conn, node).await?;
+    let role = with_deadline("get_role", CALL_DEADLINE, acc_proxy.get_role()).await?;
+    let name = with_deadline("name", CALL_DEADLINE, acc_proxy.name()).await?;
+    let val_proxy = make_value_proxy(conn, node).await?;
+    let current = with_deadline("current_val", CALL_DEADLINE, val_proxy.current_value()).await?;
+    let min = with_deadline("min_val", CALL_DEADLINE, val_proxy.minimum_value()).await?;
+    let max = with_deadline("max_val", CALL_DEADLINE, val_proxy.maximum_value()).await?;
+    let step = with_deadline("step_val", CALL_DEADLINE, val_proxy.minimum_increment()).await?;
+    Ok(SliderMetrics {
+        role: role.name().to_owned(),
+        name,
+        current,
+        min,
+        max,
+        step,
+    })
+}
+
+async fn run_sound_slider_action(
+    val_proxy: &ValueProxy<'_>,
+    stream: &mut zbus::MessageStream,
+    mut out: impl Write,
+) -> Result<bool, ReadError> {
+    inject_slider_action(SliderAction::Increment)
+        .map_err(|e| ReadError::Bus(format!("key injection failed: {e}")))?;
+    let notif_seen = await_value_notification(stream, UPDATE_DEADLINE).await;
+    let updated_val =
+        with_deadline("re_read_val", CALL_DEADLINE, val_proxy.current_value()).await?;
+    let res_update = atspi_slider_update(updated_val, 1.0, notif_seen, true);
+    let _ = writeln!(out, "{}", line(&res_update));
+    Ok(res_update.passed)
+}
+
+struct BoundaryConfig {
+    clamped_expected: f64,
+    updated_expected: f64,
+    clamped_action: SliderAction,
+    opposite_action: SliderAction,
+}
+
+async fn run_boundary_slider_action(
+    val_proxy: &ValueProxy<'_>,
+    stream: &mut zbus::MessageStream,
+    config: BoundaryConfig,
+    mut out: impl Write,
+) -> Result<bool, ReadError> {
+    inject_slider_action(config.clamped_action)
+        .map_err(|e| ReadError::Bus(format!("clamped key injection failed: {e}")))?;
+    let clamped_val =
+        with_deadline("clamped_val", CALL_DEADLINE, val_proxy.current_value()).await?;
+    let res_clamp = atspi_slider_clamp(clamped_val, config.clamped_expected);
+    let _ = writeln!(out, "{}", line(&res_clamp));
+
+    async_io::Timer::after(Duration::from_millis(100)).await;
+
+    inject_slider_action(config.opposite_action)
+        .map_err(|e| ReadError::Bus(format!("opposite key injection failed: {e}")))?;
+    let notif_seen = await_value_notification(stream, UPDATE_DEADLINE).await;
+    let updated_val =
+        with_deadline("re_read_val", CALL_DEADLINE, val_proxy.current_value()).await?;
+    let res_update = atspi_slider_update(updated_val, config.updated_expected, notif_seen, true);
+    let _ = writeln!(out, "{}", line(&res_update));
+
+    Ok(res_clamp.passed && res_update.passed)
+}
+
+fn evaluate_initial_metrics(
+    metrics: &SliderMetrics,
+    variant: SliderVariant,
+    mut out: impl Write,
+) -> bool {
+    let res_role = atspi_slider_role(&metrics.role);
+    let res_name = atspi_slider_name(&metrics.name);
+    let res_range = atspi_slider_range(metrics.min, metrics.max, metrics.step);
+    let expected_init = match variant {
+        SliderVariant::AtMin => -8.0,
+        SliderVariant::AtMax => 8.0,
+        SliderVariant::Sound | SliderVariant::NoRole => 0.0,
+    };
+    let res_val = atspi_slider_value(metrics.current, expected_init);
+
+    let mut all_passed = true;
+    for res in [&res_role, &res_name, &res_range, &res_val] {
+        let _ = writeln!(out, "{}", line(res));
+        if !res.passed {
+            all_passed = false;
+        }
+    }
+    all_passed
+}
+
+async fn dispatch_slider_action(
+    val_proxy: &ValueProxy<'_>,
+    stream: &mut zbus::MessageStream,
+    variant: SliderVariant,
+    mut out: impl Write,
+) -> Result<bool, ReadError> {
+    match variant {
+        SliderVariant::Sound | SliderVariant::NoRole => {
+            run_sound_slider_action(val_proxy, stream, &mut out).await
+        }
+        SliderVariant::AtMax => {
+            let config = BoundaryConfig {
+                clamped_expected: 8.0,
+                updated_expected: 7.0,
+                clamped_action: SliderAction::Increment,
+                opposite_action: SliderAction::Decrement,
+            };
+            run_boundary_slider_action(val_proxy, stream, config, &mut out).await
+        }
+        SliderVariant::AtMin => {
+            let config = BoundaryConfig {
+                clamped_expected: -8.0,
+                updated_expected: -7.0,
+                clamped_action: SliderAction::Decrement,
+                opposite_action: SliderAction::Increment,
+            };
+            run_boundary_slider_action(val_proxy, stream, config, &mut out).await
+        }
+    }
+}
+
+/// Reads the slider node metrics, injects key action, awaits update, and reports CASE results.
+///
+/// # Errors
+///
+/// Returns [`ReadError`] if D-Bus communication, key injection, or property reads fail.
+pub async fn run_slider_readback(
+    variant: SliderVariant,
+    mut out: impl Write,
+) -> Result<bool, ReadError> {
+    let conn = a11y_connection().await?;
+    let app = find_fixture(&conn, APP_DEADLINE).await?;
+    let slider_ref = find_node_by_name(&conn, &app, SLIDER_LABEL).await?;
+
+    let metrics = read_slider_metrics(&conn, &slider_ref).await?;
+    let initial_passed = evaluate_initial_metrics(&metrics, variant, &mut out);
+
+    let mut stream = subscribe_slider_events(&conn).await?;
+    let val_proxy = make_value_proxy(&conn, &slider_ref).await?;
+
+    let action_passed = dispatch_slider_action(&val_proxy, &mut stream, variant, &mut out).await?;
+
+    let _ = out.flush();
+    Ok(initial_passed && action_passed)
 }

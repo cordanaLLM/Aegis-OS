@@ -29,11 +29,12 @@ use std::str::FromStr;
 
 use aegis_forum_shell_gpui::fixture::{Variant, run_fixture};
 use aegis_forum_shell_gpui::ring_fixture::{RingVariant, run_ring_fixture};
+use aegis_forum_shell_gpui::slider_fixture::{SliderVariant, run_slider_fixture};
 use aegis_forum_shell_gpui::surface::{
     Outcome, decode_canvas, exit_code, outcome_line, run_surface,
 };
 
-const USAGE: &str = "usage: aegis-forum-shell-gpui surface <request-line> | aegis-forum-shell-gpui a11y <request-line> <variant> | aegis-forum-shell-gpui ring <request-line> <variant> | aegis-forum-shell-gpui timing <request-line> <seeded-count>";
+const USAGE: &str = "usage: aegis-forum-shell-gpui surface <request-line> | aegis-forum-shell-gpui a11y <request-line> <variant> | aegis-forum-shell-gpui ring <request-line> <variant> | aegis-forum-shell-gpui slider <request-line> <variant> | aegis-forum-shell-gpui timing <request-line> <seeded-count>";
 
 fn write_outcome(outcome: &Outcome, mut out: impl Write) -> std::io::Result<()> {
     let formatted = outcome_line(outcome);
@@ -104,6 +105,23 @@ fn handle_ring(request_line: &str, variant_str: &str, out: impl Write) -> ExitCo
     emit_outcome(&outcome, out)
 }
 
+fn handle_slider(request_line: &str, variant_str: &str, out: impl Write) -> ExitCode {
+    let canvas = match decode_canvas(request_line.as_bytes()) {
+        Ok(canvas) => canvas,
+        Err(refused) => return emit_refusal(&refused, out),
+    };
+
+    let Ok(variant) = SliderVariant::from_str(variant_str) else {
+        return usage_error(
+            out,
+            "usage: aegis-forum-shell-gpui slider <request-line> <variant>",
+        );
+    };
+
+    let outcome = run_slider_fixture(&canvas, variant, std::io::stdout());
+    emit_outcome(&outcome, out)
+}
+
 #[cfg(feature = "timing")]
 fn handle_timing(request_line: &str, count_str: &str, out: impl Write) -> ExitCode {
     let canvas = match decode_canvas(request_line.as_bytes()) {
@@ -148,6 +166,7 @@ fn main() -> ExitCode {
         (Some("surface"), Some(line), None, None) => handle_surface(&line, out),
         (Some("a11y"), Some(line), Some(variant), None) => handle_a11y(&line, &variant, out),
         (Some("ring"), Some(line), Some(variant), None) => handle_ring(&line, &variant, out),
+        (Some("slider"), Some(line), Some(variant), None) => handle_slider(&line, &variant, out),
         #[cfg(feature = "timing")]
         (Some("timing"), Some(line), Some(count), None) => handle_timing(&line, &count, out),
         #[cfg(feature = "timing")]

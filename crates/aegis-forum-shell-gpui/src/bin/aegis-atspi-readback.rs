@@ -19,6 +19,7 @@
 
 use std::io::Write;
 use std::process::ExitCode;
+use std::str::FromStr;
 
 #[path = "common/mod.rs"]
 mod common;
@@ -29,8 +30,9 @@ use aegis_forum_shell_gpui::fixture::BUTTON_LABEL;
 use aegis_forum_shell_gpui::judge::{judge_tree, line};
 use aegis_forum_shell_gpui::readback::{
     APP_DEADLINE, ReadError, UPDATE_DEADLINE, a11y_connection, click_and_await_update,
-    find_fixture, find_node_by_name, read_tree,
+    find_fixture, find_node_by_name, read_tree, run_slider_readback,
 };
+use aegis_forum_shell_gpui::slider_fixture::SliderVariant;
 
 async fn run_readback(read_only: bool, mut out: impl Write) -> Result<bool, ReadError> {
     let conn = a11y_connection().await?;
@@ -66,18 +68,34 @@ fn main() -> ExitCode {
     let _bin = cli_args.next();
     let first = cli_args.next();
     let second = cli_args.next();
+    let third = cli_args.next();
 
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
 
-    let read_only = match (first.as_deref(), second.as_deref()) {
-        (None, None) => false,
-        (Some("--read-only"), None) => true,
-        _ => {
-            let _ = writeln!(out, "usage: aegis-atspi-readback [--read-only]");
-            return ExitCode::from(64);
+    match (first.as_deref(), second.as_deref(), third.as_deref()) {
+        (None, None, None) => {
+            finish_readback(async_io::block_on(run_readback(false, &mut out)), out)
         }
-    };
-
-    finish_readback(async_io::block_on(run_readback(read_only, &mut out)), out)
+        (Some("--read-only"), None, None) => {
+            finish_readback(async_io::block_on(run_readback(true, &mut out)), out)
+        }
+        (Some("--slider"), Some(variant_str), None) => {
+            let Ok(variant) = SliderVariant::from_str(variant_str) else {
+                let _ = writeln!(out, "unknown slider variant '{variant_str}'");
+                return ExitCode::from(64);
+            };
+            finish_readback(
+                async_io::block_on(run_slider_readback(variant, &mut out)),
+                out,
+            )
+        }
+        _ => {
+            let _ = writeln!(
+                out,
+                "usage: aegis-atspi-readback [--read-only] | aegis-atspi-readback --slider <variant>"
+            );
+            ExitCode::from(64)
+        }
+    }
 }
