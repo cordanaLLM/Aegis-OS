@@ -104,7 +104,7 @@ fn the_crate_manifest_declares_only_the_reviewed_dependencies() {
         !manifest.contains("[[bin]]"),
         "milestone M02 ships a library only"
     );
-    for expected in ["sha2", "base16ct", "thiserror"] {
+    for expected in ["amussis-decision", "base16ct", "sha2", "thiserror"] {
         assert!(
             manifest.contains(expected),
             "the manifest must declare {expected}"
@@ -116,6 +116,124 @@ fn the_crate_manifest_declares_only_the_reviewed_dependencies() {
             "{deferred} is deferred past milestone M02"
         );
     }
+}
+
+/// ADR-0006 / M33: checks that `amussis-decision` is pinned to exact `"=0.2.0"`.
+fn check_amussis_decision_pin(manifest_text: &str) -> Result<(), String> {
+    for raw_line in manifest_text.lines() {
+        let code_line = match raw_line.split_once('#') {
+            Some((code, _)) => code.trim(),
+            None => raw_line.trim(),
+        };
+        let Some(rest) = code_line.strip_prefix("amussis-decision") else {
+            continue;
+        };
+        let Some(decl) = rest.trim_start().strip_prefix('=') else {
+            continue;
+        };
+        let decl = decl.trim();
+        if decl == "\"=0.2.0\"" {
+            return Ok(());
+        }
+        return Err(format!(
+            "amussis-decision pin must be exact \"=0.2.0\", found: {decl}"
+        ));
+    }
+    Err("no amussis-decision declaration found".to_string())
+}
+
+/// Positive (ADR-0006, M33): workspace Cargo.toml declares amussis-decision
+/// exactly "=0.2.0", and Cargo.lock holds one amussis-decision package,
+/// version 0.2.0, source `registry+https://github.com/rust-lang/crates.io-index`,
+/// with a checksum.
+#[test]
+fn the_workspace_pins_amussis_decision_and_lock_holds_it() -> Result<(), String> {
+    let root = read("Cargo.toml").ok_or("workspace Cargo.toml must exist")?;
+    check_amussis_decision_pin(&root)?;
+
+    let lock = read("Cargo.lock").ok_or("Cargo.lock must exist")?;
+    let packages: Vec<&str> = lock
+        .split("[[package]]")
+        .filter(|block| {
+            block
+                .lines()
+                .any(|line| line.trim() == "name = \"amussis-decision\"")
+        })
+        .collect();
+    assert_eq!(
+        packages.len(),
+        1,
+        "Cargo.lock must hold exactly one amussis-decision package"
+    );
+    let block = *packages
+        .first()
+        .ok_or("amussis-decision package entry missing")?;
+    assert!(
+        block.lines().any(|l| l.trim() == "version = \"0.2.0\""),
+        "amussis-decision package version in lock must be 0.2.0"
+    );
+    assert!(
+        block.lines().any(|l| {
+            l.trim() == "source = \"registry+https://github.com/rust-lang/crates.io-index\""
+        }),
+        "amussis-decision package source in lock must be crates.io registry"
+    );
+    assert!(
+        block.lines().any(|l| {
+            let t = l.trim();
+            t.starts_with("checksum = \"") && t.ends_with('"') && t.len() > 13
+        }),
+        "amussis-decision package in lock must have a checksum"
+    );
+    Ok(())
+}
+
+/// Negative (ADR-0006, M33): a pin check fn fed a planted manifest line with
+/// another version (e.g. "=0.1.0", "0.2.0" without '=', a git source) refuses it.
+#[test]
+fn planted_amussis_decision_pins_are_refused() -> Result<(), String> {
+    for planted in [
+        "amussis-decision = \"=0.1.0\"",
+        "amussis-decision = \"0.2.0\"",
+        "amussis-decision = { git = \"https://github.com/plurano/amussis\" }",
+        "amussis-decision = { git = \"https://github.com/plurano/amussis\", rev = \"0a1229fc\" }",
+    ] {
+        assert!(
+            check_amussis_decision_pin(planted).is_err(),
+            "planted pin line {planted:?} must be refused"
+        );
+    }
+
+    let root = read("Cargo.toml").ok_or("workspace Cargo.toml must exist")?;
+    let temp_manifest = root.replace(
+        "amussis-decision = \"=0.2.0\"",
+        "amussis-decision = \"=0.1.0\"",
+    );
+    assert!(
+        check_amussis_decision_pin(&temp_manifest).is_err(),
+        "workspace manifest with altered pin must be refused"
+    );
+    Ok(())
+}
+
+/// Boundary (ADR-0006, M33): near-miss versions (e.g. "=0.2.0-rc.1", "=0.2.00",
+/// "=0.2") are refused; exact "=0.2.0" is accepted.
+#[test]
+fn near_miss_amussis_decision_pins_are_refused() {
+    for near_miss in [
+        "amussis-decision = \"=0.2.0-rc.1\"",
+        "amussis-decision = \"=0.2.00\"",
+        "amussis-decision = \"=0.2\"",
+    ] {
+        assert!(
+            check_amussis_decision_pin(near_miss).is_err(),
+            "near-miss pin line {near_miss:?} must be refused"
+        );
+    }
+    assert!(
+        check_amussis_decision_pin("amussis-decision = \"=0.2.0\"").is_ok(),
+        "exact pin line must be accepted"
+    );
 }
 
 /// The toolchain pin names an exact version, not a moving channel.

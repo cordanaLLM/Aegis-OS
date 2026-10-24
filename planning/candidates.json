@@ -844,7 +844,7 @@
       },
       "side_b": {
         "source_id": "public:docs/integration/stack.md",
-        "sha256": "54968e8d820f6e45ccaaf3ef88c2eab3886bd9fb979ebcc0e7e347d7a6478f41",
+        "sha256": "c31dd003c3781575a080dff0403ada7787c3098e07e949be8787f16d8282b0df",
         "summary": "The shared ownership table assigns kernel configuration, patch selection and artefact production to the Nucleus repository."
       },
       "affected_contract": "Aegis-side kernel requirement payload (LSM, sched_ext, BTF, RAPL, VFIO/IOMMU, KVM; ABI; architectures) and the image content list.",
@@ -1114,7 +1114,7 @@
       },
       "side_b": {
         "source_id": "public:docs/integration/stack.md",
-        "sha256": "54968e8d820f6e45ccaaf3ef88c2eab3886bd9fb979ebcc0e7e347d7a6478f41",
+        "sha256": "c31dd003c3781575a080dff0403ada7787c3098e07e949be8787f16d8282b0df",
         "summary": "Shared package reuse must respect language boundaries: a Go library is not a direct dependency of a Rust daemon without an adapter and contract tests."
       },
       "affected_contract": "Vesta capsule-execution contract and the crate dependency set; also the P09 -> P10 transport string.",

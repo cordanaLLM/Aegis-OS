@@ -45,6 +45,7 @@ PART_KEYS = {"path", "ties"}
 # none of them opens a file, socket, device or process.
 OS_FREE_DEPENDENCIES = {
     "accesskit",  # accessibility tree types; the platform adapters are other crates
+    "amussis-decision",  # decision engine and ledger; reads only the wall clock
     "base16ct",  # constant-time hex encoding
     "saeptum-capsule",  # capsule descriptors only; saeptum-microvm holds the sockets
     "schemars",  # JSON schema derivation

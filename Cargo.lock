@@ -192,6 +192,7 @@ dependencies = [
 name = "aegis-justitia"
 version = "0.1.0"
 dependencies = [
+ "amussis-decision",
  "base16ct",
  "serde",
  "serde_json",
@@ -351,6 +352,19 @@ name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
+
+[[package]]
+name = "amussis-decision"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0db6cb1c8d265c1b28be0b8fb2d8539623c73afc70caf86c020f2c266646f46e"
+dependencies = [
+ "base16ct",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "thiserror 2.0.21",
+]
 
 [[package]]
 name = "android_system_properties"
