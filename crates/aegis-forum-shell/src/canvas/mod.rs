@@ -44,6 +44,12 @@ pub enum CanvasError {
         /// The level asked for.
         depth: usize,
     },
+    /// A node is pinned and cannot be moved or resized.
+    #[error("canvas node {key} is pinned")]
+    Pinned {
+        /// The node concerned.
+        key: u32,
+    },
 }
 
 /// What an action or a focus target belongs to: a node, or one level of its
@@ -56,12 +62,25 @@ pub enum Target {
     Level(NodeKey, usize),
 }
 
+/// Policy governing whether small targets may be treated as pointer-inert (REQ-P05-14).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum InertPolicy {
+    /// Small targets below the size floor are allowed to be pointer-inert
+    /// when an equivalent keyboard control is available.
+    #[default]
+    Allowed,
+    /// Pointer-inert status is forbidden; any target below the size floor
+    /// is treated as an accessibility defect.
+    Forbidden,
+}
+
 /// The canvas: nodes, cull index and camera.
 #[derive(Debug, Clone)]
 pub struct Canvas {
     registry: Registry,
     index: QuadTree,
     camera: Camera,
+    inert_policy: InertPolicy,
 }
 
 impl Canvas {
@@ -72,6 +91,7 @@ impl Canvas {
             registry: Registry::new(),
             index: QuadTree::new(bounds),
             camera,
+            inert_policy: InertPolicy::Allowed,
         }
     }
 
@@ -195,6 +215,119 @@ impl Canvas {
                 .map(|level| &mut level.state)
                 .ok_or(CanvasError::Level { key: key.0, depth }),
         }
+    }
+
+    /// Moves the node under `key` by `(dx, dy)` in world units, updating the cull index.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RegistryError::Unknown`] if `key` is unregistered,
+    /// [`CanvasError::Pinned`] if the node is pinned, or propagates
+    /// [`GeometryError`].
+    pub fn move_node(&mut self, key: NodeKey, dx: f64, dy: f64) -> Result<(), CanvasError> {
+        let node = self.registry.get_mut(key)?;
+        if node.state.pinned {
+            return Err(CanvasError::Pinned { key: key.0 });
+        }
+        let old_rect = node.rect;
+        let new_rect = WorldRect::new(
+            old_rect.x0() + dx,
+            old_rect.y0() + dy,
+            old_rect.x1() + dx,
+            old_rect.y1() + dy,
+        )?;
+        node.rect = new_rect;
+        self.index.remove(key);
+        self.index.insert(key, new_rect);
+        Ok(())
+    }
+
+    /// Resizes the node under `key` by `(dw, dh)` in world units, updating the cull index.
+    ///
+    /// Extents are clamped to at least [`crate::pointer::MIN_NODE_SIZE`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RegistryError::Unknown`] if `key` is unregistered,
+    /// [`CanvasError::Pinned`] if the node is pinned, or propagates
+    /// [`GeometryError`].
+    pub fn resize_node(&mut self, key: NodeKey, dw: f64, dh: f64) -> Result<(), CanvasError> {
+        let node = self.registry.get_mut(key)?;
+        if node.state.pinned {
+            return Err(CanvasError::Pinned { key: key.0 });
+        }
+        let old_rect = node.rect;
+        let new_w = (old_rect.width() + dw).max(crate::pointer::MIN_NODE_SIZE);
+        let new_h = (old_rect.height() + dh).max(crate::pointer::MIN_NODE_SIZE);
+        let new_rect = WorldRect::from_origin_size(old_rect.x0(), old_rect.y0(), new_w, new_h)?;
+        node.rect = new_rect;
+        self.index.remove(key);
+        self.index.insert(key, new_rect);
+        Ok(())
+    }
+
+    /// Rotates the instrument handle at `target` by `delta_degrees` in whole steps.
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`CanvasError`] if target node or level is unknown.
+    pub fn rotate_handle(&mut self, target: Target, delta_degrees: i16) -> Result<(), CanvasError> {
+        let state = self.state_mut(target)?;
+        state.rotate(delta_degrees);
+        Ok(())
+    }
+
+    /// Moves the camera centre by `(dx, dy)` in canvas units.
+    pub fn pan(&mut self, dx: f64, dy: f64) {
+        self.camera.pan_by(dx, dy);
+    }
+
+    /// Multiplies the camera scale by `factor`, clamped to admitted range.
+    pub fn zoom(&mut self, factor: f64) {
+        self.camera.zoom_by(factor);
+    }
+
+    /// Returns the target hit by the screen coordinates `(x, y)`, skipping inert nodes.
+    #[must_use]
+    pub fn hit_test(&self, pos: (f64, f64)) -> Option<Target> {
+        for node in self.registry.nodes() {
+            if self.is_inert(node.key) {
+                continue;
+            }
+            let s = self.camera.to_screen(&node.rect);
+            if pos.0 >= s.x0 && pos.0 <= s.x1 && pos.1 >= s.y0 && pos.1 <= s.y1 {
+                return Some(Target::Node(node.key));
+            }
+        }
+        None
+    }
+
+    /// Returns the current policy on pointer-inert targets.
+    #[must_use]
+    pub const fn inert_policy(&self) -> InertPolicy {
+        self.inert_policy
+    }
+
+    /// Sets the policy on pointer-inert targets.
+    pub fn set_inert_policy(&mut self, policy: InertPolicy) {
+        self.inert_policy = policy;
+    }
+
+    /// Whether `key` is currently pointer-inert (screen bounds below
+    /// [`crate::pointer::MIN_TARGET_CSS_PX`] with inert permitted).
+    #[must_use]
+    pub fn is_inert(&self, key: NodeKey) -> bool {
+        if self.inert_policy == InertPolicy::Forbidden {
+            return false;
+        }
+        let Some(node) = self.registry.get(key) else {
+            return false;
+        };
+        let s = self.camera.to_screen(&node.rect);
+        let w = s.x1 - s.x0;
+        let h = s.y1 - s.y0;
+        w < crate::pointer::MIN_TARGET_CSS_PX - crate::pointer::FLOAT_TOLERANCE
+            || h < crate::pointer::MIN_TARGET_CSS_PX - crate::pointer::FLOAT_TOLERANCE
     }
 
     /// Every action state on the canvas, node by node in focus order: the

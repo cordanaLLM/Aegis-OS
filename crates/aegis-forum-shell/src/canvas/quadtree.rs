@@ -114,6 +114,18 @@ impl QuadTree {
         self.split_if_full(index);
     }
 
+    /// Removes `key` from the index, returning whether it was found.
+    pub fn remove(&mut self, key: NodeKey) -> bool {
+        for quad in &mut self.quads {
+            if let Some(pos) = quad.items.iter().position(|(k, _)| *k == key) {
+                quad.items.remove(pos);
+                self.len = self.len.saturating_sub(1);
+                return true;
+            }
+        }
+        false
+    }
+
     /// Splits a full leaf into four children and moves down every rectangle
     /// that fits entirely inside one of them.
     fn split_if_full(&mut self, index: usize) {

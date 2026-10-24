@@ -126,6 +126,7 @@ fn constructed_slidable_level_exports_slider() -> Fallible {
             selected: false,
             pinned: false,
             value: 3,
+            angle: 0,
         },
     };
     let (state, id) = constructed_shell(slidable_level)?;
