@@ -103,6 +103,10 @@ pub type Correlation = contract_scaffold::Correlation<SchemaId, CorrelationId>;
 /// A fixed buffer holding one encoded descriptor payload.
 pub type PayloadBuffer = contract_scaffold::PayloadBuffer<MAX_CONTRACT_PAYLOAD_BYTES>;
 
+pub(crate) use contract_scaffold::decode_validated;
+pub(crate) use dmabuf::DmaBufExport;
+pub(crate) use graph::EdgeId;
+
 define_contract_error! {
     SchemaId, CorrelationId;
     /// Reasons a descriptor payload is refused.
@@ -132,3 +136,31 @@ scaffold_contract!(
     MAX_CONTRACT_PAYLOAD_BYTES,
     ContractError
 );
+
+/// Validates descriptor invariants: edge, export path, and payload validity.
+///
+/// # Errors
+///
+/// Returns [`ContractError::WrongEdge`] if `edge` does not match `expected_edge`,
+/// [`ContractError::Malformed`] if `payload_valid` is false, and
+/// [`ContractError::ExportPathUnusable`] if `export` is unusable.
+pub(crate) fn validate_descriptor(
+    edge: graph::EdgeId,
+    expected_edge: graph::EdgeId,
+    export: dmabuf::DmaBufExport,
+    correlation: Correlation,
+    payload_valid: bool,
+) -> Result<(), ContractError> {
+    if edge != expected_edge {
+        return Err(ContractError::WrongEdge { correlation });
+    }
+    if !payload_valid {
+        return Err(ContractError::Malformed { correlation });
+    }
+    export
+        .validate()
+        .map_err(|error| ContractError::ExportPathUnusable {
+            correlation,
+            reason: error.reason(),
+        })
+}
