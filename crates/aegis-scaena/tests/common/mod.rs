@@ -11,14 +11,17 @@
 
 #![allow(dead_code)]
 
+use core::mem::MaybeUninit;
 use core::time::Duration;
-use std::os::fd::{AsFd, OwnedFd};
+use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 
 use aegis_scaena::{
-    CorrelationId, Deadlines, DecodedFrame, FourCc, FrameReceiver, FrameSender, Plane, Planes,
-    Request, pair,
+    CorrelationId, Cue, Deadlines, DecodedFrame, FourCc, FrameReceiver, FrameSender, LineBuffer,
+    LineError, MAX_LINE_BYTES, Plane, Planes, Request, pair,
 };
 use rustix::fs::{MemfdFlags, ftruncate, memfd_create};
+use rustix::io::IoSlice;
+use rustix::net::{SendAncillaryBuffer, SendAncillaryMessage, SendFlags, sendmsg};
 
 /// What every test in this suite returns.
 pub type Fallible = Result<(), Box<dyn std::error::Error>>;
@@ -133,4 +136,82 @@ pub fn open_memfds_named(name: &str) -> Result<usize, Box<dyn std::error::Error>
 #[must_use]
 pub fn borrow(fd: &OwnedFd) -> std::os::fd::BorrowedFd<'_> {
     fd.as_fd()
+}
+
+/// `text` with one newline appended.
+#[must_use]
+pub fn line(text: &str) -> Vec<u8> {
+    format!("{text}\n").into_bytes()
+}
+
+/// Encodes `item` into a `LineBuffer` and returns the UTF-8 payload without trailing newline.
+///
+/// # Errors
+///
+/// Returns an error if encoding or UTF-8 decoding fails.
+pub fn request_line_string<T>(
+    item: &T,
+    encode: impl for<'a> FnOnce(&T, &'a mut LineBuffer) -> Result<&'a [u8], LineError>,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let mut buffer = LineBuffer::new();
+    let line = encode(item, &mut buffer)?;
+    Ok(String::from_utf8(aegis_scaena::line::body(line)?.to_vec())?)
+}
+
+/// Boundary check: a line of exactly `MAX_LINE_BYTES`, newline included, is
+/// accepted, and one byte longer is refused before it is parsed.
+///
+/// # Errors
+///
+/// Returns an error if padding calculation fails.
+pub fn assert_line_length_boundary<T: PartialEq + core::fmt::Debug>(
+    text: &str,
+    expected: &T,
+    decode: impl Fn(&[u8]) -> Result<T, LineError>,
+) -> Fallible {
+    let pad = MAX_LINE_BYTES
+        .checked_sub(text.len())
+        .and_then(|room| room.checked_sub(1))
+        .ok_or("the fixture line leaves no room to pad")?;
+    // JSON admits whitespace between tokens; it pads without changing meaning.
+    let at_bound = line(&text.replacen('{', &format!("{{{}", " ".repeat(pad)), 1));
+    assert_eq!(at_bound.len(), MAX_LINE_BYTES);
+    assert_eq!(&decode(&at_bound)?, expected);
+    let over = line(&text.replacen('{', &format!("{{{}", " ".repeat(pad.saturating_add(1))), 1));
+    assert_eq!(over.len(), MAX_LINE_BYTES.saturating_add(1));
+    assert_eq!(
+        decode(&over),
+        Err(LineError::TooLong {
+            length: MAX_LINE_BYTES.saturating_add(1),
+        })
+    );
+    Ok(())
+}
+
+/// Sends `message` with `fds` as its `SCM_RIGHTS`, bypassing the sender's own checks.
+///
+/// # Errors
+///
+/// Returns an error if the control buffer cannot hold the descriptors or sending fails.
+pub fn send_raw(socket: BorrowedFd<'_>, message: &[u8], fds: &[BorrowedFd<'_>]) -> Fallible {
+    let mut space = [MaybeUninit::<u8>::uninit(); rustix::cmsg_space!(ScmRights(3))];
+    let mut control = SendAncillaryBuffer::new(&mut space);
+    if !fds.is_empty() && !control.push(SendAncillaryMessage::ScmRights(fds)) {
+        return Err("the control buffer does not hold the fds".into());
+    }
+    sendmsg(
+        socket,
+        &[IoSlice::new(message)],
+        &mut control,
+        SendFlags::NOSIGNAL,
+    )?;
+    Ok(())
+}
+
+/// Asserts that `cue` has the expected index, duration range, and text.
+pub fn check_cue(cue: &Cue, index: u32, start: Duration, end: Duration, text: &str) {
+    assert_eq!(cue.index, index);
+    assert_eq!(cue.start, start);
+    assert_eq!(cue.end, end);
+    assert_eq!(cue.text, text);
 }

@@ -14,16 +14,13 @@
 
 mod common;
 
-use core::mem::MaybeUninit;
 use std::os::fd::{AsFd, BorrowedFd};
 
 use aegis_scaena::attach;
 use aegis_scaena::line::encode_request;
 use aegis_scaena::{LineBuffer, MAX_LINE_BYTES};
-use rustix::io::IoSlice;
-use rustix::net::{SendAncillaryBuffer, SendAncillaryMessage, SendFlags, sendmsg};
 
-use common::{Fallible, NV12_SIZE, endpoints, memfd, request};
+use common::{Fallible, NV12_SIZE, endpoints, memfd, request, send_raw};
 
 /// How many refused messages the case sends.
 const REFUSED: usize = 1_000;
@@ -31,22 +28,6 @@ const REFUSED: usize = 1_000;
 /// The number of descriptors this process holds.
 fn open_descriptors() -> Result<usize, Box<dyn std::error::Error>> {
     Ok(std::fs::read_dir("/proc/self/fd")?.take(65_536).count())
-}
-
-/// Sends `message` with `fds`, bypassing the sender's own checks.
-fn send_raw(socket: BorrowedFd<'_>, message: &[u8], fds: &[BorrowedFd<'_>]) -> Fallible {
-    let mut space = [MaybeUninit::<u8>::uninit(); rustix::cmsg_space!(ScmRights(2))];
-    let mut control = SendAncillaryBuffer::new(&mut space);
-    if !fds.is_empty() && !control.push(SendAncillaryMessage::ScmRights(fds)) {
-        return Err("the control buffer does not hold the fds".into());
-    }
-    sendmsg(
-        socket,
-        &[IoSlice::new(message)],
-        &mut control,
-        SendFlags::NOSIGNAL,
-    )?;
-    Ok(())
 }
 
 /// Positive, negative and boundary in one: 1,000 refusals of six kinds, each

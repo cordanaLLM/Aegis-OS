@@ -35,6 +35,19 @@ fn marker_at(frame: &[u8], marker: u8) -> Option<usize> {
     frame.windows(2).position(|pair| pair == [0xff, marker])
 }
 
+/// Returns the offset and payload length of the marker in `frame`.
+fn marker_and_length(
+    frame: &[u8],
+    marker: u8,
+) -> Result<(usize, usize), Box<dyn std::error::Error>> {
+    let at = marker_at(frame, marker).ok_or("marker not found")?;
+    let length = usize::from(u16::from_be_bytes([
+        *frame.get(at.saturating_add(2)).ok_or("short")?,
+        *frame.get(at.saturating_add(3)).ok_or("short")?,
+    ]));
+    Ok((at, length))
+}
+
 /// `frame` with the byte at `at` replaced.
 fn patched(frame: &[u8], at: usize, value: u8) -> Vec<u8> {
     let mut copy = frame.to_vec();
@@ -152,11 +165,7 @@ fn a_twelve_bit_table_is_refused() -> Fallible {
 #[test]
 fn a_partial_spectrum_scan_is_refused() -> Fallible {
     let frame = first_frame()?;
-    let at = marker_at(frame, 0xda).ok_or("no SOS")?;
-    let length = usize::from(u16::from_be_bytes([
-        *frame.get(at + 2).ok_or("short")?,
-        *frame.get(at + 3).ok_or("short")?,
-    ]));
+    let (at, length) = marker_and_length(frame, 0xda)?;
     // The segment ends with Ss, Se and Ah/Al; Se drops from 63 to 5.
     let spectral_end = at + 2 + length - 2;
     let partial = patched(frame, spectral_end - 1, 5);
@@ -172,11 +181,7 @@ fn a_partial_spectrum_scan_is_refused() -> Fallible {
 #[test]
 fn a_frame_without_huffman_tables_is_refused() -> Fallible {
     let frame = first_frame()?;
-    let at = marker_at(frame, 0xc4).ok_or("no DHT")?;
-    let length = usize::from(u16::from_be_bytes([
-        *frame.get(at + 2).ok_or("short")?,
-        *frame.get(at + 3).ok_or("short")?,
-    ]));
+    let (at, length) = marker_and_length(frame, 0xc4)?;
     let mut without = frame.get(..at).ok_or("short")?.to_vec();
     without.extend_from_slice(frame.get(at + 2 + length..).ok_or("short")?);
     assert_eq!(

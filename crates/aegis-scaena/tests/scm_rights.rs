@@ -18,35 +18,32 @@
 
 mod common;
 
-use core::mem::MaybeUninit;
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 
 use aegis_scaena::attach::{self, DMA_BUF_MAGIC, identity};
 use aegis_scaena::line::encode_request;
-use aegis_scaena::{AttachError, LineBuffer, LineError, MAX_LINE_BYTES, TransportError};
-use rustix::io::{FdFlags, IoSlice, fcntl_getfd};
-use rustix::net::{SendAncillaryBuffer, SendAncillaryMessage, SendFlags, sendmsg};
+use aegis_scaena::{
+    AttachError, FrameReceiver, FrameSender, LineBuffer, LineError, MAX_LINE_BYTES, TransportError,
+};
+use rustix::io::{FdFlags, fcntl_getfd};
 
-use common::{Fallible, NV12_SIZE, borrow, endpoints, memfd, open_memfds_named, request};
+use common::{Fallible, NV12_SIZE, borrow, endpoints, memfd, open_memfds_named, request, send_raw};
 
 /// `TMPFS_MAGIC` (`include/uapi/linux/magic.h`): where a memfd lives.
 const TMPFS_MAGIC: u64 = 0x0102_1994;
 
-/// Sends `message` with `fds` as its `SCM_RIGHTS`, bypassing the sender's own
-/// checks, so the receiver meets what a faulty or hostile peer would send.
-fn send_raw(socket: BorrowedFd<'_>, message: &[u8], fds: &[BorrowedFd<'_>]) -> Fallible {
-    let mut space = [MaybeUninit::<u8>::uninit(); rustix::cmsg_space!(ScmRights(3))];
-    let mut control = SendAncillaryBuffer::new(&mut space);
-    if !fds.is_empty() && !control.push(SendAncillaryMessage::ScmRights(fds)) {
-        return Err("the control buffer does not hold the fds".into());
-    }
-    sendmsg(
-        socket,
-        &[IoSlice::new(message)],
-        &mut control,
-        SendFlags::NOSIGNAL,
-    )?;
-    Ok(())
+/// Sends `message` with `fds` raw and receives the line length from `receiver`.
+fn send_and_receive_len(
+    sender: &FrameSender,
+    receiver: &FrameReceiver,
+    message: &[u8],
+    fds: &[BorrowedFd<'_>],
+) -> Result<Result<usize, TransportError>, Box<dyn std::error::Error>> {
+    send_raw(sender.as_fd(), message, fds)?;
+    let mut buffer = LineBuffer::new();
+    Ok(receiver
+        .receive(&mut buffer)
+        .map(|received| received.line.len()))
 }
 
 /// A valid request line.
@@ -86,11 +83,7 @@ fn a_descriptor_and_one_memfd_round_trip() -> Fallible {
 #[test]
 fn a_message_without_an_fd_is_refused() -> Fallible {
     let (sender, receiver) = endpoints()?;
-    send_raw(sender.as_fd(), &valid_line()?, &[])?;
-    let mut buffer = LineBuffer::new();
-    let refused = receiver
-        .receive(&mut buffer)
-        .map(|received| received.line.len());
+    let refused = send_and_receive_len(&sender, &receiver, &valid_line()?, &[])?;
     assert_eq!(refused, Err(TransportError::FdCount { count: 0 }));
     Ok(())
 }
@@ -103,11 +96,7 @@ fn a_message_with_a_surplus_fd_is_refused_and_the_surplus_closed() -> Fallible {
         let (sender, receiver) = endpoints()?;
         let exported = memfd(name, NV12_SIZE)?;
         let fds: Vec<BorrowedFd<'_>> = (0..copies).map(|_| exported.as_fd()).collect();
-        send_raw(sender.as_fd(), &valid_line()?, &fds)?;
-        let mut buffer = LineBuffer::new();
-        let refused = receiver
-            .receive(&mut buffer)
-            .map(|received| received.line.len());
+        let refused = send_and_receive_len(&sender, &receiver, &valid_line()?, &fds)?;
         assert!(
             matches!(
                 refused,
@@ -178,11 +167,7 @@ fn a_message_over_the_bound_is_refused_at_its_full_length() -> Fallible {
     let pad = MAX_LINE_BYTES.saturating_sub(line.len()).saturating_add(1);
     let over = String::from_utf8(line)?.replacen('{', &format!("{{{}", " ".repeat(pad)), 1);
     assert_eq!(over.len(), MAX_LINE_BYTES.saturating_add(1));
-    send_raw(sender.as_fd(), over.as_bytes(), &[exported.as_fd()])?;
-    let mut buffer = LineBuffer::new();
-    let refused = receiver
-        .receive(&mut buffer)
-        .map(|received| received.line.len());
+    let refused = send_and_receive_len(&sender, &receiver, over.as_bytes(), &[exported.as_fd()])?;
     assert_eq!(
         refused,
         Err(TransportError::Line(LineError::TooLong {
