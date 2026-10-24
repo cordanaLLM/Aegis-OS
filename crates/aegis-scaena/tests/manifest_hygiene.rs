@@ -14,6 +14,9 @@
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
 
+#[path = "../../manifest_hygiene.rs"]
+mod manifest_hygiene;
+
 use core::time::Duration;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -62,24 +65,6 @@ fn read(name: &str) -> String {
     workspace_root()
         .and_then(|root| std::fs::read_to_string(root.join(name)).ok())
         .unwrap_or_default()
-}
-
-/// The crate directories that hold a manifest.
-fn crate_directories() -> Vec<String> {
-    let Some(root) = workspace_root() else {
-        return Vec::new();
-    };
-    let Ok(entries) = std::fs::read_dir(root.join("crates")) else {
-        return Vec::new();
-    };
-    let mut found: Vec<String> = entries
-        .flatten()
-        .take(64)
-        .filter(|entry| entry.path().join("Cargo.toml").is_file())
-        .map(|entry| entry.file_name().to_string_lossy().into_owned())
-        .collect();
-    found.sort_unstable();
-    found
 }
 
 /// Checks that `manifest` writes out exactly the crate directories that have
@@ -486,6 +471,26 @@ fn a_rust_version_off_the_pin_is_refused() -> Result<(), String> {
     Ok(())
 }
 
+/// Asserts that no non-comment line in `sources` contains any of `words`.
+fn assert_no_source_contains_words(sources: &[PathBuf], words: &[&str]) {
+    for path in sources.iter().take(256) {
+        let text = std::fs::read_to_string(path).unwrap_or_default();
+        for (number, line) in text.lines().take(32_768).enumerate() {
+            if line.trim_start().starts_with("//") {
+                continue;
+            }
+            for &word in words {
+                assert!(
+                    !holds_word(line, word),
+                    "{}:{} names {word}",
+                    path.display(),
+                    number.saturating_add(1)
+                );
+            }
+        }
+    }
+}
+
 /// Negative (criterion 2): no source of this crate holds the keyword the
 /// workspace's forbid lint refuses, outside comment lines.
 #[test]
@@ -493,20 +498,7 @@ fn no_source_holds_the_forbidden_keyword() {
     let keyword = concat!("un", "safe");
     let sources = crate_sources();
     assert!(sources.len() >= 8, "{sources:?}");
-    for path in &sources {
-        let text = std::fs::read_to_string(path).unwrap_or_default();
-        for (number, line) in text.lines().enumerate() {
-            if line.trim_start().starts_with("//") {
-                continue;
-            }
-            assert!(
-                !holds_word(line, keyword),
-                "{}:{}",
-                path.display(),
-                number.saturating_add(1)
-            );
-        }
-    }
+    assert_no_source_contains_words(&sources, &[keyword]);
     assert!(
         holds_word(&format!("{keyword} {{"), keyword),
         "the scan finds the word"
@@ -530,22 +522,7 @@ fn no_source_maps_a_file() {
         concat!("Mm", "ap"),
         concat!("MmapOp", "tions"),
     ];
-    for path in &crate_sources() {
-        let text = std::fs::read_to_string(path).unwrap_or_default();
-        for (number, line) in text.lines().enumerate() {
-            if line.trim_start().starts_with("//") {
-                continue;
-            }
-            for word in words {
-                assert!(
-                    !holds_word(line, word),
-                    "{}:{} names {word}",
-                    path.display(),
-                    number.saturating_add(1)
-                );
-            }
-        }
-    }
+    assert_no_source_contains_words(&crate_sources(), &words);
     let root = read("Cargo.toml");
     let rustix = root
         .lines()
@@ -632,7 +609,7 @@ fn a_node_less_metadata_document_fails_closed() {
 #[test]
 fn a_manifest_that_omits_this_crate_fails_the_membership_check() -> Result<(), String> {
     let root = read("Cargo.toml");
-    let directories = crate_directories();
+    let directories = manifest_hygiene::crate_directories_with_a_manifest();
     membership(&root, &directories)?;
     let omitted = root.replace("    \"crates/aegis-scaena\",\n", "");
     assert_ne!(omitted, root);

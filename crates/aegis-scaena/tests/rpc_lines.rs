@@ -12,23 +12,16 @@
 
 mod common;
 
-use aegis_scaena::line::{body, decode_request, decode_response, encode_response};
+use aegis_scaena::line::{decode_request, decode_response, encode_response};
 use aegis_scaena::{
     DescriptorError, JsonCategory, LineBuffer, LineError, MAX_LINE_BYTES, Refusal, Response,
 };
 
-use common::Fallible;
+use common::{Fallible, assert_line_length_boundary, line, request_line_string};
 
 /// A valid request line, without its newline, from the fixture.
 fn valid() -> Result<String, Box<dyn std::error::Error>> {
-    let mut buffer = LineBuffer::new();
-    let line = aegis_scaena::line::encode_request(&common::request(9)?, &mut buffer)?;
-    Ok(String::from_utf8(body(line)?.to_vec())?)
-}
-
-/// `text` with one newline appended.
-fn line(text: &str) -> Vec<u8> {
-    format!("{text}\n").into_bytes()
+    request_line_string(&common::request(9)?, aegis_scaena::line::encode_request)
 }
 
 /// `text` with `member` inserted as the first member of the object that
@@ -193,25 +186,7 @@ fn the_array_form_is_refused_at_every_level() -> Fallible {
 /// accepted, and one byte longer is refused before it is parsed.
 #[test]
 fn a_line_at_the_byte_bound_is_accepted_and_one_byte_longer_refused() -> Fallible {
-    let text = valid()?;
-    let pad = MAX_LINE_BYTES
-        .checked_sub(text.len())
-        .and_then(|room| room.checked_sub(1))
-        .ok_or("the fixture line leaves no room to pad")?;
-    // JSON admits whitespace between tokens; it pads without changing meaning.
-    let at = text.replacen('{', &format!("{{{}", " ".repeat(pad)), 1);
-    let at_bound = line(&at);
-    assert_eq!(at_bound.len(), MAX_LINE_BYTES);
-    assert_eq!(decode_request(&at_bound)?, common::request(9)?);
-    let over = line(&text.replacen('{', &format!("{{{}", " ".repeat(pad.saturating_add(1))), 1));
-    assert_eq!(over.len(), MAX_LINE_BYTES.saturating_add(1));
-    assert_eq!(
-        decode_request(&over),
-        Err(LineError::TooLong {
-            length: MAX_LINE_BYTES.saturating_add(1)
-        })
-    );
-    Ok(())
+    assert_line_length_boundary(&valid()?, &common::request(9)?, decode_request)
 }
 
 // --- Refusal mapping --------------------------------------------------------
