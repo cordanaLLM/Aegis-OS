@@ -331,6 +331,36 @@ fn convert_children(
     Ok(())
 }
 
+fn copy_numeric_properties(source: &accesskit::Node, target: &mut gpui::accesskit::Node) {
+    if let Some(val) = source.numeric_value() {
+        target.set_numeric_value(val);
+    }
+    if let Some(min) = source.min_numeric_value() {
+        target.set_min_numeric_value(min);
+    }
+    if let Some(max) = source.max_numeric_value() {
+        target.set_max_numeric_value(max);
+    }
+    if let Some(step) = source.numeric_value_step() {
+        target.set_numeric_value_step(step);
+    }
+}
+
+fn rebuild_numeric_properties(source: &accesskit::Node, rebuilt: &mut accesskit::Node) {
+    if let Some(val) = source.numeric_value() {
+        rebuilt.set_numeric_value(val);
+    }
+    if let Some(min) = source.min_numeric_value() {
+        rebuilt.set_min_numeric_value(min);
+    }
+    if let Some(max) = source.max_numeric_value() {
+        rebuilt.set_max_numeric_value(max);
+    }
+    if let Some(step) = source.numeric_value_step() {
+        rebuilt.set_numeric_value_step(step);
+    }
+}
+
 fn copy_node_properties(source: &accesskit::Node, target: &mut gpui::accesskit::Node) {
     if let Some(label) = source.label() {
         target.set_label(label);
@@ -349,6 +379,7 @@ fn copy_node_properties(source: &accesskit::Node, target: &mut gpui::accesskit::
     if source.is_hidden() {
         target.set_hidden();
     }
+    copy_numeric_properties(source, target);
 }
 
 fn rebuild_mapped_node(source: &accesskit::Node) -> accesskit::Node {
@@ -365,6 +396,7 @@ fn rebuild_mapped_node(source: &accesskit::Node) -> accesskit::Node {
     if source.is_hidden() {
         rebuilt.set_hidden();
     }
+    rebuild_numeric_properties(source, &mut rebuilt);
     for &(src_action, _) in ACTIONS.iter().take(ACTIONS.len()) {
         if source.supports_action(src_action) {
             rebuilt.add_action(src_action);
@@ -426,8 +458,9 @@ fn convert_node(
 /// Converts an [`accesskit::TreeUpdate`] (0.25.1) to [`gpui::accesskit::TreeUpdate`] (0.24.1).
 ///
 /// Maps every field the M16 export sets: nodes, ids, role, label, bounds,
-/// actions, children, hidden, focus, and tree root. Any unsupported property or
-/// non-root tree ID returns a named [`ConvertError`].
+/// actions, children, hidden, focus, numeric values and ranges (`numeric_value`,
+/// `min_numeric_value`, `max_numeric_value`, `numeric_value_step`), and tree root.
+/// Any unsupported property or non-root tree ID returns a named [`ConvertError`].
 ///
 /// # Errors
 ///

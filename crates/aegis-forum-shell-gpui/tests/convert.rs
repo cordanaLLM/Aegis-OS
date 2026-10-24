@@ -10,8 +10,10 @@
 //! Boundary: empty canvas, single root node, and 1,000-node largest seeded fixture.
 
 use accesskit::{Action, Node, Rect, Role, TreeId, TreeInfo, TreeUpdate, Uuid};
-use aegis_forum_shell::a11y::{self, EMPTY_STATE_NAME, ROOT_ID};
-use aegis_forum_shell::canvas::seed;
+use aegis_forum_shell::a11y::{self, EMPTY_STATE_NAME, ROOT_ID, level_id};
+use aegis_forum_shell::canvas::registry::{ActionKind, MAX_VALUE, NodeKey};
+use aegis_forum_shell::canvas::{Target, seed};
+use aegis_forum_shell::focus::Key;
 use aegis_forum_shell::state::ShellState;
 use aegis_forum_shell_gpui::convert::{ConvertError, to_gpui};
 
@@ -48,6 +50,16 @@ fn verify_node_bounds(
     Ok(())
 }
 
+fn verify_node_numeric(conv_node: &gpui::accesskit::Node, orig_node: &accesskit::Node) {
+    assert_eq!(conv_node.numeric_value(), orig_node.numeric_value());
+    assert_eq!(conv_node.min_numeric_value(), orig_node.min_numeric_value());
+    assert_eq!(conv_node.max_numeric_value(), orig_node.max_numeric_value());
+    assert_eq!(
+        conv_node.numeric_value_step(),
+        orig_node.numeric_value_step()
+    );
+}
+
 fn verify_node_pair(
     orig_id: accesskit::NodeId,
     orig_node: &accesskit::Node,
@@ -56,10 +68,53 @@ fn verify_node_pair(
 ) -> Result<(), Box<dyn std::error::Error>> {
     verify_node_meta(conv_id, orig_id, conv_node, orig_node);
     verify_node_bounds(conv_node, orig_node)?;
+    verify_node_numeric(conv_node, orig_node);
     Ok(())
 }
 
 // --- Positive -------------------------------------------------------------
+
+fn open_seeded_slider() -> Result<(ShellState, accesskit::NodeId), Box<dyn std::error::Error>> {
+    let mut state = ShellState::new(seed::seeded()?);
+    state.focus.focus_node(&mut state.canvas, NodeKey(99))?;
+    state.focus.press(&mut state.canvas, Key::Enter)?;
+    let id = level_id(NodeKey(99), 0);
+    Ok((state, id))
+}
+
+/// Positive: export of seeded shell with open instrument slider converts cleanly,
+/// preserving slider role, value 0, min -8, max 8, and step 1.
+#[test]
+fn export_of_open_slider_converts_with_slider_semantics() -> Result<(), Box<dyn std::error::Error>>
+{
+    let (state, slider_id) = open_seeded_slider()?;
+    let original = a11y::export(&state);
+
+    let converted = to_gpui(&original)?;
+
+    assert_eq!(converted.nodes.len(), original.nodes.len());
+    let (_, slider_node) = converted
+        .nodes
+        .iter()
+        .find(|(id, _)| id.0 == slider_id.0)
+        .ok_or("missing slider node in converted tree")?;
+
+    assert_eq!(
+        format!("{:?}", slider_node.role()),
+        format!("{:?}", Role::Slider)
+    );
+    assert_eq!(slider_node.numeric_value(), Some(0.0));
+    assert_eq!(slider_node.min_numeric_value(), Some(f64::from(-MAX_VALUE)));
+    assert_eq!(slider_node.max_numeric_value(), Some(f64::from(MAX_VALUE)));
+    assert_eq!(slider_node.numeric_value_step(), Some(1.0));
+
+    for ((orig_id, orig_node), (conv_id, conv_node)) in
+        original.nodes.iter().zip(converted.nodes.iter())
+    {
+        verify_node_pair(*orig_id, orig_node, *conv_id, conv_node)?;
+    }
+    Ok(())
+}
 
 /// Positive: converting an export of a populated shell state preserves node count,
 /// root, focus, labels, roles, and actions.
@@ -223,6 +278,66 @@ fn largest_one_thousand_node_fixture_converts_cleanly() -> Result<(), Box<dyn st
     Ok(())
 }
 
+/// Boundary: slider numeric values at bounds -8.0 and 8.0 survive conversion exactly.
+#[test]
+fn slider_boundary_numeric_values_survive_conversion() -> Result<(), Box<dyn std::error::Error>> {
+    for boundary_val in [f64::from(-MAX_VALUE), f64::from(MAX_VALUE)] {
+        let mut node = Node::new(Role::Slider);
+        node.set_numeric_value(boundary_val);
+        node.set_min_numeric_value(f64::from(-MAX_VALUE));
+        node.set_max_numeric_value(f64::from(MAX_VALUE));
+        node.set_numeric_value_step(1.0);
+        let update = single_node_update(node);
+
+        let converted = to_gpui(&update)?;
+        let (_, conv_node) = converted.nodes.first().ok_or("missing converted node")?;
+        assert_eq!(conv_node.numeric_value(), Some(boundary_val));
+        assert_eq!(conv_node.min_numeric_value(), Some(f64::from(-MAX_VALUE)));
+        assert_eq!(conv_node.max_numeric_value(), Some(f64::from(MAX_VALUE)));
+        assert_eq!(conv_node.numeric_value_step(), Some(1.0));
+    }
+    Ok(())
+}
+
+/// Boundary: open seeded slider driven to -8 and 8 boundary values survives conversion exactly.
+#[test]
+fn seeded_slider_at_boundary_values_survives_conversion() -> Result<(), Box<dyn std::error::Error>>
+{
+    let (mut state, slider_id) = open_seeded_slider()?;
+
+    // Drive value to max (8)
+    for _ in 0..10 {
+        state
+            .canvas
+            .apply(Target::Level(NodeKey(99), 0), ActionKind::Increment)?;
+    }
+    let update_max = a11y::export(&state);
+    let conv_max = to_gpui(&update_max)?;
+    let (_, node_max) = conv_max
+        .nodes
+        .iter()
+        .find(|(id, _)| id.0 == slider_id.0)
+        .ok_or("missing slider node at max boundary")?;
+    assert_eq!(node_max.numeric_value(), Some(f64::from(MAX_VALUE)));
+
+    // Drive value to min (-8)
+    for _ in 0..20 {
+        state
+            .canvas
+            .apply(Target::Level(NodeKey(99), 0), ActionKind::Decrement)?;
+    }
+    let update_min = a11y::export(&state);
+    let conv_min = to_gpui(&update_min)?;
+    let (_, node_min) = conv_min
+        .nodes
+        .iter()
+        .find(|(id, _)| id.0 == slider_id.0)
+        .ok_or("missing slider node at min boundary")?;
+    assert_eq!(node_min.numeric_value(), Some(f64::from(-MAX_VALUE)));
+
+    Ok(())
+}
+
 // --- Allow-list roundtrip and Role Pair Invariants ------------------------
 
 fn assert_unmapped_property_fails(node: Node) {
@@ -249,6 +364,14 @@ fn unmapped_property_value_fails_roundtrip_check() {
 fn unmapped_property_description_fails_roundtrip_check() {
     let mut node = Node::new(Role::Window);
     node.set_description("unexpected-description");
+    assert_unmapped_property_fails(node);
+}
+
+/// Negative: node with an unmapped property (`placeholder`) fails allow-list round-trip check.
+#[test]
+fn unmapped_property_placeholder_fails_roundtrip_check() {
+    let mut node = Node::new(Role::Window);
+    node.set_placeholder("filter...");
     assert_unmapped_property_fails(node);
 }
 
