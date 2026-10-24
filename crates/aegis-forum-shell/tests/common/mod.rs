@@ -14,6 +14,7 @@
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
+use accesskit::{Node, Role};
 use aegis_forum_shell::jsonrpc::DeadlineStream;
 use aegis_justitia::{
     ActionType, AgentId, DecisionRequest, DecisionRequestVersion, Identity, MakerId,
@@ -74,6 +75,16 @@ pub fn telemetry_payload(update: &CarbonTelemetry) -> Fallible<String> {
 pub fn message(method: &str, params: &str, id: Option<u32>) -> String {
     let id = id.map(|id| format!(",\"id\":{id}")).unwrap_or_default();
     format!("{{\"jsonrpc\":\"2.0\",\"method\":\"{method}\",\"params\":{params}{id}}}\n")
+}
+
+/// Asserts that an accesskit node is neither unknown nor a generic container,
+/// and has a non-empty label.
+pub fn assert_labelled_role(node: &Node) {
+    assert!(!matches!(
+        node.role(),
+        Role::Unknown | Role::GenericContainer
+    ));
+    assert!(node.label().is_some_and(|name| !name.trim().is_empty()));
 }
 
 /// A stream over one end of a `socketpair(2)`, arming `SO_RCVTIMEO` and
