@@ -8,13 +8,14 @@ mod common;
 use aegis_justitia::{
     ActionType, AgentId, AuditLedger, AuditRecord, BlockReason, Digest32, HaltReason,
     HashAlgorithm, InMemorySink, IntentId, JustitiaError, KillswitchState, LedgerError,
-    LedgerHasher, MAX_SIGNATURE_BYTES, OversightClass, RecordDraft, RecordStatus, RiskTier,
-    Sha256Hasher, SignError, SignerBinding, UnavailableSink, UnixSeconds, verify_chain,
+    LedgerHasher, MAX_SIGNATURE_BYTES, OversightClass, RecordDraft, RecordStatus, RecordSubject,
+    RiskLevel, RiskTier, Sha256Hasher, SignError, SignerBinding, UnavailableSink, UnixSeconds,
+    verify_chain,
 };
 
 use common::{
     FIXTURE_AUDIT_BOUND, Fallible, FixtureError, FixtureSigner, OversizedSigner, engine, intent,
-    io_deadline, unsigned_engine,
+    io_deadline, named_for, unsigned_engine,
 };
 
 /// The FIPS 180-4 SHA-256 digest of `abc`, as a literal so no dev-dependency is
@@ -42,9 +43,12 @@ fn ledger() -> Result<Ledger, JustitiaError> {
 /// Builds a draft at `at` seconds with the given status.
 fn draft(id: &str, status: RecordStatus, at: u64) -> Result<RecordDraft, JustitiaError> {
     Ok(RecordDraft {
-        intent_id: IntentId::parse(id)?,
-        agent: AgentId::parse("agent-01")?,
-        action_type: ActionType::FileModification,
+        subject: Some(RecordSubject {
+            intent_id: IntentId::parse(id)?,
+            agent: AgentId::parse("agent-01")?,
+            action_type: ActionType::FileModification,
+        }),
+        principals: named_for(status)?,
         status,
         block_reason: None,
         killswitch: KillswitchState::Armed,
@@ -150,8 +154,9 @@ fn single_flipped_byte_is_detected_and_missing_signer_returns_an_error() -> Fall
     );
 
     // One field of the stored body is edited, keeping the original digest.
+    // The edit keeps the record well formed, so the digest is what tells.
     let forged_body = AuditRecord::from_parts(
-        original.body().with_status(RecordStatus::Rejected),
+        original.body().with_status(RecordStatus::Blocked),
         *original.signature(),
         original.digest(),
     );
@@ -340,7 +345,7 @@ fn md5_is_absent_from_the_crate() -> Fallible<()> {
 #[test]
 fn the_observed_killswitch_state_is_recorded() -> Fallible<()> {
     let mut engine = engine(60, 8)?;
-    engine.halt(HaltReason::OperatorStop);
+    engine.halt_unnamed(HaltReason::OperatorStop, RiskLevel::LOWEST)?;
     let routine = intent(
         "intent-recorded-halt",
         "maker-alice",
@@ -349,11 +354,11 @@ fn the_observed_killswitch_state_is_recorded() -> Fallible<()> {
         OversightClass::Standard,
     )?;
     let _blocked = engine.decide(&routine);
-    let record = engine
-        .ledger()
-        .records()
-        .first()
-        .ok_or(FixtureError::NoRecord)?;
+    let records = engine.ledger().records();
+    let halt = records.first().ok_or(FixtureError::NoRecord)?;
+    assert_eq!(halt.body().draft().status, RecordStatus::HaltEngaged);
+    assert!(halt.body().draft().killswitch.is_engaged());
+    let record = records.last().ok_or(FixtureError::NoRecord)?;
     assert_eq!(record.body().draft().status, RecordStatus::Halted);
     assert!(record.body().draft().killswitch.is_engaged());
     assert_eq!(

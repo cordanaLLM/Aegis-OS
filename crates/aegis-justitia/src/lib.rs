@@ -3,15 +3,15 @@
 
 //! Aegis OS P06 `aegis-justitia`: the decision engine.
 //!
-//! The crate carries the risk-tier, maker-checker, Annex III, timeout and
-//! killswitch logic as library code. Every rule is reachable through the public
-//! API so the integration tests exercise the shipped logic, not a test-only
-//! copy.
+//! The crate consumes `amussis-decision` for the risk-tier, maker-checker,
+//! Annex III, timeout, killswitch and hash-linked audit ledger logic (ADR-0006).
+//! Every rule is reachable through the public API so the integration tests
+//! exercise the shipped logic, not a test-only copy.
 //!
 //! Design invariants enforced here (see `AGENTS.md`):
 //!
 //! * no recursion: [`ledger::verify_chain_bounded`] walks a chain iteratively;
-//! * every loop carries a scalar upper bound, declared as a constant below;
+//! * every loop carries a scalar upper bound;
 //! * no `unwrap`, `expect`, `panic!`, slice indexing or wrapping arithmetic;
 //! * no dynamic execution and no `unsafe` (forbidden at the crate root).
 //!
@@ -66,21 +66,9 @@
 //!
 //! HISS-07 bans `unwrap` and `expect`; `unwrap_or` is permitted because it names
 //! the fallback, but every use still has to be justified rather than counted
-//! loosely. There are **six**, and `tests/manifest_hygiene.rs` fails if that
-//! ever stops being the exact set:
-//!
-//! | site | fallback | why it is unreachable or correct |
-//! | :-- | :-- | :-- |
-//! | `identity::Identity::as_bytes` | `&[]` | `len <= MAX_IDENTITY_LEN` by construction, so the slice always exists |
-//! | `identity::TargetResource::as_bytes` | `&[]` | `len <= MAX_TARGET_LEN` by construction |
-//! | `ledger::hash::CanonicalBuffer::as_slice` | `&[]` | `len <= MAX_PREIMAGE_BYTES`, enforced on every write |
-//! | `ledger::signer::Signature::as_bytes` | `&[]` | `len <= MAX_SIGNATURE_BYTES`, enforced in `Signature::new` |
-//! | `engine::EngineConfig::default` | one-second window | `DEFAULT_APPROVAL_TTL_SECS` is a non-zero constant |
-//! | `ledger::default_service_time` | one-millisecond deadline | `DEFAULT_SINK_SERVICE_MILLIS` is a non-zero constant |
-//!
-//! The first four are the same shape: a bounded inline buffer returning a slice
-//! of its own validated prefix. The last two convert a non-zero constant into a
-//! non-zero-typed value, where the only alternative would be `expect`.
+//! loosely. Following ADR-0006, the six sites in the engine and ledger logic are
+//! carried upstream by `amussis-decision`, leaving zero in `aegis-justitia`'s own
+//! source code.
 //!
 //! # What milestone M14 added, and what it deliberately did not
 //!
@@ -104,75 +92,45 @@
 #![deny(missing_docs)]
 
 pub mod contracts;
-pub mod effects;
-pub mod engine;
-pub mod error;
-pub mod identity;
-pub mod intent;
-pub mod killswitch;
 pub mod ledger;
-pub mod outcome;
-pub mod oversight;
-pub mod registry;
-pub mod risk;
-pub mod time;
 
-/// Contract version tag mixed into every audit pre-image.
-pub const CONTRACT_VERSION: &str = "aegis.justitia.v1";
+/// Adapter module re-exporting the decision engine.
+pub mod engine {
+    pub use amussis_decision::engine::DecisionEngine as JustitiaEngine;
+    pub use amussis_decision::engine::*;
+}
 
-/// Default scalar upper bound on the number of records in one audit chain.
-///
-/// Chosen so that two retained copies of a full chain stay inside the
-/// [`MAX_RETAINED_AUDIT_BYTES`] budget; `tests/allocation_bounds.rs` computes
-/// the product from `size_of` and fails if it ever stops holding. The in-memory
-/// chain is a staging window, not the archive; the durable sink that drains it
-/// is M14 work.
-pub const MAX_LEDGER_RECORDS: usize = 4096;
+/// Adapter module re-exporting the decision errors.
+pub mod error {
+    pub use amussis_decision::error::DecisionError as JustitiaError;
+    pub use amussis_decision::error::*;
+}
 
-/// Scalar budget, in bytes, for every audit record the default bounds retain.
-///
-/// Both retained copies of the chain must fit inside this budget. A change to
-/// [`MAX_LEDGER_RECORDS`], to [`MAX_SIGNATURE_BYTES`] or to the record shape
-/// that breaches it fails `tests/allocation_bounds.rs`.
-pub const MAX_RETAINED_AUDIT_BYTES: usize = 8 << 20;
+pub use amussis_decision::effects;
+pub use amussis_decision::identity;
+pub use amussis_decision::intent;
+pub use amussis_decision::killswitch;
+pub use amussis_decision::outcome;
+pub use amussis_decision::oversight;
+pub use amussis_decision::registry;
+pub use amussis_decision::risk;
+pub use amussis_decision::time;
 
-/// Scalar upper bound on the canonical pre-image of a single audit record.
-pub const MAX_PREIMAGE_BYTES: usize = 512;
-
-/// Default scalar upper bound on concurrently pending approval requests.
-///
-/// This is a concurrency bound, not a lifetime cap: decided and expired tickets
-/// are reclaimed by [`PendingRegistry::reclaim`] before the bound is tested, so
-/// the engine cannot wedge at it.
-pub const MAX_PENDING_REQUESTS: usize = 256;
-
-/// Scalar upper bound, in bytes, on any identity string.
-pub const MAX_IDENTITY_LEN: usize = 64;
-
-/// Scalar upper bound, in bytes, on a target-resource string.
-pub const MAX_TARGET_LEN: usize = 256;
-
-/// Scalar upper bound, in bytes, on a detached record signature.
-pub const MAX_SIGNATURE_BYTES: usize = 512;
-
-/// Width of every digest this crate produces, in bytes.
-pub const DIGEST_LEN: usize = 32;
-
-/// Default approval window, in seconds, for a request that needs a checker.
-pub const DEFAULT_APPROVAL_TTL_SECS: u32 = 300;
-
-/// Shortest deadline, in milliseconds, under which [`InMemorySink`] will accept
-/// a record. A caller offering less is refused with [`SinkError::WouldBlock`]
-/// rather than allowed to block past its own deadline.
-pub const DEFAULT_SINK_SERVICE_MILLIS: u32 = 1;
+pub use amussis_decision::CONTRACT_VERSION;
+pub use amussis_decision::DEFAULT_APPROVAL_TTL_SECS;
+pub use amussis_decision::DEFAULT_SINK_SERVICE_MILLIS;
+pub use amussis_decision::DIGEST_LEN;
+pub use amussis_decision::MAX_IDENTITY_LEN;
+pub use amussis_decision::MAX_LEDGER_RECORDS;
+pub use amussis_decision::MAX_PENDING_REQUESTS;
+pub use amussis_decision::MAX_PREIMAGE_BYTES;
+pub use amussis_decision::MAX_RETAINED_AUDIT_BYTES;
+pub use amussis_decision::MAX_SIGNATURE_BYTES;
+pub use amussis_decision::MAX_TARGET_LEN;
 
 pub use crate::contracts::audit::{AuditRecordVersion, PLD_EFFECTIVE_AT, SignedAuditRecord};
 pub use crate::contracts::decision_request::{
     DecisionRequest, DecisionRequestVersion, MAX_DECISION_WINDOW_SECS, MIN_DECISION_WINDOW_SECS,
-};
-pub use crate::contracts::encoding::{
-    DIGEST_HEX_CHARS, MAX_SIGNATURE_HEX_CHARS, OversightSignature, SignatureAlgorithm,
-    SignatureBytes,
 };
 pub use crate::contracts::graph::{
     D03_ACTION_GATE, D03_ACTION_GATE_DIRECTION, D03_ACTION_GATE_TRANSPORT, D04_SANDBOX_GATE,
@@ -187,31 +145,39 @@ pub use crate::contracts::unit::{
 pub use crate::contracts::{
     ContractError, Correlation, MAX_CONTRACT_PAYLOAD_BYTES, PayloadBuffer, SchemaId,
 };
-pub use crate::engine::{EngineConfig, JustitiaEngine};
-pub use crate::error::JustitiaError;
-pub use crate::identity::{
+pub use crate::ledger::{Chain, ChainRecord, Timestamped};
+pub use amussis_decision::encoding::fields::{
+    DIGEST_HEX_CHARS, MAX_SIGNATURE_HEX_CHARS, OversightSignature, SignatureAlgorithm,
+    SignatureBytes,
+};
+pub use amussis_decision::engine::DecisionEngine as JustitiaEngine;
+pub use amussis_decision::engine::EngineConfig;
+pub use amussis_decision::error::DecisionError as JustitiaError;
+pub use amussis_decision::identity::{
     AgentId, CheckerId, EventId, Identity, IdentityError, IntentId, MakerId, RequestId,
     SignerKeyId, TargetResource,
 };
-pub use crate::intent::{ActionIntent, IntentError, IntentSpec};
-pub use crate::killswitch::{HaltReason, Killswitch, KillswitchState};
-pub use crate::ledger::hash::{
+pub use amussis_decision::intent::{ActionIntent, IntentError, IntentSpec};
+pub use amussis_decision::killswitch::{HaltReason, Killswitch, KillswitchState, ReleaseError};
+pub use amussis_decision::ledger::hash::{
     CanonicalBuffer, Digest32, HashAlgorithm, HashError, LedgerHasher, PreimageError,
 };
-pub use crate::ledger::sha256::Sha256Hasher;
-pub use crate::ledger::signer::{RecordSigner, SignError, Signature, SignerBinding};
-pub use crate::ledger::{
-    AUDIT_DOMAIN, AuditLedger, AuditRecord, Chain, ChainRecord, InMemorySink, IoDeadline,
-    LedgerError, LedgerSink, RecordBody, RecordDraft, RecordStatus, Sequence, Sha256Ledger,
-    SinkError, Timestamped, UnavailableSink, verify_chain, verify_chain_bounded,
+pub use amussis_decision::ledger::sha256::Sha256Hasher;
+pub use amussis_decision::ledger::signer::{RecordSigner, SignError, Signature, SignerBinding};
+pub use amussis_decision::ledger::{
+    AUDIT_DOMAIN, AuditLedger, AuditRecord, InMemorySink, IoDeadline, LedgerError, LedgerSink,
+    RecordBody, RecordDraft, RecordPrincipals, RecordStatus, RecordSubject, Sequence, Sha256Ledger,
+    SinkError, UnavailableSink, verify_chain, verify_chain_bounded, verify_continuation,
 };
-pub use crate::outcome::{BlockReason, InterceptorOutcome, WarningCode};
-pub use crate::oversight::{
+pub use amussis_decision::outcome::{BlockReason, InterceptorOutcome, WarningCode};
+pub use amussis_decision::oversight::{
     Adjudication, ApprovalTicket, CheckerSet, OversightError, VerifiedCheckerSet, Vote,
 };
-pub use crate::registry::{PendingRegistry, RegistryError, RequestState};
-pub use crate::risk::{ActionType, OversightClass, RequiredApproval, RiskTier};
-pub use crate::time::{
+pub use amussis_decision::registry::{PendingRegistry, RegistryError, RequestState};
+pub use amussis_decision::risk::{
+    ActionType, OversightClass, RequiredApproval, RiskLevel, RiskTier,
+};
+pub use amussis_decision::time::{
     Clock, ClockError, Deadline, DeadlineError, DeadlineStatus, FixedClock, MonotonicGuard, Ttl,
     UnixSeconds,
 };

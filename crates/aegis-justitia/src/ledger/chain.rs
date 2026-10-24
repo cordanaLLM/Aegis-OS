@@ -3,9 +3,9 @@
 
 //! Generic hash-linked chain state and record contract.
 
-use crate::ledger::hash::{Digest32, HashAlgorithm, LedgerHasher};
-use crate::ledger::{LedgerError, RecordBody, Sequence, verify_link};
-use crate::time::UnixSeconds;
+use amussis_decision::ledger::hash::{Digest32, HashAlgorithm, LedgerHasher};
+use amussis_decision::ledger::{LedgerError, Sequence};
+use amussis_decision::time::UnixSeconds;
 
 /// Trait for drafts that carry a timestamp.
 pub trait Timestamped {
@@ -13,13 +13,41 @@ pub trait Timestamped {
     fn at(&self) -> UnixSeconds;
 }
 
+/// Verifies one link of a chain against the state that precedes it.
+fn verify_link<H: LedgerHasher, R: ChainRecord>(
+    previous: Digest32,
+    expected: Sequence,
+    record: &R,
+) -> Result<(), LedgerError> {
+    if record.algorithm() != H::ALGORITHM {
+        return Err(LedgerError::AlgorithmMismatch {
+            expected: H::ALGORITHM,
+            found: record.algorithm(),
+        });
+    }
+    if record.sequence() != expected {
+        return Err(LedgerError::SequenceGap {
+            expected: expected.get(),
+            found: record.sequence().get(),
+        });
+    }
+    if record.previous() != previous {
+        return Err(LedgerError::PreviousHashMismatch {
+            at: record.sequence().get(),
+        });
+    }
+    if record.verify::<H>()? != record.digest() {
+        return Err(LedgerError::DigestMismatch {
+            at: record.sequence().get(),
+        });
+    }
+    Ok(())
+}
+
 /// A record in a verified hash-linked chain.
 pub trait ChainRecord: Sized {
     /// Associated draft type carried by the record body.
     type Draft: Timestamped;
-
-    /// Returns the record body.
-    fn body(&self) -> &RecordBody<Self::Draft>;
 
     /// Returns the stored digest.
     fn digest(&self) -> Digest32;
@@ -32,24 +60,16 @@ pub trait ChainRecord: Sized {
     fn verify<H: LedgerHasher>(&self) -> Result<Digest32, LedgerError>;
 
     /// Returns the algorithm named by the record.
-    fn algorithm(&self) -> HashAlgorithm {
-        self.body().algorithm()
-    }
+    fn algorithm(&self) -> HashAlgorithm;
 
     /// Returns the sequence number.
-    fn sequence(&self) -> Sequence {
-        self.body().sequence()
-    }
+    fn sequence(&self) -> Sequence;
 
     /// Returns the predecessor link.
-    fn previous(&self) -> Digest32 {
-        self.body().previous()
-    }
+    fn previous(&self) -> Digest32;
 
     /// Returns when the record was written.
-    fn at(&self) -> UnixSeconds {
-        self.body().draft().at()
-    }
+    fn at(&self) -> UnixSeconds;
 
     /// Re-walks `records` under an explicit scalar bound.
     ///

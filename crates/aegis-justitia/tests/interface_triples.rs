@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 Lusoris <lusoris@proton.me>
+// SPDX-FileCopyrightText: 2026 Lusoris <lusoris@pm.me>
 // SPDX-License-Identifier: EUPL-1.2
 
 //! HISS-15: an explicit positive, negative and boundary case for every public
@@ -9,16 +9,15 @@ mod common;
 use aegis_justitia::{
     ActionIntent, ActionType, AgentId, ApprovalTicket, CheckerId, CheckerSet, Clock, ClockError,
     Deadline, DeadlineError, DeadlineStatus, Digest32, FixedClock, HaltReason, HashError, Identity,
-    IdentityError, InMemorySink, IntentError, IntentId, IntentSpec, IoDeadline, Killswitch,
-    KillswitchState, LedgerSink, MAX_IDENTITY_LEN, MAX_SIGNATURE_BYTES, MAX_TARGET_LEN, MakerId,
-    MonotonicGuard, OversightClass, OversightError, PendingRegistry, RecordStatus, RegistryError,
-    RequestId, RequestState, RequiredApproval, RiskTier, SignError, Signature, SignerBinding,
-    SignerKeyId, SinkError, TargetResource, Ttl, UnavailableSink, UnixSeconds,
+    IdentityError, InMemorySink, IntentError, IntentId, IntentSpec, IoDeadline, JustitiaError,
+    Killswitch, KillswitchState, LedgerSink, MAX_IDENTITY_LEN, MAX_SIGNATURE_BYTES, MAX_TARGET_LEN,
+    MakerId, MonotonicGuard, OversightClass, OversightError, PendingRegistry, RecordStatus,
+    RegistryError, RequestId, RequestState, RequiredApproval, RiskLevel, RiskTier, SignError,
+    Signature, SignerBinding, SignerKeyId, SinkError, TargetResource, Ttl, UnavailableSink,
+    UnixSeconds,
 };
 
-use common::{
-    FIXTURE_AUDIT_BOUND, Fallible, FixtureError, FixtureSigner, io_deadline, record_draft,
-};
+use common::{FIXTURE_AUDIT_BOUND, Fallible, FixtureError, FixtureSigner, io_deadline, named_for};
 
 // --- Identity -------------------------------------------------------------
 
@@ -229,7 +228,40 @@ fn checker_sets_positive_negative_and_boundary() -> Fallible<()> {
 
 // --- Killswitch ------------------------------------------------------------
 
-/// The latch is one-way and idempotent: re-engaging keeps the first reason.
+/// Re-engaging never weakens a halt: a compromised chain found later
+/// replaces the first reason and is not replaced itself, and the level rises.
+#[test]
+fn a_later_halt_never_weakens_the_latch() {
+    let single = RiskLevel::new(RiskTier::TierAConsequential, OversightClass::Standard);
+    let mut latch = Killswitch::new();
+    latch.engage(UnixSeconds::new(10), HaltReason::OperatorStop, single);
+
+    latch.engage(
+        UnixSeconds::new(30),
+        HaltReason::LedgerCompromised,
+        RiskLevel::HIGHEST,
+    );
+    let compromised = KillswitchState::Engaged {
+        at: UnixSeconds::new(10),
+        reason: HaltReason::LedgerCompromised,
+        level: RiskLevel::HIGHEST,
+    };
+    assert_eq!(
+        latch.state(),
+        compromised,
+        "a compromised chain is not hidden by the first reason, and the level rises"
+    );
+
+    latch.engage(UnixSeconds::new(40), HaltReason::OperatorStop, single);
+    assert_eq!(
+        latch.state(),
+        compromised,
+        "a later halt does not take the compromised reason away"
+    );
+}
+
+/// The latch is one-way: re-engaging keeps the first time and reason, and a
+/// lower level does not lower the halt.
 #[test]
 fn killswitch_positive_negative_and_boundary() {
     let mut latch = Killswitch::new();
@@ -237,19 +269,27 @@ fn killswitch_positive_negative_and_boundary() {
     assert_eq!(latch.state(), KillswitchState::Armed);
     assert_eq!(latch.state().reason(), None);
 
-    latch.engage(UnixSeconds::new(10), HaltReason::OperatorStop);
+    let single = RiskLevel::new(RiskTier::TierAConsequential, OversightClass::Standard);
+    latch.engage(UnixSeconds::new(10), HaltReason::OperatorStop, single);
     assert!(latch.is_engaged());
     assert_eq!(latch.state().reason(), Some(HaltReason::OperatorStop));
+    assert_eq!(latch.state().level(), Some(single));
 
-    latch.engage(UnixSeconds::new(20), HaltReason::LedgerCompromised);
+    latch.engage(
+        UnixSeconds::new(20),
+        HaltReason::AuditUnavailable,
+        RiskLevel::LOWEST,
+    );
     assert_eq!(
         latch.state(),
         KillswitchState::Engaged {
             at: UnixSeconds::new(10),
-            reason: HaltReason::OperatorStop
+            reason: HaltReason::OperatorStop,
+            level: single,
         },
-        "a second engage keeps the first time and reason"
+        "a second engage keeps the first time and reason, and a lower level does not lower the halt"
     );
+
     assert_eq!(latch.state().engaged_at(), Some(UnixSeconds::new(10)));
 }
 
@@ -403,7 +443,7 @@ fn signature_positive_negative_and_boundary() -> Fallible<()> {
     Ok(())
 }
 
-/// An unbound signer binding always errors; that is the M20 deferral proof.
+/// An unbound signer binding always errors, proving missing signing fails closed.
 #[test]
 fn signer_binding_positive_negative_and_boundary() -> Fallible<()> {
     let bound: SignerBinding<FixtureSigner> = SignerBinding::Bound(FixtureSigner::new()?);
@@ -429,22 +469,9 @@ fn fixture_ticket(id: &str, ttl_secs: u32) -> Fallible<ApprovalTicket> {
         MakerId::parse("maker-a")?,
         AgentId::parse("agent-01")?,
         ActionType::PermissionEscalation,
-        RequiredApproval::SingleChecker,
+        RiskLevel::new(RiskTier::TierAConsequential, OversightClass::Standard),
         Deadline::open(UnixSeconds::new(1_000), ttl)?,
     ))
-}
-
-/// Builds a registry populated with one inserted ticket.
-fn fixture_registry_with_ticket(
-    bound: usize,
-    request_id: &str,
-    ttl: u32,
-    now: UnixSeconds,
-) -> Fallible<(PendingRegistry, ApprovalTicket)> {
-    let ticket = fixture_ticket(request_id, ttl)?;
-    let mut registry = PendingRegistry::with_bound(bound);
-    registry.insert(ticket, now)?;
-    Ok((registry, ticket))
 }
 
 /// The registry holds, bounds and labels: a live duplicate is a duplicate and a
@@ -484,8 +511,10 @@ fn pending_registry_positive_negative_and_boundary() -> Fallible<()> {
 #[test]
 fn pending_registry_decision_reclaims_the_bound() -> Fallible<()> {
     let now = UnixSeconds::new(1_000);
-    let (mut registry, first) = fixture_registry_with_ticket(1, "request-1", 60, now)?;
+    let first = fixture_ticket("request-1", 60)?;
     let second = fixture_ticket("request-2", 60)?;
+    let mut registry = PendingRegistry::with_bound(1);
+    registry.insert(first, now)?;
 
     registry.mark_decided(first.request_id(), RecordStatus::Approved)?;
     assert_eq!(
@@ -556,26 +585,37 @@ fn registry_reclamation_positive_negative_and_boundary() -> Fallible<()> {
 
 // --- Sinks -----------------------------------------------------------------
 
-/// Builds a fixture audit ledger whose in-memory sink holds `sink_bound` records.
-fn fixture_ledger(
-    sink_bound: usize,
-) -> Fallible<aegis_justitia::Sha256Ledger<FixtureSigner, InMemorySink>> {
-    Ok(aegis_justitia::AuditLedger::with_bound(
-        SignerBinding::Bound(FixtureSigner::new()?),
-        InMemorySink::with_bound(sink_bound),
-        io_deadline(),
-        FIXTURE_AUDIT_BOUND,
-    ))
-}
-
 /// The in-memory sink is bounded, refuses a record past its bound, refuses a
 /// deadline shorter than its service time, and never reallocates.
 #[test]
 fn in_memory_sink_positive_negative_and_boundary() -> Fallible<()> {
-    let mut ledger = fixture_ledger(1)?;
-    ledger.append(record_draft("intent-1", 100)?)?;
+    let mut ledger: aegis_justitia::AuditLedger<
+        aegis_justitia::Sha256Hasher,
+        FixtureSigner,
+        InMemorySink,
+    > = aegis_justitia::AuditLedger::with_bound(
+        SignerBinding::Bound(FixtureSigner::new()?),
+        InMemorySink::with_bound(1),
+        io_deadline(),
+        FIXTURE_AUDIT_BOUND,
+    );
+    let draft = |id: &str, at: u64| -> Result<aegis_justitia::RecordDraft, JustitiaError> {
+        Ok(aegis_justitia::RecordDraft {
+            subject: Some(aegis_justitia::RecordSubject {
+                intent_id: IntentId::parse(id)?,
+                agent: AgentId::parse("agent-01")?,
+                action_type: ActionType::FileModification,
+            }),
+            principals: named_for(RecordStatus::Approved)?,
+            status: RecordStatus::Approved,
+            block_reason: None,
+            killswitch: KillswitchState::Armed,
+            at: UnixSeconds::new(at),
+        })
+    };
+    ledger.append(draft("intent-1", 100)?)?;
     assert_eq!(
-        ledger.append(record_draft("intent-2", 101)?),
+        ledger.append(draft("intent-2", 101)?),
         Err(aegis_justitia::LedgerError::Sink(SinkError::Full {
             max: 1
         })),
@@ -651,9 +691,29 @@ fn unavailable_sink_positive_negative_and_boundary() -> Fallible<()> {
 /// A chain longer than its scalar bound is refused before it is walked.
 #[test]
 fn verify_chain_bound_positive_negative_and_boundary() -> Fallible<()> {
-    let mut ledger = fixture_ledger(FIXTURE_AUDIT_BOUND)?;
+    let mut ledger: aegis_justitia::AuditLedger<
+        aegis_justitia::Sha256Hasher,
+        FixtureSigner,
+        InMemorySink,
+    > = aegis_justitia::AuditLedger::with_bound(
+        SignerBinding::Bound(FixtureSigner::new()?),
+        InMemorySink::with_bound(FIXTURE_AUDIT_BOUND),
+        io_deadline(),
+        FIXTURE_AUDIT_BOUND,
+    );
     for step in 0u64..3 {
-        ledger.append(record_draft("intent-bound", step.saturating_add(100))?)?;
+        ledger.append(aegis_justitia::RecordDraft {
+            subject: Some(aegis_justitia::RecordSubject {
+                intent_id: IntentId::parse("intent-bound")?,
+                agent: AgentId::parse("agent-01")?,
+                action_type: ActionType::FileModification,
+            }),
+            principals: named_for(RecordStatus::Approved)?,
+            status: RecordStatus::Approved,
+            block_reason: None,
+            killswitch: KillswitchState::Armed,
+            at: UnixSeconds::new(step.saturating_add(100)),
+        })?;
     }
     assert_eq!(ledger.len(), 3);
     aegis_justitia::verify_chain_bounded::<aegis_justitia::Sha256Hasher>(ledger.records(), 3)?;

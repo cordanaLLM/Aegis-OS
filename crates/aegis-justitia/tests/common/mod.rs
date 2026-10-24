@@ -16,13 +16,14 @@
 
 use aegis_justitia::{
     ActionIntent, ActionProposal, ActionProposalVersion, ActionType, AgentId, AuditRecordVersion,
-    ClockError, ContractError, Correlation, DIGEST_LEN, DecisionRequest, DecisionRequestVersion,
-    Digest32, EngineConfig, EventId, FixedClock, HashAlgorithm, Identity, IdentityError,
-    InMemorySink, IntentId, IntentSpec, IoDeadline, JustitiaEngine, JustitiaError, KillswitchState,
-    MAX_CONTRACT_PAYLOAD_BYTES, MAX_SIGNATURE_BYTES, MakerId, OversightClass, OversightSignature,
-    PayloadBuffer, RecordDraft, RecordSigner, RecordStatus, RequestId, RequiredApproval, RiskTier,
-    SchemaId, Sequence, Sha256Hasher, SignError, Signature, SignatureAlgorithm, SignedAuditRecord,
-    SignerBinding, SignerKeyId, TargetResource, Ttl, UnixSeconds,
+    CheckerId, CheckerSet, ClockError, ContractError, Correlation, DIGEST_LEN, DecisionRequest,
+    DecisionRequestVersion, Digest32, EngineConfig, EventId, FixedClock, HashAlgorithm, Identity,
+    IdentityError, InMemorySink, IntentId, IntentSpec, IoDeadline, JustitiaEngine, JustitiaError,
+    KillswitchState, MAX_CONTRACT_PAYLOAD_BYTES, MAX_SIGNATURE_BYTES, MakerId, OversightClass,
+    OversightSignature, PayloadBuffer, RecordDraft, RecordPrincipals, RecordSigner, RecordStatus,
+    RecordSubject, RequestId, RequiredApproval, RiskLevel, RiskTier, SchemaId, Sequence,
+    Sha256Hasher, SignError, Signature, SignatureAlgorithm, SignedAuditRecord, SignerBinding,
+    SignerKeyId, TargetResource, Ttl, UnixSeconds,
 };
 
 /// Anything that can go wrong building or reading a fixture.
@@ -301,6 +302,32 @@ pub fn fixture_target() -> Result<TargetResource, IdentityError> {
     TargetResource::parse("/var/lib/aegis/example")
 }
 
+/// Names the principals for a record of `status`.
+///
+/// # Errors
+///
+/// Propagates an identity parse failure.
+pub fn named_for(status: RecordStatus) -> Result<Option<RecordPrincipals>, JustitiaError> {
+    let held = RiskLevel::new(RiskTier::TierAConsequential, OversightClass::Standard);
+    let (level, checkers) = match status {
+        RecordStatus::HaltEngaged => return Ok(None),
+        RecordStatus::PendingApproval => (held, None),
+        RecordStatus::Rejected => (
+            held,
+            Some(CheckerSet::single(CheckerId::parse("checker-01")?)),
+        ),
+        RecordStatus::Approved
+        | RecordStatus::Blocked
+        | RecordStatus::Halted
+        | RecordStatus::HaltReleased => (RiskLevel::LOWEST, None),
+    };
+    Ok(Some(RecordPrincipals {
+        level,
+        maker: MakerId::parse("maker-01")?,
+        checkers,
+    }))
+}
+
 /// Builds an approved record draft for `id` at `at` seconds.
 ///
 /// # Errors
@@ -308,9 +335,16 @@ pub fn fixture_target() -> Result<TargetResource, IdentityError> {
 /// Propagates an intent identifier parse failure.
 pub fn record_draft(id: &str, at: u64) -> Result<RecordDraft, JustitiaError> {
     Ok(RecordDraft {
-        intent_id: IntentId::parse(id)?,
-        agent: fixture_agent()?,
-        action_type: ActionType::FileModification,
+        subject: Some(RecordSubject {
+            intent_id: IntentId::parse(id)?,
+            agent: fixture_agent()?,
+            action_type: ActionType::FileModification,
+        }),
+        principals: Some(RecordPrincipals {
+            level: RiskLevel::LOWEST,
+            maker: fixture_maker()?,
+            checkers: None,
+        }),
         status: RecordStatus::Approved,
         block_reason: None,
         killswitch: KillswitchState::Armed,
