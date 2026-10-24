@@ -135,17 +135,22 @@ fn pinned_source() -> String {
     format!("source = \"git+https://github.com/zed-industries/zed?rev={ZED_REV}#{ZED_REV}\"")
 }
 
-/// The source line of each `Cargo.lock` entry named `name` (the line after
-/// its version line), in lock order.
-fn locked_sources<'l>(lock: &'l str, name: &str) -> Vec<&'l str> {
+/// The line at `offset` after the header of each `Cargo.lock` entry named `name`.
+fn locked_entry_lines<'l>(lock: &'l str, name: &str, offset: usize) -> Vec<&'l str> {
     let header = format!("name = \"{name}\"");
     let lines: Vec<&str> = lock.lines().collect();
     lines
         .iter()
         .enumerate()
         .filter(|(_, line)| **line == header)
-        .filter_map(|(at, _)| lines.get(at.saturating_add(2)).copied())
+        .filter_map(|(at, _)| lines.get(at.saturating_add(offset)).copied())
         .collect()
+}
+
+/// The source line of each `Cargo.lock` entry named `name` (the line after
+/// its version line), in lock order.
+fn locked_sources<'l>(lock: &'l str, name: &str) -> Vec<&'l str> {
+    locked_entry_lines(lock, name, 2)
 }
 
 /// Every declaration of `name` in `manifest`, at the start of a line.
@@ -199,14 +204,7 @@ fn unrecorded(found: &BTreeMap<String, BTreeSet<String>>) -> Vec<String> {
 
 /// The version line of each `Cargo.lock` entry named `name`, in lock order.
 fn locked_versions<'l>(lock: &'l str, name: &str) -> Vec<&'l str> {
-    let header = format!("name = \"{name}\"");
-    let lines: Vec<&str> = lock.lines().collect();
-    lines
-        .iter()
-        .enumerate()
-        .filter(|(_, line)| **line == header)
-        .filter_map(|(at, _)| lines.get(at.saturating_add(1)).copied())
-        .collect()
+    locked_entry_lines(lock, name, 1)
 }
 
 /// Why `lock` and `doc` do not hold the D69 record: one `accesskit_unix` entry
