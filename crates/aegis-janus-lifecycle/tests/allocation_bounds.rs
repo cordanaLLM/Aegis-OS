@@ -33,7 +33,7 @@ use aegis_janus_lifecycle::{
     State, StubSysupdate, SysupdateCall, Tick, Trace, Transition, Version, Watchdog,
 };
 
-use common::{Fallible, armed, blessed};
+use common::{Fallible, armed, blessed, filled};
 
 /// The largest a machine may be before the size is worth a second look.
 const MAX_MACHINE_BYTES: usize = 1024;
@@ -87,10 +87,7 @@ fn driving_the_lifecycle_changes_no_storage() -> Fallible {
 /// refusal is the evidence that the storage is fixed.
 #[test]
 fn the_trace_refuses_a_record_rather_than_growing() -> Fallible {
-    let (mut machine, clock) = armed()?;
-    for _ in 0..MAX_TRANSITIONS.saturating_sub(machine.trace().len()) {
-        machine.step(&clock, Event::Tick)?;
-    }
+    let (mut machine, clock) = filled()?;
     let before = size_of_val(machine.trace());
     let error = common::refusal(&mut machine, clock, Event::Tick)?;
     assert_eq!(

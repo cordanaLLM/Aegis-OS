@@ -11,8 +11,8 @@
 #![allow(dead_code)]
 
 use aegis_janus_lifecycle::{
-    Candidate, Event, LifecycleError, Machine, RootHash, SignatureVerdict, Slot, StubClock, Tick,
-    Timeout, Version,
+    Candidate, Event, LifecycleError, MAX_TRANSITIONS, Machine, RootHash, SignatureVerdict, Slot,
+    StubClock, Tick, Timeout, Version,
 };
 
 /// What every test in this suite returns.
@@ -103,6 +103,21 @@ pub fn armed() -> Result<(Machine, StubClock), Box<dyn std::error::Error>> {
 pub fn blessed() -> Result<(Machine, StubClock), Box<dyn std::error::Error>> {
     let (mut machine, clock) = armed()?;
     machine.step(&clock, Event::Bless)?;
+    Ok((machine, clock))
+}
+
+/// Drives a fresh machine to [`State::WatchdogArmed`](aegis_janus_lifecycle::State::WatchdogArmed)
+/// and fills its trace with [`Event::Tick`] steps until it reaches
+/// [`MAX_TRANSITIONS`](aegis_janus_lifecycle::MAX_TRANSITIONS) records.
+///
+/// # Errors
+///
+/// Returns the first refusal.
+pub fn filled() -> Result<(Machine, StubClock), Box<dyn std::error::Error>> {
+    let (mut machine, clock) = armed()?;
+    for _ in 0..MAX_TRANSITIONS.saturating_sub(machine.trace().len()) {
+        machine.step(&clock, Event::Tick)?;
+    }
     Ok((machine, clock))
 }
 
