@@ -339,3 +339,22 @@ pub fn assert_no_excluded_dependencies(manifest_path: &str, excluded: &[&str], r
         );
     }
 }
+
+/// Asserts that a crate manifest declares expected dependencies and none of the deferred dependencies.
+#[track_caller]
+pub fn assert_deferred_and_expected_dependencies(
+    manifest_path: &str,
+    deferred: &[&str],
+    milestone: &str,
+    expected: &[&str],
+) {
+    let manifest = read(manifest_path);
+    assert!(!manifest.is_empty(), "the crate manifest must exist");
+    for item in deferred.iter().take(TOKEN_BOUND) {
+        assert!(
+            !manifest.contains(*item),
+            "{item} is deferred past milestone {milestone}"
+        );
+    }
+    assert_manifest_contains(&manifest, expected);
+}

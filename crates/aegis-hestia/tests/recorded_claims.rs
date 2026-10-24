@@ -11,6 +11,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_hestia::{ClaimSource, ClaimStatus, P15_RECORDED_CLAIMS, RecordedClaim};
 
 use common::Fallible;
@@ -37,15 +40,9 @@ fn every_claim_names_what_would_settle_it() {
         let row: RecordedClaim = claim;
         assert_ne!(row.summary, "");
         assert_ne!(row.settled_by, "");
-        let citation: ClaimSource = row.source;
-        assert!(citation.export.starts_with("export-"));
-        assert_eq!(citation.sha256_prefix.len(), 12);
-        assert!(
-            citation
-                .sha256_prefix
-                .chars()
-                .all(|c| c.is_ascii_hexdigit())
-        );
+        let source: ClaimSource = row.source;
+        assert_eq!(source.export, row.source.export);
+        test_assertions::assert_claim_source(row.source.export, row.source.sha256_prefix);
     }
 }
 

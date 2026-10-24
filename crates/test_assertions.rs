@@ -93,8 +93,54 @@ macro_rules! assert_encoding_writes_into_payload_buffer {
     };
 }
 
+/// Asserts that a fresh buffer reports empty and that encoding into a default buffer preserves size.
+#[allow(unused_macros)]
+macro_rules! assert_payload_buffer_does_not_grow {
+    ($buffer:ty, $encode:expr $(,)?) => {
+        test_assertions::assert_payload_buffer_views_and_size(
+            <$buffer>::new,
+            |buffer: &$buffer| {
+                (
+                    buffer.is_empty(),
+                    buffer.len(),
+                    buffer.as_bytes(),
+                    buffer.as_str(),
+                )
+            },
+            $encode,
+        )
+    };
+}
+
+/// Asserts that a payload buffer's size is bounded by `bound` plus length.
+#[allow(unused_macros)]
+macro_rules! assert_payload_buffer_bound {
+    ($buffer:ty, $bound:expr $(,)?) => {
+        test_assertions::assert_bound_plus_length(core::mem::size_of::<$buffer>(), $bound)
+    };
+}
+
+/// Asserts that a padding string past `max_bytes` is refused with `PayloadTooLong`.
+#[allow(unused_macros)]
+macro_rules! assert_unparsed_payload_too_long {
+    ($max_bytes:expr, $refusal:expr, $err_ty:ident $(,)?) => {
+        test_assertions::assert_unparsed_payload_refusal($max_bytes, $refusal, |err| match err {
+            $err_ty::PayloadTooLong { max, correlation } => {
+                Some((*max, correlation, correlation.id().is_some()))
+            }
+            _ => None,
+        })
+    };
+}
+
 #[allow(unused_imports)]
 pub(crate) use assert_encoding_writes_into_payload_buffer;
+#[allow(unused_imports)]
+pub(crate) use assert_payload_buffer_bound;
+#[allow(unused_imports)]
+pub(crate) use assert_payload_buffer_does_not_grow;
+#[allow(unused_imports)]
+pub(crate) use assert_unparsed_payload_too_long;
 
 /// Asserts that payload `len` stays comfortably inside `max_bytes` and that the
 /// buffer size is exactly the payload bound plus the length field.
@@ -112,8 +158,85 @@ pub fn assert_payload_inside_contract_bound(len: usize, max_bytes: usize, buffer
 #[track_caller]
 pub fn assert_claim_source(export: &str, sha256_prefix: &str) {
     assert!(export.starts_with("export-"));
+    assert!(!export.contains('/'));
     assert_eq!(sha256_prefix.len(), 12);
     assert!(sha256_prefix.chars().all(|c| c.is_ascii_hexdigit()));
+}
+
+/// Asserts that a bounded identifier parser accepts up to `max_len` bytes and refuses past it.
+#[track_caller]
+pub fn assert_bounded_id_exact<T, E: core::fmt::Debug + PartialEq>(
+    max_len: usize,
+    parse: impl Fn(&str) -> Result<T, E>,
+    len: impl Fn(&T) -> usize,
+    expected_err: impl Fn(usize) -> E,
+) {
+    let at_bound = "a".repeat(max_len);
+    let parsed = parse(&at_bound);
+    assert!(parsed.is_ok());
+    if let Ok(ref val) = parsed {
+        assert_eq!(len(val), max_len);
+    }
+
+    let past = "a".repeat(max_len.saturating_add(1));
+    assert_eq!(
+        parse(&past).err(),
+        Some(expected_err(max_len.saturating_add(1)))
+    );
+
+    let far_past = "a".repeat(512);
+    assert_eq!(parse(&far_past).err(), Some(expected_err(512)));
+}
+
+/// Asserts that a fresh buffer reports empty and that encoding into a default buffer preserves size.
+#[track_caller]
+pub fn assert_payload_buffer_views_and_size<B: Default, E>(
+    new: fn() -> B,
+    view: impl Fn(&B) -> (bool, usize, &[u8], Option<&str>),
+    encode: impl FnOnce(&mut B) -> Result<(), E>,
+) -> Result<(), E> {
+    let buffer = new();
+    let (empty, len, bytes, text) = view(&buffer);
+    assert_empty_buffer_view(empty, len, bytes, text);
+    assert_eq!(core::mem::size_of_val(&buffer), core::mem::size_of::<B>());
+
+    let mut second = B::default();
+    encode(&mut second)?;
+    assert_eq!(core::mem::size_of_val(&second), core::mem::size_of::<B>());
+    Ok(())
+}
+
+/// Asserts that a payload past `max_bytes` is refused with `PayloadTooLong`.
+#[track_caller]
+pub fn assert_unparsed_payload_refusal<E: core::fmt::Debug, C: core::fmt::Display>(
+    max_bytes: usize,
+    refusal: impl FnOnce(&str) -> Result<E, Box<dyn std::error::Error>>,
+    extract: impl FnOnce(&E) -> Option<(usize, &C, bool)>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let padding = "x".repeat(max_bytes.saturating_add(1));
+    let err = refusal(&padding)?;
+    if let Some((max, correlation, has_id)) = extract(&err) {
+        assert_eq!(max, max_bytes);
+        assert!(!has_id);
+        assert!(correlation.to_string().ends_with("[uncorrelated]"));
+        Ok(())
+    } else {
+        Err(format!("expected a length refusal, got {err:?}").into())
+    }
+}
+
+/// Asserts that adding an unexpected stowaway field to an encoded JSON payload is refused as malformed.
+#[track_caller]
+pub fn assert_stowaway_rejected<E: core::fmt::Debug>(
+    encoded: &str,
+    refusal: impl FnOnce(&str) -> Result<E, Box<dyn std::error::Error>>,
+    is_malformed: impl FnOnce(&E) -> bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let extra = encoded.replace("{\"schema\"", "{\"stowaway\":1,\"schema\"");
+    assert_ne!(extra, encoded, "encoded payload must contain schema prefix");
+    let err = refusal(&extra)?;
+    assert!(is_malformed(&err), "expected Malformed, got {err:?}");
+    Ok(())
 }
 
 /// Scalar bound on names scanned in an encoded payload assertion.

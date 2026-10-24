@@ -122,17 +122,10 @@ fn an_escaped_payload_decodes_to_the_same_value() -> Fallible {
 /// Negative: the payload buffer refuses to grow, and reports nothing written.
 #[test]
 fn the_payload_buffer_does_not_grow() -> Fallible {
-    let buffer = PayloadBuffer::new();
-    test_assertions::assert_empty_buffer_view(
-        buffer.is_empty(),
-        buffer.len(),
-        buffer.as_bytes(),
-        buffer.as_str(),
-    );
-
-    let mut second = PayloadBuffer::default();
-    registration()?.encode_into(&mut second)?;
-    assert_eq!(size_of_val(&second), size_of::<PayloadBuffer>());
+    let payload = registration()?;
+    test_assertions::assert_payload_buffer_does_not_grow!(PayloadBuffer, |second| payload
+        .encode_into(second)
+        .map(|_| ()),)?;
     Ok(())
 }
 
@@ -141,10 +134,7 @@ fn the_payload_buffer_does_not_grow() -> Fallible {
 /// Boundary: the buffer is exactly its bound plus its length field.
 #[test]
 fn the_payload_buffer_is_its_bound_plus_a_length() {
-    test_assertions::assert_bound_plus_length(
-        size_of::<PayloadBuffer>(),
-        MAX_CONTRACT_PAYLOAD_BYTES,
-    );
+    test_assertions::assert_payload_buffer_bound!(PayloadBuffer, MAX_CONTRACT_PAYLOAD_BYTES);
 }
 
 /// Boundary: the store is small, and a copy of it shares nothing.

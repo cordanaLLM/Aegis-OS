@@ -60,23 +60,15 @@ fn the_member_list_is_written_out_and_not_globbed() {
 /// them, and D09 puts the interface half in a separate package entirely.
 #[test]
 fn the_crate_manifest_declares_no_mapping_dependency() {
-    let manifest = read("crates/aegis-hestia/Cargo.toml");
-    assert!(!manifest.is_empty(), "the crate manifest must exist");
-    for deferred in [
-        "postgres", "sqlx", "wayland", "smithay", "wry", "tauri", "tokio", "libc", "rusqlite",
-        "wasmtime",
-    ] {
-        assert!(
-            !manifest.contains(deferred),
-            "{deferred} is deferred past milestone M17"
-        );
-    }
-    for expected in ["serde", "serde_json", "thiserror"] {
-        assert!(
-            manifest.contains(expected),
-            "the manifest must declare {expected}"
-        );
-    }
+    manifest_hygiene::assert_deferred_and_expected_dependencies(
+        "crates/aegis-hestia/Cargo.toml",
+        &[
+            "postgres", "sqlx", "wayland", "smithay", "wry", "tauri", "tokio", "libc", "rusqlite",
+            "wasmtime",
+        ],
+        "M17",
+        &["serde", "serde_json", "thiserror"],
+    );
 }
 
 /// Negative: milestone M17 ships a library, so there is no binary target.

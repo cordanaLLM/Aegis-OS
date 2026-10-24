@@ -11,6 +11,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_vulcan::{Citation, EngineeringMandate, P03_MANDATE, ProtectionBoundary};
 
 use common::Fallible;
@@ -32,14 +35,8 @@ fn the_register_names_the_recorded_mandate() {
 fn every_source_is_cited_by_identifier_and_prefix() {
     for source in P03_MANDATE.sources {
         let citation: Citation = source;
-        assert!(citation.export.starts_with("export-"));
-        assert_eq!(citation.sha256_prefix.len(), 12);
-        assert!(
-            citation
-                .sha256_prefix
-                .chars()
-                .all(|c| c.is_ascii_hexdigit())
-        );
+        assert_eq!(citation.export, source.export);
+        test_assertions::assert_claim_source(source.export, source.sha256_prefix);
     }
 }
 

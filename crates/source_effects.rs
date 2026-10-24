@@ -324,3 +324,97 @@ pub fn assert_comment_naming_identifier_is_not_finding(comment: &str, watched: &
         [] as [std::string::String; 0]
     );
 }
+
+/// Every construct that states a rule by aborting rather than by returning.
+pub const ABORTING_CONSTRUCTS: [&str; 7] = [
+    "assert!(",
+    "assert_eq!(",
+    "assert_ne!(",
+    "panic!(",
+    "unreachable!(",
+    ".unwrap()",
+    ".expect(",
+];
+
+/// Positive assertion: every watched construct is one the sweep reports.
+#[track_caller]
+pub fn assert_sweep_reports_each_watched(watched: &[&str]) {
+    for needle in watched.iter().take(WALK_BOUND) {
+        let planted = format!("    let value = {needle}\"zzqqx\");");
+        assert_eq!(
+            scan_text("planted.rs", &planted, watched),
+            vec![format!("planted.rs:1: {needle}")],
+            "the sweep does not report a planted {needle}"
+        );
+    }
+}
+
+/// Boundary assertion: a comment line is skipped whole, and a reported line number is one-based.
+#[track_caller]
+pub fn assert_sweep_skips_comments_and_numbers_one_based(watched: &[&str]) {
+    let body = "//! this file names unreachable!( and assert!( in prose\n\
+                fn ok() {}\n\
+                let value = source.unwrap();\n";
+    assert_eq!(
+        scan_text("mixed.rs", body, watched),
+        vec!["mixed.rs:3: .unwrap()".to_string()]
+    );
+}
+
+/// Negative assertion: the crate's own sources carry none of the aborting constructs.
+#[track_caller]
+pub fn assert_no_aborting_constructs(manifest_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let root = Path::new(manifest_dir).join("src");
+    let found = scan_sources(&root, &ABORTING_CONSTRUCTS)?;
+    assert!(
+        found.is_empty(),
+        "aborting constructs in library code: {found:?}"
+    );
+    Ok(())
+}
+
+/// Positive assertion: the sweep reads the crate's sources from `manifest_dir`.
+#[track_caller]
+pub fn assert_sweep_reads_crate_sources(
+    manifest_dir: &str,
+    min_sources: usize,
+    expected_files: &[&str],
+) -> Result<(), Box<dyn std::error::Error>> {
+    let root = Path::new(manifest_dir).join("src");
+    assert_sweep_reads_sources(&root, min_sources, expected_files)
+}
+
+/// Negative assertion: no watched identifier appears in the crate's library code.
+#[track_caller]
+pub fn assert_no_watched_code_in_crate(
+    manifest_dir: &str,
+    watched: &[&str],
+) -> Result<(), Box<dyn std::error::Error>> {
+    let root = Path::new(manifest_dir).join("src");
+    assert_no_watched_code(&root, watched)
+}
+
+/// Emits standard tests verifying that scaffold assertions are refusals, not panics.
+#[allow(unused_macros)]
+macro_rules! define_scaffold_sweep_tests {
+    () => {
+        /// Positive: every construct on the watched list is one the sweep reports.
+        #[test]
+        fn every_watched_construct_is_one_the_sweep_reports() {
+            common::assert_sweep_reports_each_watched(&common::ABORTING_CONSTRUCTS);
+        }
+
+        /// Negative: the crate's own sources carry none of the aborting constructs.
+        #[test]
+        fn no_source_file_states_a_rule_as_an_abort() -> common::Fallible {
+            common::assert_no_aborting_constructs(env!("CARGO_MANIFEST_DIR"))
+        }
+
+        /// Boundary: a comment line is skipped whole, and a reported line number is
+        /// one-based, so a hit names the line a reader would open.
+        #[test]
+        fn the_sweep_skips_comments_and_numbers_lines_from_one() {
+            common::assert_sweep_skips_comments_and_numbers_one_based(&common::ABORTING_CONSTRUCTS);
+        }
+    };
+}
