@@ -53,7 +53,7 @@ pub use aegis_justitia::LedgerError;
 use aegis_justitia::ledger::Timestamped;
 use aegis_justitia::{
     CanonicalBuffer, Chain, ChainRecord, Digest32, HashAlgorithm, LedgerHasher, PreimageError,
-    RecordBody, Sequence, Sha256Hasher, UnixSeconds,
+    Sequence, Sha256Hasher, UnixSeconds,
 };
 use aegis_tellus::CandidateId;
 
@@ -97,15 +97,14 @@ impl Timestamped for CheckpointDraft {
 
 /// One checkpoint record body, including its chain position.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CheckpointBody(RecordBody<CheckpointDraft>);
+pub struct CheckpointBody {
+    sequence: Sequence,
+    previous: Digest32,
+    algorithm: HashAlgorithm,
+    draft: CheckpointDraft,
+}
 
 impl CheckpointBody {
-    /// Returns the underlying record body.
-    #[must_use]
-    pub(crate) const fn record_body(&self) -> &RecordBody<CheckpointDraft> {
-        &self.0
-    }
-
     /// Places a draft at a chain position.
     #[must_use]
     pub const fn from_parts(
@@ -114,31 +113,36 @@ impl CheckpointBody {
         algorithm: HashAlgorithm,
         draft: CheckpointDraft,
     ) -> Self {
-        Self(RecordBody::from_parts(sequence, previous, algorithm, draft))
+        Self {
+            sequence,
+            previous,
+            algorithm,
+            draft,
+        }
     }
 
     /// Returns the sequence number.
     #[must_use]
     pub const fn sequence(&self) -> Sequence {
-        self.0.sequence()
+        self.sequence
     }
 
     /// Returns the predecessor link.
     #[must_use]
     pub const fn previous(&self) -> Digest32 {
-        self.0.previous()
+        self.previous
     }
 
     /// Returns the algorithm named by the record.
     #[must_use]
     pub const fn algorithm(&self) -> HashAlgorithm {
-        self.0.algorithm()
+        self.algorithm
     }
 
     /// Returns the caller-supplied fields.
     #[must_use]
     pub const fn draft(&self) -> &CheckpointDraft {
-        self.0.draft()
+        &self.draft
     }
 
     /// Returns a copy of this body carrying a different stage.
@@ -148,14 +152,14 @@ impl CheckpointBody {
     /// is exactly what a re-walk must detect.
     #[must_use]
     pub const fn with_stage(&self, stage: Stage) -> Self {
-        let mut draft = *self.0.draft();
+        let mut draft = self.draft;
         draft.stage = stage;
-        Self(RecordBody::from_parts(
-            self.0.sequence(),
-            self.0.previous(),
-            self.0.algorithm(),
+        Self {
+            sequence: self.sequence,
+            previous: self.previous,
+            algorithm: self.algorithm,
             draft,
-        ))
+        }
     }
 
     /// Builds the canonical, domain-separated, length-prefixed pre-image.
@@ -169,10 +173,14 @@ impl CheckpointBody {
     /// Returns [`PreimageError::Overflow`] when the encoding would exceed the
     /// fixed buffer. The encoding never truncates.
     pub fn canonical_preimage(&self) -> Result<CanonicalBuffer, PreimageError> {
-        let draft = self.0.draft();
-        let mut buffer = self
-            .0
-            .header(CHECKPOINT_DOMAIN, CONTRACT_VERSION, draft.at)?;
+        let draft = &self.draft;
+        let mut buffer = CanonicalBuffer::new();
+        buffer.write_tag(CHECKPOINT_DOMAIN)?;
+        buffer.write_framed(CONTRACT_VERSION.as_bytes())?;
+        buffer.write_u8(self.algorithm.tag())?;
+        buffer.write_u64(self.sequence.get())?;
+        buffer.write_digest(&self.previous)?;
+        buffer.write_u64(draft.at.get())?;
         buffer.write_u8(draft.stage.tag())?;
         write_verdict(&mut buffer, draft.verdict)?;
         write_metrics(&mut buffer, draft.metrics.as_ref())?;
@@ -272,8 +280,20 @@ impl CheckpointRecord {
 impl ChainRecord for CheckpointRecord {
     type Draft = CheckpointDraft;
 
-    fn body(&self) -> &RecordBody<Self::Draft> {
-        self.body.record_body()
+    fn algorithm(&self) -> HashAlgorithm {
+        self.body.algorithm()
+    }
+
+    fn sequence(&self) -> Sequence {
+        self.body.sequence()
+    }
+
+    fn previous(&self) -> Digest32 {
+        self.body.previous()
+    }
+
+    fn at(&self) -> UnixSeconds {
+        self.body.draft().at
     }
 
     fn digest(&self) -> Digest32 {

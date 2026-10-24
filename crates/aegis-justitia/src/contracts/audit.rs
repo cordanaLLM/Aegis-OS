@@ -33,7 +33,6 @@
 //! encoding: this crate neither produces nor verifies one, and TPM2 sealing is
 //! milestone M20 work.
 
-use crate::contracts::encoding::OversightSignature;
 use crate::contracts::graph::EdgeId;
 use crate::contracts::{
     ContractError, Correlation, PayloadBuffer, SchemaId, check_edge, decode_text, decode_validated,
@@ -45,6 +44,7 @@ use crate::ledger::{RecordStatus, Sequence};
 use crate::outcome::BlockReason;
 use crate::risk::ActionType;
 use crate::time::UnixSeconds;
+use amussis_decision::encoding::fields::OversightSignature;
 
 /// The EU Product Liability Directive's stated effective date.
 ///
@@ -132,6 +132,9 @@ impl SignedAuditRecord {
     /// carries no seal or an empty one.
     pub fn validate(&self) -> Result<(), ContractError> {
         let correlation = self.correlation();
+        if self.status.is_of_latch() {
+            return Err(ContractError::Malformed { correlation });
+        }
         check_edge(self.edge, Self::EDGE, correlation)?;
         self.validate_link(correlation)?;
         self.validate_reason(correlation)?;
@@ -155,7 +158,14 @@ impl SignedAuditRecord {
 
     /// Checks that a refusal reason is recorded exactly for a refusal.
     fn validate_reason(&self, correlation: Correlation) -> Result<(), ContractError> {
-        let refused = matches!(self.status, RecordStatus::Blocked | RecordStatus::Halted);
+        let refused = match self.status {
+            RecordStatus::Blocked | RecordStatus::Halted => true,
+            RecordStatus::PendingApproval
+            | RecordStatus::Approved
+            | RecordStatus::Rejected
+            | RecordStatus::HaltEngaged
+            | RecordStatus::HaltReleased => false,
+        };
         match (refused, self.block_reason.is_some()) {
             (true, true) | (false, false) => Ok(()),
             (true, false) => Err(ContractError::RefusalWithoutReason { correlation }),

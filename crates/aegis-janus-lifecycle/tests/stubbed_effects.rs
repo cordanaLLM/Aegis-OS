@@ -35,19 +35,20 @@
 
 mod common;
 
-use std::path::{Path, PathBuf};
+#[path = "../../surface_sources.rs"]
+mod surface_sources;
+
+use std::path::Path;
 
 use common::Fallible;
-
-/// Scalar bound on directories visited and entries read per directory.
-const WALK_BOUND: usize = 64;
 
 /// Scalar bound on the lines read from any one source file.
 const LINE_BOUND: usize = 4096;
 
 /// The source files this crate is known to have, so a sweep that reads
-/// nothing cannot pass as a sweep that found nothing.
-const MINIMUM_SOURCES: usize = 11;
+/// nothing cannot pass as a sweep that found nothing: its eleven modules and
+/// the three shared files they include by `#[path]`, which compile into it.
+const MINIMUM_SOURCES: usize = 14;
 
 /// The twenty identifiers this sweep is a regression gate over.
 ///
@@ -150,31 +151,10 @@ fn without_comments(body: &str) -> String {
 /// implementation would make, and naming one in prose is the point of the
 /// documentation rather than a violation of it.
 fn code_under(root: &Path) -> Vec<(String, String)> {
-    let mut out: Vec<(String, String)> = Vec::new();
-    let mut stack: Vec<PathBuf> = vec![root.to_path_buf()];
-    for _ in 0..WALK_BOUND {
-        let Some(directory) = stack.pop() else { break };
-        let Ok(entries) = std::fs::read_dir(&directory) else {
-            continue;
-        };
-        for entry in entries.flatten().take(WALK_BOUND) {
-            let path = entry.path();
-            if path.is_dir() {
-                stack.push(path);
-                continue;
-            }
-            if path.extension().is_none_or(|extension| extension != "rs") {
-                continue;
-            }
-            let name = path
-                .file_name()
-                .map(|raw| raw.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            let body = std::fs::read_to_string(&path).unwrap_or_default();
-            out.push((name, without_comments(&body)));
-        }
-    }
-    out
+    surface_sources::rust_sources(root)
+        .into_iter()
+        .map(|(name, body)| (name, without_comments(&body)))
+        .collect()
 }
 
 /// Returns this crate's own source files.
@@ -368,6 +348,9 @@ fn every_declared_module_is_swept() {
         "state.rs",
         "trace.rs",
         "verity.rs",
+        "bounded_id.rs",
+        "citation.rs",
+        "decision_state.rs",
     ] {
         assert!(names.contains(&module), "the sweep skipped {module}");
     }
