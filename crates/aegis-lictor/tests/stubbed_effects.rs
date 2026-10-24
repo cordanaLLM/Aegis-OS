@@ -81,20 +81,11 @@ const NOT_WATCHED: [&str; 3] = ["scx_cake", "sched_ext", "kepler_power.bpf"];
 /// Positive: the sweep reads the crate's sources, and reads several of them.
 #[test]
 fn the_sweep_reads_the_whole_crate() -> Fallible {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let sources = common::rust_sources(&root)?;
-    assert!(
-        sources.len() >= 12,
-        "the sweep read only {} sources; it is reading nothing, not finding nothing",
-        sources.len()
-    );
-    for expected in ["lib.rs", "tier.rs", "broker.rs", "probe.rs", "locality.rs"] {
-        assert!(
-            sources.iter().any(|(name, _)| name == expected),
-            "the sweep did not read {expected}"
-        );
-    }
-    Ok(())
+    common::assert_sweep_reads_sources(
+        &common::source_root(),
+        12,
+        &["lib.rs", "tier.rs", "broker.rs", "probe.rs", "locality.rs"],
+    )
 }
 
 // --- Negative -------------------------------------------------------------
@@ -102,13 +93,7 @@ fn the_sweep_reads_the_whole_crate() -> Fallible {
 /// Negative: no watched identifier appears in library code.
 #[test]
 fn no_watched_identifier_appears_in_library_code() -> Fallible {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let found = common::scan_sources(&root, &WATCHED)?;
-    assert!(
-        found.is_empty(),
-        "effect identifiers in library code: {found:?}"
-    );
-    Ok(())
+    common::assert_no_watched_code(&common::source_root(), &WATCHED)
 }
 
 /// Negative: the sweep would notice one, so a pass means something.
