@@ -53,6 +53,11 @@ mod decision_state;
 
 pub use decision_state::DecisionState;
 
+#[path = "../../citation.rs"]
+mod citation;
+
+pub use citation::Citation;
+
 /// The three ways D08 could have had the compositor implemented.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -134,15 +139,6 @@ impl AdmittedBackend {
             Self::PureRustBackendAgnostic => CompositorImplementation::PureRust,
         }
     }
-}
-
-/// A source, cited by export identifier and digest prefix only.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Citation {
-    /// The export identifier.
-    pub export: &'static str,
-    /// The first twelve hexadecimal characters of that source's sha256.
-    pub sha256_prefix: &'static str,
 }
 
 /// One recorded decision.

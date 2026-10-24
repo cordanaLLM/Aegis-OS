@@ -20,7 +20,7 @@ use core::fmt;
 #[path = "../../bounded_id.rs"]
 mod bounded_id;
 
-use bounded_id::parse_bounded_id;
+use bounded_id::InlineId;
 
 /// Scalar upper bound, in bytes, on a correlation identifier.
 pub const MAX_CORRELATION_LEN: usize = 64;
@@ -51,8 +51,7 @@ pub enum IdError {
 /// A validated correlation identifier of at most [`MAX_CORRELATION_LEN`] bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CorrelationId {
-    bytes: [u8; MAX_CORRELATION_LEN],
-    len: u8,
+    inner: InlineId<MAX_CORRELATION_LEN>,
 }
 
 impl CorrelationId {
@@ -64,7 +63,7 @@ impl CorrelationId {
     /// [`MAX_CORRELATION_LEN`] bytes, or carries a byte outside the permitted
     /// character set. The input is never truncated or sanitised.
     pub fn parse(raw: &str) -> Result<Self, IdError> {
-        let (bytes, len) = parse_bounded_id(
+        InlineId::parse(
             raw,
             || IdError::Empty,
             |actual| IdError::TooLong {
@@ -72,33 +71,32 @@ impl CorrelationId {
                 actual,
             },
             || IdError::Charset,
-        )?;
-        Ok(Self { bytes, len })
+        )
+        .map(|inner| Self { inner })
     }
 
     /// Returns the validated bytes, without the trailing padding.
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
-        self.bytes.get(..usize::from(self.len)).unwrap_or(&[])
+        self.inner.as_bytes()
     }
 
     /// Returns the length in bytes.
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.len as usize
+        self.inner.len()
     }
 
     /// Returns `false`; an identifier is never empty by construction.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.len == 0
+        self.inner.is_empty()
     }
 }
 
 impl fmt::Display for CorrelationId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(|_| fmt::Error)?;
-        f.write_str(text)
+        self.inner.fmt(f)
     }
 }
 
@@ -106,8 +104,7 @@ impl fmt::Display for CorrelationId {
 /// bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Label {
-    bytes: [u8; MAX_LABEL_LEN],
-    len: u8,
+    inner: InlineId<MAX_LABEL_LEN>,
 }
 
 impl Label {
@@ -120,7 +117,7 @@ impl Label {
     /// never truncated or sanitised, so the scaffold's own `"FabFilter Pro-Q
     /// 3"` is [`IdError::Charset`] rather than a repaired name.
     pub fn parse(raw: &str) -> Result<Self, IdError> {
-        let (bytes, len) = parse_bounded_id(
+        InlineId::parse(
             raw,
             || IdError::Empty,
             |actual| IdError::TooLong {
@@ -128,32 +125,31 @@ impl Label {
                 actual,
             },
             || IdError::Charset,
-        )?;
-        Ok(Self { bytes, len })
+        )
+        .map(|inner| Self { inner })
     }
 
     /// Returns the validated bytes, without the trailing padding.
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
-        self.bytes.get(..usize::from(self.len)).unwrap_or(&[])
+        self.inner.as_bytes()
     }
 
     /// Returns the length in bytes.
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.len as usize
+        self.inner.len()
     }
 
     /// Returns `false`; a label is never empty by construction.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.len == 0
+        self.inner.is_empty()
     }
 }
 
 impl fmt::Display for Label {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(|_| fmt::Error)?;
-        f.write_str(text)
+        self.inner.fmt(f)
     }
 }

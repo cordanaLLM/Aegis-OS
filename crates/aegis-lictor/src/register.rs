@@ -27,14 +27,10 @@
 //! selected when the component that needs it is activated, against current
 //! upstream at that moment, and not before.
 
-/// A source, cited by export identifier and digest prefix only.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ClaimSource {
-    /// The export identifier of the source.
-    pub export: &'static str,
-    /// The first twelve hexadecimal characters of that export's sha256.
-    pub sha256_prefix: &'static str,
-}
+#[path = "../../claim_source.rs"]
+mod claim_source;
+
+pub use claim_source::ClaimSource;
 
 /// What standing a recorded claim has.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

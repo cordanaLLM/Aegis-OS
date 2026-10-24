@@ -5,9 +5,10 @@
 //!
 //! One file, included by path into every crate whose decision register cites
 //! private sources (`#[path = "../../citation.rs"]`), so the type has one
-//! definition rather than one per crate. Included by `aegis-hestia` and
-//! `aegis-janus-lifecycle`. It is not a crate: a member enters every
-//! dependency closure and carries a permanent name.
+//! definition rather than one per crate. Included by `aegis-calliope`,
+//! `aegis-compositor`, `aegis-hestia`, `aegis-janus-lifecycle` and
+//! `aegis-vesta`. It is not a crate: a member enters every dependency
+//! closure and carries a permanent name.
 
 #![allow(dead_code)]
 

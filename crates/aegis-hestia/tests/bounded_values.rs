@@ -166,6 +166,27 @@ fn the_identifier_bounds_are_exact() {
     );
 }
 
+/// Boundary: the correlation error display texts are exact.
+#[test]
+fn the_correlation_id_error_display_texts_are_exact() {
+    assert_eq!(
+        IdError::Empty.to_string(),
+        "a correlation identifier is empty"
+    );
+    assert_eq!(
+        IdError::TooLong {
+            max: 64,
+            actual: 65,
+        }
+        .to_string(),
+        "a correlation identifier of 65 bytes exceeds the bound of 64"
+    );
+    assert_eq!(
+        IdError::Charset.to_string(),
+        "a correlation identifier carries a byte outside the permitted character set"
+    );
+}
+
 /// Boundary: the shortest admissible path is the root itself.
 #[test]
 fn the_shortest_admissible_path_is_the_root() -> Fallible {

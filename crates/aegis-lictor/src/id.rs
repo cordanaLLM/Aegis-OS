@@ -17,6 +17,11 @@
 
 use core::fmt;
 
+#[path = "../../bounded_id.rs"]
+mod bounded_id;
+
+use bounded_id::InlineId;
+
 /// Scalar upper bound, in bytes, on a correlation identifier.
 pub const MAX_CORRELATION_LEN: usize = 64;
 
@@ -58,38 +63,10 @@ pub enum IdError {
     NotASlice,
 }
 
-/// Returns `true` for the bytes permitted inside a label.
-const fn permitted(byte: u8) -> bool {
-    byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_' | b':' | b'@' | b'/')
-}
-
-/// Copies `raw` into `slot`, refusing an empty, over-long or ill-formed input.
-fn fill(raw: &str, slot: &mut [u8], max: usize) -> Result<u8, IdError> {
-    let source = raw.as_bytes();
-    if source.is_empty() {
-        return Err(IdError::Empty);
-    }
-    let len = u8::try_from(source.len())
-        .ok()
-        .filter(|_| source.len() <= max)
-        .ok_or(IdError::TooLong {
-            max,
-            actual: source.len(),
-        })?;
-    for (target, byte) in slot.iter_mut().zip(source.iter()) {
-        if !permitted(*byte) {
-            return Err(IdError::Charset);
-        }
-        *target = *byte;
-    }
-    Ok(len)
-}
-
 /// A validated correlation identifier of at most [`MAX_CORRELATION_LEN`] bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CorrelationId {
-    bytes: [u8; MAX_CORRELATION_LEN],
-    len: u8,
+    inner: InlineId<MAX_CORRELATION_LEN>,
 }
 
 impl CorrelationId {
@@ -101,42 +78,47 @@ impl CorrelationId {
     /// [`MAX_CORRELATION_LEN`] bytes, or carries a byte outside the permitted
     /// character set. The input is never truncated or sanitised.
     pub fn parse(raw: &str) -> Result<Self, IdError> {
-        let mut bytes = [0u8; MAX_CORRELATION_LEN];
-        let len = fill(raw, &mut bytes, MAX_CORRELATION_LEN)?;
-        Ok(Self { bytes, len })
+        InlineId::parse(
+            raw,
+            || IdError::Empty,
+            |actual| IdError::TooLong {
+                max: MAX_CORRELATION_LEN,
+                actual,
+            },
+            || IdError::Charset,
+        )
+        .map(|inner| Self { inner })
     }
 
     /// Returns the validated bytes, without the trailing padding.
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
-        self.bytes.get(..usize::from(self.len)).unwrap_or(&[])
+        self.inner.as_bytes()
     }
 
     /// Returns the length in bytes.
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.len as usize
+        self.inner.len()
     }
 
     /// Returns `false`; an identifier is never empty by construction.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.len == 0
+        self.inner.is_empty()
     }
 }
 
 impl fmt::Display for CorrelationId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(|_| fmt::Error)?;
-        f.write_str(text)
+        self.inner.fmt(f)
     }
 }
 
 /// A validated process or application label of at most [`MAX_LABEL_LEN`] bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Label {
-    bytes: [u8; MAX_LABEL_LEN],
-    len: u8,
+    inner: InlineId<MAX_LABEL_LEN>,
 }
 
 impl Label {
@@ -148,34 +130,40 @@ impl Label {
     /// empty, over-long, or outside the permitted character set. The input is
     /// never truncated or sanitised.
     pub fn parse(raw: &str) -> Result<Self, IdError> {
-        let mut bytes = [0u8; MAX_LABEL_LEN];
-        let len = fill(raw, &mut bytes, MAX_LABEL_LEN)?;
-        Ok(Self { bytes, len })
+        InlineId::parse(
+            raw,
+            || IdError::Empty,
+            |actual| IdError::TooLong {
+                max: MAX_LABEL_LEN,
+                actual,
+            },
+            || IdError::Charset,
+        )
+        .map(|inner| Self { inner })
     }
 
     /// Returns the validated bytes, without the trailing padding.
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
-        self.bytes.get(..usize::from(self.len)).unwrap_or(&[])
+        self.inner.as_bytes()
     }
 
     /// Returns the length in bytes.
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.len as usize
+        self.inner.len()
     }
 
     /// Returns `false`; a label is never empty by construction.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.len == 0
+        self.inner.is_empty()
     }
 }
 
 impl fmt::Display for Label {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(|_| fmt::Error)?;
-        f.write_str(text)
+        self.inner.fmt(f)
     }
 }
 
@@ -187,8 +175,7 @@ impl fmt::Display for Label {
 /// so the suffix is part of the type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SliceName {
-    bytes: [u8; MAX_SLICE_LEN],
-    len: u8,
+    inner: InlineId<MAX_SLICE_LEN>,
 }
 
 impl SliceName {
@@ -203,33 +190,39 @@ impl SliceName {
         if !raw.ends_with(SLICE_SUFFIX) || raw.len() <= SLICE_SUFFIX.len() {
             return Err(IdError::NotASlice);
         }
-        let mut bytes = [0u8; MAX_SLICE_LEN];
-        let len = fill(raw, &mut bytes, MAX_SLICE_LEN)?;
-        Ok(Self { bytes, len })
+        InlineId::parse(
+            raw,
+            || IdError::Empty,
+            |actual| IdError::TooLong {
+                max: MAX_SLICE_LEN,
+                actual,
+            },
+            || IdError::Charset,
+        )
+        .map(|inner| Self { inner })
     }
 
     /// Returns the validated bytes, without the trailing padding.
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
-        self.bytes.get(..usize::from(self.len)).unwrap_or(&[])
+        self.inner.as_bytes()
     }
 
     /// Returns the length in bytes.
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.len as usize
+        self.inner.len()
     }
 
     /// Returns `false`; a slice name is never empty by construction.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.len == 0
+        self.inner.is_empty()
     }
 }
 
 impl fmt::Display for SliceName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = core::str::from_utf8(self.as_bytes()).map_err(|_| fmt::Error)?;
-        f.write_str(text)
+        self.inner.fmt(f)
     }
 }
