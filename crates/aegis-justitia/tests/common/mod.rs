@@ -16,14 +16,14 @@
 
 use aegis_justitia::{
     ActionIntent, ActionProposal, ActionProposalVersion, ActionType, AgentId, AuditRecordVersion,
-    CheckerId, CheckerSet, ClockError, ContractError, Correlation, DIGEST_LEN, DecisionRequest,
+    CheckerId, CheckerSet, ContractError, Correlation, DIGEST_LEN, DecisionRequest,
     DecisionRequestVersion, Digest32, EngineConfig, EventId, FixedClock, HashAlgorithm, Identity,
     IdentityError, InMemorySink, IntentId, IntentSpec, IoDeadline, JustitiaEngine, JustitiaError,
-    KillswitchState, MAX_CONTRACT_PAYLOAD_BYTES, MAX_SIGNATURE_BYTES, MakerId, OversightClass,
-    OversightSignature, PayloadBuffer, RecordDraft, RecordPrincipals, RecordSigner, RecordStatus,
-    RecordSubject, RequestId, RequiredApproval, RiskLevel, RiskTier, SchemaId, Sequence,
-    Sha256Hasher, SignError, Signature, SignatureAlgorithm, SignedAuditRecord, SignerBinding,
-    SignerKeyId, TargetResource, Ttl, UnixSeconds,
+    KillswitchState, MAX_CONTRACT_PAYLOAD_BYTES, MakerId, OversightClass, OversightSignature,
+    PayloadBuffer, RecordDraft, RecordPrincipals, RecordSigner, RecordStatus, RecordSubject,
+    RequestId, RequiredApproval, RiskLevel, RiskTier, SchemaId, Sequence, Sha256Hasher, SignError,
+    Signature, SignatureAlgorithm, SignedAuditRecord, SignerBinding, SignerKeyId, TargetResource,
+    Ttl, UnixSeconds,
 };
 
 /// Anything that can go wrong building or reading a fixture.
@@ -78,60 +78,9 @@ impl RecordSigner for FixtureSigner {
     }
 }
 
-/// A bound signer whose backend returns one byte more than the crate admits,
-/// to exercise the fail-closed seal path with a signer actually bound.
-///
-/// The refusal is produced by the library itself: [`Signature::new`] is the
-/// only producer of [`SignError::TooLong`], so this fixture reaches a real
-/// library path rather than fabricating an error value.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OversizedSigner {
-    key_id: SignerKeyId,
-}
-
-impl OversizedSigner {
-    /// The width the backend returns: one past the scalar bound.
-    pub const WIDTH: usize = MAX_SIGNATURE_BYTES.saturating_add(1);
-
-    /// Builds an oversized signer.
-    ///
-    /// # Errors
-    ///
-    /// Propagates an identity parse failure.
-    pub fn new() -> Result<Self, JustitiaError> {
-        Ok(Self {
-            key_id: SignerKeyId::parse("oversized-key")?,
-        })
-    }
-}
-
-impl RecordSigner for OversizedSigner {
-    fn key_id(&self) -> &SignerKeyId {
-        &self.key_id
-    }
-
-    fn sign(&self, _digest: &Digest32) -> Result<Signature, SignError> {
-        Signature::new(self.key_id, &[0u8; Self::WIDTH])
-    }
-}
-
-/// A clock whose source is broken. `aegis_justitia::Clock` is public API, so a
-/// fault injector is an ordinary implementation of it rather than a hook.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct FaultyClock;
-
-impl aegis_justitia::Clock for FaultyClock {
-    fn now(&self) -> Result<UnixSeconds, ClockError> {
-        Err(ClockError::BeforeEpoch)
-    }
-}
-
 /// The engine shape used by most tests: SHA-256, a fixture signer, an in-memory
 /// sink and a clock the test advances.
 pub type TestEngine = JustitiaEngine<Sha256Hasher, FixtureSigner, InMemorySink, FixedClock>;
-
-/// The engine shape used to exercise a clock fault.
-pub type FaultyClockEngine = JustitiaEngine<Sha256Hasher, FixtureSigner, InMemorySink, FaultyClock>;
 
 /// The scalar audit bound the fixtures use. Small on purpose: a fixture engine
 /// should reserve kilobytes, not the crate default.
@@ -168,58 +117,6 @@ pub fn engine(ttl_secs: u32, max_pending: usize) -> Fallible<TestEngine> {
         InMemorySink::with_bound(FIXTURE_AUDIT_BOUND),
         io_deadline(),
         FixedClock::new(START),
-    ))
-}
-
-/// Builds an engine whose audit chain is bounded at `records`, so an append
-/// past that bound fails and the decision it carried cannot be recorded.
-///
-/// # Errors
-///
-/// Propagates a fixture construction failure.
-pub fn engine_with_audit_bound(
-    ttl_secs: u32,
-    max_pending: usize,
-    records: usize,
-) -> Fallible<TestEngine> {
-    let mut settings = config(ttl_secs, max_pending)?;
-    settings.max_audit_records = records;
-    Ok(JustitiaEngine::new(
-        settings,
-        SignerBinding::Bound(FixtureSigner::new()?),
-        InMemorySink::with_bound(FIXTURE_AUDIT_BOUND),
-        io_deadline(),
-        FixedClock::new(START),
-    ))
-}
-
-/// Builds an engine with no signer bound, so every seal fails closed.
-///
-/// # Errors
-///
-/// Propagates a fixture construction failure.
-pub fn unsigned_engine() -> Fallible<TestEngine> {
-    Ok(JustitiaEngine::new(
-        config(60, 8)?,
-        SignerBinding::unbound(),
-        InMemorySink::with_bound(FIXTURE_AUDIT_BOUND),
-        io_deadline(),
-        FixedClock::new(START),
-    ))
-}
-
-/// Builds an engine whose clock always fails.
-///
-/// # Errors
-///
-/// Propagates a fixture construction failure.
-pub fn faulty_clock_engine() -> Fallible<FaultyClockEngine> {
-    Ok(JustitiaEngine::new(
-        config(60, 8)?,
-        SignerBinding::Bound(FixtureSigner::new()?),
-        InMemorySink::with_bound(FIXTURE_AUDIT_BOUND),
-        io_deadline(),
-        FaultyClock,
     ))
 }
 

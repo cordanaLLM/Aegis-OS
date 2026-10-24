@@ -337,11 +337,12 @@ fn the_complexity_thresholds_are_configured() {
 
 /// MD5 appears nowhere in the crate's own code.
 ///
-/// The API-level exclusion is asserted in `audit_ledger.rs`; this is the
-/// file-level half, and unlike a local array literal it is a property of the
-/// crate: adding an `Md5` variant, an md5 backend or an `md5` serialisation
-/// alias anywhere under `src/` fails here. Comment lines are excluded, because
-/// the documentation has to be able to say that MD5 is excluded.
+/// The API-level exclusion is asserted upstream in `amussis-decision` and in
+/// `contract_audit_record.rs`; this is the file-level half, and unlike a local
+/// array literal it is a property of the crate: adding an `Md5` variant, an md5
+/// backend or an `md5` serialisation alias anywhere under `src/` fails here.
+/// Comment lines are excluded, because the documentation has to be able to say
+/// that MD5 is excluded.
 #[test]
 fn the_crate_source_names_no_md5_implementation() {
     let mut offenders: Vec<String> = Vec::new();
