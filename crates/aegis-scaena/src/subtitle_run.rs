@@ -20,10 +20,8 @@ use crate::descriptor::{CorrelationId, DecodedFrame, FourCc, Planes};
 use crate::error::DescriptorError;
 use crate::jpeg;
 use crate::line::{LineBuffer, Request};
-use crate::present::{PresentError, Presenter};
-use crate::slice::{
-    INTEL_DRIVERS, Report, SliceError, Verdict, decode_node, open_decoder, with_presenter,
-};
+use crate::present::Presenter;
+use crate::slice::{Report, SliceError, Verdict, run_with_decoder, with_presenter};
 use crate::subtitle::{self, Cue, Offset};
 use crate::transport::{Deadlines, FrameReceiver, FrameSender, pair};
 
@@ -72,18 +70,7 @@ pub fn cue_frame_index(start: Duration) -> usize {
 ///
 /// Returns [`DescriptorError`] if the correlation id cannot be parsed.
 pub fn correlation_id(number: usize) -> Result<CorrelationId, DescriptorError> {
-    let mut text = *b"m32-subtitle-00";
-    let tens = number.checked_div(10).and_then(|tens| tens.checked_rem(10));
-    let ones = number.checked_rem(10);
-    let tens = tens.and_then(|digit| u8::try_from(digit).ok()).unwrap_or(0);
-    let ones = ones.and_then(|digit| u8::try_from(digit).ok()).unwrap_or(0);
-    if let (Some(high), Some(low)) = (text.get(13).copied(), text.get(14).copied()) {
-        let digits = [high.saturating_add(tens), low.saturating_add(ones)];
-        if let Some(slot) = text.get_mut(13..15) {
-            slot.copy_from_slice(&digits);
-        }
-    }
-    CorrelationId::parse(&text)
+    CorrelationId::from_template_number(b"m32-subtitle-00", number)
 }
 
 /// Computes per-frame presentation offsets relative to frame 0.
@@ -315,22 +302,7 @@ fn positive_subtitles(
     report: &mut Report<'_>,
     presenter: &mut Presenter,
 ) -> Result<Option<String>, SliceError> {
-    presenter.ack()?;
-    let main_device = presenter.main_device().ok_or(PresentError::Feedback {
-        what: "no main device",
-    })?;
-    let node = decode_node(report, main_device)?;
-    if !INTEL_DRIVERS.contains(&node.driver.as_str()) {
-        return Ok(Some(format!(
-            "the compositor's main device {} is driven by {}, not i915 or xe, so the iHD decode the reference profile has is absent",
-            node.name, node.driver
-        )));
-    }
-    let Some(decoder) = open_decoder(report, &node)? else {
-        return Ok(None);
-    };
-    present_subtitles(report, &decoder, presenter)?;
-    Ok(None)
+    run_with_decoder(report, presenter, present_subtitles)
 }
 
 /// The subtitle presentation run on the reference profile (milestone M32).

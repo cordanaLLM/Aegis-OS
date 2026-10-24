@@ -88,6 +88,19 @@ pub(crate) fn set_deadline(
     })
 }
 
+/// Creates a connected `SOCK_SEQPACKET` socket pair with `O_CLOEXEC`.
+pub(crate) fn seqpacket_pair() -> Result<(OwnedFd, OwnedFd), TransportError> {
+    socketpair(
+        AddressFamily::UNIX,
+        SocketType::SEQPACKET,
+        SocketFlags::CLOEXEC,
+        None,
+    )
+    .map_err(|error| TransportError::Io {
+        errno: errno(error),
+    })
+}
+
 /// A connected `SOCK_SEQPACKET` socket pair, close-on-exec: the sending end
 /// and the receiving end, each with its deadline set.
 ///
@@ -97,15 +110,7 @@ pub(crate) fn set_deadline(
 /// [`MIN_DEADLINE`]..=[`MAX_DEADLINE`] and [`TransportError::Io`] when the
 /// kernel refuses the pair.
 pub fn pair(deadlines: Deadlines) -> Result<(FrameSender, FrameReceiver), TransportError> {
-    let (left, right) = socketpair(
-        AddressFamily::UNIX,
-        SocketType::SEQPACKET,
-        SocketFlags::CLOEXEC,
-        None,
-    )
-    .map_err(|error| TransportError::Io {
-        errno: errno(error),
-    })?;
+    let (left, right) = seqpacket_pair()?;
     Ok((
         FrameSender::new(left, deadlines.send)?,
         FrameReceiver::new(right, deadlines.receive)?,
@@ -116,6 +121,29 @@ pub fn pair(deadlines: Deadlines) -> Result<(FrameSender, FrameReceiver), Transp
 #[derive(Debug)]
 pub struct FrameSender {
     socket: OwnedFd,
+}
+
+/// Sends `message` on `socket` with ancillary control buffer `control`.
+pub(crate) fn send_message_slice(
+    socket: BorrowedFd<'_>,
+    message: &[u8],
+    control: &mut SendAncillaryBuffer<'_, '_, '_>,
+) -> Result<(), TransportError> {
+    let sent = sendmsg(
+        socket,
+        &[IoSlice::new(message)],
+        control,
+        SendFlags::NOSIGNAL,
+    )
+    .map_err(|error| socket_error(error, TransportError::SendDeadline))?;
+    if sent == message.len() {
+        Ok(())
+    } else {
+        Err(TransportError::Short {
+            sent,
+            expected: message.len(),
+        })
+    }
 }
 
 impl FrameSender {
@@ -146,21 +174,7 @@ impl FrameSender {
         if !control.push(SendAncillaryMessage::ScmRights(&fds)) {
             return Err(TransportError::ControlTruncated);
         }
-        let sent = sendmsg(
-            &self.socket,
-            &[IoSlice::new(message)],
-            &mut control,
-            SendFlags::NOSIGNAL,
-        )
-        .map_err(|error| socket_error(error, TransportError::SendDeadline))?;
-        if sent == message.len() {
-            Ok(())
-        } else {
-            Err(TransportError::Short {
-                sent,
-                expected: message.len(),
-            })
-        }
+        send_message_slice(self.socket.as_fd(), message, &mut control)
     }
 
     /// Encodes `request` into `buffer` and sends it with `fd`.
@@ -219,6 +233,45 @@ pub(crate) fn take_fds(control: &mut RecvAncillaryBuffer<'_>) -> (Option<OwnedFd
     (first, count)
 }
 
+/// The outcome of receiving one datagram with ancillary descriptors.
+#[derive(Debug)]
+pub(crate) struct RawDatagram {
+    pub(crate) bytes: usize,
+    pub(crate) fd: Option<OwnedFd>,
+    pub(crate) fd_count: usize,
+}
+
+/// Receives one datagram from `socket` into `storage`, extracting any file descriptors.
+pub(crate) fn recv_datagram(
+    socket: BorrowedFd<'_>,
+    storage: &mut [u8],
+) -> Result<RawDatagram, TransportError> {
+    let mut space = [MaybeUninit::<u8>::uninit(); rustix::cmsg_space!(ScmRights(FD_SLOTS))];
+    let mut control = RecvAncillaryBuffer::new(&mut space);
+    let message = recvmsg(
+        socket,
+        &mut [IoSliceMut::new(storage)],
+        &mut control,
+        RecvFlags::CMSG_CLOEXEC | RecvFlags::TRUNC,
+    )
+    .map_err(|error| socket_error(error, TransportError::ReceiveDeadline))?;
+    let (fd, count) = take_fds(&mut control);
+    if message.flags.contains(ReturnFlags::TRUNC) || message.bytes > MAX_LINE_BYTES {
+        return Err(LineError::TooLong {
+            length: message.bytes,
+        }
+        .into());
+    }
+    if message.flags.contains(ReturnFlags::CTRUNC) {
+        return Err(TransportError::ControlTruncated);
+    }
+    Ok(RawDatagram {
+        bytes: message.bytes,
+        fd,
+        fd_count: count,
+    })
+}
+
 impl FrameReceiver {
     /// Takes a connected `SOCK_SEQPACKET` socket and sets its receive deadline.
     ///
@@ -242,32 +295,16 @@ impl FrameReceiver {
     /// [`TransportError::Io`] otherwise. On every error each fd the message
     /// carried has been closed.
     pub fn receive<'b>(&self, buffer: &'b mut LineBuffer) -> Result<Received<'b>, TransportError> {
-        let mut space = [MaybeUninit::<u8>::uninit(); rustix::cmsg_space!(ScmRights(FD_SLOTS))];
-        let mut control = RecvAncillaryBuffer::new(&mut space);
-        let message = recvmsg(
-            &self.socket,
-            &mut [IoSliceMut::new(buffer.storage())],
-            &mut control,
-            RecvFlags::CMSG_CLOEXEC | RecvFlags::TRUNC,
-        )
-        .map_err(|error| socket_error(error, TransportError::ReceiveDeadline))?;
-        let (fd, count) = take_fds(&mut control);
-        if message.flags.contains(ReturnFlags::TRUNC) || message.bytes > MAX_LINE_BYTES {
-            return Err(LineError::TooLong {
-                length: message.bytes,
-            }
-            .into());
-        }
-        if message.flags.contains(ReturnFlags::CTRUNC) {
-            return Err(TransportError::ControlTruncated);
-        }
-        if message.bytes == 0 && count == 0 {
+        let raw = recv_datagram(self.socket.as_fd(), buffer.storage())?;
+        if raw.bytes == 0 && raw.fd_count == 0 {
             return Err(TransportError::PeerClosed);
         }
-        let (Some(fd), 1) = (fd, count) else {
-            return Err(TransportError::FdCount { count });
+        let (Some(fd), 1) = (raw.fd, raw.fd_count) else {
+            return Err(TransportError::FdCount {
+                count: raw.fd_count,
+            });
         };
-        buffer.set_len(message.bytes);
+        buffer.set_len(raw.bytes);
         Ok(Received {
             line: buffer.line(),
             fd,

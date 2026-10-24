@@ -45,9 +45,7 @@ use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
 use crate::error::{LineError, MountError};
-use crate::line::{
-    self, JSONRPC_VERSION, LineBuffer, MAX_LINE_BYTES, Object, Response, Token, write_line,
-};
+use crate::line::{self, JSONRPC_VERSION, LineBuffer, MAX_LINE_BYTES, Response, Token, write_line};
 
 /// The one schema this build admits.
 pub const MOUNT_SCHEMA_V1: &str = "aegis.p05-p17.mount-shell-canvas.v1";
@@ -545,19 +543,6 @@ struct CanvasIn {
     keyboard_interactivity: Token<16>,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RequestIn {
-    #[serde(default)]
-    jsonrpc: Option<Token<8>>,
-    #[serde(default)]
-    method: Option<Token<32>>,
-    #[serde(default)]
-    params: Option<Object<CanvasIn>>,
-    #[serde(default)]
-    id: Option<u64>,
-}
-
 /// A wire integer narrowed to `i32`; one that does not fit is refused as
 /// `error`.
 fn narrow(value: i64, error: MountError) -> Result<i32, MountError> {
@@ -615,17 +600,8 @@ impl CanvasIn {
 /// [`LineError::Method`] for any method but [`MOUNT_METHOD`], and
 /// [`LineError::Mount`] for parameters the contract refuses.
 pub fn decode_request(message: &[u8]) -> Result<MountRequest, LineError> {
-    let text = line::body(message)?;
-    let Object(raw): Object<RequestIn> =
-        serde_json::from_slice(text).map_err(|error| LineError::from(&error))?;
-    if !raw.jsonrpc.is_some_and(|token| token.is(JSONRPC_VERSION)) {
-        return Err(LineError::Version);
-    }
-    if !raw.method.is_some_and(|token| token.is(MOUNT_METHOD)) {
-        return Err(LineError::Method);
-    }
-    let id = raw.id.ok_or(LineError::Id)?;
-    let Object(params) = raw.params.ok_or(LineError::Params)?;
+    let (id, params) =
+        line::decode_request_envelope::<line::PlainEnvelope<CanvasIn>>(message, MOUNT_METHOD)?;
     Ok(MountRequest {
         id,
         canvas: params.into_canvas()?,

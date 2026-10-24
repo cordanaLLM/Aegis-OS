@@ -14,19 +14,16 @@
 //! allocates nothing: the line lands in the caller's [`LineBuffer`] and the
 //! control message in a stack buffer (HISS-03).
 
-use core::mem::MaybeUninit;
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 
-use rustix::io::{IoSlice, IoSliceMut};
-use rustix::net::{
-    AddressFamily, RecvAncillaryBuffer, RecvFlags, ReturnFlags, SendAncillaryBuffer, SendFlags,
-    SocketFlags, SocketType, recvmsg, sendmsg, socketpair, sockopt,
-};
+use rustix::net::{SendAncillaryBuffer, sockopt};
 
-use crate::error::{LineError, TransportError, errno};
-use crate::line::{LineBuffer, MAX_LINE_BYTES, Response, body};
+use crate::error::TransportError;
+use crate::line::{LineBuffer, Response, body};
 use crate::mount::{self, MountRequest};
-use crate::transport::{Deadlines, FD_SLOTS, set_deadline, socket_error, take_fds};
+use crate::transport::{
+    Deadlines, recv_datagram, send_message_slice, seqpacket_pair, set_deadline,
+};
 
 /// A connected control socket pair, close-on-exec: the shell's end and P17's
 /// end, each with both deadlines set.
@@ -39,15 +36,7 @@ use crate::transport::{Deadlines, FD_SLOTS, set_deadline, socket_error, take_fds
 pub fn control_pair(
     deadlines: Deadlines,
 ) -> Result<(ControlEndpoint, ControlEndpoint), TransportError> {
-    let (left, right) = socketpair(
-        AddressFamily::UNIX,
-        SocketType::SEQPACKET,
-        SocketFlags::CLOEXEC,
-        None,
-    )
-    .map_err(|error| TransportError::Io {
-        errno: errno(error),
-    })?;
+    let (left, right) = seqpacket_pair()?;
     Ok((
         ControlEndpoint::new(left, deadlines)?,
         ControlEndpoint::new(right, deadlines)?,
@@ -82,21 +71,11 @@ impl ControlEndpoint {
     /// [`TransportError::Short`] or [`TransportError::Io`] otherwise.
     pub fn send(&self, message: &[u8]) -> Result<(), TransportError> {
         body(message)?;
-        let sent = sendmsg(
-            &self.socket,
-            &[IoSlice::new(message)],
+        send_message_slice(
+            self.socket.as_fd(),
+            message,
             &mut SendAncillaryBuffer::default(),
-            SendFlags::NOSIGNAL,
         )
-        .map_err(|error| socket_error(error, TransportError::SendDeadline))?;
-        if sent == message.len() {
-            Ok(())
-        } else {
-            Err(TransportError::Short {
-                sent,
-                expected: message.len(),
-            })
-        }
     }
 
     /// Receives one message into `buffer` and returns its line.
@@ -105,39 +84,22 @@ impl ControlEndpoint {
     ///
     /// Returns [`TransportError::ReceiveDeadline`] when nothing arrives in
     /// time, [`TransportError::PeerClosed`] at the end of the stream,
-    /// [`TransportError::Line`] with [`LineError::TooLong`] for a message over
+    /// [`TransportError::Line`] with [`crate::LineError::TooLong`] for a message over
     /// the bound, [`TransportError::FdOnControl`] or
     /// [`TransportError::ControlTruncated`] for a message that carried
     /// descriptors, and [`TransportError::Io`] otherwise. On every path each
     /// descriptor the message carried has been closed.
     pub fn receive<'b>(&self, buffer: &'b mut LineBuffer) -> Result<&'b [u8], TransportError> {
-        let mut space = [MaybeUninit::<u8>::uninit(); rustix::cmsg_space!(ScmRights(FD_SLOTS))];
-        let mut control = RecvAncillaryBuffer::new(&mut space);
-        let message = recvmsg(
-            &self.socket,
-            &mut [IoSliceMut::new(buffer.storage())],
-            &mut control,
-            RecvFlags::CMSG_CLOEXEC | RecvFlags::TRUNC,
-        )
-        .map_err(|error| socket_error(error, TransportError::ReceiveDeadline))?;
-        // Dropping the result closes every descriptor that arrived.
-        let (_, count) = take_fds(&mut control);
-        if message.flags.contains(ReturnFlags::TRUNC) || message.bytes > MAX_LINE_BYTES {
-            return Err(LineError::TooLong {
-                length: message.bytes,
-            }
-            .into());
+        let raw = recv_datagram(self.socket.as_fd(), buffer.storage())?;
+        if raw.fd_count != 0 {
+            return Err(TransportError::FdOnControl {
+                count: raw.fd_count,
+            });
         }
-        if message.flags.contains(ReturnFlags::CTRUNC) {
-            return Err(TransportError::ControlTruncated);
-        }
-        if count != 0 {
-            return Err(TransportError::FdOnControl { count });
-        }
-        if message.bytes == 0 {
+        if raw.bytes == 0 {
             return Err(TransportError::PeerClosed);
         }
-        buffer.set_len(message.bytes);
+        buffer.set_len(raw.bytes);
         Ok(buffer.line())
     }
 
