@@ -19,14 +19,18 @@
 
 mod common;
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
+#[path = "../../dependency_closure.rs"]
+mod dependency_closure;
+
+use std::collections::BTreeSet;
 
 use serde_json::Value;
 
 use common::Fallible;
+use dependency_closure::{
+    assert_malformed_metadata_fails_closed, closure, closure_versions, hits, metadata,
+    read_workspace_file as read, set, synthetic, workspace_root,
+};
 
 /// This crate's package name, which is the component name (P05).
 const PACKAGE: &str = "aegis-forum-shell";
@@ -42,220 +46,6 @@ const FORBIDDEN: [&str; 7] = [
     "accesskit_unix",
     "tokio",
 ];
-
-/// How long `cargo metadata` may run.
-const METADATA_DEADLINE: Duration = Duration::from_secs(120);
-
-/// How often the deadline loop polls the child.
-const POLL: Duration = Duration::from_millis(25);
-
-/// The most polls: the deadline divided by the poll interval, 120 s / 25 ms.
-const MAX_POLLS: u32 = 4_800;
-
-/// The workspace root, two directories above this crate's manifest.
-fn workspace_root() -> Option<PathBuf> {
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    Some(manifest.parent()?.parent()?.to_path_buf())
-}
-
-/// Reads a workspace file, or the empty string.
-fn read(name: &str) -> String {
-    workspace_root()
-        .and_then(|root| std::fs::read_to_string(root.join(name)).ok())
-        .unwrap_or_default()
-}
-
-/// Waits for `child` under `METADATA_DEADLINE`, killing it past the deadline.
-fn wait(child: &mut std::process::Child) -> Result<std::process::ExitStatus, String> {
-    let started = Instant::now();
-    for _ in 0..=MAX_POLLS {
-        match child.try_wait() {
-            Ok(Some(status)) => return Ok(status),
-            Ok(None) if started.elapsed() < METADATA_DEADLINE => std::thread::sleep(POLL),
-            Ok(None) => break,
-            Err(error) => return Err(format!("waiting for cargo metadata failed: {error}")),
-        }
-    }
-    let killed = child.kill().and_then(|()| child.wait());
-    Err(format!(
-        "cargo metadata missed its {METADATA_DEADLINE:?} deadline; killed: {killed:?}"
-    ))
-}
-
-/// Runs `cargo metadata` as D78 records it, output to a file so no pipe can
-/// fill and stall the child, and returns the parsed document.
-fn cargo_metadata() -> Result<Value, String> {
-    let root = workspace_root().ok_or("no workspace root")?;
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
-    let (out, err) = (
-        dir.join("forum-shell-metadata.json"),
-        dir.join("forum-shell-metadata.err"),
-    );
-    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-    let files = (std::fs::File::create(&out), std::fs::File::create(&err));
-    let (Ok(stdout), Ok(stderr)) = files else {
-        return Err("cannot create the metadata output files".to_owned());
-    };
-    let mut child = Command::new(cargo)
-        .args([
-            "metadata",
-            "--format-version",
-            "1",
-            "--locked",
-            "--offline",
-            "--all-features",
-        ])
-        .current_dir(root)
-        .stdin(Stdio::null())
-        .stdout(stdout)
-        .stderr(stderr)
-        .spawn()
-        .map_err(|error| format!("cargo metadata could not be spawned: {error}"))?;
-    let status = wait(&mut child)?;
-    if !status.success() {
-        let text = std::fs::read_to_string(&err).unwrap_or_default();
-        return Err(format!(
-            "cargo metadata exited {status}; if offline, run `cargo fetch --locked`: {text}"
-        ));
-    }
-    let text = std::fs::read_to_string(&out).map_err(|error| error.to_string())?;
-    serde_json::from_str(&text)
-        .map_err(|error| format!("cargo metadata output is not JSON: {error}"))
-}
-
-/// The package names in the closure of the one workspace member named
-/// `package`, the member included.
-fn closure(metadata: &Value, package: &str) -> Result<BTreeSet<String>, String> {
-    let ids = closure_ids(metadata, package)?;
-    Ok(packages_in(metadata, &ids)
-        .filter_map(|entry| entry.get("name")?.as_str())
-        .map(str::to_owned)
-        .collect())
-}
-
-/// The package entries of `metadata` whose ids are in `ids`.
-fn packages_in<'m>(metadata: &'m Value, ids: &BTreeSet<String>) -> impl Iterator<Item = &'m Value> {
-    metadata
-        .get("packages")
-        .and_then(Value::as_array)
-        .map(Vec::as_slice)
-        .unwrap_or_default()
-        .iter()
-        .filter(|entry| {
-            entry
-                .get("id")
-                .and_then(Value::as_str)
-                .is_some_and(|id| ids.contains(id))
-        })
-}
-
-/// The versions of the package named `name` in the closure of `package`.
-fn closure_versions(
-    metadata: &Value,
-    package: &str,
-    name: &str,
-) -> Result<BTreeSet<String>, String> {
-    let ids = closure_ids(metadata, package)?;
-    Ok(packages_in(metadata, &ids)
-        .filter(|entry| entry.get("name").and_then(Value::as_str) == Some(name))
-        .filter_map(|entry| entry.get("version")?.as_str())
-        .map(str::to_owned)
-        .collect())
-}
-
-/// The package ids in the closure of the one workspace member named
-/// `package`, the member included.
-fn closure_ids(metadata: &Value, package: &str) -> Result<BTreeSet<String>, String> {
-    let packages = metadata
-        .get("packages")
-        .and_then(Value::as_array)
-        .ok_or("no packages")?;
-    let names: BTreeMap<&str, &str> = packages
-        .iter()
-        .filter_map(|entry| Some((entry.get("id")?.as_str()?, entry.get("name")?.as_str()?)))
-        .collect();
-    let members = metadata
-        .get("workspace_members")
-        .and_then(Value::as_array)
-        .ok_or("no members")?;
-    let starts: Vec<&str> = members
-        .iter()
-        .filter_map(Value::as_str)
-        .filter(|id| names.get(id) == Some(&package))
-        .collect();
-    let [start] = starts.as_slice() else {
-        return Err(format!(
-            "{} workspace members are named {package}",
-            starts.len()
-        ));
-    };
-    let nodes = metadata
-        .get("resolve")
-        .and_then(|resolve| resolve.get("nodes"))
-        .and_then(Value::as_array)
-        .ok_or("the resolve is null")?;
-    let edges: BTreeMap<&str, Vec<&str>> = nodes
-        .iter()
-        .filter_map(|node| {
-            let id = node.get("id")?.as_str()?;
-            let deps = node.get("deps")?.as_array()?;
-            Some((
-                id,
-                deps.iter()
-                    .filter_map(|dep| dep.get("pkg")?.as_str())
-                    .collect(),
-            ))
-        })
-        .collect();
-    let mut visited: BTreeSet<&str> = BTreeSet::from([*start]);
-    let mut stack = vec![*start];
-    for _ in 0..=nodes.len() {
-        let Some(id) = stack.pop() else { break };
-        for dep in edges.get(id).map(Vec::as_slice).unwrap_or_default() {
-            if visited.insert(dep) {
-                stack.push(dep);
-            }
-        }
-    }
-    Ok(visited.iter().map(|id| (*id).to_owned()).collect())
-}
-
-/// The forbidden names found in `names`, matched exactly.
-fn forbidden_in(names: &BTreeSet<String>) -> Vec<&'static str> {
-    FORBIDDEN
-        .into_iter()
-        .filter(|name| names.contains(*name))
-        .collect()
-}
-
-/// Sets `key` on a JSON object; anything else is left as it is.
-fn set(value: &mut Value, key: &str, new: Value) {
-    if let Some(object) = value.as_object_mut() {
-        object.insert(key.to_owned(), new);
-    }
-}
-
-/// A small synthetic metadata document: this crate depending on `deps`.
-fn synthetic(deps: &[&str]) -> Value {
-    let mut packages = vec![serde_json::json!({ "id": "shell", "name": PACKAGE })];
-    packages.extend(
-        deps.iter()
-            .map(|name| serde_json::json!({ "id": name, "name": name })),
-    );
-    let mut nodes = vec![serde_json::json!({
-        "id": "shell",
-        "deps": deps.iter().map(|name| serde_json::json!({ "pkg": name })).collect::<Vec<_>>(),
-    })];
-    nodes.extend(
-        deps.iter()
-            .map(|name| serde_json::json!({ "id": name, "deps": [] })),
-    );
-    serde_json::json!({
-        "packages": packages,
-        "workspace_members": ["shell"],
-        "resolve": { "nodes": nodes },
-    })
-}
 
 // --- Positive -------------------------------------------------------------
 
@@ -293,7 +83,7 @@ fn accesskit_is_declared_once_and_locked_at_the_admitted_version() -> Fallible {
     assert!(manifest.contains("accesskit.workspace = true"));
     let lock = read("Cargo.lock");
     assert!(lock.contains("name = \"accesskit\"\nversion = \"0.25.1\""));
-    let versions = closure_versions(&cargo_metadata()?, PACKAGE, "accesskit")?;
+    let versions = closure_versions(&metadata()?, PACKAGE, "accesskit")?;
     assert_eq!(versions, BTreeSet::from(["0.25.1".to_owned()]));
     Ok(())
 }
@@ -302,14 +92,14 @@ fn accesskit_is_declared_once_and_locked_at_the_admitted_version() -> Fallible {
 /// admitted data model and the two producer crates, and nothing forbidden.
 #[test]
 fn the_closure_holds_no_toolkit_window_bus_adapter_or_runtime() -> Fallible {
-    let names = closure(&cargo_metadata()?, PACKAGE)?;
+    let names = closure(&metadata()?, PACKAGE)?;
     for expected in [PACKAGE, "accesskit", "aegis-justitia", "aegis-tellus"] {
         assert!(
             names.contains(expected),
             "{expected} is not in the closure: {names:?}"
         );
     }
-    assert_eq!(forbidden_in(&names), Vec::<&str>::new(), "{names:?}");
+    assert_eq!(hits(&names, &FORBIDDEN), Vec::<&str>::new(), "{names:?}");
     Ok(())
 }
 
@@ -319,9 +109,9 @@ fn the_closure_holds_no_toolkit_window_bus_adapter_or_runtime() -> Fallible {
 /// transitively, is caught, and each is named.
 #[test]
 fn a_forbidden_crate_in_the_closure_is_caught() -> Fallible {
-    let names = closure(&synthetic(&FORBIDDEN), PACKAGE)?;
-    assert_eq!(forbidden_in(&names), FORBIDDEN.to_vec());
-    let mut deep = synthetic(&["accesskit"]);
+    let names = closure(&synthetic(PACKAGE, &FORBIDDEN), PACKAGE)?;
+    assert_eq!(hits(&names, &FORBIDDEN), FORBIDDEN.to_vec());
+    let mut deep = synthetic(PACKAGE, &["accesskit"]);
     if let Some(nodes) = deep
         .pointer_mut("/resolve/nodes")
         .and_then(Value::as_array_mut)
@@ -336,7 +126,7 @@ fn a_forbidden_crate_in_the_closure_is_caught() -> Fallible {
     if let Some(packages) = deep.get_mut("packages").and_then(Value::as_array_mut) {
         packages.push(serde_json::json!({ "id": "tokio", "name": "tokio" }));
     }
-    assert_eq!(forbidden_in(&closure(&deep, PACKAGE)?), vec!["tokio"]);
+    assert_eq!(hits(&closure(&deep, PACKAGE)?, &FORBIDDEN), vec!["tokio"]);
     Ok(())
 }
 
@@ -344,19 +134,7 @@ fn a_forbidden_crate_in_the_closure_is_caught() -> Fallible {
 /// fails closed.
 #[test]
 fn a_malformed_metadata_document_fails_closed() {
-    let mut none = synthetic(&[]);
-    set(&mut none, "workspace_members", serde_json::json!([]));
-    assert!(closure(&none, PACKAGE).is_err());
-    let mut two = synthetic(&[]);
-    set(
-        &mut two,
-        "workspace_members",
-        serde_json::json!(["shell", "shell"]),
-    );
-    assert!(closure(&two, PACKAGE).is_err());
-    let mut null = synthetic(&[]);
-    set(&mut null, "resolve", Value::Null);
-    assert!(closure(&null, PACKAGE).is_err());
+    assert_malformed_metadata_fails_closed(PACKAGE);
 }
 
 /// Negative: no Node, pnpm, Playwright or npm package serves the shell
@@ -385,11 +163,11 @@ fn no_javascript_package_serves_the_shell() -> Fallible {
 #[test]
 fn names_match_exactly_and_only_the_closure_counts() -> Fallible {
     let names = closure(
-        &synthetic(&["accesskit", "tokio-util", "wayland-client-sys"]),
+        &synthetic(PACKAGE, &["accesskit", "tokio-util", "wayland-client-sys"]),
         PACKAGE,
     )?;
-    assert_eq!(forbidden_in(&names), Vec::<&str>::new());
-    let mut outside = synthetic(&["accesskit"]);
+    assert_eq!(hits(&names, &FORBIDDEN), Vec::<&str>::new());
+    let mut outside = synthetic(PACKAGE, &["accesskit"]);
     if let Some(packages) = outside.get_mut("packages").and_then(Value::as_array_mut) {
         packages.push(serde_json::json!({ "id": "zbus", "name": "zbus" }));
     }
@@ -400,7 +178,7 @@ fn names_match_exactly_and_only_the_closure_counts() -> Fallible {
         nodes.push(serde_json::json!({ "id": "zbus", "deps": [] }));
     }
     assert_eq!(
-        forbidden_in(&closure(&outside, PACKAGE)?),
+        hits(&closure(&outside, PACKAGE)?, &FORBIDDEN),
         Vec::<&str>::new()
     );
     Ok(())
@@ -411,7 +189,7 @@ fn names_match_exactly_and_only_the_closure_counts() -> Fallible {
 /// closure is not.
 #[test]
 fn only_an_accesskit_inside_the_closure_counts_as_a_version() -> Fallible {
-    let mut doc = synthetic(&["accesskit", "consumer"]);
+    let mut doc = synthetic(PACKAGE, &["accesskit", "consumer"]);
     if let Some(packages) = doc.get_mut("packages").and_then(Value::as_array_mut) {
         for entry in packages.iter_mut() {
             if entry.get("name").and_then(Value::as_str) == Some("accesskit") {

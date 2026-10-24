@@ -81,6 +81,20 @@ fn code_and_id(response: &Value) -> (Option<i64>, Value) {
     )
 }
 
+#[cfg(unix)]
+type ExchangeCodes = (
+    aegis_forum_shell::state::ShellState,
+    SessionReport,
+    Vec<(Option<i64>, Value)>,
+);
+
+#[cfg(unix)]
+fn exchange_codes(input: &str) -> Fallible<ExchangeCodes> {
+    let (state, report, responses) = exchange(input)?;
+    let codes = responses.iter().map(code_and_id).collect();
+    Ok((state, report, codes))
+}
+
 // --- Positive -------------------------------------------------------------
 
 /// Positive: a decision request and a telemetry update each arrive as one
@@ -181,8 +195,7 @@ fn every_invalid_line_is_answered_with_the_specifications_code() -> Fallible {
         update.clone(),
     ]
     .concat();
-    let (state, report, responses) = exchange(&input)?;
-    let codes: Vec<(Option<i64>, Value)> = responses.iter().map(code_and_id).collect();
+    let (state, report, codes) = exchange_codes(&input)?;
     assert_eq!(codes.first(), Some(&(Some(PARSE_ERROR), Value::Null)));
     assert_eq!(
         codes.get(1),
@@ -233,8 +246,7 @@ fn an_invalid_request_with_a_readable_id_is_answered_with_that_id() -> Fallible 
         decision,
     ]
     .concat();
-    let (state, report, responses) = exchange(&input)?;
-    let codes: Vec<(Option<i64>, Value)> = responses.iter().map(code_and_id).collect();
+    let (state, report, codes) = exchange_codes(&input)?;
     assert_eq!(
         codes,
         vec![

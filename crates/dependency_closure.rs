@@ -110,6 +110,24 @@ pub fn assert_closure_forbids(
     Ok(names)
 }
 
+/// Asserts that a metadata document with no start node, two, or a null resolve
+/// fails closed.
+pub fn assert_malformed_metadata_fails_closed(package: &str) {
+    let mut null = synthetic(package, &[]);
+    set(&mut null, "resolve", Value::Null);
+    assert!(closure(&null, package).is_err());
+    let mut none = synthetic(package, &[]);
+    set(&mut none, "workspace_members", serde_json::json!([]));
+    assert!(closure(&none, package).is_err());
+    let mut two = synthetic(package, &[]);
+    set(
+        &mut two,
+        "workspace_members",
+        serde_json::json!(["member", "member"]),
+    );
+    assert!(closure(&two, package).is_err());
+}
+
 /// One `cargo metadata` invocation: which program, which arguments, where.
 #[derive(Debug, Clone)]
 pub struct Invocation {
@@ -258,14 +276,13 @@ fn edges(metadata: &Value) -> Result<(usize, BTreeMap<&str, Vec<&str>>), String>
     Ok((nodes.len(), edges))
 }
 
-/// The package names in the closure of the one workspace member named
-/// `package`, the member included.
+/// The package ids in the closure of the one workspace member named `package`.
 ///
 /// # Errors
 ///
 /// Fails closed on a document with no packages or members, a null resolve,
 /// and zero or several start nodes.
-pub fn closure(metadata: &Value, package: &str) -> Result<BTreeSet<String>, String> {
+pub fn closure_ids<'a>(metadata: &'a Value, package: &str) -> Result<BTreeSet<&'a str>, String> {
     let names = names_by_id(metadata)?;
     let start = start_node(metadata, &names, package)?;
     let (node_count, edges) = edges(metadata)?;
@@ -279,10 +296,54 @@ pub fn closure(metadata: &Value, package: &str) -> Result<BTreeSet<String>, Stri
             }
         }
     }
+    Ok(visited)
+}
+
+/// The package names in the closure of the one workspace member named
+/// `package`, the member included.
+///
+/// # Errors
+///
+/// Fails closed on a document with no packages or members, a null resolve,
+/// and zero or several start nodes.
+pub fn closure(metadata: &Value, package: &str) -> Result<BTreeSet<String>, String> {
+    let names = names_by_id(metadata)?;
+    let visited = closure_ids(metadata, package)?;
     Ok(visited
         .iter()
         .filter_map(|id| names.get(id))
         .map(|name| (*name).to_owned())
+        .collect())
+}
+
+/// The versions of the package named `name` in the closure of `package`.
+///
+/// # Errors
+///
+/// Fails closed on a document with no packages or members, a null resolve,
+/// and zero or several start nodes.
+pub fn closure_versions(
+    metadata: &Value,
+    package: &str,
+    name: &str,
+) -> Result<BTreeSet<String>, String> {
+    let ids = closure_ids(metadata, package)?;
+    let packages = metadata
+        .get("packages")
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    Ok(packages
+        .iter()
+        .filter(|entry| {
+            entry
+                .get("id")
+                .and_then(Value::as_str)
+                .is_some_and(|id| ids.contains(id))
+        })
+        .filter(|entry| entry.get("name").and_then(Value::as_str) == Some(name))
+        .filter_map(|entry| entry.get("version")?.as_str())
+        .map(str::to_owned)
         .collect())
 }
 

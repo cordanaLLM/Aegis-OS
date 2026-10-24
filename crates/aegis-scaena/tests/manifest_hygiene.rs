@@ -25,7 +25,8 @@ use std::process::{Command, Stdio};
 use serde_json::Value;
 
 use dependency_closure::{
-    Invocation, METADATA_ARGS, closure, hits, metadata, own_closure, plant, set, synthetic,
+    Invocation, METADATA_ARGS, closure, hits, metadata, own_closure, plant,
+    read_workspace_file as read, synthetic, workspace_root,
 };
 
 /// This crate's package name, the component name (P17).
@@ -53,19 +54,6 @@ const FORBIDDEN: [&str; 16] = [
 
 /// The git revision D80 pins cros-libva at.
 const CROS_LIBVA_REV: &str = "59384456ac2ae78c0c3e5515f41ef1efd9b802cf";
-
-/// The workspace root, two directories above this crate's manifest.
-fn workspace_root() -> Option<PathBuf> {
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    Some(manifest.parent()?.parent()?.to_path_buf())
-}
-
-/// Reads a workspace file, or the empty string.
-fn read(name: &str) -> String {
-    workspace_root()
-        .and_then(|root| std::fs::read_to_string(root.join(name)).ok())
-        .unwrap_or_default()
-}
 
 /// Checks that `manifest` writes out exactly the crate directories that have
 /// a manifest, and names the ones it misses or adds.
@@ -589,19 +577,7 @@ fn a_failing_or_timed_out_metadata_run_fails_closed() -> Result<(), String> {
 /// start node, or two.
 #[test]
 fn a_node_less_metadata_document_fails_closed() {
-    let mut null = synthetic(PACKAGE, &[]);
-    set(&mut null, "resolve", Value::Null);
-    assert!(closure(&null, PACKAGE).is_err());
-    let mut none = synthetic(PACKAGE, &[]);
-    set(&mut none, "workspace_members", serde_json::json!([]));
-    assert!(closure(&none, PACKAGE).is_err());
-    let mut two = synthetic(PACKAGE, &[]);
-    set(
-        &mut two,
-        "workspace_members",
-        serde_json::json!(["member", "member"]),
-    );
-    assert!(closure(&two, PACKAGE).is_err());
+    dependency_closure::assert_malformed_metadata_fails_closed(PACKAGE);
 }
 
 /// Negative (E27-3): a manifest that omits aegis-scaena from the written-out

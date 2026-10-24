@@ -36,13 +36,8 @@ fn test_planted_70_pci_devices_gpu_sorted_last_found() -> Fallible {
     Ok(())
 }
 
-#[test]
-fn test_pci_devices_over_bound_returns_bound_error() -> Fallible {
-    let fix = TempSysfs::new()?;
-    let pci_dir = fix.sysfs.join("bus").join("pci").join("devices");
-
-    // Plant MAX_PCI_DEVICES + 1 (1025) devices
-    for i in 0..=MAX_PCI_DEVICES {
+fn plant_dummy_pci_devices(pci_dir: &std::path::Path, count: usize) -> Fallible {
+    for i in 0..count {
         let bus = i / 256;
         let dev = i % 256;
         let addr = format!("0000:{bus:02x}:{dev:02x}.0");
@@ -50,6 +45,16 @@ fn test_pci_devices_over_bound_returns_bound_error() -> Fallible {
         std::fs::create_dir_all(&dev_path)?;
         std::fs::write(dev_path.join("class"), "0x020000\n")?;
     }
+    Ok(())
+}
+
+#[test]
+fn test_pci_devices_over_bound_returns_bound_error() -> Fallible {
+    let fix = TempSysfs::new()?;
+    let pci_dir = fix.sysfs.join("bus").join("pci").join("devices");
+
+    // Plant MAX_PCI_DEVICES + 1 (1025) devices
+    plant_dummy_pci_devices(&pci_dir, MAX_PCI_DEVICES + 1)?;
 
     let res = discover_gpus(&fix.sysfs);
     match res {
@@ -71,14 +76,7 @@ fn test_pci_devices_exactly_at_bound_ok() -> Fallible {
     let pci_dir = fix.sysfs.join("bus").join("pci").join("devices");
 
     // Plant exactly MAX_PCI_DEVICES (1024) devices
-    for i in 0..MAX_PCI_DEVICES {
-        let bus = i / 256;
-        let dev = i % 256;
-        let addr = format!("0000:{bus:02x}:{dev:02x}.0");
-        let dev_path = pci_dir.join(&addr);
-        std::fs::create_dir_all(&dev_path)?;
-        std::fs::write(dev_path.join("class"), "0x020000\n")?;
-    }
+    plant_dummy_pci_devices(&pci_dir, MAX_PCI_DEVICES)?;
 
     let gpus = discover_gpus(&fix.sysfs)?;
     assert_eq!(gpus.len(), 0);

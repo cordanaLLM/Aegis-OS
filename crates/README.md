@@ -276,13 +276,12 @@ restarts only the microVM it runs in.
 the one definition of decision D78's closure rule, included by path into the
 manifest-hygiene tests of `aegis-athena`, `aegis-justitia`, `aegis-calliope`,
 `aegis-compositor`, `aegis-lictor`, `aegis-tellus`, `aegis-scaena`,
-`aegis-tellus-rapl`, `aegis-vesta-sandbox`, `aegis-concordia` and
-`aegis-forum-shell-gpui`. Each of
+`aegis-tellus-rapl`, `aegis-vesta-sandbox`, `aegis-concordia`,
+`aegis-forum-shell-gpui` and `aegis-forum-shell`. Each of
 those sweeps reads its own crate's dependency closure from `cargo metadata`
 instead of the whole lock, so P17's Wayland and VA-API crates in the shared
 `Cargo.lock` trip none of them; a helper crate would have entered every
-closure it reads. `aegis-forum-shell` carries its own copy of the same walk
-from M16.
+closure it reads.
 
 `claim_source.rs`, beside the crate directories, is not a crate either: it
 holds `ClaimSource`, the export identifier and digest prefix a recorded claim
