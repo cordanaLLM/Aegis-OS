@@ -9,33 +9,25 @@ use aegis_forum_shell_gpui::surface::{
     outcome_line, viewport, window_options,
 };
 use aegis_forum_shell_gpui::{LayerMapError, layer_shell_options};
-use aegis_scaena::mount::{
-    Anchor, Edge, KeyboardInteractivity, Layer, Margin, MountCanvas, MountRequest, MountSchema,
-    Namespace, encode_request,
-};
+use aegis_scaena::mount::{Edge, Margin, MountCanvas, MountRequest, encode_request};
 use aegis_scaena::{LineBuffer, MountError};
 use gpui::layer_shell::LayerShellNotSupportedError;
 use gpui::{Bounds, Size, WindowBounds, WindowKind, point, px};
 
+mod common;
+
+use common::sample_mount_canvas;
+
 fn sample_canvas() -> Result<MountCanvas, MountError> {
-    Ok(MountCanvas {
-        schema: MountSchema::V1,
-        namespace: Namespace::parse(b"aegis-forum")?,
-        layer: Layer::Top,
-        anchor: Anchor::NONE
-            .with(Edge::Top)
-            .with(Edge::Left)
-            .with(Edge::Right),
-        exclusive_zone: Some(48),
-        exclusive_edge: Some(Edge::Top),
-        margin: Some(Margin {
+    sample_mount_canvas(
+        Some(48),
+        Some(Margin {
             top: 0,
             right: 0,
             bottom: 0,
             left: 0,
         }),
-        keyboard_interactivity: KeyboardInteractivity::OnDemand,
-    })
+    )
 }
 
 // --- Positive -------------------------------------------------------------
