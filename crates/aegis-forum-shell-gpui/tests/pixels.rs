@@ -70,45 +70,42 @@ fn set_px(pixels: &mut [[u8; 3]], width: usize, height: usize, x: i32, y: i32, c
     }
 }
 
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "test synthetic image geometry"
-)]
-fn paint_left_right(
-    pixels: &mut [[u8; 3]],
-    inner: &ScreenRect,
+struct PaintCtx<'a> {
+    pixels: &'a mut [[u8; 3]],
+    is_horizontal: bool,
     n_full: i32,
     frac: f64,
     colors: ([u8; 3], [u8; 3]),
-    visible: (bool, bool),
-) {
-    let (ring_col, frac_col) = colors;
-    if visible.0 {
-        let x_inner = inner.x0.floor() as i32;
-        let y_start = (inner.y0.floor() as i32).saturating_sub(5);
-        let y_end = (inner.y1.ceil() as i32).saturating_add(5);
-        for y in y_start..=y_end {
-            for step in 1..=n_full {
-                set_px(pixels, 160, 130, x_inner.saturating_sub(step), y, ring_col);
-            }
-            if frac > 0.001 {
-                let x_frac = x_inner.saturating_sub(n_full).saturating_sub(1);
-                set_px(pixels, 160, 130, x_frac, y, frac_col);
-            }
+}
+
+fn set_axis_px(pixels: &mut [[u8; 3]], is_horizontal: bool, primary: i32, orth: i32, col: [u8; 3]) {
+    let (x, y) = if is_horizontal {
+        (orth, primary)
+    } else {
+        (primary, orth)
+    };
+    set_px(pixels, 160, 130, x, y, col);
+}
+
+fn paint_side(ctx: &mut PaintCtx<'_>, is_positive: bool, edge_coord: i32, orth_range: (i32, i32)) {
+    let (ring_col, frac_col) = ctx.colors;
+    let (orth_start, orth_end) = orth_range;
+    for orth in orth_start..=orth_end {
+        for step in 0..ctx.n_full {
+            let primary = if is_positive {
+                edge_coord.saturating_add(step)
+            } else {
+                edge_coord.saturating_sub(step.saturating_add(1))
+            };
+            set_axis_px(ctx.pixels, ctx.is_horizontal, primary, orth, ring_col);
         }
-    }
-    if visible.1 {
-        let x_inner = inner.x1.ceil() as i32;
-        let y_start = (inner.y0.floor() as i32).saturating_sub(5);
-        let y_end = (inner.y1.ceil() as i32).saturating_add(5);
-        for y in y_start..=y_end {
-            for step in 0..n_full {
-                set_px(pixels, 160, 130, x_inner.saturating_add(step), y, ring_col);
-            }
-            if frac > 0.001 {
-                let x_frac = x_inner.saturating_add(n_full);
-                set_px(pixels, 160, 130, x_frac, y, frac_col);
-            }
+        if ctx.frac > 0.001 {
+            let primary = if is_positive {
+                edge_coord.saturating_add(ctx.n_full)
+            } else {
+                edge_coord.saturating_sub(ctx.n_full).saturating_sub(1)
+            };
+            set_axis_px(ctx.pixels, ctx.is_horizontal, primary, orth, frac_col);
         }
     }
 }
@@ -117,42 +114,21 @@ fn paint_left_right(
     clippy::cast_possible_truncation,
     reason = "test synthetic image geometry"
 )]
-fn paint_top_bottom(
-    pixels: &mut [[u8; 3]],
-    inner: &ScreenRect,
-    n_full: i32,
-    frac: f64,
-    colors: ([u8; 3], [u8; 3]),
+fn paint_axis_pair(
+    ctx: &mut PaintCtx<'_>,
+    primary_bounds: (f64, f64),
+    orth_bounds: (f64, f64),
     visible: (bool, bool),
 ) {
-    let (ring_col, frac_col) = colors;
+    let orth_range = (
+        (orth_bounds.0.floor() as i32).saturating_sub(5),
+        (orth_bounds.1.ceil() as i32).saturating_add(5),
+    );
     if visible.0 {
-        let y_inner = inner.y0.floor() as i32;
-        let x_start = (inner.x0.floor() as i32).saturating_sub(5);
-        let x_end = (inner.x1.ceil() as i32).saturating_add(5);
-        for x in x_start..=x_end {
-            for step in 1..=n_full {
-                set_px(pixels, 160, 130, x, y_inner.saturating_sub(step), ring_col);
-            }
-            if frac > 0.001 {
-                let y_frac = y_inner.saturating_sub(n_full).saturating_sub(1);
-                set_px(pixels, 160, 130, x, y_frac, frac_col);
-            }
-        }
+        paint_side(ctx, false, primary_bounds.0.floor() as i32, orth_range);
     }
     if visible.1 {
-        let y_inner = inner.y1.ceil() as i32;
-        let x_start = (inner.x0.floor() as i32).saturating_sub(5);
-        let x_end = (inner.x1.ceil() as i32).saturating_add(5);
-        for x in x_start..=x_end {
-            for step in 0..n_full {
-                set_px(pixels, 160, 130, x, y_inner.saturating_add(step), ring_col);
-            }
-            if frac > 0.001 {
-                let y_frac = y_inner.saturating_add(n_full);
-                set_px(pixels, 160, 130, x, y_frac, frac_col);
-            }
-        }
+        paint_side(ctx, true, primary_bounds.1.ceil() as i32, orth_range);
     }
 }
 
@@ -175,20 +151,31 @@ fn synthesize_image(
     let frac = geom.width - geom.width.floor();
     let frac_col = blend(ring_color, surface_color, frac);
 
-    paint_left_right(
-        &mut pixels,
-        &inner,
+    let mut ctx_lr = PaintCtx {
+        pixels: &mut pixels,
+        is_horizontal: false,
         n_full,
         frac,
-        (ring_color, frac_col),
+        colors: (ring_color, frac_col),
+    };
+    paint_axis_pair(
+        &mut ctx_lr,
+        (inner.x0, inner.x1),
+        (inner.y0, inner.y1),
         (visible_sides[0], visible_sides[1]),
     );
-    paint_top_bottom(
-        &mut pixels,
-        &inner,
+
+    let mut ctx_tb = PaintCtx {
+        pixels: &mut pixels,
+        is_horizontal: true,
         n_full,
         frac,
-        (ring_color, frac_col),
+        colors: (ring_color, frac_col),
+    };
+    paint_axis_pair(
+        &mut ctx_tb,
+        (inner.y0, inner.y1),
+        (inner.x0, inner.x1),
         (visible_sides[2], visible_sides[3]),
     );
 
