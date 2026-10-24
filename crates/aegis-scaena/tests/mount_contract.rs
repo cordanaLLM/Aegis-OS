@@ -14,7 +14,8 @@
 //! [`MAX_LINE_BYTES`] is accepted and one byte longer refused; a namespace of
 //! [`MAX_NAMESPACE_BYTES`] is accepted and one byte longer refused; the
 //! exclusive zone admits -1 and [`MAX_EXTENT`] and refuses -2 and one past;
-//! a margin admits ±[`MAX_EXTENT`] and refuses one past.
+//! a margin admits ±[`MAX_EXTENT`] and refuses one past; top-level `fd` and
+//! `fds` members are refused as unknown JSON.
 
 mod common;
 
@@ -28,9 +29,9 @@ use aegis_scaena::mount::{
     encode_response,
 };
 use aegis_scaena::{
-    Anchor, Edge, KeyboardInteractivity, Layer, LineBuffer, LineError, MAX_LINE_BYTES, Margin,
-    MountCanvas, MountError, MountRequest, MountSchema, Namespace, Refusal, Response,
-    TransportError, control_pair,
+    Anchor, Edge, JsonCategory, KeyboardInteractivity, Layer, LineBuffer, LineError,
+    MAX_LINE_BYTES, Margin, MountCanvas, MountError, MountRequest, MountSchema, Namespace, Refusal,
+    Response, TransportError, control_pair,
 };
 use rustix::io::IoSlice;
 use rustix::net::{SendAncillaryBuffer, SendAncillaryMessage, SendFlags, sendmsg};
@@ -422,6 +423,34 @@ fn four_edges_are_admitted_and_a_fifth_refused() -> Fallible {
             "[\"top\",\"bottom\",\"left\",\"right\",\"top\"]"
         )?,
         Err(MountError::Anchor.into())
+    );
+    Ok(())
+}
+
+/// Boundary: a mount request with top-level `fd` is refused as unknown JSON.
+#[test]
+fn a_top_level_fd_is_refused_as_unknown_json() -> Fallible {
+    let refused = decode_with("{", "{\"fd\":3,")?;
+    assert_eq!(
+        refused,
+        Err(LineError::Json {
+            category: JsonCategory::Data,
+            column: 5,
+        })
+    );
+    Ok(())
+}
+
+/// Boundary: a mount request with top-level `fds` is refused as unknown JSON.
+#[test]
+fn a_top_level_fds_is_refused_as_unknown_json() -> Fallible {
+    let refused = decode_with("{", "{\"fds\":[3],")?;
+    assert_eq!(
+        refused,
+        Err(LineError::Json {
+            category: JsonCategory::Data,
+            column: 6,
+        })
     );
     Ok(())
 }
