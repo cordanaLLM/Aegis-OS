@@ -129,6 +129,7 @@ crate it admits to still be in the lock.
 | saeptum-capsule | git revision `997a1b34f0a2912de8bf67231846b3af512ff041` of plurano/saeptum (package 0.1.0, EUPL-1.2), the squash merge of saeptum#16 on 2026-10-17 | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta` | the capsule registry, ring, microVM and VMM controllers and the wire form of their bounded values, cut from `aegis-vesta` (cut unit CUT-1632-03) | CUT-1632-03, 2026-10-16 |
 | saeptum-microvm | git revision `997a1b34f0a2912de8bf67231846b3af512ff041` of plurano/saeptum (package 0.1.0, EUPL-1.2) | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-vesta-sandbox` | the Firecracker configuration, the hybrid-vsock line framing, the VM process, the guest listener and the guest's boot-complete signal, cut from `aegis-vesta-sandbox` (cut unit CUT-1632-04); carries socket2 and libc | CUT-1632-04, 2026-10-16 |
 | tornus-geometry | git revision `df214e113701297d995cd3d14ffd877bd0cf8d27` of plurano/tornus (package 0.1.0, EUPL-1.2), the head of `main` read on 2026-10-18; since the cut commit `b2710c8ef386275db352bab06bfa4b8eb6859411` only repository governance files changed, not the crate source | `[workspace.dependencies]`, `git` with `rev =`; used only by `crates/aegis-hephaestus` | the geometry and meshing bounds, the `STEP` source name, the solver admission and the wire form of the bounded values, cut from `aegis-hephaestus` (cut unit CUT-1632-01) | CUT-1632-01, 2026-10-16 |
+| amussis-decision | crates.io release 0.2.0 of plurano/amussis (EUPL-1.2, edition 2024, rust-version 1.99.1), published 2026-10-16; git tag `v0.2.0` peels to commit `0a1229fc793127091e50a0b174785fe8dd1680ee` | declared `[workspace.dependencies]` exact `=0.2.0`, locked with crates.io checksum `0db6cb1c8d26...`; used only by `crates/aegis-justitia` | the decision engine, audit ledger and hashing ADR-0006 moves to amussis-decision | ADR-0006, M33 |
 
 At admission, `Cargo.lock` resolved the graph the first seven pull in to: block-buffer
 0.12.1, cfg-if 1.0.4, cpufeatures 0.3.1, crypto-common 0.2.2, digest 0.11.3,
@@ -307,6 +308,14 @@ Last on 2026-10-17 both saeptum crates moved from `d5e6b94` to
 `MEASURED_BOOT_TIME_MS` and `MEASURED_FOOTPRINT_KIB`, and replaces the row
 field `declared_boot_time_ms` with `measured_boot_time_ms`. No crate here read
 either removed name. The lock changed only the two `source` revisions.
+
+On 2026-10-24 `amussis-decision` was admitted under ADR-0006 for M33, pinned as
+an exact registry dependency (`=0.2.0`) rather than a git revision (`rev =`).
+A crates.io release is immutable and its checksum is recorded in `Cargo.lock`,
+satisfying the precedent's stated review trigger to leave a git revision pin.
+Renovate proposes updates as new releases publish on crates.io, and the lock
+gained only `amussis-decision` 0.2.0 itself on dependencies already locked.
+It declares `rust-version` 1.99.1, equal to the workspace's own.
 
 The highest `rust-version` any resolved package declares is 1.87
 (accesskit 0.25.1), above smithay-client-toolkit's and wayland-protocols' 1.86.
