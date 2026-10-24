@@ -7,9 +7,9 @@
 //! inline array (`#[path = "../../bounded_id.rs"]` from a crate, or
 //! `#[path = "bounded_id.rs"]` from `correlation_id.rs`), so the empty,
 //! length and character-set refusals have one definition. Included by
-//! `correlation_id.rs`, `aegis-calliope`, `aegis-compositor`, `aegis-lictor`
-//! and `aegis-minerva`. It is not a crate: a member enters every dependency
-//! closure and carries a permanent name.
+//! `correlation_id.rs`, `aegis-calliope`, `aegis-compositor`,
+//! `aegis-janus-lifecycle`, `aegis-lictor` and `aegis-minerva`. It is not a
+//! crate: a member enters every dependency closure and carries a permanent name.
 
 #![allow(dead_code)]
 
@@ -35,6 +35,28 @@ pub(crate) fn validate_bounded_len<E>(
     u8::try_from(source.len()).map_err(|_| on_too_long(source.len()))
 }
 
+/// Parses `raw` into an inline array of `N` bytes and its length, checking
+/// each byte with `is_permitted`.
+///
+/// Refuses, in this order, empty input, input longer than `N` bytes and input
+/// carrying a byte `is_permitted` rejects, each through the caller's own error.
+pub(crate) fn parse_bounded_id_with<const N: usize, E>(
+    raw: &str,
+    is_permitted: impl Fn(u8) -> bool,
+    on_empty: impl FnOnce() -> E,
+    on_too_long: impl FnOnce(usize) -> E,
+    on_charset: impl FnOnce() -> E,
+) -> Result<([u8; N], u8), E> {
+    let len = validate_bounded_len(raw, N, on_empty, on_too_long)?;
+    let source = raw.as_bytes();
+    if source.iter().copied().any(|b| !is_permitted(b)) {
+        return Err(on_charset());
+    }
+    let mut bytes = [0u8; N];
+    bytes[..source.len()].copy_from_slice(source);
+    Ok((bytes, len))
+}
+
 /// Parses `raw` into an inline array of `N` bytes and its length.
 ///
 /// Refuses, in this order, empty input, input longer than `N` bytes and input
@@ -45,14 +67,7 @@ pub(crate) fn parse_bounded_id<const N: usize, E>(
     on_too_long: impl FnOnce(usize) -> E,
     on_charset: impl FnOnce() -> E,
 ) -> Result<([u8; N], u8), E> {
-    let len = validate_bounded_len(raw, N, on_empty, on_too_long)?;
-    let source = raw.as_bytes();
-    if source.iter().copied().any(|b| !permitted(b)) {
-        return Err(on_charset());
-    }
-    let mut bytes = [0u8; N];
-    bytes[..source.len()].copy_from_slice(source);
-    Ok((bytes, len))
+    parse_bounded_id_with(raw, permitted, on_empty, on_too_long, on_charset)
 }
 
 /// A validated inline identifier of at most `N` bytes.
@@ -68,6 +83,19 @@ impl<const N: usize> InlineId<N> {
         Self { bytes, len }
     }
 
+    /// Parses `raw` using a custom permitted-byte predicate.
+    pub(crate) fn parse_with<E>(
+        raw: &str,
+        is_permitted: impl Fn(u8) -> bool,
+        on_empty: impl FnOnce() -> E,
+        on_too_long: impl FnOnce(usize) -> E,
+        on_charset: impl FnOnce() -> E,
+    ) -> Result<Self, E> {
+        let (bytes, len) =
+            parse_bounded_id_with(raw, is_permitted, on_empty, on_too_long, on_charset)?;
+        Ok(Self { bytes, len })
+    }
+
     /// Parses `raw` using the standard bounded identifier rules.
     pub(crate) fn parse<E>(
         raw: &str,
@@ -75,8 +103,7 @@ impl<const N: usize> InlineId<N> {
         on_too_long: impl FnOnce(usize) -> E,
         on_charset: impl FnOnce() -> E,
     ) -> Result<Self, E> {
-        let (bytes, len) = parse_bounded_id(raw, on_empty, on_too_long, on_charset)?;
-        Ok(Self { bytes, len })
+        Self::parse_with(raw, permitted, on_empty, on_too_long, on_charset)
     }
 
     /// Returns the validated bytes, without trailing padding.

@@ -18,6 +18,11 @@ use core::fmt;
 use crate::slot::Slot;
 use crate::verity::RootHash;
 
+#[path = "../../bounded_id.rs"]
+mod bounded_id;
+
+use bounded_id::InlineId;
+
 /// Scalar upper bound on a release version string, in bytes.
 pub const MAX_VERSION_LEN: usize = 64;
 
@@ -56,8 +61,7 @@ const fn permitted(byte: u8) -> bool {
 /// A validated release version of at most [`MAX_VERSION_LEN`] bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Version {
-    bytes: [u8; MAX_VERSION_LEN],
-    len: u8,
+    inner: InlineId<MAX_VERSION_LEN>,
 }
 
 impl Version {
@@ -69,46 +73,35 @@ impl Version {
     /// [`MAX_VERSION_LEN`] bytes, or carries a byte outside the permitted
     /// character set. The input is never truncated or sanitised.
     pub fn parse(raw: &str) -> Result<Self, VersionError> {
-        let source = raw.as_bytes();
-        if source.is_empty() {
-            return Err(VersionError::Empty);
-        }
-        if source.len() > MAX_VERSION_LEN {
-            return Err(VersionError::TooLong {
+        InlineId::parse_with(
+            raw,
+            permitted,
+            || VersionError::Empty,
+            |actual| VersionError::TooLong {
                 max: MAX_VERSION_LEN,
-                actual: source.len(),
-            });
-        }
-        let mut bytes = [0u8; MAX_VERSION_LEN];
-        for (slot, byte) in bytes.iter_mut().zip(source.iter()) {
-            if !permitted(*byte) {
-                return Err(VersionError::Charset);
-            }
-            *slot = *byte;
-        }
-        let len = u8::try_from(source.len()).map_err(|_| VersionError::TooLong {
-            max: MAX_VERSION_LEN,
-            actual: source.len(),
-        })?;
-        Ok(Self { bytes, len })
+                actual,
+            },
+            || VersionError::Charset,
+        )
+        .map(|inner| Self { inner })
     }
 
     /// Returns the validated bytes, without the trailing padding.
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
-        self.bytes.get(..usize::from(self.len)).unwrap_or(&[])
+        self.inner.as_bytes()
     }
 
     /// Returns the length in bytes.
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.len as usize
+        self.inner.len()
     }
 
     /// Returns `false`; a version is never empty by construction.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.len == 0
+        self.inner.is_empty()
     }
 
     /// Returns the version as text.
@@ -125,8 +118,7 @@ impl Version {
 
 impl fmt::Display for Version {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = self.as_str().map_err(|_| fmt::Error)?;
-        formatter.write_str(text)
+        self.inner.fmt(formatter)
     }
 }
 
