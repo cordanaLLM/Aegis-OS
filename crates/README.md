@@ -313,7 +313,7 @@ into the test common modules of `aegis-calliope`, `aegis-lictor` and
 directories, are not crates either: `contract_encoding.rs` holds the text
 field helpers (`Parsed`, `serialize_text` and `impl_str_serde!`), included by
 path into the contracts encoding modules of `aegis-calliope`, `aegis-hestia`,
-`aegis-justitia`, `aegis-lictor`, `aegis-tellus` and `aegis-vulcan`;
+`aegis-lictor`, `aegis-tellus` and `aegis-vulcan`;
 `contract_encoding_u64.rs` holds the bounded integer field visitor `Bounded`
 and its serde macro `impl_u64_bounded_serde!`, included by path into the
 contracts encoding modules of `aegis-calliope` and `aegis-lictor`.
@@ -322,7 +322,7 @@ contracts encoding modules of `aegis-calliope` and `aegis-lictor`.
 it holds the shared contract scaffolding (`Correlation`, `PayloadBuffer`,
 `define_contract_error!` and `scaffold_contract!`), included by path into the
 contracts modules of `aegis-athena`, `aegis-calliope`, `aegis-hephaestus`,
-`aegis-hestia`, `aegis-justitia`, `aegis-lictor`, `aegis-ludus`,
+`aegis-hestia`, `aegis-lictor`, `aegis-ludus`,
 `aegis-minerva`, `aegis-tellus`, `aegis-vesta` and `aegis-vulcan`.
 `contract_edge_scaffold.rs` beside it holds `scaffold_edge_contract!`, which
 declares the whole contract surface of a crate whose only own refusal is
