@@ -265,7 +265,7 @@ score.
 | 28 | M31 | P12 D76 heads-up theme: reduced motion, security states, flash limit | ready | medium | yes | no | full | M28 | - |
 | 29 | M11 | Minimal image build with artifact, signature and boot evidence | ready | medium | yes | yes | partial | M09, M24, M04 | M13, M20, M12 |
 | 30 | M20 | TPM2 attestation slice on swtpm: audit-record signing and /var unseal | blocked | medium | yes | yes | full | M11, M14 | - |
-| 31 | M33 | Consume amussis-decision in place of the in-tree decision engine | blocked | medium | no | yes | not-hardware | M02 | - |
+| 31 | M33 | Consume amussis-decision in place of the in-tree decision engine | ready | medium | no | yes | not-hardware | M02 | - |
 | 32 | M12 | GPU component paths in the booted image: DMA-BUF, VFIO, P2PDMA | blocked | large | yes | yes | partial | M25, M10, M11 | - |
 | 33 | M13 | Release signing and remote delivery (stack.md step 5) | blocked | medium | no | yes | partial | M11 | - |
 
@@ -4505,37 +4505,36 @@ Epics:
 
 ### M33 - Consume amussis-decision in place of the in-tree decision engine
 
-Rank 31. State: blocked. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
+Rank 31. State: ready. Cost: medium. Owner repository: cordanaLLM/Aegis-OS.
 Needs hardware: no. Needs external contract: yes. Reference profile: not-hardware.
 Blocked by: M02. Unblocks: nothing.
-Waits outside: amussis v0.1.0.
 
 The move from the in-tree decision engine to the shared amussis-decision crate,
-planned on 2026-10-17 from issue #225. It waits on the amussis v0.1.0 release,
-which external_blockers records and make readiness prints;
-docs/integration/stack.md is not changed until that release pins the contract.
+planned on 2026-10-17 from issue #225. The release it waited on is out: amussis
+v0.1.0 (2026-10-11) and v0.2.0 (2026-10-16). ADR-0006 pins amussis-decision
+exactly at 0.2.0 from crates.io, so no external blocker remains.
 
 Exit criteria:
 
-- A recorded decision adopts amussis-decision at the released v0.1.0 tag, read
-  back from the amussis repository, and docs/integration/stack.md names amussis
-  as a producer in the same change.
+- ADR-0006 adopts amussis-decision at the crates.io release 0.2.0, pinned
+  exactly as =0.2.0; docs/integration/stack.md names amussis as a producer in
+  the change that adds that pin.
 - An adapter crate maps P06's decision interface onto amussis-decision, the M14
   consumer contracts keep passing unchanged, and the in-tree engine is removed
   only after they pass against the adapter.
 - Positive, negative and boundary cases for the adapter run inside make verify-
   all (HISS-15).
 
-Cheapest exit: Pin amussis v0.1.0, route one M14 consumer contract test through
-an adapter onto amussis-decision, and keep it green.
+Cheapest exit: Pin amussis-decision =0.2.0, route one M14 consumer contract test
+through an adapter onto amussis-decision, and keep it green.
 
 Epics:
 
 - **E33-1 amussis-decision adapter and removal of the in-tree engine**.
   Requirements: none. Acceptance: Positive: the M14 consumer contract tests pass
-  through the adapter. Negative: an amussis version other than the pinned tag is
-  refused. Boundary: the in-tree engine's removal leaves every contract test
-  passing.
+  through the adapter. Negative: an amussis-decision version other than the
+  pinned =0.2.0 is refused. Boundary: the in-tree engine's removal leaves every
+  contract test passing.
 
 ### M13 - Release signing and remote delivery (stack.md step 5)
 
