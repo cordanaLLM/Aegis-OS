@@ -14,6 +14,7 @@ records are append-only).
 | [0004](0004-native-p05-shell-on-gpui.md) | 2026-09-29 | Build the whole P05 shell natively in Rust on gpui | Accepted |
 | [0005](0005-dogfood-sanitizer-export.md) | 2026-10-17 | Dogfood findings reach public repositories through one allow-list export | Accepted |
 | [0006](0006-justitia-consumes-amussis-and-tornus.md) | 2026-10-22 | aegis-justitia consumes amussis-decision; tornus clones stay in Aegis | Accepted |
+| [0007](0007-test-support-stays-duplicated.md) | 2026-10-24 | Test support stays duplicated across workspaces; delete public_surface_triples | Accepted |
 
 An accepted ADR is not edited. ADR-0004 supersedes decision 3 of ADR-0003 in
 part, and ADR-0003 stays as it was accepted.

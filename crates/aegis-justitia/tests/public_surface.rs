@@ -15,9 +15,10 @@
 //! are findings, and this file turns either into a failed gate.
 //!
 //! What the rule does not claim: a name that appears is not thereby proved
-//! correct. The triples that exercise these items live in the other test files,
-//! `public_surface_triples.rs` included. This sweep only guarantees that none
-//! of them is forgotten.
+//! correct. The triples that exercise these items live in the other test files.
+//! Re-exported amussis items are covered by the upstream suite at the pinned
+//! version =0.2.0; the sweep names keyword-declared items only. This sweep only
+//! guarantees that none of them is forgotten.
 //!
 //! This file excludes itself from the scanned test sources. A sweep that could
 //! read its own expectation list would pass by naming the names it checks.

@@ -19,11 +19,10 @@ use aegis_justitia::{
     CheckerId, CheckerSet, ContractError, Correlation, DIGEST_LEN, DecisionRequest,
     DecisionRequestVersion, Digest32, EngineConfig, EventId, FixedClock, HashAlgorithm, Identity,
     IdentityError, InMemorySink, IntentId, IntentSpec, IoDeadline, JustitiaEngine, JustitiaError,
-    KillswitchState, MAX_CONTRACT_PAYLOAD_BYTES, MakerId, OversightClass, OversightSignature,
-    PayloadBuffer, RecordDraft, RecordPrincipals, RecordSigner, RecordStatus, RecordSubject,
-    RequestId, RequiredApproval, RiskLevel, RiskTier, SchemaId, Sequence, Sha256Hasher, SignError,
-    Signature, SignatureAlgorithm, SignedAuditRecord, SignerBinding, SignerKeyId, TargetResource,
-    Ttl, UnixSeconds,
+    MAX_CONTRACT_PAYLOAD_BYTES, MakerId, OversightClass, OversightSignature, PayloadBuffer,
+    RecordPrincipals, RecordSigner, RecordStatus, RequestId, RequiredApproval, RiskLevel, RiskTier,
+    SchemaId, Sequence, Sha256Hasher, SignError, Signature, SignatureAlgorithm, SignedAuditRecord,
+    SignerBinding, SignerKeyId, TargetResource, Ttl, UnixSeconds,
 };
 
 /// Anything that can go wrong building or reading a fixture.
@@ -223,30 +222,6 @@ pub fn named_for(status: RecordStatus) -> Result<Option<RecordPrincipals>, Justi
         maker: MakerId::parse("maker-01")?,
         checkers,
     }))
-}
-
-/// Builds an approved record draft for `id` at `at` seconds.
-///
-/// # Errors
-///
-/// Propagates an intent identifier parse failure.
-pub fn record_draft(id: &str, at: u64) -> Result<RecordDraft, JustitiaError> {
-    Ok(RecordDraft {
-        subject: Some(RecordSubject {
-            intent_id: IntentId::parse(id)?,
-            agent: fixture_agent()?,
-            action_type: ActionType::FileModification,
-        }),
-        principals: Some(RecordPrincipals {
-            level: RiskLevel::LOWEST,
-            maker: fixture_maker()?,
-            checkers: None,
-        }),
-        status: RecordStatus::Approved,
-        block_reason: None,
-        killswitch: KillswitchState::Armed,
-        at: UnixSeconds::new(at),
-    })
 }
 
 /// Asserts that a payload one byte over [`MAX_CONTRACT_PAYLOAD_BYTES`] is refused
