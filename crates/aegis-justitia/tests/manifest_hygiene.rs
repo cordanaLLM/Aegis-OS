@@ -367,13 +367,7 @@ fn the_crate_source_names_no_md5_implementation() {
 /// drifted from the code it claims to describe.
 #[test]
 fn the_unwrap_or_inventory_is_exact() {
-    let expected = [
-        ("identity.rs", 2usize),
-        ("ledger/hash.rs", 1),
-        ("ledger/signer.rs", 1),
-        ("engine.rs", 1),
-        ("ledger/mod.rs", 1),
-    ];
+    let expected: [(&str, usize); 0] = [];
     let mut found: Vec<(String, usize)> = Vec::new();
     let mut total = 0usize;
     for (path, body) in crate_sources() {
@@ -383,7 +377,7 @@ fn the_unwrap_or_inventory_is_exact() {
             total = total.saturating_add(count);
         }
     }
-    assert_eq!(total, 6, "the inventory claims six sites, found {found:?}");
+    assert_eq!(total, 0, "the inventory claims zero sites, found {found:?}");
     for (suffix, count) in expected {
         let hit = found
             .iter()

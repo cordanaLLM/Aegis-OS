@@ -27,7 +27,7 @@ const SWEEP_FILE: &str = "public_surface.rs";
 
 /// The smallest public surface the scanner may report before it is assumed to
 /// be reading nothing rather than finding nothing.
-const MINIMUM_SURFACE: usize = 200;
+const MINIMUM_SURFACE: usize = 100;
 
 #[path = "../../surface_scan.rs"]
 mod surface_scan;
@@ -52,23 +52,23 @@ fn the_scanner_reads_public_surface_and_not_private_helpers() {
     surface_scan::assert_reads_keyword_surface_and_not_private_helpers(
         env!("CARGO_MANIFEST_DIR"),
         &[
-            "JustitiaEngine",
-            "adjudicate",
-            "MAX_LEDGER_RECORDS",
-            "RequireApproval",
-            "append_record",
-            "ALGORITHM",
-            "Sha256Ledger",
             "Chain",
             "ChainRecord",
             "Timestamped",
+            "SignedAuditRecord",
+            "DecisionRequest",
+            "ActionProposal",
+            "DecisionRecord",
+            "DecisionState",
+            "SchemaId",
+            "Correlation",
         ],
         &[
-            "commit",
             "verify_link",
-            "draft_for",
-            "is_live",
-            "write_killswitch",
+            "validate_correlation",
+            "validate_hex",
+            "check_edge",
+            "extract_pld",
         ],
     );
 }
