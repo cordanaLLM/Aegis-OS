@@ -373,27 +373,6 @@ pub fn assert_no_aborting_constructs(manifest_dir: &str) -> Result<(), Box<dyn s
     Ok(())
 }
 
-/// Positive assertion: the sweep reads the crate's sources from `manifest_dir`.
-#[track_caller]
-pub fn assert_sweep_reads_crate_sources(
-    manifest_dir: &str,
-    min_sources: usize,
-    expected_files: &[&str],
-) -> Result<(), Box<dyn std::error::Error>> {
-    let root = Path::new(manifest_dir).join("src");
-    assert_sweep_reads_sources(&root, min_sources, expected_files)
-}
-
-/// Negative assertion: no watched identifier appears in the crate's library code.
-#[track_caller]
-pub fn assert_no_watched_code_in_crate(
-    manifest_dir: &str,
-    watched: &[&str],
-) -> Result<(), Box<dyn std::error::Error>> {
-    let root = Path::new(manifest_dir).join("src");
-    assert_no_watched_code(&root, watched)
-}
-
 /// Emits standard tests verifying that scaffold assertions are refusals, not panics.
 #[allow(unused_macros)]
 macro_rules! define_scaffold_sweep_tests {

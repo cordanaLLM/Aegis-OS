@@ -231,6 +231,30 @@ pub(crate) fn open_decoder(
     }
 }
 
+/// Prepares the decoder on `presenter`'s main device and runs `action` if available.
+pub(crate) fn run_with_decoder(
+    report: &mut Report<'_>,
+    presenter: &mut Presenter,
+    action: impl FnOnce(&mut Report<'_>, &VaDevice, &mut Presenter) -> Result<(), SliceError>,
+) -> Result<Option<String>, SliceError> {
+    presenter.ack()?;
+    let main_device = presenter.main_device().ok_or(PresentError::Feedback {
+        what: "no main device",
+    })?;
+    let node = decode_node(report, main_device)?;
+    if !INTEL_DRIVERS.contains(&node.driver.as_str()) {
+        return Ok(Some(format!(
+            "the compositor's main device {} is driven by {}, not i915 or xe, so the iHD decode the reference profile has is absent",
+            node.name, node.driver
+        )));
+    }
+    let Some(decoder) = open_decoder(report, &node)? else {
+        return Ok(None);
+    };
+    action(report, &decoder, presenter)?;
+    Ok(None)
+}
+
 /// The reference MPEG-2 frame's CRC-32 case.
 fn reference_case(report: &mut Report<'_>, decoder: &VaDevice) -> Result<(), SliceError> {
     match crate::decode::decode_reference(decoder, READY_WAIT) {
@@ -318,18 +342,7 @@ struct Loop<'a> {
 
 /// `m27-fixture-NN`, written into a stack buffer.
 fn correlation(number: usize) -> Result<CorrelationId, DescriptorError> {
-    let mut text = *b"m27-fixture-00";
-    let tens = number.checked_div(10).and_then(|tens| tens.checked_rem(10));
-    let ones = number.checked_rem(10);
-    let tens = tens.and_then(|digit| u8::try_from(digit).ok()).unwrap_or(0);
-    let ones = ones.and_then(|digit| u8::try_from(digit).ok()).unwrap_or(0);
-    if let (Some(high), Some(low)) = (text.get(12).copied(), text.get(13).copied()) {
-        let digits = [high.saturating_add(tens), low.saturating_add(ones)];
-        if let Some(slot) = text.get_mut(12..14) {
-            slot.copy_from_slice(&digits);
-        }
-    }
-    CorrelationId::parse(&text)
+    CorrelationId::from_template_number(b"m27-fixture-00", number)
 }
 
 /// The descriptor for one exported frame, its modifier unchanged.
@@ -643,24 +656,11 @@ fn positive(
     presenter: &mut Presenter,
 ) -> Result<Option<String>, SliceError> {
     attach_before_ack_case(report, presenter)?;
-    presenter.ack()?;
-    let main_device = presenter.main_device().ok_or(PresentError::Feedback {
-        what: "no main device",
-    })?;
-    let node = decode_node(report, main_device)?;
-    if !INTEL_DRIVERS.contains(&node.driver.as_str()) {
-        return Ok(Some(format!(
-            "the compositor's main device {} is driven by {}, not i915 or xe, so the iHD decode the reference profile has is absent",
-            node.name, node.driver
-        )));
-    }
-    let Some(decoder) = open_decoder(report, &node)? else {
-        return Ok(None);
-    };
-    reference_case(report, &decoder)?;
-    present_fixture(report, &decoder, presenter)?;
-    unanswered_presentation_case(report, presenter)?;
-    Ok(None)
+    run_with_decoder(report, presenter, |report, decoder, presenter| {
+        reference_case(report, decoder)?;
+        present_fixture(report, decoder, presenter)?;
+        unanswered_presentation_case(report, presenter)
+    })
 }
 
 /// The banner header line for M27.

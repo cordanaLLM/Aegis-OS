@@ -442,9 +442,57 @@ struct FrameIn {
     fds: Option<IgnoredAny>,
 }
 
+/// The unpacked members of a request envelope before validation.
+pub(crate) struct EnvelopeParts<P> {
+    pub(crate) jsonrpc: Option<Token<8>>,
+    pub(crate) method: Option<Token<32>>,
+    pub(crate) params: Option<Object<P>>,
+    pub(crate) id: Option<u64>,
+}
+
+/// A JSON-RPC 2.0 request envelope.
+pub(crate) trait Envelope: Sized + serde::de::DeserializeOwned {
+    type Params;
+
+    fn parts(self) -> EnvelopeParts<Self::Params>;
+
+    fn names_fd(&self) -> bool {
+        false
+    }
+}
+
+/// A request envelope without file-descriptor fields.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct RequestIn {
+#[serde(bound(deserialize = "P: Deserialize<'de>"))]
+pub(crate) struct PlainEnvelope<P> {
+    #[serde(default)]
+    jsonrpc: Option<Token<8>>,
+    #[serde(default)]
+    method: Option<Token<32>>,
+    #[serde(default)]
+    params: Option<Object<P>>,
+    #[serde(default)]
+    id: Option<u64>,
+}
+
+impl<P: serde::de::DeserializeOwned> Envelope for PlainEnvelope<P> {
+    type Params = P;
+
+    fn parts(self) -> EnvelopeParts<P> {
+        EnvelopeParts {
+            jsonrpc: self.jsonrpc,
+            method: self.method,
+            params: self.params,
+            id: self.id,
+        }
+    }
+}
+
+/// The frame request envelope, detecting top-level file-descriptor fields.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FrameEnvelope {
     #[serde(default)]
     jsonrpc: Option<Token<8>>,
     #[serde(default)]
@@ -457,6 +505,28 @@ struct RequestIn {
     fd: Option<IgnoredAny>,
     #[serde(default)]
     fds: Option<IgnoredAny>,
+}
+
+impl Envelope for FrameEnvelope {
+    type Params = FrameIn;
+
+    fn parts(self) -> EnvelopeParts<FrameIn> {
+        EnvelopeParts {
+            jsonrpc: self.jsonrpc,
+            method: self.method,
+            params: self.params,
+            id: self.id,
+        }
+    }
+
+    fn names_fd(&self) -> bool {
+        self.fd.is_some()
+            || self.fds.is_some()
+            || self
+                .params
+                .as_ref()
+                .is_some_and(|Object(frame)| frame.names_an_fd())
+    }
 }
 
 impl FrameIn {
@@ -507,39 +577,6 @@ pub fn body(message: &[u8]) -> Result<&[u8], LineError> {
     Ok(text)
 }
 
-/// Decodes one request line.
-///
-/// # Errors
-///
-/// Returns the [`LineError`] naming why the line was refused; see the module
-/// documentation for the order the checks run in.
-pub fn decode_request(message: &[u8]) -> Result<Request, LineError> {
-    let text = body(message)?;
-    let Object(raw): Object<RequestIn> =
-        serde_json::from_slice(text).map_err(|error| LineError::from(&error))?;
-    if !raw.jsonrpc.is_some_and(|token| token.is(JSONRPC_VERSION)) {
-        return Err(LineError::Version);
-    }
-    let fd_named = raw.fd.is_some()
-        || raw.fds.is_some()
-        || raw
-            .params
-            .as_ref()
-            .is_some_and(|Object(frame)| frame.names_an_fd());
-    if fd_named {
-        return Err(LineError::FdNumber);
-    }
-    if !raw.method.is_some_and(|token| token.is(METHOD)) {
-        return Err(LineError::Method);
-    }
-    let id = raw.id.ok_or(LineError::Id)?;
-    let Object(params) = raw.params.ok_or(LineError::Params)?;
-    Ok(Request {
-        id,
-        frame: params.into_frame()?,
-    })
-}
-
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ErrorIn {
@@ -558,6 +595,44 @@ struct ResponseIn {
     result: Option<Token<16>>,
     #[serde(default)]
     error: Option<Object<ErrorIn>>,
+}
+
+/// Decodes one JSON-RPC request envelope and returns its id and parameters.
+pub(crate) fn decode_request_envelope<E: Envelope>(
+    message: &[u8],
+    expected_method: &str,
+) -> Result<(u64, E::Params), LineError> {
+    let text = body(message)?;
+    let Object(raw): Object<E> =
+        serde_json::from_slice(text).map_err(|error| LineError::from(&error))?;
+    let fd_named = raw.names_fd();
+    let parts = raw.parts();
+    if !parts.jsonrpc.is_some_and(|token| token.is(JSONRPC_VERSION)) {
+        return Err(LineError::Version);
+    }
+    if fd_named {
+        return Err(LineError::FdNumber);
+    }
+    if !parts.method.is_some_and(|token| token.is(expected_method)) {
+        return Err(LineError::Method);
+    }
+    let id = parts.id.ok_or(LineError::Id)?;
+    let Object(params) = parts.params.ok_or(LineError::Params)?;
+    Ok((id, params))
+}
+
+/// Decodes one request line.
+///
+/// # Errors
+///
+/// Returns the [`LineError`] naming why the line was refused; see the module
+/// documentation for the order the checks run in.
+pub fn decode_request(message: &[u8]) -> Result<Request, LineError> {
+    let (id, frame) = decode_request_envelope::<FrameEnvelope>(message, METHOD)?;
+    Ok(Request {
+        id,
+        frame: frame.into_frame()?,
+    })
 }
 
 /// Decodes one Response line.

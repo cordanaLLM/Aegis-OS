@@ -118,18 +118,12 @@ fn ten_items_fails_seeded_reachable() {
     assert!(res.why.contains("10 of 1000"), "why was: {}", res.why);
 }
 
-/// Negative: hidden child carrying showing fails `atspi/hidden-subtree-hidden`.
-#[test]
-fn hidden_child_showing_fails() {
+fn assert_showing_panel_fails(path: Vec<usize>, name: &str) {
     let mut tree = build_sound_tree(SEEDED_NODES);
-    let child_name = HIDDEN_CHILD_LABELS
-        .first()
-        .copied()
-        .unwrap_or("Hidden child 1");
     tree.push(ReadNode {
-        path: vec![0, 3, 0],
+        path,
         role: "panel".to_owned(),
-        name: child_name.to_owned(),
+        name: name.to_owned(),
         states: vec!["showing".to_owned()],
         actions: Vec::new(),
         extents: None,
@@ -138,20 +132,20 @@ fn hidden_child_showing_fails() {
     assert!(!res.passed);
 }
 
+/// Negative: hidden child carrying showing fails `atspi/hidden-subtree-hidden`.
+#[test]
+fn hidden_child_showing_fails() {
+    let child_name = HIDDEN_CHILD_LABELS
+        .first()
+        .copied()
+        .unwrap_or("Hidden child 1");
+    assert_showing_panel_fails(vec![0, 3, 0], child_name);
+}
+
 /// Negative: hidden parent carrying showing fails `atspi/hidden-subtree-hidden`.
 #[test]
 fn hidden_parent_showing_fails() {
-    let mut tree = build_sound_tree(SEEDED_NODES);
-    tree.push(ReadNode {
-        path: vec![0, 3],
-        role: "panel".to_owned(),
-        name: HIDDEN_LABEL.to_owned(),
-        states: vec!["showing".to_owned()],
-        actions: Vec::new(),
-        extents: None,
-    });
-    let res = atspi_hidden_subtree_hidden(&tree);
-    assert!(!res.passed);
+    assert_showing_panel_fails(vec![0, 3], HIDDEN_LABEL);
 }
 
 /// Negative: button without "click" action fails `atspi/button-exposed`.

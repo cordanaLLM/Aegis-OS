@@ -63,8 +63,8 @@ const WATCHED: [&str; 22] = [
 /// Positive: the sweep reads the crate's sources, and reads several of them.
 #[test]
 fn the_sweep_reads_the_whole_crate() -> Fallible {
-    common::assert_sweep_reads_crate_sources(
-        env!("CARGO_MANIFEST_DIR"),
+    common::assert_sweep_reads_sources(
+        &common::source_root(),
         12,
         &["lib.rs", "expert.rs", "chain.rs"],
     )
@@ -75,7 +75,7 @@ fn the_sweep_reads_the_whole_crate() -> Fallible {
 /// Negative: no watched identifier appears in library code.
 #[test]
 fn no_watched_identifier_appears_in_library_code() -> Fallible {
-    common::assert_no_watched_code_in_crate(env!("CARGO_MANIFEST_DIR"), &WATCHED)
+    common::assert_no_watched_code(&common::source_root(), &WATCHED)
 }
 
 /// Negative: the sweep would notice one, so a pass means something.

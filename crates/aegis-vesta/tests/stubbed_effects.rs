@@ -64,17 +64,11 @@ const NOT_WATCHED: [&str; 2] = ["firecracker", "qemu-microvm"];
 /// Positive: the sweep reads the crate's sources, and reads several of them.
 #[test]
 fn the_sweep_reads_the_whole_crate() -> Fallible {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let sources = common::rust_sources(&root)?;
-    assert!(
-        sources.len() >= 9,
-        "the sweep read only {} sources; it is reading nothing, not finding nothing",
-        sources.len()
-    );
-    assert!(sources.iter().any(|(name, _)| name == "lib.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "decision.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "capsule_request.rs"));
-    Ok(())
+    common::assert_sweep_reads_sources(
+        &common::source_root(),
+        9,
+        &["lib.rs", "decision.rs", "capsule_request.rs"],
+    )
 }
 
 // --- Negative -------------------------------------------------------------
@@ -82,13 +76,7 @@ fn the_sweep_reads_the_whole_crate() -> Fallible {
 /// Negative: no watched identifier appears in library code.
 #[test]
 fn no_watched_identifier_appears_in_library_code() -> Fallible {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let found = common::scan_sources(&root, &WATCHED)?;
-    assert!(
-        found.is_empty(),
-        "effect identifiers in library code: {found:?}"
-    );
-    Ok(())
+    common::assert_no_watched_code(&common::source_root(), &WATCHED)
 }
 
 /// Negative: the sweep would notice one, so a pass means something.
@@ -138,8 +126,7 @@ fn the_monitor_tags_are_deliberately_not_watched() -> Fallible {
             "{tag} is data the payloads carry, not an effect"
         );
     }
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let found = common::scan_sources(&root, &NOT_WATCHED)?;
+    let found = common::scan_sources(&common::source_root(), &NOT_WATCHED)?;
     assert!(
         found.is_empty(),
         "monitor tags re-declared here instead of in saeptum-capsule: {found:?}"
