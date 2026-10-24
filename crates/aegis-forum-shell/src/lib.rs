@@ -18,6 +18,7 @@
 //! | [`endpoint`] | `SYNC_DESKTOP_SHELL`'s endpoint and per-hop target, recorded and not asserted | D32 |
 //! | [`canvas`] | the node registry, the camera and the `QuadTree` cull index | D74 |
 //! | [`focus`], [`walk`] | the keyboard model and the keyboard-only walk | REQ-P05-09, REQ-P05-10 |
+//! | [`mod@pointer`] | pointer alternatives, activation tracker and target size | REQ-P05-14 |
 //! | [`a11y`] | the `accesskit::TreeUpdate` export and the tree check | REQ-P05-11, REQ-P12-06 |
 //! | [`platform`] | the compositor link and the D-Bus interfaces, as traits | REQ-P05-05 |
 //! | [`tokens`] | the P05/P12 design-token edge with its direction annotated | D05, REQ-GRAPH-01 |
@@ -48,6 +49,7 @@ pub mod focus;
 pub mod jsonrpc;
 pub mod lifecycle;
 pub mod platform;
+pub mod pointer;
 pub mod processes;
 pub mod session;
 pub mod state;

@@ -22,6 +22,7 @@ use thiserror::Error;
 
 use crate::canvas::registry::{ActionKind, Binding, NodeKey, TabPolicy};
 use crate::canvas::{Canvas, CanvasError, Target};
+use crate::pointer::{GRID_STEP, RESIZE_STEP, ROTATE_STEP_DEGREES, ZOOM_FACTOR};
 
 /// The shell regions, in Tab order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -92,7 +93,7 @@ pub enum Key {
     Char(char),
 }
 
-/// A global command a single-character shortcut can run.
+/// A command a single-character shortcut can run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Command {
     /// Fit every node into the viewport.
@@ -101,6 +102,30 @@ pub enum Command {
     ZoomIn,
     /// Halve the camera scale.
     ZoomOut,
+    /// Pan the camera left by one grid step.
+    PanLeft,
+    /// Pan the camera right by one grid step.
+    PanRight,
+    /// Pan the camera up by one grid step.
+    PanUp,
+    /// Pan the camera down by one grid step.
+    PanDown,
+    /// Move the focused node left by one grid step.
+    MoveLeft,
+    /// Move the focused node right by one grid step.
+    MoveRight,
+    /// Move the focused node up by one grid step.
+    MoveUp,
+    /// Move the focused node down by one grid step.
+    MoveDown,
+    /// Grow the focused node extents by one resize step.
+    ResizeGrow,
+    /// Shrink the focused node extents by one resize step.
+    ResizeShrink,
+    /// Rotate the focused handle clockwise by one step.
+    RotateCw,
+    /// Rotate the focused handle counter-clockwise by one step.
+    RotateCcw,
 }
 
 /// What one key press did.
@@ -134,16 +159,28 @@ pub enum FocusError {
 /// remapped (REQ-P05-09, WCAG 2.2 SC 2.1.4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Shortcuts {
-    entries: [(char, Command, bool); 3],
+    entries: [(Option<char>, Command, bool); 15],
 }
 
 impl Default for Shortcuts {
     fn default() -> Self {
         Self {
             entries: [
-                ('f', Command::FitView, true),
-                ('i', Command::ZoomIn, true),
-                ('o', Command::ZoomOut, true),
+                (Some('f'), Command::FitView, true),
+                (Some('i'), Command::ZoomIn, true),
+                (Some('o'), Command::ZoomOut, true),
+                (Some('h'), Command::PanLeft, true),
+                (Some('l'), Command::PanRight, true),
+                (Some('k'), Command::PanUp, true),
+                (Some('j'), Command::PanDown, true),
+                (Some('a'), Command::MoveLeft, true),
+                (Some('d'), Command::MoveRight, true),
+                (Some('w'), Command::MoveUp, true),
+                (Some('s'), Command::MoveDown, true),
+                (Some('g'), Command::ResizeGrow, true),
+                (Some('p'), Command::ResizeShrink, true),
+                (Some('r'), Command::RotateCw, true),
+                (Some('c'), Command::RotateCcw, true),
             ],
         }
     }
@@ -155,7 +192,7 @@ impl Shortcuts {
     pub fn lookup(&self, letter: char) -> Option<Command> {
         self.entries
             .iter()
-            .find(|(bound, _, enabled)| *enabled && *bound == letter)
+            .find(|(bound, _, enabled)| *enabled && *bound == Some(letter))
             .map(|(_, command, _)| *command)
     }
 
@@ -165,7 +202,7 @@ impl Shortcuts {
         self.entries
             .iter()
             .find(|(_, bound, _)| *bound == command)
-            .map(|(letter, _, enabled)| (*letter, *enabled))
+            .and_then(|(letter, _, enabled)| letter.map(|c| (c, *enabled)))
     }
 
     /// Turns `command`'s shortcut on or off.
@@ -187,16 +224,25 @@ impl Shortcuts {
         let taken = self
             .entries
             .iter()
-            .any(|(bound, other, _)| *bound == letter && *other != command);
+            .any(|(bound, other, _)| *bound == Some(letter) && *other != command);
         if !letter.is_ascii_alphabetic() || taken {
             return Err(FocusError::Letter { letter });
         }
         for entry in &mut self.entries {
             if entry.1 == command {
-                entry.0 = letter;
+                entry.0 = Some(letter);
             }
         }
         Ok(())
+    }
+
+    /// Unbinds any shortcut for `command`.
+    pub fn unbind(&mut self, command: Command) {
+        for entry in &mut self.entries {
+            if entry.1 == command {
+                entry.0 = None;
+            }
+        }
     }
 }
 
@@ -242,6 +288,26 @@ impl FocusModel {
         &mut self.shortcuts
     }
 
+    /// Focuses `target` directly, moving the camera until its node is in view
+    /// (REQ-P05-09). Returns whether the camera moved.
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`Canvas::reveal`].
+    pub fn focus_target(
+        &mut self,
+        canvas: &mut Canvas,
+        target: Target,
+    ) -> Result<bool, FocusError> {
+        let key = match target {
+            Target::Node(k) | Target::Level(k, _) => k,
+        };
+        let moved = canvas.reveal(key)?;
+        self.focus = Focus::Target(target);
+        self.last = Some(key);
+        Ok(moved)
+    }
+
     /// Focuses the node under `key` directly, as an assistive technology's
     /// focus request would, and moves the camera until it is in view
     /// (REQ-P05-09). Returns whether the camera moved.
@@ -250,10 +316,7 @@ impl FocusModel {
     ///
     /// Propagates [`Canvas::reveal`].
     pub fn focus_node(&mut self, canvas: &mut Canvas, key: NodeKey) -> Result<bool, FocusError> {
-        let moved = canvas.reveal(key)?;
-        self.focus = Focus::Target(Target::Node(key));
-        self.last = Some(key);
-        Ok(moved)
+        self.focus_target(canvas, Target::Node(key))
     }
 
     /// Handles one key press.
@@ -300,6 +363,7 @@ impl FocusModel {
         match key {
             Key::Tab => self.enter(canvas, region.next()),
             Key::ShiftTab => self.enter(canvas, region.previous()),
+            Key::Char(letter) => self.shortcut(canvas, letter),
             _ => Ok(KeyOutcome::Ignored),
         }
     }
@@ -317,7 +381,7 @@ impl FocusModel {
             Key::Next | Key::Previous => self.step(canvas, node, key == Key::Next),
             Key::Enter => Ok(self.open(canvas, node, 0)),
             Key::Space | Key::Ctrl(_) => invoke(canvas, Target::Node(node), key),
-            Key::Char(letter) => Ok(self.shortcut(canvas, letter)),
+            Key::Char(letter) => self.shortcut(canvas, letter),
             Key::Escape => Ok(KeyOutcome::Ignored),
         }
     }
@@ -341,7 +405,8 @@ impl FocusModel {
             Key::Enter => Ok(self.open(canvas, node, depth.saturating_add(1))),
             Key::Tab | Key::ShiftTab => self.leave_level(canvas, node, depth, key),
             Key::Space | Key::Ctrl(_) => invoke(canvas, Target::Level(node, depth), key),
-            Key::Next | Key::Previous | Key::Char(_) => Ok(KeyOutcome::Ignored),
+            Key::Char(letter) => self.shortcut(canvas, letter),
+            Key::Next | Key::Previous => Ok(KeyOutcome::Ignored),
         }
     }
 
@@ -409,9 +474,9 @@ impl FocusModel {
     }
 
     /// Runs the command an enabled shortcut on `letter` names, if any.
-    fn shortcut(&self, canvas: &mut Canvas, letter: char) -> KeyOutcome {
+    fn shortcut(&self, canvas: &mut Canvas, letter: char) -> Result<KeyOutcome, FocusError> {
         let Some(command) = self.shortcuts.lookup(letter) else {
-            return KeyOutcome::Ignored;
+            return Ok(KeyOutcome::Ignored);
         };
         match command {
             Command::FitView => {
@@ -419,10 +484,69 @@ impl FocusModel {
                     canvas.camera_mut().fit(&bounds);
                 }
             }
-            Command::ZoomIn => canvas.camera_mut().zoom_by(2.0),
-            Command::ZoomOut => canvas.camera_mut().zoom_by(0.5),
+            Command::ZoomIn => canvas.camera_mut().zoom_by(ZOOM_FACTOR),
+            Command::ZoomOut => canvas.camera_mut().zoom_by(1.0 / ZOOM_FACTOR),
+            Command::PanLeft => canvas.pan(-GRID_STEP, 0.0),
+            Command::PanRight => canvas.pan(GRID_STEP, 0.0),
+            Command::PanUp => canvas.pan(0.0, -GRID_STEP),
+            Command::PanDown => canvas.pan(0.0, GRID_STEP),
+            Command::MoveLeft => return self.shortcut_move(canvas, command, -GRID_STEP, 0.0),
+            Command::MoveRight => return self.shortcut_move(canvas, command, GRID_STEP, 0.0),
+            Command::MoveUp => return self.shortcut_move(canvas, command, 0.0, -GRID_STEP),
+            Command::MoveDown => return self.shortcut_move(canvas, command, 0.0, GRID_STEP),
+            Command::ResizeGrow => {
+                return self.shortcut_resize(canvas, command, RESIZE_STEP, RESIZE_STEP);
+            }
+            Command::ResizeShrink => {
+                return self.shortcut_resize(canvas, command, -RESIZE_STEP, -RESIZE_STEP);
+            }
+            Command::RotateCw => return self.shortcut_rotate(canvas, command, ROTATE_STEP_DEGREES),
+            Command::RotateCcw => {
+                return self.shortcut_rotate(canvas, command, -ROTATE_STEP_DEGREES);
+            }
         }
-        KeyOutcome::Command(command)
+        Ok(KeyOutcome::Command(command))
+    }
+
+    fn shortcut_move(
+        &self,
+        canvas: &mut Canvas,
+        command: Command,
+        dx: f64,
+        dy: f64,
+    ) -> Result<KeyOutcome, FocusError> {
+        let Focus::Target(Target::Node(key)) = self.focus else {
+            return Ok(KeyOutcome::Ignored);
+        };
+        canvas.move_node(key, dx, dy)?;
+        Ok(KeyOutcome::Command(command))
+    }
+
+    fn shortcut_resize(
+        &self,
+        canvas: &mut Canvas,
+        command: Command,
+        dw: f64,
+        dh: f64,
+    ) -> Result<KeyOutcome, FocusError> {
+        let Focus::Target(Target::Node(key)) = self.focus else {
+            return Ok(KeyOutcome::Ignored);
+        };
+        canvas.resize_node(key, dw, dh)?;
+        Ok(KeyOutcome::Command(command))
+    }
+
+    fn shortcut_rotate(
+        &self,
+        canvas: &mut Canvas,
+        command: Command,
+        delta: i16,
+    ) -> Result<KeyOutcome, FocusError> {
+        let Focus::Target(target) = self.focus else {
+            return Ok(KeyOutcome::Ignored);
+        };
+        canvas.rotate_handle(target, delta)?;
+        Ok(KeyOutcome::Command(command))
     }
 }
 
