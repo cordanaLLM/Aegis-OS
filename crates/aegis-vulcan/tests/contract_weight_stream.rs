@@ -11,6 +11,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_vulcan::{
     ContractError, EdgeId, MAX_CONTRACT_PAYLOAD_BYTES, PayloadBuffer, SchemaId,
     WeightStreamDescriptor,
@@ -182,14 +185,9 @@ fn the_wire_block_count_bound_is_exact() -> Fallible {
 /// Boundary: a payload past the byte bound is refused before it is parsed.
 #[test]
 fn a_payload_past_the_byte_bound_is_refused_unparsed() -> Fallible {
-    let padding = "x".repeat(MAX_CONTRACT_PAYLOAD_BYTES.saturating_add(1));
-    match refusal(&padding)? {
-        ContractError::PayloadTooLong { max, correlation } => {
-            assert_eq!(max, MAX_CONTRACT_PAYLOAD_BYTES);
-            assert_eq!(correlation.id(), None);
-            assert!(correlation.to_string().ends_with("[uncorrelated]"));
-        }
-        other => return Err(format!("expected a length refusal, got {other:?}").into()),
-    }
-    Ok(())
+    test_assertions::assert_unparsed_payload_too_long!(
+        MAX_CONTRACT_PAYLOAD_BYTES,
+        refusal,
+        ContractError,
+    )
 }

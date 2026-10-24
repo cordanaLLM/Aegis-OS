@@ -15,6 +15,9 @@ use std::path::{Path, PathBuf};
 #[path = "../../dependency_closure.rs"]
 mod dependency_closure;
 
+#[path = "../../manifest_hygiene.rs"]
+mod manifest_hygiene;
+
 /// Returns the workspace root, two directories above this crate's manifest.
 fn workspace_root() -> Option<PathBuf> {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -103,31 +106,20 @@ fn the_member_list_is_written_out_and_not_globbed() {
 /// device, driver and asynchronous-runtime crates a real P03 would need.
 #[test]
 fn the_crate_manifest_declares_no_mapping_dependency() {
-    let manifest = read("crates/aegis-vulcan/Cargo.toml");
-    assert!(!manifest.is_empty(), "the crate manifest must exist");
-    for deferred in [
-        "memmap2", "libc", "nix", "vfio", "cuda", "cudarc", "tokio", "aya", "libbpf", "drm",
-    ] {
-        assert!(
-            !manifest.contains(deferred),
-            "{deferred} is deferred past milestone M17"
-        );
-    }
-    for expected in ["serde", "serde_json", "thiserror"] {
-        assert!(
-            manifest.contains(expected),
-            "the manifest must declare {expected}"
-        );
-    }
+    manifest_hygiene::assert_deferred_and_expected_dependencies(
+        "crates/aegis-vulcan/Cargo.toml",
+        &[
+            "memmap2", "libc", "nix", "vfio", "cuda", "cudarc", "tokio", "aya", "libbpf", "drm",
+        ],
+        "M17",
+        &["serde", "serde_json", "thiserror"],
+    );
 }
 
 /// Negative: milestone M17 ships a library, so there is no binary target.
 #[test]
 fn the_crate_declares_no_binary_target() {
-    let manifest = read("crates/aegis-vulcan/Cargo.toml");
-    assert!(!manifest.contains("[[bin]]"));
-    assert!(manifest.contains("[lib]"));
-    assert!(manifest.contains("publish = false"));
+    manifest_hygiene::assert_crate_declares_no_binary_target("crates/aegis-vulcan/Cargo.toml");
 }
 
 // --- Boundary -------------------------------------------------------------

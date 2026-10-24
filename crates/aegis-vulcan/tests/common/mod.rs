@@ -135,6 +135,7 @@ pub fn media_ingest(blocks: u32) -> Result<MediaIngestDescriptor, Box<dyn std::e
     })
 }
 
+#[macro_use]
 #[path = "../../../source_effects.rs"]
 mod source_effects;
 

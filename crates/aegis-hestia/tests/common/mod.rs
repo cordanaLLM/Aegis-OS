@@ -128,6 +128,7 @@ pub fn registration() -> Result<OverlayRegistration, Box<dyn std::error::Error>>
     })
 }
 
+#[macro_use]
 #[path = "../../../source_effects.rs"]
 mod source_effects;
 

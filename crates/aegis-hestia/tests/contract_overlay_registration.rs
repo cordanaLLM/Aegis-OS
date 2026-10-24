@@ -10,6 +10,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_hestia::{
     ContractError, EdgeId, MAX_CONTRACT_PAYLOAD_BYTES, MAX_PIXEL_EXTENT, OverlayRegistration,
     PayloadBuffer, SchemaId, ShellLayer,
@@ -108,8 +111,9 @@ fn a_malformed_registration_payload_is_rejected() -> Fallible {
     let mut buffer = PayloadBuffer::new();
     let text = payload.encode_into(&mut buffer)?.to_owned();
 
-    let extra = text.replace("{\"schema\"", "{\"stowaway\":1,\"schema\"");
-    assert!(matches!(refusal(&extra)?, ContractError::Malformed { .. }));
+    test_assertions::assert_stowaway_rejected(&text, refusal, |err| {
+        matches!(err, ContractError::Malformed { .. })
+    })?;
 
     let negative = text.replace("\"dma-buf\":7", "\"dma-buf\":-1");
     assert!(matches!(
@@ -200,14 +204,9 @@ fn the_wire_extent_bound_is_exact() -> Fallible {
 /// Boundary: a payload past the byte bound is refused before it is parsed.
 #[test]
 fn a_payload_past_the_byte_bound_is_refused_unparsed() -> Fallible {
-    let padding = "y".repeat(MAX_CONTRACT_PAYLOAD_BYTES.saturating_add(1));
-    match refusal(&padding)? {
-        ContractError::PayloadTooLong { max, correlation } => {
-            assert_eq!(max, MAX_CONTRACT_PAYLOAD_BYTES);
-            assert_eq!(correlation.id(), None);
-            assert!(correlation.to_string().ends_with("[uncorrelated]"));
-        }
-        other => return Err(format!("expected a length refusal, got {other:?}").into()),
-    }
-    Ok(())
+    test_assertions::assert_unparsed_payload_too_long!(
+        MAX_CONTRACT_PAYLOAD_BYTES,
+        refusal,
+        ContractError,
+    )
 }

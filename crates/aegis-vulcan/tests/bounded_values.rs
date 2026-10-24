@@ -9,6 +9,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_vulcan::{
     Correlation, CorrelationId, IdError, IommuGroup, Lba, MAX_CORRELATION_LEN, RENDER_NODE_PREFIX,
     SchemaId, VfioDeviceConfig, VramAddress,
@@ -97,28 +100,14 @@ fn an_out_of_charset_identifier_is_refused() {
 /// Boundary: the identifier is admitted at its bound and refused one past it.
 #[test]
 fn the_identifier_bound_is_exact() {
-    let at_bound = "a".repeat(MAX_CORRELATION_LEN);
-    assert_eq!(
-        CorrelationId::parse(&at_bound).map(|id| id.len()),
-        Ok(MAX_CORRELATION_LEN)
-    );
-
-    let past = "a".repeat(MAX_CORRELATION_LEN.saturating_add(1));
-    assert_eq!(
-        CorrelationId::parse(&past),
-        Err(IdError::TooLong {
+    test_assertions::assert_bounded_id_exact(
+        MAX_CORRELATION_LEN,
+        CorrelationId::parse,
+        CorrelationId::len,
+        |actual| IdError::TooLong {
             max: MAX_CORRELATION_LEN,
-            actual: MAX_CORRELATION_LEN.saturating_add(1),
-        })
-    );
-
-    let far_past = "a".repeat(512);
-    assert_eq!(
-        CorrelationId::parse(&far_past),
-        Err(IdError::TooLong {
-            max: MAX_CORRELATION_LEN,
-            actual: 512,
-        })
+            actual,
+        },
     );
 }
 

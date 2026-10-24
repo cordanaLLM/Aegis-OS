@@ -340,7 +340,8 @@ shared assertions `assert_sweep_reads_sources`, `assert_workspace_names_crate`,
 `assert_inherits_workspace_lints`,
 `assert_inherits_workspace_lints_and_toolchain`,
 `assert_crate_declares_no_binary_target`,
-`assert_manifest_contains` and
+`assert_manifest_contains`,
+`assert_deferred_and_expected_dependencies` and
 `assert_no_excluded_dependencies`, included by path into the
 manifest-hygiene tests of `aegis-calliope`, `aegis-compositor`,
 `aegis-hephaestus`, `aegis-hestia`, `aegis-justitia`, `aegis-lictor`,

@@ -10,6 +10,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_hestia::{
     Correlation, CorrelationId, EMBEDDING_DIMENSIONS, Embedding, HestiaError, IdError,
     MAX_CORRELATION_LEN, MAX_STORAGE_PATH_LEN, MAX_SUBSCRIBERS, MAX_SURFACE_ID_LEN,
@@ -143,38 +146,23 @@ fn the_storage_path_bound_is_exact() -> Fallible {
 /// Boundary: the identifiers are admitted at their bounds and refused past.
 #[test]
 fn the_identifier_bounds_are_exact() {
-    let at_bound = "a".repeat(MAX_CORRELATION_LEN);
-    assert_eq!(
-        CorrelationId::parse(&at_bound).map(|id| id.len()),
-        Ok(MAX_CORRELATION_LEN)
-    );
-    let past = "a".repeat(MAX_CORRELATION_LEN.saturating_add(1));
-    assert_eq!(
-        CorrelationId::parse(&past),
-        Err(IdError::TooLong {
+    test_assertions::assert_bounded_id_exact(
+        MAX_CORRELATION_LEN,
+        CorrelationId::parse,
+        CorrelationId::len,
+        |actual| IdError::TooLong {
             max: MAX_CORRELATION_LEN,
-            actual: MAX_CORRELATION_LEN.saturating_add(1),
-        })
+            actual,
+        },
     );
-
-    let surface_at_bound = "s".repeat(MAX_SURFACE_ID_LEN);
-    assert_eq!(
-        SurfaceId::parse(&surface_at_bound).map(|id| id.len()),
-        Ok(MAX_SURFACE_ID_LEN)
-    );
-    assert_eq!(
-        SurfaceId::parse(&"s".repeat(MAX_SURFACE_ID_LEN.saturating_add(1))),
-        Err(IdError::TooLong {
+    test_assertions::assert_bounded_id_exact(
+        MAX_SURFACE_ID_LEN,
+        SurfaceId::parse,
+        SurfaceId::len,
+        |actual| IdError::TooLong {
             max: MAX_SURFACE_ID_LEN,
-            actual: MAX_SURFACE_ID_LEN.saturating_add(1),
-        })
-    );
-    assert_eq!(
-        SurfaceId::parse(&"s".repeat(512)),
-        Err(IdError::TooLong {
-            max: MAX_SURFACE_ID_LEN,
-            actual: 512,
-        })
+            actual,
+        },
     );
 }
 

@@ -17,6 +17,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_hestia::{
     Citation, D09_HESTIA_LOCATION, DecisionRecord, DecisionState, HestiaLocation, HestiaView,
     MAX_QUERY_LIMIT, MIN_QUERY_LIMIT, PGLITE_OPFS_BUFFER_MB, PipView, StoreView, ViewVersion,
@@ -187,14 +190,7 @@ fn an_empty_snapshot_is_still_a_snapshot() -> Fallible {
 fn every_source_is_cited_by_identifier_and_prefix() {
     for source in D09_HESTIA_LOCATION.sources {
         let citation: Citation = source;
-        assert!(citation.export.starts_with("export-"));
-        assert_eq!(citation.sha256_prefix.len(), 12);
-        assert!(
-            citation
-                .sha256_prefix
-                .chars()
-                .all(|c| c.is_ascii_hexdigit())
-        );
-        assert!(!citation.export.contains('/'));
+        assert_eq!(citation.export, source.export);
+        test_assertions::assert_claim_source(source.export, source.sha256_prefix);
     }
 }

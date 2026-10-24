@@ -13,6 +13,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_vulcan::{
     ContractError, EdgeId, MediaIngestDescriptor, ModesetState, PayloadBuffer, SchemaId,
 };
@@ -79,8 +82,9 @@ fn a_malformed_media_ingest_payload_is_rejected() -> Fallible {
     let mut buffer = PayloadBuffer::new();
     let text = descriptor.encode_into(&mut buffer)?.to_owned();
 
-    let extra = text.replace("{\"schema\"", "{\"stowaway\":1,\"schema\"");
-    assert!(matches!(refusal(&extra)?, ContractError::Malformed { .. }));
+    test_assertions::assert_stowaway_rejected(&text, refusal, |err| {
+        matches!(err, ContractError::Malformed { .. })
+    })?;
 
     let renamed = text.replace("media-ingest.v1", "media-ingest.v0");
     assert!(matches!(

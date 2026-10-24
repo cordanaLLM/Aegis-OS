@@ -21,6 +21,9 @@
 
 mod common;
 
+#[path = "../../test_assertions.rs"]
+mod test_assertions;
+
 use aegis_janus_lifecycle::{
     Citation, ConsolidationModel, D13_CONSOLIDATION, DecisionRecord, DecisionState, Event,
     LifecycleError, Machine, SignatureVerdict, State, Tick,
@@ -60,14 +63,7 @@ fn the_d13_sources_are_cited_by_export_and_digest_prefix() {
     for citation in D13_CONSOLIDATION.sources {
         let cited: Citation = citation;
         assert_eq!(cited, citation);
-        assert!(citation.export.starts_with("export-"));
-        assert_eq!(citation.sha256_prefix.len(), 12);
-        assert!(
-            citation
-                .sha256_prefix
-                .chars()
-                .all(|c| c.is_ascii_hexdigit())
-        );
+        test_assertions::assert_claim_source(citation.export, citation.sha256_prefix);
     }
 }
 
