@@ -82,12 +82,6 @@ exceptions:
     category: D
     entered: "2026-10-18"
     expires: "2027-02-15"
-  - rule: release-token
-    path: .github/workflows/release-please.yml
-    reason: 'aegis-os-bump-red-6e90fa8-order: release-please still takes the workflow token; the plurano-release GitHub App is installed on cordanaLLM, but this repository holds neither the variable RELEASE_APP_CLIENT_ID nor the secret RELEASE_APP_PRIVATE_KEY (operator step); the release train stays paused, and the steps move to an actions/create-github-app-token step once both exist (category C, 10 days, renewed 2026-10-24)'
-    category: C
-    entered: "2026-10-24"
-    expires: "2026-11-03"
 register:
   sources:
     expected: 13

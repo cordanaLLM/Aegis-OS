@@ -6,10 +6,12 @@
 # refuses to pass on a release-please branch until the same condition holds.
 #
 # The job runs only when the repository variable RELEASE_TRAIN_ENABLED is
-# "true". The organization currently forbids GitHub Actions from creating pull
-# requests, which makes release-please fail after it has already pushed its
-# branch. Enable the organization setting "Allow GitHub Actions to create and
-# approve pull requests" first, then:
+# "true". It acts through the plurano-release GitHub App, never through the
+# workflow token: GitHub starts no workflow runs for a pull request that the
+# workflow token opens or updates, so the release pull request would carry no
+# verification. Without the app's client id (organization variable
+# RELEASE_APP_CLIENT_ID) and key (organization secret RELEASE_APP_PRIVATE_KEY)
+# the job stops at its first step and says so. To run the train:
 # gh api --method PATCH repos/cordanaLLM/Aegis-OS/actions/variables/RELEASE_TRAIN_ENABLED -f
 #   name=RELEASE_TRAIN_ENABLED -f value=true
 name: Release please
@@ -33,11 +35,34 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
-      # Least privilege for this job only; the workflow default stays read.
-      contents: write # push the release branch and, once unblocked, tag
-      pull-requests: write # open and refresh the release pull request
-      issues: write # "autorelease: pending"/"tagged" lifecycle labels
+      # The workflow token only checks out; release-please writes with the app
+      # token, scoped below to what it needs.
+      contents: read
     steps:
+      - name: Require the release app credentials
+        env:
+          CLIENT_ID_SET: ${{ vars.RELEASE_APP_CLIENT_ID != '' }}
+          PRIVATE_KEY_SET: ${{ secrets.RELEASE_APP_PRIVATE_KEY != '' }}
+        run: |
+          set -euo pipefail
+          if [ "$CLIENT_ID_SET" != "true" ] || [ "$PRIVATE_KEY_SET" != "true" ]; then
+            message="RELEASE_APP_CLIENT_ID (variable) and RELEASE_APP_PRIVATE_KEY (secret)"
+            message="$message must both be set; release-please acts through the"
+            message="$message plurano-release app, never the workflow token."
+            echo "::error title=Missing release app credentials::$message" >&2
+            exit 1
+          fi
+
+      - name: Create the release app token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write # push the release branch and, once unblocked, tag
+          permission-pull-requests: write # open and refresh the release pull request
+          permission-issues: write # "autorelease: pending"/"tagged" lifecycle labels
+
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -60,6 +85,7 @@ jobs:
         continue-on-error: true
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with: &release-please-inputs
+          token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           skip-github-release: ${{ steps.gate.outputs.skip-github-release }}
@@ -83,6 +109,6 @@ jobs:
         run: |
           printf '%s\n' \
             'Release train disabled: RELEASE_TRAIN_ENABLED is not "true".' \
-            'Enable Actions pull request creation for the organization,' \
-            'then set the variable to true.' \
+            'With the release app credentials in place, set the variable' \
+            'to true.' \
             'Releases stay blocked until roadmap M13 is done.'
