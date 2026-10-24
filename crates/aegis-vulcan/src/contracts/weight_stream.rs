@@ -29,10 +29,9 @@
 //! carried, and here there is no such recorded field to preserve. The
 //! asymmetry is a decision, not an oversight.
 
-use crate::contracts::dmabuf::DmaBufExport;
-use crate::contracts::graph::EdgeId;
 use crate::contracts::{
-    ContractError, Correlation, PayloadBuffer, SchemaId, decode_text, encode_into,
+    ContractError, Correlation, DmaBufExport, EdgeId, PayloadBuffer, SchemaId, decode_text,
+    decode_validated, encode_into,
 };
 use crate::device::IommuGroup;
 use crate::dma::{BlockCount, Lba, VramAddress};
@@ -96,16 +95,7 @@ impl WeightStreamDescriptor {
     /// P03 edge, and [`ContractError::ExportPathUnusable`] when the declared
     /// export path could publish no render node.
     pub fn validate(&self) -> Result<(), ContractError> {
-        let correlation = self.correlation();
-        if self.edge != Self::EDGE {
-            return Err(ContractError::WrongEdge { correlation });
-        }
-        self.export
-            .validate()
-            .map_err(|error| ContractError::ExportPathUnusable {
-                correlation,
-                reason: error.reason(),
-            })
+        super::validate_descriptor(self.edge, Self::EDGE, self.export, self.correlation(), true)
     }
 
     /// Encodes a validated descriptor into `buffer`.
@@ -129,8 +119,6 @@ impl WeightStreamDescriptor {
     /// outside `1..=8192` -- and [`ContractError::PayloadTooLong`] past the
     /// byte bound.
     pub fn decode(text: &str) -> Result<Self, ContractError> {
-        let decoded: Self = decode_text(Self::SCHEMA, text)?;
-        decoded.validate()?;
-        Ok(decoded)
+        decode_validated(decode_text(Self::SCHEMA, text), Self::validate)
     }
 }

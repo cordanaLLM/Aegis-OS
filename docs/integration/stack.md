@@ -27,16 +27,18 @@ templates are candidates only for components that require those backends.
 The shared package producers are identified and released, so a consumer pins a
 published version rather than waiting for maturity: `golusoris/golusoris` for Go
 (module `github.com/golusoris/golusoris`, v0.12.0, EUPL-1.2, resolvable on the
-Go module proxy) and `golusoris/sveltesentio` for the UI surface (nineteen
-`@sveltesentio/*` packages published on npm, MIT, versioned per package). Since
-ADR-0004 (2026-09-29) sveltesentio no longer supplies the P05 shell, which is
-native Rust on gpui; it stays available for any web surface. A Rust
-shared-package producer from the same family is expected but does not exist yet;
-until one does, Rust components select crates through the template matrix, and
-that absence is the reason to keep the row generic rather than to add a producer
-that cannot be pinned. Identification is not qualification: a consumer still
-owes the package/language boundary, the pinned version, the licence and the
-consumer contract tests named in the table above.
+Go module proxy), `golusoris/sveltesentio` for the UI surface (nineteen
+`@sveltesentio/*` packages published on npm, MIT, versioned per package), and
+`plurano/amussis` for the decision engine (`amussis-decision`, v0.2.0, EUPL-1.2,
+resolvable on crates.io; ADR-0006). Since ADR-0004 (2026-09-29) sveltesentio no
+longer supplies the P05 shell, which is native Rust on gpui; it stays available
+for any web surface. A Rust shared-package producer from the golusoris family is
+expected but does not exist yet; until one does, Rust components select crates
+through the template matrix, and that absence is the reason to keep the row
+generic rather than to add a producer that cannot be pinned. Identification is
+not qualification: a consumer still owes the package/language boundary, the
+pinned version, the licence and the consumer contract tests named in the table
+above.
 
 While Imago is a scaffold, Aegis performs the part it cannot defer:
 it validates image definitions locally (D56). It also built the kernel locally
