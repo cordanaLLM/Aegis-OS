@@ -66,20 +66,11 @@ const NOT_WATCHED: [&str; 2] = ["/sys/class/tpm/", "lsusb"];
 /// Positive: the sweep reads the crate's sources, and reads several of them.
 #[test]
 fn the_sweep_reads_the_whole_crate() -> Fallible {
-    let sources = common::rust_sources(&common::source_root())?;
-    assert!(
-        sources.len() >= 10,
-        "the sweep read only {} sources; it is reading nothing, not finding nothing",
-        sources.len()
-    );
-    assert!(sources.iter().any(|(name, _)| name == "lib.rs"));
-    assert!(sources.iter().any(|(name, _)| name == "probe.rs"));
-    assert!(
-        sources
-            .iter()
-            .any(|(name, _)| name == "transaction_receipt.rs")
-    );
-    Ok(())
+    common::assert_sweep_reads_sources(
+        &common::source_root(),
+        10,
+        &["lib.rs", "probe.rs", "transaction_receipt.rs"],
+    )
 }
 
 // --- Negative -------------------------------------------------------------
