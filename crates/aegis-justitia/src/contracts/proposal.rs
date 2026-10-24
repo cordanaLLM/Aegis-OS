@@ -24,7 +24,6 @@
 //! No transport is implemented. Nothing in this module opens a socket, loads an
 //! eBPF program, or produces or verifies a signature.
 
-use crate::contracts::encoding::OversightSignature;
 use crate::contracts::graph::{EdgeId, GateDirection};
 use crate::contracts::{
     ContractError, Correlation, PayloadBuffer, SchemaId, check_edge, decode_text, decode_validated,
@@ -34,6 +33,7 @@ use crate::identity::{AgentId, Identity, MakerId, TargetResource};
 use crate::ledger::hash::Digest32;
 use crate::risk::{ActionType, OversightClass, RiskTier};
 use crate::time::UnixSeconds;
+use amussis_decision::encoding::fields::OversightSignature;
 
 /// The contract versions of the action proposal this build admits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]

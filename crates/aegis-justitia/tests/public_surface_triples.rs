@@ -24,9 +24,10 @@ use aegis_justitia::{
     Digest32, EngineConfig, HaltReason, HashAlgorithm, HashError, Identity, InMemorySink,
     IntentError, IntentId, InterceptorOutcome, IoDeadline, JustitiaError, LedgerError,
     LedgerHasher, LedgerSink, MAX_IDENTITY_LEN, MAX_PREIMAGE_BYTES, OversightClass, OversightError,
-    PreimageError, RecordBody, RecordDraft, RecordStatus, RegistryError, RequestId, RequestState,
-    RequiredApproval, RiskTier, Sequence, Sha256Hasher, Sha256Ledger, SignError, SignerBinding,
-    SinkError, Ttl, UnavailableSink, UnixSeconds, VerifiedCheckerSet, Vote, verify_chain,
+    PreimageError, RecordBody, RecordDraft, RecordStatus, RegistryError, ReleaseError, RequestId,
+    RequestState, RequiredApproval, RiskLevel, RiskTier, Sequence, Sha256Hasher, Sha256Ledger,
+    SignError, SignerBinding, SinkError, Ttl, UnavailableSink, UnixSeconds, VerifiedCheckerSet,
+    Vote, verify_chain,
 };
 
 use common::{
@@ -366,7 +367,7 @@ fn every_outcome_variant_is_matched_by_shape() -> Fallible<()> {
         "a Tier A action must be held on a single-checker ticket, found {outcome:?}"
     );
 
-    unit.halt(HaltReason::OperatorStop);
+    unit.halt_unnamed(HaltReason::OperatorStop, RiskLevel::LOWEST)?;
     let after = intent(
         "intent-shape-block",
         "maker-alice",
@@ -518,7 +519,7 @@ fn a_halted_unit_accepts_no_human_decision() -> Fallible<()> {
         .decide(&proposal)
         .ticket()
         .ok_or(FixtureError::NoTicket)?;
-    unit.halt(HaltReason::OperatorStop);
+    unit.halt_unnamed(HaltReason::OperatorStop, RiskLevel::LOWEST)?;
 
     let panel = CheckerSet::single(CheckerId::parse("checker-bo")?);
     assert_eq!(
@@ -643,5 +644,11 @@ fn the_aggregate_error_keeps_the_boundary_that_produced_it() {
             .to_string()
             .contains(&overflow.to_string()),
         "the wrapper carries the wrapped message rather than replacing it"
+    );
+
+    let release = ReleaseError::NotHalted;
+    assert_eq!(
+        JustitiaError::from(release),
+        JustitiaError::Release(release)
     );
 }

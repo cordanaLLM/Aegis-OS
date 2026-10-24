@@ -13,21 +13,30 @@ use std::error::Error;
 use std::io::Write;
 use std::process::ExitCode;
 
-use aegis_justitia::identity::{AgentId, IntentId};
+use aegis_justitia::identity::{AgentId, IntentId, MakerId};
 use aegis_justitia::killswitch::KillswitchState;
 use aegis_justitia::ledger::hash::{Digest32, HashAlgorithm};
 use aegis_justitia::ledger::sha256::Sha256Hasher;
-use aegis_justitia::ledger::{RecordBody, RecordDraft, RecordStatus, Sequence};
-use aegis_justitia::risk::ActionType;
+use aegis_justitia::ledger::{
+    RecordBody, RecordDraft, RecordPrincipals, RecordStatus, RecordSubject, Sequence,
+};
+use aegis_justitia::risk::{ActionType, RiskLevel};
 use aegis_justitia::time::UnixSeconds;
 
 const USAGE: &str = "usage: record_digest [other]";
 
 fn build_draft(status: RecordStatus) -> Result<RecordDraft, Box<dyn Error>> {
     Ok(RecordDraft {
-        intent_id: IntentId::parse("intent-e20-1")?,
-        agent: AgentId::parse("agent-01")?,
-        action_type: ActionType::FileModification,
+        subject: Some(RecordSubject {
+            intent_id: IntentId::parse("intent-e20-1")?,
+            agent: AgentId::parse("agent-01")?,
+            action_type: ActionType::FileModification,
+        }),
+        principals: Some(RecordPrincipals {
+            level: RiskLevel::LOWEST,
+            maker: MakerId::parse("maker-01")?,
+            checkers: None,
+        }),
         status,
         block_reason: None,
         killswitch: KillswitchState::Armed,
