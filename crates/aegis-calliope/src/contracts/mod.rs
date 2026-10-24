@@ -98,6 +98,10 @@ impl SchemaId {
 mod contract_scaffold;
 
 #[macro_use]
+#[path = "../../../contract_codec_scaffold.rs"]
+mod contract_codec_scaffold;
+
+#[macro_use]
 #[path = "../../../contract_edge_scaffold.rs"]
 mod contract_edge_scaffold;
 

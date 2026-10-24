@@ -319,10 +319,14 @@ and its serde macro `impl_u64_bounded_serde!`, included by path into the
 contracts encoding modules of `aegis-calliope` and `aegis-lictor`.
 
 `contract_scaffold.rs`, beside the crate directories, is not a crate either:
-it holds the shared contract scaffolding (`Correlation`, `PayloadBuffer`,
-`define_contract_error!` and `scaffold_contract!`), included by path into the
-contracts modules of `aegis-athena`, `aegis-calliope`, `aegis-hephaestus`,
-`aegis-hestia`, `aegis-lictor`, `aegis-ludus`,
+it holds the shared contract scaffolding (`Correlation`, `PayloadBuffer` and
+`define_contract_error!`), included by path into the contracts modules of
+`aegis-athena`, `aegis-calliope`, `aegis-hephaestus`, `aegis-hestia`,
+`aegis-justitia`, `aegis-lictor`, `aegis-ludus`, `aegis-minerva`, `aegis-tellus`,
+`aegis-vesta` and `aegis-vulcan`.
+`contract_codec_scaffold.rs` beside it holds `scaffold_contract!`, included by
+path into the contracts modules of `aegis-athena`, `aegis-calliope`,
+`aegis-hephaestus`, `aegis-hestia`, `aegis-lictor`, `aegis-ludus`,
 `aegis-minerva`, `aegis-tellus`, `aegis-vesta` and `aegis-vulcan`.
 `contract_edge_scaffold.rs` beside it holds `scaffold_edge_contract!`, which
 declares the whole contract surface of a crate whose only own refusal is
