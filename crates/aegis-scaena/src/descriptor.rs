@@ -117,6 +117,33 @@ impl CorrelationId {
         let bytes = self.bytes.get(..usize::from(self.len)).unwrap_or_default();
         core::str::from_utf8(bytes).unwrap_or_default()
     }
+
+    /// Formats a correlation identifier from a template ending in two decimal digits (`00`).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DescriptorError::CorrelationId`] if the parsed identifier is invalid.
+    pub(crate) fn from_template_number<const N: usize>(
+        template: &[u8; N],
+        number: usize,
+    ) -> Result<Self, DescriptorError> {
+        let mut text = *template;
+        let tens = number.checked_div(10).and_then(|tens| tens.checked_rem(10));
+        let ones = number.checked_rem(10);
+        let tens = tens.and_then(|digit| u8::try_from(digit).ok()).unwrap_or(0);
+        let ones = ones.and_then(|digit| u8::try_from(digit).ok()).unwrap_or(0);
+        let start = N.saturating_sub(2);
+        if let (Some(high), Some(low)) = (
+            text.get(start).copied(),
+            text.get(start.saturating_add(1)).copied(),
+        ) {
+            let digits = [high.saturating_add(tens), low.saturating_add(ones)];
+            if let Some(slot) = text.get_mut(start..N) {
+                slot.copy_from_slice(&digits);
+            }
+        }
+        Self::parse(&text)
+    }
 }
 
 impl fmt::Debug for CorrelationId {

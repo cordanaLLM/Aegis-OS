@@ -90,14 +90,19 @@ fn dispatch<S>(
     }
 }
 
-/// Flushes queued requests; a full socket buffer is retried next round.
-fn flush<S>(queue: &EventQueue<S>, event: WaitEvent) -> Result<(), WaitError> {
-    match queue.flush() {
-        Ok(()) => Ok(()),
+/// Maps a Wayland I/O or protocol result to a [`WaitError`].
+fn map_wayland_io<T>(result: Result<T, WaylandError>, event: WaitEvent) -> Result<(), WaitError> {
+    match result {
+        Ok(_) => Ok(()),
         Err(WaylandError::Io(error)) if error.kind() == ErrorKind::WouldBlock => Ok(()),
         Err(WaylandError::Protocol(_)) => Err(WaitError::Protocol { event }),
         Err(WaylandError::Io(_)) => Err(WaitError::Connection { event }),
     }
+}
+
+/// Flushes queued requests; a full socket buffer is retried next round.
+fn flush<S>(queue: &EventQueue<S>, event: WaitEvent) -> Result<(), WaitError> {
+    map_wayland_io(queue.flush(), event)
 }
 
 /// Polls `fd` for input for at most `remaining`; `false` when nothing came.
@@ -119,12 +124,7 @@ fn read<S>(queue: &EventQueue<S>, remaining: Duration, event: WaitEvent) -> Resu
     if !readable(guard.connection_fd(), remaining, event)? {
         return Err(WaitError::Deadline { event });
     }
-    match guard.read() {
-        Ok(_) => Ok(()),
-        Err(WaylandError::Io(error)) if error.kind() == ErrorKind::WouldBlock => Ok(()),
-        Err(WaylandError::Protocol(_)) => Err(WaitError::Protocol { event }),
-        Err(WaylandError::Io(_)) => Err(WaitError::Connection { event }),
-    }
+    map_wayland_io(guard.read(), event)
 }
 
 /// Dispatches events until `done` holds for the state, under `wait`'s
