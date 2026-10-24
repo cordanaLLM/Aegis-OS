@@ -45,6 +45,77 @@ impl TempSysfs {
         Ok(Self { root, sysfs, dev })
     }
 
+    /// Creates a new temporary sysfs fixture populated with an isolated Arc GPU at `addr`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory structure or device cannot be created.
+    pub fn new_with_arc_gpu(
+        addr: &str,
+        card: Option<&str>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let fix = Self::new()?;
+        fix.add_arc_gpu(addr, "vfio-pci", "42", &[addr])?;
+        if let Some(card_name) = card {
+            fix.add_device_drm_card(addr, card_name)?;
+        }
+        Ok(fix)
+    }
+
+    /// Returns the path to `/sys/bus/pci/devices/<addr>`, creating it if necessary.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory cannot be created.
+    pub fn pci_device_dir(&self, addr: &str) -> std::io::Result<PathBuf> {
+        let dev_dir = self
+            .sysfs
+            .join("bus")
+            .join("pci")
+            .join("devices")
+            .join(addr);
+        std::fs::create_dir_all(&dev_dir)?;
+        Ok(dev_dir)
+    }
+
+    /// Creates `/sys/bus/pci/devices/<addr>/drm/<card>` for testing DRM device associations.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory cannot be created.
+    pub fn add_device_drm_card(&self, addr: &str, card: &str) -> Fallible {
+        let dev_dir = self.pci_device_dir(addr)?;
+        std::fs::create_dir_all(dev_dir.join("drm").join(card))?;
+        Ok(())
+    }
+
+    /// Adds a VFIO container file at `/dev/vfio/vfio`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory or file cannot be created.
+    pub fn add_vfio_container(&self) -> Fallible {
+        let vfio_dir = self.dev.join("vfio");
+        std::fs::create_dir_all(&vfio_dir)?;
+        std::fs::write(vfio_dir.join("vfio"), "")?;
+        Ok(())
+    }
+
+    /// Adds an Intel Arc test GPU with standard vendor/device IDs (0x8086:0x56a5) and non-boot VGA.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if device files cannot be created.
+    pub fn add_arc_gpu(
+        &self,
+        addr: &str,
+        driver: &str,
+        iommu_group: &str,
+        members: &[&str],
+    ) -> Fallible {
+        self.add_gpu(addr, "0x8086", "0x56a5", driver, "0", iommu_group, members)
+    }
+
     /// Adds a DRM render node and creates its device/driver symlinks.
     ///
     /// # Errors
@@ -60,13 +131,7 @@ impl TempSysfs {
         let node_dir = self.sysfs.join("class").join("drm").join(node);
         std::fs::create_dir_all(&node_dir)?;
 
-        let dev_dir = self
-            .sysfs
-            .join("bus")
-            .join("pci")
-            .join("devices")
-            .join(pci_addr);
-        std::fs::create_dir_all(&dev_dir)?;
+        let dev_dir = self.pci_device_dir(pci_addr)?;
 
         // Create symlink device -> ../../../bus/pci/devices/<pci_addr>
         let device_link = node_dir.join("device");
@@ -133,13 +198,7 @@ impl TempSysfs {
         iommu_group: &str,
         members: &[&str],
     ) -> Fallible {
-        let dev_dir = self
-            .sysfs
-            .join("bus")
-            .join("pci")
-            .join("devices")
-            .join(addr);
-        std::fs::create_dir_all(&dev_dir)?;
+        let dev_dir = self.pci_device_dir(addr)?;
 
         std::fs::write(dev_dir.join("class"), "0x030000\n")?;
         std::fs::write(dev_dir.join("vendor"), format!("{vendor}\n"))?;
@@ -206,13 +265,7 @@ impl TempSysfs {
         start: u64,
         end: u64,
     ) -> Fallible {
-        let dev_dir = self
-            .sysfs
-            .join("bus")
-            .join("pci")
-            .join("devices")
-            .join(addr);
-        std::fs::create_dir_all(&dev_dir)?;
+        let dev_dir = self.pci_device_dir(addr)?;
 
         std::fs::write(
             dev_dir.join(format!("resource{bar}_resize")),
