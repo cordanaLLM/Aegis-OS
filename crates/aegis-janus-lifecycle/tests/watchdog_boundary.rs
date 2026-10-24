@@ -26,7 +26,8 @@
 mod common;
 
 use aegis_janus_lifecycle::{
-    ClockError, Event, EventKind, LifecycleError, State, Tick, WatchdogStatus,
+    ClockError, Event, EventKind, LifecycleError, Machine, State, StubClock, Tick, Transition,
+    WatchdogStatus,
 };
 
 use common::{ARMED_AT, DUE_AT, Fallible, WINDOW, armed, blessed, refusal, signed, timeout};
@@ -109,6 +110,29 @@ fn a_rolled_back_candidate_is_terminal() -> Fallible {
     Ok(())
 }
 
+// --- Helpers --------------------------------------------------------------
+
+/// Helper: forks `(machine, clock)`, sets the clock to `tick`, and executes `event`.
+fn fork_step(
+    mut machine: Machine,
+    mut clock: StubClock,
+    tick: u64,
+    event: Event,
+) -> Result<(Machine, StubClock, Transition), Box<dyn std::error::Error>> {
+    clock.set(Tick::new(tick));
+    let record = machine.step(&clock, event)?;
+    Ok((machine, clock, record))
+}
+
+/// Helper: asserts that `record` captured a watchdog rollback transition from `from`
+/// at [`DUE_AT`], and that the watchdog on `machine` was disarmed.
+fn assert_watchdog_rollback(machine: &Machine, record: &Transition, from: State) {
+    assert_eq!(record.from(), from);
+    assert_eq!(record.to(), State::RolledBack);
+    assert_eq!(record.at(), Tick::new(DUE_AT));
+    assert_eq!(machine.watchdog(), None, "a rollback disarms the watchdog");
+}
+
 // --- Boundary -------------------------------------------------------------
 
 /// Boundary: expiry exactly at the timeout takes `Rollback`, one tick before
@@ -120,10 +144,8 @@ fn a_rolled_back_candidate_is_terminal() -> Fallible {
 fn expiry_exactly_at_the_timeout_rolls_back_and_one_tick_before_does_not() -> Fallible {
     let (armed_machine, clock) = armed()?;
 
-    let mut early = armed_machine;
-    let mut early_clock = clock;
-    early_clock.set(Tick::new(DUE_AT.saturating_sub(1)));
-    let early_record = early.step(&early_clock, Event::Tick)?;
+    let (early, _, early_record) =
+        fork_step(armed_machine, clock, DUE_AT.saturating_sub(1), Event::Tick)?;
     assert_eq!(
         early.state(),
         State::WatchdogArmed,
@@ -131,24 +153,15 @@ fn expiry_exactly_at_the_timeout_rolls_back_and_one_tick_before_does_not() -> Fa
     );
     assert!(early_record.is_stationary());
 
-    let mut exact = armed_machine;
-    let mut exact_clock = clock;
-    exact_clock.set(Tick::new(DUE_AT));
-    let exact_record = exact.step(&exact_clock, Event::Tick)?;
+    let (exact, _, exact_record) = fork_step(armed_machine, clock, DUE_AT, Event::Tick)?;
     assert_eq!(
         exact.state(),
         State::RolledBack,
         "expiry exactly at the timeout must roll back"
     );
-    assert_eq!(exact_record.from(), State::WatchdogArmed);
-    assert_eq!(exact_record.to(), State::RolledBack);
-    assert_eq!(exact_record.at(), Tick::new(DUE_AT));
-    assert_eq!(exact.watchdog(), None, "a rollback disarms the watchdog");
+    assert_watchdog_rollback(&exact, &exact_record, State::WatchdogArmed);
 
-    let mut late = armed_machine;
-    let mut late_clock = clock;
-    late_clock.set(Tick::new(DUE_AT.saturating_add(1)));
-    late.step(&late_clock, Event::Tick)?;
+    let (late, _, _) = fork_step(armed_machine, clock, DUE_AT.saturating_add(1), Event::Tick)?;
     assert_eq!(late.state(), State::RolledBack);
 
     Ok(())
@@ -161,16 +174,10 @@ fn expiry_exactly_at_the_timeout_rolls_back_and_one_tick_before_does_not() -> Fa
 fn a_bless_one_tick_before_the_deadline_still_wins_the_race() -> Fallible {
     let (armed_machine, clock) = armed()?;
 
-    let mut blessing = armed_machine;
-    let mut blessing_clock = clock;
-    blessing_clock.set(Tick::new(DUE_AT.saturating_sub(1)));
-    blessing.step(&blessing_clock, Event::Bless)?;
+    let (blessing, _, _) = fork_step(armed_machine, clock, DUE_AT.saturating_sub(1), Event::Bless)?;
     assert_eq!(blessing.state(), State::Blessed);
 
-    let mut rolling = armed_machine;
-    let mut rolling_clock = clock;
-    rolling_clock.set(Tick::new(DUE_AT));
-    rolling.step(&rolling_clock, Event::Tick)?;
+    let (mut rolling, rolling_clock, _) = fork_step(armed_machine, clock, DUE_AT, Event::Tick)?;
     let error = refusal(&mut rolling, rolling_clock, Event::Bless)?;
     assert!(matches!(
         error,
@@ -194,20 +201,14 @@ fn a_bless_one_tick_before_the_deadline_still_wins_the_race() -> Fallible {
 fn a_bless_at_the_deadline_rolls_back_with_no_tick_offered() -> Fallible {
     let (armed_machine, clock) = armed()?;
 
-    let mut early = armed_machine;
-    let mut early_clock = clock;
-    early_clock.set(Tick::new(DUE_AT.saturating_sub(1)));
-    early.step(&early_clock, Event::Bless)?;
+    let (early, _, _) = fork_step(armed_machine, clock, DUE_AT.saturating_sub(1), Event::Bless)?;
     assert_eq!(
         early.state(),
         State::Blessed,
         "one tick before the deadline the bless still wins"
     );
 
-    let mut exact = armed_machine;
-    let mut exact_clock = clock;
-    exact_clock.set(Tick::new(DUE_AT));
-    let exact_record = exact.step(&exact_clock, Event::Bless)?;
+    let (exact, _, exact_record) = fork_step(armed_machine, clock, DUE_AT, Event::Bless)?;
     assert_eq!(
         exact.state(),
         State::RolledBack,
@@ -218,16 +219,10 @@ fn a_bless_at_the_deadline_rolls_back_with_no_tick_offered() -> Fallible {
         EventKind::Bless,
         "the trace records the event that was offered, not a tick nobody sent"
     );
-    assert_eq!(exact_record.from(), State::WatchdogArmed);
-    assert_eq!(exact_record.to(), State::RolledBack);
-    assert_eq!(exact_record.at(), Tick::new(DUE_AT));
-    assert_eq!(exact.watchdog(), None, "a rollback disarms the watchdog");
+    assert_watchdog_rollback(&exact, &exact_record, State::WatchdogArmed);
     assert_eq!(exact.trace().len(), 6);
 
-    let mut late = armed_machine;
-    let mut late_clock = clock;
-    late_clock.set(Tick::new(DUE_AT.saturating_add(1)));
-    late.step(&late_clock, Event::Bless)?;
+    let (late, _, _) = fork_step(armed_machine, clock, DUE_AT.saturating_add(1), Event::Bless)?;
     assert_eq!(
         late.state(),
         State::RolledBack,
@@ -256,34 +251,23 @@ fn a_re_bless_at_the_maintenance_deadline_rolls_back_with_no_tick_offered() -> F
         "the window is armed at ARMED_AT and is WINDOW ticks wide"
     );
 
-    let mut early = reopened;
-    let mut early_clock = clock;
-    early_clock.set(Tick::new(DUE_AT.saturating_sub(1)));
-    early.step(&early_clock, Event::Bless)?;
+    let (early, _, _) = fork_step(reopened, clock, DUE_AT.saturating_sub(1), Event::Bless)?;
     assert_eq!(
         early.state(),
         State::Blessed,
         "one tick before the window closes the re-bless still wins"
     );
 
-    let mut exact = reopened;
-    let mut exact_clock = clock;
-    exact_clock.set(Tick::new(DUE_AT));
-    let exact_record = exact.step(&exact_clock, Event::Bless)?;
+    let (exact, _, exact_record) = fork_step(reopened, clock, DUE_AT, Event::Bless)?;
     assert_eq!(
         exact.state(),
         State::RolledBack,
         "a re-bless exactly at the window's end must roll back"
     );
     assert_eq!(exact_record.event(), EventKind::Bless);
-    assert_eq!(exact_record.from(), State::Reopened);
-    assert_eq!(exact_record.to(), State::RolledBack);
-    assert_eq!(exact.watchdog(), None);
+    assert_watchdog_rollback(&exact, &exact_record, State::Reopened);
 
-    let mut late = reopened;
-    let mut late_clock = clock;
-    late_clock.set(Tick::new(DUE_AT.saturating_add(1)));
-    late.step(&late_clock, Event::Bless)?;
+    let (late, _, _) = fork_step(reopened, clock, DUE_AT.saturating_add(1), Event::Bless)?;
     assert_eq!(late.state(), State::RolledBack);
     Ok(())
 }

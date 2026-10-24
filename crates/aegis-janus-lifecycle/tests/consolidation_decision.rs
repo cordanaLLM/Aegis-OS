@@ -26,7 +26,7 @@ mod test_assertions;
 
 use aegis_janus_lifecycle::{
     Citation, ConsolidationModel, D13_CONSOLIDATION, DecisionRecord, DecisionState, Event,
-    LifecycleError, Machine, SignatureVerdict, State, Tick,
+    LifecycleError, Machine, SignatureVerdict, State, StubClock, Tick,
 };
 
 use common::{DUE_AT, Fallible, WINDOW, blessed, drifted, refusal, signed, timeout};
@@ -120,14 +120,15 @@ fn a_reopened_slot_holds_no_measurement() -> Fallible {
     Ok(())
 }
 
-/// Negative: a reopened slot that measures to anything but the signed release
-/// is refused, with both hashes named.
-#[test]
-fn a_reopened_slot_that_drifted_is_refused() -> Fallible {
-    let (mut machine, clock) = blessed()?;
-    machine.step(&clock, Event::Reopen(timeout(WINDOW)?))?;
-    machine.step(&clock, Event::Remeasure(drifted()?))?;
-    let error = refusal(&mut machine, clock, Event::Bless)?;
+/// Helper: asserts that blessing `machine` against `clock` is refused with a
+/// [`LifecycleError::VerityMismatch`] between [`signed`] and [`drifted`],
+/// leaving `machine` in `expected_state`.
+fn assert_drifted_bless_refused(
+    machine: &mut Machine,
+    clock: StubClock,
+    expected_state: State,
+) -> Fallible {
+    let error = refusal(machine, clock, Event::Bless)?;
     assert_eq!(
         error,
         LifecycleError::VerityMismatch {
@@ -135,8 +136,18 @@ fn a_reopened_slot_that_drifted_is_refused() -> Fallible {
             measured: drifted()?,
         }
     );
-    assert_eq!(machine.state(), State::Reopened);
+    assert_eq!(machine.state(), expected_state);
     Ok(())
+}
+
+/// Negative: a reopened slot that measures to anything but the signed release
+/// is refused, with both hashes named.
+#[test]
+fn a_reopened_slot_that_drifted_is_refused() -> Fallible {
+    let (mut machine, clock) = blessed()?;
+    machine.step(&clock, Event::Reopen(timeout(WINDOW)?))?;
+    machine.step(&clock, Event::Remeasure(drifted()?))?;
+    assert_drifted_bless_refused(&mut machine, clock, State::Reopened)
 }
 
 /// Negative: the same gate applies on the first bless, not only after a
@@ -150,16 +161,7 @@ fn a_first_bless_over_a_drifted_delta_is_refused() -> Fallible {
     machine.step(&clock, Event::AcquireDelta(drifted()?))?;
     machine.step(&clock, Event::SwapSlot)?;
     machine.step(&clock, Event::ArmWatchdog(timeout(WINDOW)?))?;
-    let error = refusal(&mut machine, clock, Event::Bless)?;
-    assert_eq!(
-        error,
-        LifecycleError::VerityMismatch {
-            expected: signed()?,
-            measured: drifted()?,
-        }
-    );
-    assert_eq!(machine.state(), State::WatchdogArmed);
-    Ok(())
+    assert_drifted_bless_refused(&mut machine, clock, State::WatchdogArmed)
 }
 
 // --- Boundary -------------------------------------------------------------

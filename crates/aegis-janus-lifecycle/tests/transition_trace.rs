@@ -23,11 +23,11 @@
 mod common;
 
 use aegis_janus_lifecycle::{
-    Event, EventKind, MAX_TRANSITIONS, RecordKind, Slot, State, TRACE_SCHEMA, Tick, Trace,
-    TraceError, TraceHeader, TraceLine, Transition,
+    EventKind, MAX_TRANSITIONS, RecordKind, Slot, State, TRACE_SCHEMA, Tick, Trace, TraceError,
+    TraceHeader, TraceLine, Transition,
 };
 
-use common::{ARMED_AT, Fallible, SIGNED_HEX, armed, blessed, candidate};
+use common::{ARMED_AT, Fallible, SIGNED_HEX, blessed, candidate, filled};
 
 /// The rendered happy path, byte for byte.
 const GOLDEN: &str = concat!(
@@ -298,10 +298,7 @@ fn an_empty_trace_cannot_be_rendered() {
 /// parses, and one record more is refused rather than truncated.
 #[test]
 fn a_trace_at_its_bound_round_trips_and_one_record_more_is_refused() -> Fallible {
-    let (mut machine, clock) = armed()?;
-    for _ in 0..MAX_TRANSITIONS.saturating_sub(machine.trace().len()) {
-        machine.step(&clock, Event::Tick)?;
-    }
+    let (machine, _clock) = filled()?;
     assert_eq!(machine.trace().len(), MAX_TRANSITIONS);
     let rendered = machine.trace().render()?;
     assert_eq!(rendered.lines().count(), MAX_TRANSITIONS.saturating_add(1));

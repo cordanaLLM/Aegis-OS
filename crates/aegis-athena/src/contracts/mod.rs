@@ -98,6 +98,10 @@ impl SchemaId {
 #[path = "../../../contract_scaffold.rs"]
 mod contract_scaffold;
 
+#[macro_use]
+#[path = "../../../contract_codec_scaffold.rs"]
+mod contract_codec_scaffold;
+
 define_contract_error! {
     SchemaId, CorrelationId;
     /// Reasons a P16 payload is refused.
